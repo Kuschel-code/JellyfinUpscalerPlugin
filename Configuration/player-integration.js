@@ -186,7 +186,7 @@
         setScale: function(scale) {
             console.log(`AI Upscaler: Setting scale to ${scale}x`);
             
-            this.updatePluginConfig({ Scale: scale });
+            this.updatePluginConfig({ ScaleFactor: scale });
             this.showPlayerNotification(`📏 Scale set to ${scale}x`, 'success');
             
             const menu = document.querySelector('#aiUpscalerQuickMenu');
@@ -195,10 +195,10 @@
         
         // Toggle upscaling on/off
         toggleUpscaling: function() {
-            const currentState = this.getPluginConfig().Enabled;
+            const currentState = this.getPluginConfig().EnablePlugin;
             const newState = !currentState;
             
-            this.updatePluginConfig({ Enabled: newState });
+            this.updatePluginConfig({ EnablePlugin: newState });
             this.showPlayerNotification(
                 `🔄 Upscaling ${newState ? 'enabled' : 'disabled'}`, 
                 newState ? 'success' : 'warning'
@@ -236,8 +236,8 @@
                     <div class="header">📊 AI Upscaler Statistics</div>
                     <div class="stat-item">
                         <span class="stat-label">Status:</span>
-                        <span class="stat-value ${stats.Enabled ? 'good' : 'warning'}">
-                            ${stats.Enabled ? '✅ Active' : '⚠️ Inactive'}
+                        <span class="stat-value ${stats.EnablePlugin ? 'good' : 'warning'}">
+                            ${stats.EnablePlugin ? '✅ Active' : '⚠️ Inactive'}
                         </span>
                     </div>
                     <div class="stat-item">
@@ -246,11 +246,11 @@
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Scale:</span>
-                        <span class="stat-value">${stats.Scale}x</span>
+                        <span class="stat-value">${stats.ScaleFactor}x</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Quality:</span>
-                        <span class="stat-value">${stats.Quality}</span>
+                        <span class="stat-value">${stats.QualityLevel}</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Hardware Acceleration:</span>
@@ -307,7 +307,7 @@
         // Handle playback start
         onPlaybackStart: function() {
             const config = this.getPluginConfig();
-            if (config.Enabled) {
+            if (config.EnablePlugin) {
                 this.showPlayerNotification('🚀 AI Upscaler active', 'info');
             }
         },
@@ -346,10 +346,10 @@
         getPluginConfig: function() {
             // Return mock configuration - in real implementation, fetch from server
             return {
-                Enabled: true,
+                EnablePlugin: true,
                 Model: 'realesrgan',
-                Scale: 2,
-                Quality: 'balanced',
+                ScaleFactor: 2,
+                QualityLevel: 'balanced',
                 HardwareAcceleration: true,
                 CacheSizeMB: 1024
             };

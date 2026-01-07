@@ -25,12 +25,5 @@ Save findings to `{@artifacts_path}/investigation.md` with:
 - Affected components
 - Proposed solution
 
-### [x] Step: Implementation
-<!-- chat-id: 551acbf5-6461-4d79-8a61-e793f5908885 -->
-Read `{@artifacts_path}/investigation.md`
-Implement the bug fix.
-
-1. Add/adjust regression test(s) that fail before the fix and pass after
-2. Implement the fix
-3. Run relevant tests
-4. Update `{@artifacts_path}/investigation.md` with implementation notes and test results
+### [ ] Step: fix on github
+<!-- agent: ZEN_CLI -->

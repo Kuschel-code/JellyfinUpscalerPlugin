@@ -10,10 +10,10 @@ define(['pluginManager', 'loading', 'dialogHelper', 'emby-select', 'emby-input',
         // Load plugin configuration
         ApiClient.getPluginConfiguration(pluginId).then(function (config) {
             // Set form values
-            page.querySelector('#profileSelect').value = config.selectedProfile || 'Default';
-            page.querySelector('#maxFPS').value = config.maxFPSForAI || '60 FPS';
-            page.querySelector('#minResolution').value = config.minResolutionForAI || '720p';
-            page.querySelector('#sharpness').value = config.sharpness || 2;
+            page.querySelector('#chkEnablePlugin').checked = config.EnablePlugin || false;
+            page.querySelector('#selectModel').value = config.Model || 'realesrgan';
+            page.querySelector('#selectScaleFactor').value = config.ScaleFactor || 2;
+            page.querySelector('#selectQualityLevel').value = config.QualityLevel || 'balanced';
             
             loading.hide();
         }).catch(function () {
@@ -25,10 +25,10 @@ define(['pluginManager', 'loading', 'dialogHelper', 'emby-select', 'emby-input',
         loading.show();
 
         var config = {
-            selectedProfile: page.querySelector('#profileSelect').value,
-            maxFPSForAI: page.querySelector('#maxFPS').value,
-            minResolutionForAI: page.querySelector('#minResolution').value,
-            sharpness: parseInt(page.querySelector('#sharpness').value)
+            EnablePlugin: page.querySelector('#chkEnablePlugin').checked,
+            Model: page.querySelector('#selectModel').value,
+            ScaleFactor: parseInt(page.querySelector('#selectScaleFactor').value),
+            QualityLevel: page.querySelector('#selectQualityLevel').value
         };
 
         ApiClient.updatePluginConfiguration(pluginId, config).then(function () {

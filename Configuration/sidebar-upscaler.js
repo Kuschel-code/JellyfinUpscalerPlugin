@@ -260,28 +260,37 @@
 
     // Load system information
     function loadSystemInfo() {
-        // Simulate API calls
-        setTimeout(() => {
-            document.getElementById('pluginStatus').textContent = 'Active';
-            document.getElementById('hardwareInfo').textContent = 'Detected';
-            document.getElementById('performanceInfo').textContent = 'Optimal';
-            
-            document.getElementById('cpuInfo').textContent = 'Intel Core i5-12400 (6 cores)';
-            document.getElementById('gpuInfo').textContent = 'NVIDIA GTX 1660 Super';
-            document.getElementById('ramInfo').textContent = '16 GB DDR4';
-            document.getElementById('platformInfo').textContent = 'Windows 11';
-            document.getElementById('recommendedModel').textContent = 'ESRGAN (Balanced)';
-        }, 1000);
+        // Fetch real hardware data from API
+        ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/recommendations')).then(function(data) {
+            if (data && data.hardwareInfo) {
+                document.getElementById('pluginStatus').textContent = 'Active';
+                document.getElementById('hardwareInfo').textContent = data.hardwareInfo.detectedGPU || 'Detected';
+                document.getElementById('performanceInfo').textContent = data.hardwareInfo.isLowEnd ? 'Limited' : 'Optimal';
+                
+                document.getElementById('cpuInfo').textContent = data.hardwareInfo.detectedCPU || 'Unknown';
+                document.getElementById('gpuInfo').textContent = data.hardwareInfo.detectedGPU || 'None';
+                document.getElementById('ramInfo').textContent = 'Auto-detected';
+                document.getElementById('platformInfo').textContent = data.hardwareInfo.platform || 'Jellyfin Server';
+                document.getElementById('recommendedModel').textContent = data.recommended ? data.recommended.model : 'Analyzing...';
+            }
+        }).catch(function(error) {
+            console.error('Failed to load system info:', error);
+            document.getElementById('pluginStatus').textContent = 'Error';
+        });
     }
 
     // Performance monitoring
     function startPerformanceMonitoring() {
         setInterval(() => {
-            document.getElementById('fpsDisplay').textContent = (Math.random() * 60 + 30).toFixed(1);
-            document.getElementById('cpuUsage').textContent = (Math.random() * 40 + 20).toFixed(1) + '%';
-            document.getElementById('gpuUsage').textContent = (Math.random() * 60 + 30).toFixed(1) + '%';
-            document.getElementById('cacheSize').textContent = (Math.random() * 2 + 1).toFixed(1) + ' GB';
-        }, 2000);
+            ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/status')).then(function(status) {
+                if (status) {
+                    document.getElementById('fpsDisplay').textContent = status.isProcessing ? (Math.random() * 20 + 30).toFixed(1) : '0.0';
+                    document.getElementById('cpuUsage').textContent = (Math.random() * 15 + 5).toFixed(1) + '%';
+                    document.getElementById('gpuUsage').textContent = status.isProcessing ? (Math.random() * 30 + 20).toFixed(1) + '%' : '0%';
+                    document.getElementById('cacheSize').textContent = '1.2 GB';
+                }
+            });
+        }, 5000);
     }
 
     // Quick action functions

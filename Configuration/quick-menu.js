@@ -16,21 +16,21 @@
             console.log('AI Upscaler: Loading optimal defaults...');
             
             const defaults = {
-                enabled: true,
-                model: 'realesrgan',
-                scale: 2,
-                quality: 'balanced',
-                enableHardwareAcceleration: true,
-                maxConcurrentStreams: 2,
-                cacheSizeMB: 1024,
-                autoCleanupCache: true,
-                enableErrorReporting: true,
-                enableAutoRecovery: true,
-                maxRetryAttempts: 3,
-                enableSafeMode: false,
-                enableHealthCheck: true,
-                enableMemoryMonitoring: true,
-                diagnosticIntervalMinutes: 15
+                EnablePlugin: true,
+                Model: 'realesrgan',
+                ScaleFactor: 2,
+                QualityLevel: 'balanced',
+                HardwareAcceleration: true,
+                MaxConcurrentStreams: 2,
+                CacheSizeMB: 1024,
+                AutoCleanupCache: true,
+                EnableErrorReporting: true,
+                EnableAutoRecovery: true,
+                MaxRetryAttempts: 3,
+                EnableSafeMode: false,
+                EnableHealthCheck: true,
+                EnableMemoryMonitoring: true,
+                DiagnosticIntervalMinutes: 15
             };
             
             this.updateFormFields(defaults);
@@ -47,41 +47,41 @@
             switch(deviceInfo.type) {
                 case 'mobile':
                     optimizedSettings = {
-                        model: 'swinir',
-                        cacheSizeMB: 512,
-                        maxConcurrentStreams: 1,
-                        enableHardwareAcceleration: false,
-                        quality: 'fast'
+                        Model: 'swinir',
+                        CacheSizeMB: 512,
+                        MaxConcurrentStreams: 1,
+                        HardwareAcceleration: false,
+                        QualityLevel: 'fast'
                     };
                     break;
                     
                 case 'desktop':
                     optimizedSettings = {
-                        model: 'realesrgan',
-                        cacheSizeMB: 2048,
-                        maxConcurrentStreams: 4,
-                        enableHardwareAcceleration: true,
-                        quality: 'quality'
+                        Model: 'realesrgan',
+                        CacheSizeMB: 2048,
+                        MaxConcurrentStreams: 4,
+                        HardwareAcceleration: true,
+                        QualityLevel: 'quality'
                     };
                     break;
                     
                 case 'tv':
                     optimizedSettings = {
-                        model: 'esrgan',
-                        cacheSizeMB: 1024,
-                        maxConcurrentStreams: 2,
-                        enableHardwareAcceleration: true,
-                        quality: 'balanced'
+                        Model: 'esrgan',
+                        CacheSizeMB: 1024,
+                        MaxConcurrentStreams: 2,
+                        HardwareAcceleration: true,
+                        QualityLevel: 'balanced'
                     };
                     break;
                     
                 default:
                     optimizedSettings = {
-                        model: 'srcnn',
-                        cacheSizeMB: 1024,
-                        maxConcurrentStreams: 2,
-                        enableHardwareAcceleration: true,
-                        quality: 'balanced'
+                        Model: 'srcnn',
+                        CacheSizeMB: 1024,
+                        MaxConcurrentStreams: 2,
+                        HardwareAcceleration: true,
+                        QualityLevel: 'balanced'
                     };
             }
             
