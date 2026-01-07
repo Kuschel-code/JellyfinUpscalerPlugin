@@ -98,12 +98,12 @@ namespace JellyfinUpscalerPlugin.Controllers
 
             var status = new
             {
-                enabled = config.EnablePlugin,
+                enabled = config.Enabled,
                 currentModel = config.Model,
-                scale = config.ScaleFactor,
-                quality = config.QualityLevel,
-                hardwareAcceleration = config.EnableHardwareAcceleration,
-                playerButtonEnabled = config.ShowPlayerButton,
+                scale = config.Scale,
+                quality = config.Quality,
+                hardwareAcceleration = config.HardwareAcceleration,
+                playerButtonEnabled = config.PlayerButton,
                 version = "1.4.0"
             };
 
@@ -134,20 +134,20 @@ namespace JellyfinUpscalerPlugin.Controllers
                 if (!string.IsNullOrEmpty(settings.Model))
                     config.Model = settings.Model;
 
-                if (settings.ScaleFactor.HasValue)
-                    config.ScaleFactor = settings.ScaleFactor.Value;
+                if (settings.Scale.HasValue)
+                    config.Scale = settings.Scale.Value;
 
-                if (!string.IsNullOrEmpty(settings.QualityLevel))
-                    config.QualityLevel = settings.QualityLevel;
+                if (!string.IsNullOrEmpty(settings.Quality))
+                    config.Quality = settings.Quality;
 
-                if (settings.EnablePlugin.HasValue)
-                    config.EnablePlugin = settings.EnablePlugin.Value;
+                if (settings.Enabled.HasValue)
+                    config.Enabled = settings.Enabled.Value;
 
-                if (settings.EnableHardwareAcceleration.HasValue)
-                    config.EnableHardwareAcceleration = settings.EnableHardwareAcceleration.Value;
+                if (settings.HardwareAcceleration.HasValue)
+                    config.HardwareAcceleration = settings.HardwareAcceleration.Value;
 
-                if (settings.ShowPlayerButton.HasValue)
-                    config.ShowPlayerButton = settings.ShowPlayerButton.Value;
+                if (settings.PlayerButton.HasValue)
+                    config.PlayerButton = settings.PlayerButton.Value;
 
                 if (settings.MaxVRAMUsage.HasValue)
                     config.MaxVRAMUsage = settings.MaxVRAMUsage.Value;
@@ -200,13 +200,13 @@ namespace JellyfinUpscalerPlugin.Controllers
                 {
                     success = true,
                     model = config.Model,
-                    scale = config.ScaleFactor,
-                    quality = config.QualityLevel,
-                    hardwareAcceleration = config.EnableHardwareAcceleration,
+                    scale = config.Scale,
+                    quality = config.Quality,
+                    hardwareAcceleration = config.HardwareAcceleration,
                     gpuModel = hardware.GpuModel,
                     supportsCUDA = hardware.SupportsCUDA,
                     estimatedPerformance = hardware.SupportsCUDA ? "High (GPU/CUDA)" : (hardware.SupportsDirectML ? "Medium (GPU/DirectML)" : "Low (CPU)"),
-                    message = $"AI upscaling test successful on {hardware.GpuModel ?? "CPU"} with {config.Model} model at {config.ScaleFactor}x scale"
+                    message = $"AI upscaling test successful on {hardware.GpuModel ?? "CPU"} with {config.Model} model at {config.Scale}x scale"
                 };
 
                 _logger.LogInformation("AI Upscaler: Test completed successfully");
@@ -859,11 +859,11 @@ namespace JellyfinUpscalerPlugin.Controllers
         public class UpscalerSettings
         {
             public string? Model { get; set; }
-            public int? ScaleFactor { get; set; }
-            public string? QualityLevel { get; set; }
-            public bool? EnablePlugin { get; set; }
-            public bool? EnableHardwareAcceleration { get; set; }
-            public bool? ShowPlayerButton { get; set; }
+            public int? Scale { get; set; }
+            public string? Quality { get; set; }
+            public bool? Enabled { get; set; }
+            public bool? HardwareAcceleration { get; set; }
+            public bool? PlayerButton { get; set; }
             public int? MaxVRAMUsage { get; set; }
             public int? CpuThreads { get; set; }
             public bool? AutoRetryButton { get; set; }

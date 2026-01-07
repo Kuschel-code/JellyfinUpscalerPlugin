@@ -352,7 +352,7 @@ namespace JellyfinUpscalerPlugin.Services
             optimal.RecommendedQuality = GetHardwareMultiplier() < 0.5 ? "high" : "balanced";
             
             // Hardware acceleration recommendation
-            optimal.EnableHardwareAcceleration = !string.IsNullOrEmpty(results.GPUInfo.Name) && 
+            optimal.HardwareAcceleration = !string.IsNullOrEmpty(results.GPUInfo.Name) && 
                                                 results.GPUInfo.Name != "Unknown";
             
             // Fallback settings for low-end hardware
@@ -604,7 +604,7 @@ namespace JellyfinUpscalerPlugin.Services
         public string RecommendedModel { get; set; } = "";
         public string RecommendedMaxResolution { get; set; } = "";
         public string RecommendedQuality { get; set; } = "";
-        public bool EnableHardwareAcceleration { get; set; }
+        public bool HardwareAcceleration { get; set; }
         public bool EnableAutoFallback { get; set; }
         public string FallbackModel { get; set; } = "";
         public int MaxConcurrentStreams { get; set; }

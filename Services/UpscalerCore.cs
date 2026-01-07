@@ -79,7 +79,7 @@ namespace JellyfinUpscalerPlugin.Services
                 // Try to enable GPU acceleration
                 try
                 {
-                    if (_config.EnableHardwareAcceleration)
+                    if (_config.HardwareAcceleration)
                     {
                         // Try CUDA first
                         try

@@ -119,7 +119,7 @@ namespace JellyfinUpscalerPlugin.Services
                     sessionCount, config.Model, config.Scale);
 
                 // Simulate AI upscaling processing
-                var processingTime = config.EnableHardwareAcceleration ? 100 : 500; // ms
+                var processingTime = config.HardwareAcceleration ? 100 : 500; // ms
                 
                 // In a real implementation, this would:
                 // 1. Detect video resolution and quality

@@ -10,14 +10,14 @@ namespace JellyfinUpscalerPlugin
     public class PluginConfiguration : BasePluginConfiguration
     {
         // Basic Settings
-        public bool EnablePlugin { get; set; } = true;
+        public bool Enabled { get; set; } = true;
         public string Model { get; set; } = "realesrgan";
-        public int ScaleFactor { get; set; } = 2;
-        public string QualityLevel { get; set; } = "balanced";
-        public bool EnableHardwareAcceleration { get; set; } = true;
+        public int Scale { get; set; } = 2;
+        public string Quality { get; set; } = "balanced";
+        public bool HardwareAcceleration { get; set; } = true;
         public bool EnableUpscaling { get; set; } = true;
-        public bool ShowPlayerButton { get; set; } = true;
-        public bool EnableNotifications { get; set; } = true;
+        public bool PlayerButton { get; set; } = true;
+        public bool Notifications { get; set; } = true;
         public string Language { get; set; } = "en";
         
         // v1.4.0 UI Settings

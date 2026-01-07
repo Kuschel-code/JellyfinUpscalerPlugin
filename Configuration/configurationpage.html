@@ -217,14 +217,14 @@
                 <h2>⚙️ Basic Settings</h2>
                 
                 <div class="checkbox-group">
-                    <input type="checkbox" id="EnablePlugin" checked>
-                    <label for="EnablePlugin">Enable AI Upscaler Plugin</label>
+                    <input type="checkbox" id="Enabled" checked>
+                    <label for="Enabled">Enable AI Upscaler Plugin</label>
                 </div>
                 <div class="description">Master switch to enable or disable the plugin</div>
                 
                 <div class="checkbox-group">
-                    <input type="checkbox" id="ShowPlayerButton" checked>
-                    <label for="ShowPlayerButton">Show AI Button in Video Player</label>
+                    <input type="checkbox" id="PlayerButton" checked>
+                    <label for="PlayerButton">Show AI Button in Video Player</label>
                 </div>
                 <div class="description">Adds the AI upscaling button to video player controls</div>
                 
@@ -251,8 +251,8 @@
                 
                 <div class="grid-2col">
                     <div class="form-group">
-                        <label for="ScaleFactor">Scale Factor:</label>
-                        <select id="ScaleFactor">
+                        <label for="Scale">Scale Factor:</label>
+                        <select id="Scale">
                             <option value="2">2x Upscaling</option>
                             <option value="3" selected>3x Upscaling</option>
                             <option value="4">4x Upscaling</option>
@@ -261,8 +261,8 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="QualityLevel">Quality Level:</label>
-                        <select id="QualityLevel">
+                        <label for="Quality">Quality Level:</label>
+                        <select id="Quality">
                             <option value="high">High Quality (Best Results)</option>
                             <option value="medium" selected>Medium Quality (Balanced)</option>
                             <option value="low">Low Quality (Fastest)</option>
@@ -276,8 +276,8 @@
                 <h2>🔧 Hardware Settings</h2>
                 
                 <div class="checkbox-group">
-                    <input type="checkbox" id="EnableHardwareAcceleration" checked>
-                    <label for="EnableHardwareAcceleration">Enable Hardware Acceleration</label>
+                    <input type="checkbox" id="HardwareAcceleration" checked>
+                    <label for="HardwareAcceleration">Enable Hardware Acceleration</label>
                 </div>
                 <div class="description">Use GPU for faster processing when available</div>
                 
@@ -300,8 +300,8 @@
                 <h2>🎮 Video Player Integration</h2>
                 
                 <div class="checkbox-group">
-                    <input type="checkbox" id="EnableNotifications" checked>
-                    <label for="EnableNotifications">Enable Progress Notifications</label>
+                    <input type="checkbox" id="Notifications" checked>
+                    <label for="Notifications">Enable Progress Notifications</label>
                 </div>
                 <div class="description">Show upscaling progress notifications</div>
                 
@@ -339,15 +339,15 @@
             
             // Configuration object with defaults
             var config = {
-                EnablePlugin: true,
-                ShowPlayerButton: true,
+                Enabled: true,
+                PlayerButton: true,
                 Model: 'realesrgan',
-                ScaleFactor: 3,
-                QualityLevel: 'medium',
-                EnableHardwareAcceleration: true,
+                Scale: 3,
+                Quality: 'medium',
+                HardwareAcceleration: true,
                 MaxVRAMUsage: 2048,
                 CpuThreads: 4,
-                EnableNotifications: true,
+                Notifications: true,
                 AutoRetryButton: true,
                 ButtonPosition: 'right'
             };
@@ -467,15 +467,15 @@
             window.resetConfiguration = function() {
                 if (confirm('Reset all settings to defaults?')) {
                     config = {
-                        EnablePlugin: true,
-                        ShowPlayerButton: true,
+                        Enabled: true,
+                        PlayerButton: true,
                         Model: 'realesrgan',
-                        ScaleFactor: 3,
-                        QualityLevel: 'medium',
-                        EnableHardwareAcceleration: true,
+                        Scale: 3,
+                        Quality: 'medium',
+                        HardwareAcceleration: true,
                         MaxVRAMUsage: 2048,
                         CpuThreads: 4,
-                        EnableNotifications: true,
+                        Notifications: true,
                         AutoRetryButton: true,
                         ButtonPosition: 'right'
                     };
