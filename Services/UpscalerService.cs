@@ -74,7 +74,7 @@ namespace JellyfinUpscalerPlugin.Services
             try
             {
                 var config = Plugin.Instance?.Configuration;
-                if (config == null || !config.Enabled)
+                if (config == null || !config.EnablePlugin)
                 {
                     return;
                 }
@@ -116,7 +116,7 @@ namespace JellyfinUpscalerPlugin.Services
             try
             {
                 _logger.LogDebug("AI Upscaler Service: Processing upscaling for {Count} sessions with model {Model} at {Scale}x", 
-                    sessionCount, config.Model, config.Scale);
+                    sessionCount, config.Model, config.ScaleFactor);
 
                 // Simulate AI upscaling processing
                 var processingTime = config.HardwareAcceleration ? 100 : 500; // ms

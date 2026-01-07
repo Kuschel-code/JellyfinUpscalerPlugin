@@ -243,23 +243,23 @@ namespace JellyfinUpscalerPlugin.Services
             }
             
             // Auto-select scale based on input resolution
-            if (optimized.Scale == 0)
+            if (optimized.ScaleFactor == 0)
             {
-                optimized.Scale = inputInfo.Width <= 720 ? 3 : 2;
+                optimized.ScaleFactor = inputInfo.Width <= 720 ? 3 : 2;
             }
             
             // Adjust quality based on hardware capabilities
             if (hardwareProfile.SupportsCUDA && hardwareProfile.VramMB > 8192)
             {
-                optimized.Quality = "high";
+                optimized.QualityLevel = "high";
             }
             else if (hardwareProfile.SupportsDirectML)
             {
-                optimized.Quality = "medium";
+                optimized.QualityLevel = "medium";
             }
             else
             {
-                optimized.Quality = "fast";
+                optimized.QualityLevel = "fast";
             }
             
             // Enable hardware acceleration if available
@@ -276,7 +276,7 @@ namespace JellyfinUpscalerPlugin.Services
                 optimized.HardwareAcceleration = "qsv";
             }
             
-            _logger.LogInformation($"🎯 Optimized options: {optimized.Model} @ {optimized.Scale}x, {optimized.Quality} quality, {optimized.HardwareAcceleration} accel");
+            _logger.LogInformation($"🎯 Optimized options: {optimized.Model} @ {optimized.ScaleFactor}x, {optimized.QualityLevel} quality, {optimized.HardwareAcceleration} accel");
             
             return optimized;
         }
@@ -296,7 +296,7 @@ namespace JellyfinUpscalerPlugin.Services
             }
             
             // Frame-by-frame for high quality
-            if (options.Quality == "high" && hardwareProfile.SupportsCUDA)
+            if (options.QualityLevel == "high" && hardwareProfile.SupportsCUDA)
             {
                 return ProcessingMethod.FrameByFrame;
             }
@@ -511,7 +511,7 @@ namespace JellyfinUpscalerPlugin.Services
                 try
                 {
                     var frameData = await File.ReadAllBytesAsync(frameFile, cancellationToken);
-                    var upscaledData = await _upscalerCore.UpscaleImageAsync(frameData, options.Model, options.Scale);
+                    var upscaledData = await _upscalerCore.UpscaleImageAsync(frameData, options.Model, options.ScaleFactor);
                     
                     var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFile));
                     await File.WriteAllBytesAsync(outputFile, upscaledData, cancellationToken);
@@ -587,20 +587,20 @@ namespace JellyfinUpscalerPlugin.Services
             var filters = new List<string>();
             
             // Scaling filter
-            if (options.Scale > 1)
+            if (options.ScaleFactor > 1)
             {
                 if (options.HardwareAcceleration == "cuda")
                 {
-                    filters.Add($"scale_cuda={options.Scale}*iw:{options.Scale}*ih");
+                    filters.Add($"scale_cuda={options.ScaleFactor}*iw:{options.ScaleFactor}*ih");
                 }
                 else
                 {
-                    filters.Add($"scale={options.Scale}*iw:{options.Scale}*ih:lanczos");
+                    filters.Add($"scale={options.ScaleFactor}*iw:{options.ScaleFactor}*ih:lanczos");
                 }
             }
             
             // Quality filters
-            if (options.Quality == "high")
+            if (options.QualityLevel == "high")
             {
                 filters.Add("unsharp=5:5:1.0:5:5:0.0");
             }
@@ -669,9 +669,9 @@ namespace JellyfinUpscalerPlugin.Services
                 JobId = job.Id,
                 ProcessingTime = job.ProcessingDuration,
                 InputResolution = $"{job.InputInfo.Width}x{job.InputInfo.Height}",
-                OutputResolution = $"{job.InputInfo.Width * job.OptimizedOptions.Scale}x{job.InputInfo.Height * job.OptimizedOptions.Scale}",
+                OutputResolution = $"{job.InputInfo.Width * job.OptimizedOptions.ScaleFactor}x{job.InputInfo.Height * job.OptimizedOptions.ScaleFactor}",
                 Model = job.OptimizedOptions.Model,
-                Scale = job.OptimizedOptions.Scale,
+                Scale = job.OptimizedOptions.ScaleFactor,
                 Method = job.ProcessingMethod,
                 Success = job.Result?.Success ?? false,
                 Timestamp = DateTime.Now
@@ -722,8 +722,8 @@ namespace JellyfinUpscalerPlugin.Services
     public class VideoProcessingOptions
     {
         public string Model { get; set; } = "auto";
-        public int Scale { get; set; } = 2;
-        public string Quality { get; set; } = "medium";
+        public int ScaleFactor { get; set; } = 2;
+        public string QualityLevel { get; set; } = "medium";
         public string HardwareAcceleration { get; set; } = "auto";
         public bool EnableRealTimeProcessing { get; set; } = false;
         public bool PreserveAudio { get; set; } = true;
@@ -734,8 +734,8 @@ namespace JellyfinUpscalerPlugin.Services
         public VideoProcessingOptions(VideoProcessingOptions other)
         {
             Model = other.Model;
-            Scale = other.Scale;
-            Quality = other.Quality;
+            ScaleFactor = other.ScaleFactor;
+            QualityLevel = other.QualityLevel;
             HardwareAcceleration = other.HardwareAcceleration;
             EnableRealTimeProcessing = other.EnableRealTimeProcessing;
             PreserveAudio = other.PreserveAudio;

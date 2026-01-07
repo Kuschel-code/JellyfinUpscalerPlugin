@@ -81,14 +81,14 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
-        /// Get current upscaler settings
+        /// Get current upscaler status and settings
         /// </summary>
         /// <returns>Current status of the AI upscaler</returns>
-        [HttpGet("settings")]
+        [HttpGet("status")]
         [Produces(MediaTypeNames.Application.Json)]
-        public ActionResult<object> GetSettings()
+        public ActionResult<object> GetStatus()
         {
-            _logger.LogInformation("AI Upscaler: Getting settings");
+            _logger.LogInformation("AI Upscaler: Getting status");
 
             var config = Plugin.Instance?.Configuration;
             if (config == null)
@@ -189,13 +189,13 @@ namespace JellyfinUpscalerPlugin.Controllers
                 {
                     success = true,
                     model = config.Model,
-                    scale = config.Scale,
-                    quality = config.Quality,
+                    scale = config.ScaleFactor,
+                    quality = config.QualityLevel,
                     hardwareAcceleration = config.HardwareAcceleration,
                     gpuModel = hardware.GpuModel,
                     supportsCUDA = hardware.SupportsCUDA,
                     estimatedPerformance = hardware.SupportsCUDA ? "High (GPU/CUDA)" : (hardware.SupportsDirectML ? "Medium (GPU/DirectML)" : "Low (CPU)"),
-                    message = $"AI upscaling test successful on {hardware.GpuModel ?? "CPU"} with {config.Model} model at {config.Scale}x scale"
+                    message = $"AI upscaling test successful on {hardware.GpuModel ?? "CPU"} with {config.Model} model at {config.ScaleFactor}x scale"
                 };
 
                 _logger.LogInformation("AI Upscaler: Test completed successfully");
@@ -681,147 +681,6 @@ namespace JellyfinUpscalerPlugin.Controllers
 
 
 
-        /// <summary>
-        /// Test configuration
-        /// </summary>
-        [HttpPost("config/test")]
-        public async Task<ActionResult> TestConfiguration()
-        {
-            try
-            {
-                _logger.LogInformation("🧪 Testing configuration");
-                
-                // Test hardware detection
-                var hardware = await _upscalerCore.DetectHardwareAsync();
-                
-                // Test cache system  
-                var cacheStats = await _cacheManager.GetCacheStatsAsync();
-                
-                // Test benchmark service
-                var canBenchmark = _benchmarkService != null;
-                
-                var testResult = new
-                {
-                    success = true,
-                    message = "Configuration test passed",
-                    details = new
-                    {
-                        HardwareDetected = hardware != null,
-                        CacheSystemWorking = cacheStats != null,
-                        BenchmarkServiceAvailable = canBenchmark,
-                        GpuAcceleration = !string.IsNullOrEmpty(hardware?.GpuModel),
-                        MemoryAvailable = hardware?.SystemRamMB ?? 0
-                    }
-                };
-
-                return Ok(testResult);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Configuration test failed");
-                return Ok(new { success = false, message = ex.Message });
-            }
-        }
-
-        /// <summary>
-        /// Download AI models
-        /// </summary>
-        [HttpPost("models/download")]
-        public async Task<ActionResult> DownloadModels()
-        {
-            try
-            {
-                _logger.LogInformation("📥 Downloading AI models");
-                
-                // Simulate model download
-                await Task.Delay(1000);
-                
-                return Ok(new { success = true, message = "Models downloaded successfully" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Error downloading models");
-                return StatusCode(500, new { error = ex.Message });
-            }
-        }
-
-        /// <summary>
-        /// Apply optimal settings based on hardware
-        /// </summary>
-        [HttpPost("optimize")]
-        public async Task<ActionResult> OptimizeSettings()
-        {
-            try
-            {
-                _logger.LogInformation("⚡ Optimizing settings based on hardware");
-                
-                var hardware = await _upscalerCore.DetectHardwareAsync();
-                
-                // Generate optimal settings based on hardware
-                var optimizedSettings = new
-                {
-                    success = true,
-                    message = "Optimal settings applied",
-                    appliedSettings = new
-                    {
-                        UpscalingMode = !string.IsNullOrEmpty(hardware?.GpuModel) ? "quality" : "balanced",
-                        MaxConcurrentStreams = !string.IsNullOrEmpty(hardware?.GpuModel) ? 4 : 2,
-                        MemoryLimit = Math.Min((hardware?.SystemRamMB ?? 4096) / 1024, 8),
-                        BatchSize = !string.IsNullOrEmpty(hardware?.GpuModel) ? 8 : 4,
-                        ThreadCount = hardware?.CpuCores ?? 4,
-                        EnableCaching = true,
-                        CacheSize = !string.IsNullOrEmpty(hardware?.GpuModel) ? 15 : 5
-                    }
-                };
-
-                return Ok(optimizedSettings);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Error optimizing settings");
-                return StatusCode(500, new { error = ex.Message });
-            }
-        }
-
-        /// <summary>
-        /// Quick benchmark
-        /// </summary>
-        [HttpPost("benchmark/quick")]
-        public async Task<ActionResult> RunQuickBenchmark()
-        {
-            try
-            {
-                _logger.LogInformation("🚀 Running quick benchmark");
-                
-                // Simulate quick benchmark with real hardware detection
-                var hardware = await _upscalerCore.DetectHardwareAsync();
-                
-                // Small delay to simulate some testing
-                await Task.Delay(1000);
-                
-                var benchmarkResult = new
-                {
-                    success = true,
-                    message = "Quick benchmark completed",
-                    results = new
-                    {
-                        Hardware = hardware.GpuModel ?? "Unknown",
-                        GpuVendor = hardware.GpuVendor,
-                        Cores = hardware.CpuCores,
-                        RAM = $"{hardware.SystemRamMB}MB",
-                        AverageSpeed = hardware.SupportsCUDA ? "4.5 fps" : (hardware.SupportsDirectML ? "2.1 fps" : "0.5 fps"), 
-                        Recommendation = hardware.RecommendedModel
-                    }
-                };
-
-                return Ok(benchmarkResult);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Quick benchmark failed");
-                return StatusCode(500, new { error = ex.Message });
-            }
-        }
     }
 
         /// <summary>

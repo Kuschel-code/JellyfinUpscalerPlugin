@@ -1,11 +1,11 @@
 <div align="center">
 
-# 🎮 AI UPSCALER PLUGIN v1.4.0-test3
+# 🎮 AI UPSCALER PLUGIN v1.4.0
 
-### *Revolutionary AI-Powered Video Upscaling for Jellyfin with Hardware Benchmarking & Optimization*
+### *Revolutionary AI-Powered Video Upscaling for Jellyfin with Real Hardware Detection & Optimization*
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge&logo=opensource)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.4.0--test3-gold.svg?style=for-the-badge&logo=semantic-release)](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases)
+[![Version](https://img.shields.io/badge/Version-1.4.0-gold.svg?style=for-the-badge&logo=semantic-release)](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases)
 [![Jellyfin](https://img.shields.io/badge/Jellyfin-10.10.0%2B-purple.svg?style=for-the-badge&logo=jellyfin)](https://jellyfin.org)
 [![.NET](https://img.shields.io/badge/.NET-8.0-orange.svg?style=for-the-badge&logo=dotnet)](https://dotnet.microsoft.com)
 [![Status](https://img.shields.io/badge/Status-STABLE-brightgreen.svg?style=for-the-badge&logo=checkmarx)](https://github.com/Kuschel-code/JellyfinUpscalerPlugin)
@@ -17,21 +17,21 @@
 
 ---
 
-## **✨ v1.4.0-test3 HIGHLIGHTS**
+## **✨ v1.4.0 HIGHLIGHTS**
 
-🔬 **HARDWARE BENCHMARKING** | 🎯 **AUTOMATIC OPTIMIZATION** | 🖥️ **LOW-END HARDWARE SUPPORT** | 🔐 **SECURITY FIXED**
+🔬 **REAL HARDWARE DETECTION** | 🎯 **AUTOMATIC OPTIMIZATION** | 🖥️ **LOW-END HARDWARE SUPPORT** | 🔐 **STABLE SYNC**
 
-**✅ INTELLIGENT SYSTEM** - Automatically detects hardware and optimizes settings for your specific setup
+**✅ INTELLIGENT SYSTEM** - Automatically detects hardware (NVIDIA/DirectML) and optimizes settings for your specific setup
 
 ### 🚀 **NEW FEATURES:**
-- 🔬 **Automated Hardware Benchmarking** - Tests your system and recommends optimal settings
-- 🎯 **Intelligent Fallback System** - Automatically switches to lighter models on weak hardware
+- 🔬 **Real Hardware Probing** - Uses ONNX Runtime and nvidia-smi for accurate system analysis
+- 🎯 **Property Sync System** - Perfect alignment between Frontend and Backend configuration
 - 💾 **Pre-Processing Cache** - Cache upscaled content for instant playback
 - 📺 **TV Remote Optimization** - Enhanced navigation for Smart TVs and set-top boxes
 - 🔍 **Comparison View** - Side-by-side before/after quality preview
 - 🏠 **NAS & ARM Optimization** - Specialized support for low-power devices
 - ⚙️ **Professional Configuration UI** - Tabbed interface with 25+ advanced settings
-- 🔐 **Security Update** - Fixed CVE vulnerability in SixLabors.ImageSharp
+- 🔐 **API Consolidation** - Cleaned and unified API endpoints for better stability
 
 </div>
 

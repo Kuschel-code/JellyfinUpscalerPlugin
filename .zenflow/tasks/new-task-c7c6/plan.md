@@ -25,5 +25,6 @@ Save findings to `{@artifacts_path}/investigation.md` with:
 - Affected components
 - Proposed solution
 
-### [ ] Step: fix on github
+### [x] Step: fix on github
+<!-- chat-id: 8cc0439b-4b31-48a7-9fa5-e856c40adb94 -->
 <!-- agent: ZEN_CLI -->

@@ -1,4 +1,4 @@
-# 🚀 AI Upscaler Plugin v1.3.6 ULTIMATE
+# 🚀 AI Upscaler Plugin v1.4.0 STABLE
 
 ## 📚 **QUICK START**
 - **[🏠 Home](Home)** - Main overview
@@ -25,8 +25,9 @@
 ---
 
 ## 📖 **VERSION HISTORY**
-- **[🔥 v1.3.6 ULTIMATE](Version-1.3.6)** - Current version
-- **[📜 v1.3.5](Version-1.3.5)** - Previous release
+- **[🌟 v1.4.0 STABLE](Version-1.4.0)** - Current version
+- **[🔥 v1.3.6 ULTIMATE](Version-1.3.6)** - Previous release
+- **[📜 v1.3.5](Version-1.3.5)** - Legacy release
 - **[📋 All Versions](Versions)** - Complete history
 
 ---
