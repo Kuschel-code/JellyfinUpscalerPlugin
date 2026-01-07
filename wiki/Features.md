@@ -1,33 +1,29 @@
-# ✨ Plugin Features
+# ✨ Funktionen
 
-The AI Upscaler Plugin v1.4.0 is packed with features designed for both quality and performance.
+Das Jellyfin AI Upscaler Plugin v1.4.0 bietet eine Vielzahl von Funktionen zur Verbesserung deines Fernseherlebnisses.
 
-## 🧠 AI Upscaling Engine
-The heart of the plugin uses **ONNX Runtime** to execute state-of-the-art neural networks.
-- **Real-ESRGAN**: The gold standard for photo and anime upscaling.
-- **SwinIR**: Advanced transformer-based restoration for complex scenes.
-- **FSRCNN**: Lightweight models for systems with limited resources.
+## 🤖 Modernste AI-Modelle
+*   **Real-ESRGAN**: Der Goldstandard für die Wiederherstellung von Details und Texturen.
+*   **ESRGAN Pro**: Optimiert für Kinofilme und TV-Serien.
+*   **SwinIR**: Nutzt Transformer-Technologie für komplexe Szenen.
+*   **Waifu2x**: Spezialisiert auf Anime und gezeichnete Inhalte.
+*   **HAT (Hybrid Attention Transformer)**: Maximale Detailgenauigkeit für High-End-Systeme.
 
-## ⚡ Hardware Acceleration
-We maximize your hardware potential:
-- **NVIDIA CUDA**: Dedicated support for RTX/GTX GPUs.
-- **Windows DirectML**: High-performance upscaling for AMD, Intel, and NVIDIA on Windows.
-- **Multi-Threading**: Optimized CPU processing for NAS and servers without dedicated GPUs.
+## 🚀 Echte Hardware-Beschleunigung
+*   **NVIDIA CUDA**: Direkte Nutzung der Tensor-Cores für blitzschnelles Upscaling.
+*   **Windows DirectML**: Unterstützung für AMD, Intel und NVIDIA GPUs unter Windows.
+*   **Mehrkern-CPU Unterstützung**: Optimierte Verarbeitung für Systeme ohne dedizierte GPU.
 
-## 🔍 AI Comparison View
-Don't just take our word for it—see it for yourself.
-- **Live Preview**: Generate a side-by-side comparison for any item in your library.
-- **Before vs After**: Toggle between the original source and the AI-enhanced output.
-- **Model Comparison**: Test different AI models on the same frame to find your favorite.
+## 📊 Intelligentes System
+*   **Echtzeit-Benchmarking**: Das Plugin erkennt deine Hardware und empfiehlt die optimalen Einstellungen.
+*   **Automatisches Fallback**: Schaltet bei Überlastung automatisch auf effizientere Modelle um, um Ruckler zu vermeiden.
+*   **Dynamische Speicherverwaltung**: Verhindert Abstürze durch intelligentes VRAM-Management.
 
-## 📊 Hardware Benchmarking
-The plugin includes a heuristic-based benchmarking system that:
-- Detects your GPU vendor and VRAM.
-- Estimates frames-per-second (FPS) for different models.
-- Automatically recommends the optimal configuration for your specific server.
+## 📺 Perfekte UI-Integration
+*   **Player-Quick-Menu**: Einstellungen während der Wiedergabe anpassen, ohne den Film zu verlassen.
+*   **Side-by-Side Vorschau**: Teste Modelle an deinen eigenen Medien in der Konfiguration.
+*   **TV-Optimiert**: Vollständig steuerbar mit der Fernbedienung auf Android TV und anderen Smart-TVs.
 
-## 🎬 Player Integration
-The user interface is built directly into Jellyfin:
-- **Quick Menu**: Control upscaling settings without leaving the player.
-- **Status Overlay**: Real-time notifications of upscaling progress.
-- **Seamless Integration**: Supports Web, Desktop, and Mobile clients.
+## 🛠️ Erweiterte Optionen
+*   **Pre-Processing Cache**: Berechnet häufig gesehene Szenen im Voraus für sofortige Wiedergabe.
+*   **Detaillierte Statistiken**: Überwache die FPS und Hardware-Auslastung während des Upscalings.

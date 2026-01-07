@@ -135,71 +135,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
-        /// Update upscaler settings
-        /// </summary>
-        /// <param name="settings">New upscaler settings</param>
-        /// <returns>Success response</returns>
-        [HttpPost("settings")]
-        [Consumes(MediaTypeNames.Application.Json)]
-        [Produces(MediaTypeNames.Application.Json)]
-        public ActionResult UpdateSettings([FromBody] UpscalerSettings settings)
-        {
-            _logger.LogInformation("AI Upscaler: Updating settings");
-
-            var config = Plugin.Instance?.Configuration;
-            if (config == null)
-            {
-                return BadRequest("Plugin configuration not available");
-            }
-
-            try
-            {
-                // Update configuration
-                if (!string.IsNullOrEmpty(settings.Model))
-                    config.Model = settings.Model;
-
-                if (settings.ScaleFactor.HasValue)
-                    config.ScaleFactor = settings.ScaleFactor.Value;
-
-                if (!string.IsNullOrEmpty(settings.QualityLevel))
-                    config.QualityLevel = settings.QualityLevel;
-
-                if (settings.EnablePlugin.HasValue)
-                    config.EnablePlugin = settings.EnablePlugin.Value;
-
-                if (settings.HardwareAcceleration.HasValue)
-                    config.HardwareAcceleration = settings.HardwareAcceleration.Value;
-
-                if (settings.PlayerButton.HasValue)
-                    config.PlayerButton = settings.PlayerButton.Value;
-
-                if (settings.MaxVRAMUsage.HasValue)
-                    config.MaxVRAMUsage = settings.MaxVRAMUsage.Value;
-
-                if (settings.CpuThreads.HasValue)
-                    config.CpuThreads = settings.CpuThreads.Value;
-
-                if (settings.AutoRetryButton.HasValue)
-                    config.AutoRetryButton = settings.AutoRetryButton.Value;
-
-                if (!string.IsNullOrEmpty(settings.ButtonPosition))
-                    config.ButtonPosition = settings.ButtonPosition;
-
-                // Save configuration
-                Plugin.Instance.SaveConfiguration();
-
-                _logger.LogInformation("AI Upscaler: Settings updated successfully");
-
-                return Ok(new { success = true, message = "Settings updated successfully" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "AI Upscaler: Error updating settings");
-                return StatusCode(500, new { success = false, message = "Error updating settings: " + ex.Message });
-            }
-        }
-
-        /// <summary>
         /// Test AI upscaling with current settings
         /// </summary>
         /// <returns>Test result</returns>
@@ -421,6 +356,24 @@ namespace JellyfinUpscalerPlugin.Controllers
 
                 // Read image data
                 byte[] originalData = await System.IO.File.ReadAllBytesAsync(imagePath);
+                
+                // Optimize memory: Resize large images before upscaling for preview
+                using (var image = SixLabors.ImageSharp.Image.Load(originalData))
+                {
+                    // If image is larger than 720p, downscale it for preview to save memory
+                    if (image.Width > 1280 || image.Height > 720)
+                    {
+                        image.Mutate(x => x.Resize(new SixLabors.ImageSharp.ResizeOptions
+                        {
+                            Size = new SixLabors.ImageSharp.Size(1280, 720),
+                            Mode = SixLabors.ImageSharp.Processing.ResizeMode.Max
+                        }));
+                        
+                        using var ms = new MemoryStream();
+                        image.SaveAsJpeg(ms);
+                        originalData = ms.ToArray();
+                    }
+                }
                 
                 // Perform AI upscaling
                 byte[] upscaledData = await _upscalerCore.UpscaleImageAsync(originalData, model, scale);

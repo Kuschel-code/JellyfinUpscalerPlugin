@@ -1,6 +1,8 @@
-# 📊 Performance Benchmarks & Hardware Tests
+# 📊 Performance-Benchmarks & Hardware-Tests
 
-## 🎯 Overview
+> **⚠️ WICHTIGER HINWEIS:** Die im Plugin angezeigten Benchmark-Ergebnisse sind **heuristische Schätzungen** (Estimates). Sie basieren auf deiner erkannten Hardware-Konfiguration und mathematischen Modellen, nicht auf einer tatsächlichen Ausführung des AI-Modells für jeden Test. Dies schont deine Hardware und verhindert Abstürze während der Konfiguration. Die untenstehenden Tabellen zeigen jedoch reale Messwerte von Testsystemen.
+
+## 🎯 Übersicht
 
 This page contains comprehensive performance benchmarks for the AI Upscaler Plugin across different hardware configurations, from high-end GPUs to low-power NAS devices.
 

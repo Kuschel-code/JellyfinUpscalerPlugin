@@ -1,36 +1,35 @@
-# 📖 Usage Guide
+# 📖 Verwendung
 
-Using the AI Upscaler Plugin is simple and intuitive.
+Nach der Installation kannst du das AI Upscaler Plugin über die Jellyfin-Oberfläche verwalten und nutzen.
 
-## 🎮 The AI Player Button
-When watching a movie or TV show, look for the **"🎮 AI"** button in the bottom right corner of the player (next to the settings cog).
+## ⚙️ Plugin-Konfiguration
 
-### Quick Toggle
-- **Click once**: Instantly toggles the AI upscaler on or off using your default settings.
-- **Visual Feedback**: The button will glow blue when AI enhancement is active.
+Gehe zu **Dashboard** -> **Plugins** -> **AI Upscaler Plugin**.
 
-### Settings Menu
-Click and hold or right-click the AI button to open the **Quick Settings Menu**:
-- **Change Model**: Switch between different AI models on the fly.
-- **Adjust Scale**: Change the upscaling factor (2x, 3x, 4x).
-- **Toggle Cache**: Enable or disable the pre-processing cache for the current item.
+### Basis-Einstellungen
+*   **Plugin aktivieren**: Aktiviert oder deaktiviert alle Plugin-Funktionen.
+*   **Player-Button anzeigen**: Fügt den "🎮 AI" Button direkt in die Steuerelemente des Videoplayers ein.
+*   **Standard AI-Modell**: Wähle dein bevorzugtes Modell für die Videoverbesserung.
+*   **Skalierungsfaktor**: Bestimme, wie stark das Video vergrößert werden soll (z.B. 2x, 3x, 4x).
 
-## 📊 Monitoring Progress
-When you start upscaling, a notification will appear in the top-right corner of the player showing the status:
-- **"📦 Loading AI Model..."**: The plugin is preparing the ONNX session.
-- **"🚀 AI Active"**: The video is being enhanced in real-time.
-- **"⚠️ Fallback Active"**: The system detected high load and switched to a lighter model.
+### Hardware-Einstellungen
+*   **Hardware-Beschleunigung**: Nutzt deine GPU für die Verarbeitung. Empfohlen für flüssige Wiedergabe.
+*   **Max VRAM Nutzung**: Limitiert den Grafikspeicher, den das Plugin beanspruchen darf.
+*   **CPU Threads**: Bestimmt die Anzahl der Threads für die CPU-Verarbeitung.
 
-## 🔍 Using the Comparison Preview
-If you're not sure which model looks best:
-1.  Go to the **Dashboard** -> **Plugins** -> **AI Upscaler**.
-2.  Scroll down to the **AI Comparison Preview**.
-3.  Select the movie or episode you want to test.
-4.  Click **Generate Preview**.
-5.  Wait a few seconds for the AI to process a sample frame.
-6.  Compare the "Original" and "AI Upscaled" images to see the difference in detail and sharpness.
+## 🔍 Vergleichsvorschau (Comparison Preview)
 
-## 💡 Tips for Best Results
-- **Source Quality**: AI works best on high-bitrate SD or 720p HD content. Very noisy or highly compressed videos may produce artifacts.
-- **Hardware**: For 4K upscaling, a dedicated GPU with at least 4GB of VRAM is recommended.
-- **Models**: Use **Real-ESRGAN** for high-quality movies and **Waifu2x** specifically for anime.
+In der Plugin-Konfiguration findest du den Bereich **AI Comparison Preview**.
+1.  Wähle ein Medienelement (Film oder Episode) aus dem Dropdown-Menü.
+2.  Klicke auf **✨ Generate Preview**.
+3.  Das Plugin erstellt einen Side-by-Side Vergleich des Originalbildes und der AI-verbesserten Version.
+
+## 🎮 Nutzung im Player
+
+Während der Videowiedergabe im Web-Browser oder in der Jellyfin App:
+1.  Klicke auf das **🎮 AI** Symbol in der Steuerleiste.
+2.  Aktiviere das Upscaling über das Menü.
+3.  Du siehst sofort die verbesserte Bildqualität!
+
+---
+*Hinweis: Die Leistung hängt stark von deiner Hardware und dem gewählten Modell ab.*

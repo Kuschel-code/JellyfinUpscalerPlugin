@@ -1,25 +1,25 @@
 # 🎮 AI Upscaler Plugin v1.4.0 STABLE
 
-Welcome to the official documentation for the **Jellyfin AI Upscaler Plugin**. This plugin brings state-of-the-art Artificial Intelligence video enhancement directly to your Jellyfin media server.
+Willkommen in der offiziellen Dokumentation für das **Jellyfin AI Upscaler Plugin**. Dieses Plugin bringt modernste künstliche Intelligenz zur Videoverbesserung direkt in deinen Jellyfin-Medienserver.
 
-## 🚀 Overview
+## 🚀 Übersicht
 
-The AI Upscaler Plugin allows you to enhance low-resolution content (SD/HD) to high-definition (4K) using advanced neural networks. Version 1.4.0 introduces a stable, high-performance engine with real-time hardware benchmarking and a side-by-side comparison preview.
+Das AI Upscaler Plugin ermöglicht es dir, Inhalte mit niedriger Auflösung (SD/HD) mithilfe fortschrittlicher neuronaler Netze auf High-Definition (4K) zu verbessern. Version 1.4.0 führt eine stabile Hochleistungs-Engine mit Echtzeit-Hardware-Benchmarking und einer Side-by-Side-Vergleichsvorschau ein.
 
-## ✨ Key Features
+## ✨ Hauptfunktionen
 
-*   **Advanced AI Models**: Supports Real-ESRGAN, ESRGAN, SwinIR, and more.
-*   **Hardware Acceleration**: Native support for **NVIDIA CUDA** and **Windows DirectML**.
-*   **Comparison Preview**: See the AI magic in action with a side-by-side "Before vs After" tool.
-*   **Automated Benchmarking**: Intelligent system detection to find the best settings for your hardware.
-*   **Player Integration**: Seamlessly integrated "🎮 AI" button in the Jellyfin web player.
+*   **Fortschrittliche AI-Modelle**: Unterstützt Real-ESRGAN, ESRGAN, SwinIR und mehr.
+*   **Hardware-Beschleunigung**: Native Unterstützung für **NVIDIA CUDA** und **Windows DirectML**.
+*   **Vergleichsvorschau**: Erlebe die AI-Magie in Aktion mit einem Side-by-Side "Vorher vs. Nachher" Tool.
+*   **Automatisches Benchmarking**: Intelligente Systemerkennung, um die besten Einstellungen für deine Hardware zu finden.
+*   **Player-Integration**: Nahtlos integrierter "🎮 AI"-Button im Jellyfin Web-Player.
 
-## 🏁 Quick Start
+## 🏁 Schnellstart
 
-1.  **Installation**: Install the plugin from the repository or manually.
-2.  **Models**: Add ONNX models to your plugin configuration directory.
-3.  **Configure**: Run the hardware benchmark to find optimal settings.
-4.  **Enhance**: Open a movie or episode and enjoy AI-enhanced playback!
+1.  **Installation**: Installiere das Plugin aus dem Repository oder manuell.
+2.  **Modelle**: Füge ONNX-Modelle in dein Plugin-Konfigurationsverzeichnis ein.
+3.  **Konfiguration**: Führe das Hardware-Benchmark aus, um optimale Einstellungen zu finden.
+4.  **Verbesserung**: Öffne einen Film oder eine Episode und genieße die AI-verbesserte Wiedergabe!
 
 ---
-*Developed for the Jellyfin community with ❤️*
+*Entwickelt für die Jellyfin-Community mit ❤️*

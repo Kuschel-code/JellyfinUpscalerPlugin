@@ -619,13 +619,23 @@
             function injectPlayerButton() {
                 if (!config.PlayerButton) return;
                 
-                // Create and inject the player integration script
-                var script = document.createElement('script');
-                script.src = 'web/player-integration.js';
-                script.onload = function() {
-                    console.log('AI Upscaler: Player integration script loaded');
-                };
-                document.head.appendChild(script);
+                // Use the API-based loading mechanism to avoid 404
+                fetch(ApiClient.getUrl('api/Upscaler/js/player-integration.js'))
+                    .then(response => {
+                        if (!response.ok) throw new Error('Network response was not ok');
+                        return response.text();
+                    })
+                    .then(script => {
+                        const existing = document.getElementById('aiupscaler-player');
+                        if (existing) existing.remove();
+
+                        const scriptElement = document.createElement('script');
+                        scriptElement.id = 'aiupscaler-player';
+                        scriptElement.textContent = script;
+                        document.head.appendChild(scriptElement);
+                        console.log('AI Upscaler: Player integration script updated');
+                    })
+                    .catch(error => console.log('Player integration load error:', error));
             }
 
             // Show success message
