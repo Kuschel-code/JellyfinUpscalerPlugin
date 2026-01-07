@@ -1,99 +1,22 @@
-# ⚡ Quick Start Guide - AI Upscaler Plugin v1.4.0 STABLE
+# ⚡ Schnellstart (Quick Start)
 
-Get your AI upscaling running in **under 5 minutes**!
+Befolge diese Schritte, um dein System in weniger als 5 Minuten startklar zu machen.
 
----
+## 1. Installation
+Installiere das Plugin über den Jellyfin-Katalog (siehe [Installation](Installation)). Starte den Server neu.
 
-## 🚀 **5-MINUTE SETUP**
+## 2. Modelle bereitstellen
+Das Plugin wird ohne Modelle ausgeliefert. Lade mindestens ein `.onnx` Modell (z. B. `realesrgan.onnx`) in den Ordner `plugins/configurations/JellyfinUpscalerPlugin/models/`.
 
-### **Step 1: Install Plugin (2 minutes)**
+## 3. Hardware prüfen
+Gehe zu **Dashboard -> Plugins -> AI Upscaler Plugin**.
+Klicke auf **"Hardware Benchmark"**. Das Plugin analysiert nun deine CPU und GPU und stellt automatisch die empfohlenen Werte ein.
 
-**📋 Copy this repository URL:**
-```
-https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/repository-jellyfin.json
-```
+## 4. Konfiguration speichern
+Scrolle nach unten und klicke auf **"💾 Save Configuration"**.
 
-**🔧 In Jellyfin Dashboard:**
-1. **Plugins** → **Repositories** → **Add Repository**
-2. **Paste URL** → **Save**
-3. **Catalog** → **"AI Upscaler Plugin"** → **Install**
-4. **Restart Jellyfin**
-
-### **Step 2: Configure (1 minute)**
-
-1. **Dashboard** → **Plugins** → **"AI Upscaler Plugin"**
-2. The plugin will automatically detect your hardware (NVIDIA/DirectML).
-3. Set your preferred **Scale Factor** (e.g., 2x) and **Quality Level**.
-4. **Save** the settings.
-
-### **Step 3: Test & Enjoy (30 seconds)**
-
-1. **Play any video** in Jellyfin.
-2. The upscaler works automatically in the background based on your settings.
-3. Access the **Quick Menu** in the player for on-the-fly adjustments.
+## 5. Film ab!
+Öffne einen Film in deinem Browser. In der Steuerleiste unten rechts findest du nun den **🎮 AI** Button. Klicke darauf, um das Upscaling zu aktivieren.
 
 ---
-
-## 🎯 **RECOMMENDED SETTINGS**
-
-### **🎮 Balanced (Good for most)**
-```
-✅ Enable Plugin: On
-✅ Scale Factor: 2.0x
-✅ Quality Level: Medium
-```
-
-### **🏠 Home Theater (High End)**
-```
-✅ Enable Plugin: On
-✅ Scale Factor: 4.0x
-✅ Quality Level: High
-```
-
-### **📱 Low Power / Mobile**
-```
-✅ Enable Plugin: On
-✅ Scale Factor: 1.5x
-✅ Quality Level: Low
-```
-
----
-
-## 💡 **INSTANT TIPS**
-
-### **🔥 Performance Boost**
-- **NVIDIA Users**: Ensure your drivers are up to date to utilize CUDA.
-- **Intel/AMD Users**: The plugin uses DirectML for hardware acceleration.
-- **Hardware Test**: Run the built-in benchmark to see your system's capabilities.
-
-### **🎨 Quality Enhancement**
-- Higher **Quality Levels** provide better results but require more GPU power.
-- **Scale Factor** directly impacts the final resolution (720p @ 2x = 1440p).
-
----
-
-## 🚨 **TROUBLESHOOTING (30 seconds)**
-
-### **❌ Settings not saving?**
-- Ensure you are on version **1.4.0**.
-- Refresh your browser cache (Ctrl+F5).
-
-### **⚠️ Poor Performance?**
-- Lower the **Quality Level** in the settings.
-- Reduce the **Scale Factor**.
-
-### **🔧 Not Working at All?**
-- Restart Jellyfin completely.
-- Check the logs in **Dashboard → Logs**.
-- Verify that your hardware supports ONNX Runtime or NVIDIA CUDA.
-
----
-
-## 📞 **Need More Help?**
-
-- **📖 [Home](Home)** - Main Wiki page
-- **❓ [FAQ](FAQ)** - Common questions answered
-- **🔧 [Troubleshooting](Troubleshooting)** - Fix any issues
-- **💬 [Community Help](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions)** - Ask questions
-
-**🎉 Enjoy your enhanced Jellyfin experience with AI upscaling!**
+**Tipp:** Wenn das Video ruckelt, wähle in den Plugin-Einstellungen einen niedrigeren Skalierungsfaktor (2x statt 4x) oder ein schnelleres Modell wie `FSRCNN`.

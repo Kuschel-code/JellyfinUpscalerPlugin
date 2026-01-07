@@ -8,18 +8,18 @@ Das AI Upscaler Plugin ermöglicht es dir, Inhalte mit niedriger Auflösung (SD/
 
 ## ✨ Hauptfunktionen
 
-*   **Fortschrittliche AI-Modelle**: Unterstützt Real-ESRGAN, ESRGAN, SwinIR und mehr.
+*   **Fortschrittliche AI-Modelle**: Unterstützung für Real-ESRGAN, ESRGAN, SwinIR, Waifu2x und mehr.
 *   **Hardware-Beschleunigung**: Native Unterstützung für **NVIDIA CUDA** und **Windows DirectML**.
-*   **Vergleichsvorschau**: Erlebe die AI-Magie in Aktion mit einem Side-by-Side "Vorher vs. Nachher" Tool.
+*   **Vergleichsvorschau**: Erlebe die AI-Magie in Aktion mit einem Side-by-Side "Vorher vs. Nachher" Tool direkt im Dashboard.
 *   **Automatisches Benchmarking**: Intelligente Systemerkennung, um die besten Einstellungen für deine Hardware zu finden.
-*   **Player-Integration**: Nahtlos integrierter "🎮 AI"-Button im Jellyfin Web-Player.
+*   **Nahtlose Integration**: Ein dedizierter "🎮 AI"-Button im Jellyfin-Player ermöglicht die Steuerung während der Wiedergabe.
 
 ## 🏁 Schnellstart
 
-1.  **Installation**: Installiere das Plugin aus dem Repository oder manuell.
-2.  **Modelle**: Füge ONNX-Modelle in dein Plugin-Konfigurationsverzeichnis ein.
-3.  **Konfiguration**: Führe das Hardware-Benchmark aus, um optimale Einstellungen zu finden.
-4.  **Verbesserung**: Öffne einen Film oder eine Episode und genieße die AI-verbesserte Wiedergabe!
+1.  **Installation**: Installiere das Plugin über das offizielle Repository.
+2.  **Modelle**: Lade ONNX-Modelle in den `models`-Ordner deines Plugin-Verzeichnisses hoch.
+3.  **Hardware-Check**: Führe das Benchmark im Dashboard aus, um dein System zu optimieren.
+4.  **Genießen**: Starte die Wiedergabe und aktiviere die AI-Verbesserung über den Player-Button.
 
 ---
 *Entwickelt für die Jellyfin-Community mit ❤️*

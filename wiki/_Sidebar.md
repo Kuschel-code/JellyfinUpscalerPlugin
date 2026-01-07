@@ -1,37 +1,37 @@
 # 🚀 AI Upscaler Plugin v1.4.0 STABLE
 
-## 📚 **QUICK START**
-- **[🏠 Home](Home)**
+## 📚 **SCHNELLSTART**
+- **[🏠 Startseite](Home)**
 - **[🚀 Installation](Installation)**
-- **[⚡ Quick Start](Quick-Start)**
-- **[❓ FAQ](FAQ)**
+- **[⚡ Schnellstart](Quick-Start)**
+- **[❓ FAQ / Häufige Fragen](FAQ)**
 
 ---
 
-## 🎯 **FEATURES & USAGE**
-- **[🌟 Features](Features)**
-- **[🎮 Usage Guide](Usage)**
-- **[⚙️ Configuration](Configuration)**
-- **[🎨 AI Models](AI-Models)**
+## 🎯 **FUNKTIONEN & NUTZUNG**
+- **[🌟 Funktionen](Features)**
+- **[🎮 Bedienungsanleitung](Usage)**
+- **[⚙️ Konfiguration](Configuration)**
+- **[🎨 AI Modelle](AI-Models)**
 
 ---
 
-## 🔧 **TECHNICAL**
-- **[💻 Hardware](Hardware-Compatibility)**
-- **[🐛 Troubleshooting](Troubleshooting)**
-- **[📊 Performance](Performance-Benchmarks)**
+## 🔧 **TECHNISCHES**
+- **[💻 Hardware-Kompatibilität](Hardware-Compatibility)**
+- **[🐛 Fehlerbehebung](Troubleshooting)**
+- **[📊 Performance-Benchmarks](Performance-Benchmarks)**
 
 ---
 
-## 📖 **VERSION HISTORY**
+## 📖 **VERSIONEN**
 - **[🌟 v1.4.0 STABLE](Version-1.4.0)**
 
 ---
 
 ## 📞 **SUPPORT**
-- **[💬 Community](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions)** 
-- **[🐛 Bug Reports](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)**
+- **[💬 Community-Diskussionen](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions)** 
+- **[🐛 Fehler melden](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)**
 
 ---
 
-**⭐ [Star on GitHub](https://github.com/Kuschel-code/JellyfinUpscalerPlugin) to show support!**
+**⭐ [Projekt auf GitHub folgen](https://github.com/Kuschel-code/JellyfinUpscalerPlugin)**

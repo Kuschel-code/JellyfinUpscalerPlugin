@@ -1,51 +1,45 @@
-# Jellyfin AI Upscaler Plugin v1.4.0 (Stable)
+# 🎮 Jellyfin AI Upscaler Plugin v1.4.0 STABLE
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.10.x-00A4DC.svg)](https://jellyfin.org)
 
-An advanced AI-powered video upscaling plugin for Jellyfin. Enhance your low-resolution media in real-time or via pre-processing using state-of-the-art neural networks.
+Ein fortschrittliches, AI-gestütztes Videoverbesserungs-Plugin für Jellyfin. Verbessere deine Medien in Echtzeit oder per Vorverarbeitung mit modernsten neuronalen Netzen.
 
-## 🚀 Key Features
+## 🚀 Hauptfunktionen
 
-- **Real-Time Upscaling**: Experience improved clarity while watching.
-- **Hardware Acceleration**: Full support for NVIDIA (CUDA) and DirectML (AMD/Intel).
-- **Multiple AI Models**: Support for Real-ESRGAN, Waifu2x, and specialized Anime models.
-- **Hardware Benchmarking**: Built-in tools to detect and optimize for your server's capabilities.
-- **Seamless Integration**: Native-feeling configuration dashboard and quick-access player menu.
+- **Echtzeit-Upscaling**: Erlebe kristallklare Bilder während der Wiedergabe.
+- **Hardware-Beschleunigung**: Volle Unterstützung für NVIDIA (CUDA) und DirectML (AMD/Intel).
+- **Mehrere AI-Modelle**: Unterstützung für Real-ESRGAN, SwinIR, Waifu2x und mehr.
+- **Hardware-Benchmarking**: Integrierte Tools zur Erkennung und Optimierung basierend auf der Server-Leistung.
+- **Nahtlose Integration**: Modernes Dashboard und Quick-Access-Menü direkt im Player.
 
 ## 🛠️ Installation
 
-### Repository Method (Recommended)
-1. Open your Jellyfin Dashboard.
-2. Navigate to **Plugins** > **Repositories**.
-3. Add a new repository with the following URL:
+### Repository-Methode (Empfohlen)
+1. Öffne dein Jellyfin-Dashboard.
+2. Gehe zu **Plugins** > **Repositories**.
+3. Füge ein neues Repository mit folgender URL hinzu:
    `https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/repository-jellyfin.json`
-4. Go to **Catalog** and search for "AI Upscaler Plugin".
-5. Install version **1.4.0** and restart Jellyfin.
+4. Gehe zum **Katalog**, suche nach "AI Upscaler Plugin" und installiere Version **1.4.0**.
+5. Starte Jellyfin neu.
 
-### Manual Installation
-1. Download the latest `JellyfinUpscalerPlugin.dll` from the [Releases](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases) page.
-2. Place it in your Jellyfin `plugins/AI-Upscaler` directory.
-3. Restart your Jellyfin server.
+## ⚙️ Konfiguration
 
-## ⚙️ Configuration
+Nach der Installation findest du die Einstellungen unter **Dashboard > Plugins > AI Upscaler Plugin**.
 
-Once installed, you can configure the plugin under **Dashboard > Plugins > AI Upscaler Plugin**.
-
-- **Enable Plugin**: Globally toggle the upscaler.
-- **Scale Factor**: Choose between 2x, 4x, or custom scaling.
-- **Quality Level**: Balance between performance and visual fidelity.
-- **Hardware Detection**: The plugin automatically detects available GPUs.
+- **Plugin aktivieren**: Globaler Schalter für den Upscaler.
+- **Skalierungsfaktor**: Wähle zwischen 2x, 4x oder benutzerdefinierter Skalierung.
+- **Hardware-Erkennung**: Das Plugin erkennt automatisch verfügbare GPUs und schlägt optimale Einstellungen vor.
 
 ## 📖 Wiki & Support
 
-For detailed guides, hardware compatibility lists, and troubleshooting, visit our **[GitHub Wiki](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki)**.
+Detaillierte Anleitungen, Hardware-Listen und Fehlerbehebung findest du in unserem **[GitHub Wiki](wiki/Home.md)**.
 
-- [Getting Started](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki/Quick-Start)
-- [Hardware Compatibility](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki/Hardware-Compatibility)
-- [Performance Benchmarks](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki/Performance-Benchmarks)
-- [FAQ](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki/FAQ)
+- [Erste Schritte](wiki/Quick-Start.md)
+- [Hardware-Kompatibilität](wiki/Hardware-Compatibility.md)
+- [Performance-Benchmarks](wiki/Performance-Benchmarks.md)
+- [FAQ](wiki/FAQ.md)
 
-## 📄 License
+## 📄 Lizenz
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Dieses Projekt lizenziert unter der MIT-Lizenz - siehe [LICENSE](LICENSE) für Details.

@@ -1,32 +1,40 @@
-# 🧠 AI Models Guide
+# 🎨 AI-Modelle
 
-The plugin supports various neural network architectures via the **ONNX** format.
+Das AI Upscaler Plugin unterstützt verschiedene neuronale Netze, die jeweils für unterschiedliche Inhalte und Hardware-Leistung optimiert sind.
 
-## 📦 Recommended Models
-| Model Name | Best For | Quality | Speed |
-|------------|----------|---------|-------|
-| **Real-ESRGAN** | Photos, High-quality film | ⭐⭐⭐⭐⭐ | 🐢 Slow |
-| **SwinIR** | Complex textures, detailed scenes | ⭐⭐⭐⭐⭐ | 🐢 Slow |
-| **Waifu2x** | Anime, Cartoons, 2D art | ⭐⭐⭐⭐ | 🐎 Fast |
-| **ESRGAN** | General TV shows, balanced use | ⭐⭐⭐⭐ | ⚖️ Balanced |
-| **FSRCNN** | Older systems, NAS, low-res source | ⭐⭐⭐ | 🚀 Very Fast |
+## 🌟 Hauptmodelle
 
-## 📥 Where to get models?
-You can find pre-trained models in ONNX format from several community sources:
-- **Upscayl**: Most models used in the Upscayl desktop app work perfectly.
-- **Hugging Face**: Search for "ONNX Super Resolution".
-- **Model Zoo**: Official ONNX model repositories.
+### **Real-ESRGAN**
+*   **Bestens geeignet für**: Realfilme, Naturaufnahmen, Fotos.
+*   **Vorteile**: Exzellente Texturwiederherstellung, sehr realistisch.
+*   **Anforderung**: Hoch (NVIDIA RTX 30/40 empfohlen).
 
-## 📂 Installation
-1.  Download the `.onnx` file.
-2.  Rename it to match the model ID (e.g., `realesrgan.onnx`).
-3.  Place it in the `models/` folder inside the plugin configuration directory.
-    - **Windows**: `%AppData%\Jellyfin\plugins\configurations\JellyfinUpscalerPlugin\models`
-    - **Linux**: `/var/lib/jellyfin/plugins/configurations/JellyfinUpscalerPlugin/models`
-4.  Restart Jellyfin or refresh the plugin settings.
+### **ESRGAN Pro**
+*   **Bestens geeignet für**: Kinofilme, TV-Serien.
+*   **Vorteile**: Guter Kompromiss zwischen Schärfe und Natürlichkeit.
+*   **Anforderung**: Mittel.
 
-## 🛠️ Advanced: Custom Models
-The plugin attempts to auto-detect input/output shapes. For best results, ensure your custom models:
-- Use **NCHW** format (Batch, Channel, Height, Width).
-- Accept **RGB** input normalized to `[0, 1]`.
-- Provide a single output tensor with the upscaled image data.
+### **SwinIR**
+*   **Bestens geeignet für**: Komplexe Szenen, Bildrauschen.
+*   **Vorteile**: Nutzt Transformer-Technologie für präzise Details.
+*   **Anforderung**: Hoch.
+
+### **Waifu2x**
+*   **Bestens geeignet für**: Anime, Cartoons, gezeichnete Kunst.
+*   **Vorteile**: Reduziert Kompressionsartefakte in flächigen Farben extrem gut.
+*   **Anforderung**: Gering bis Mittel.
+
+## ⚡ Leichtgewichtige Modelle
+
+### **FSRCNN / SRCNN**
+*   **Bestens geeignet für**: Schwächere Hardware (NAS, ältere Laptops).
+*   **Vorteile**: Sehr schnell, deutlich besser als herkömmliche Skalierung.
+*   **Anforderung**: Gering.
+
+## 📂 Installation von Modellen
+1.  Lade die `.onnx`-Version deines gewünschten Modells herunter.
+2.  Navigiere zum Plugin-Datenordner:
+    *   **Windows**: `%AppData%\Jellyfin-Server\plugins\configurations\JellyfinUpscalerPlugin\models`
+    *   **Linux**: `/etc/jellyfin/plugins/configurations/JellyfinUpscalerPlugin/models`
+3.  Platziere die Datei im `models`-Ordner.
+4.  Starte Jellyfin neu, damit das Modell in den Einstellungen erscheint.

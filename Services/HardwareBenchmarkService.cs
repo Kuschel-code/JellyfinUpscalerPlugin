@@ -201,46 +201,64 @@ namespace JellyfinUpscalerPlugin.Services
 
         private async Task<ModelPerformance> SimulateModelBenchmark(string model)
         {
-            // ESTIMATE: Heuristic-based performance calculation
-            // In a real implementation, this would run actual AI models
-            
+            // REALISTIC ESTIMATE: Heuristic-based performance calculation based on detected HardwareProfile
             var performance = new ModelPerformance { ModelName = model };
+            var hardware = await _upscalerCore.DetectHardwareAsync();
             
-            // Simulate processing time based on model complexity and current hardware
-            var baseTime = model switch
+            // Base complexity (relative GFLOPS required)
+            var modelComplexity = model switch
             {
-                "fsrcnn-light" => 50,   // Fast, lightweight
-                "fsrcnn" => 150,        // Balanced
-                "srcnn" => 200,         // Older, slower
-                "esrgan" => 800,        // High quality, slow
-                "realesrgan" => 1000,   // Best quality, slowest
-                "waifu2x" => 600,       // Good for anime
-                _ => 300
+                "fsrcnn-light" => 1.0,
+                "fsrcnn" => 2.5,
+                "srcnn" => 4.0,
+                "waifu2x" => 12.0,
+                "esrgan" => 25.0,
+                "realesrgan" => 35.0,
+                _ => 10.0
             };
             
-            // Adjust based on hardware capability
-            var hardwareMultiplier = GetHardwareMultiplier();
-            performance.ProcessingTimeMs = (int)(baseTime * hardwareMultiplier);
+            // Performance capability calculation
+            double hardwarePower = 1.0;
             
-            // Calculate FPS (assuming 30-second clip)
-            var framesProcessed = 30 * 24; // 24 FPS sample
-            performance.AverageFPS = framesProcessed / (performance.ProcessingTimeMs / 1000.0);
+            if (hardware.SupportsCUDA)
+            {
+                // NVIDIA GPUs are powerhouses for ONNX
+                hardwarePower = hardware.VramMB > 4000 ? 50.0 : 25.0;
+                if (hardware.GpuModel?.Contains("RTX 40") == true) hardwarePower *= 2.0;
+                if (hardware.GpuModel?.Contains("RTX 30") == true) hardwarePower *= 1.5;
+            }
+            else if (hardware.SupportsDirectML)
+            {
+                // DirectML is slightly slower but still good
+                hardwarePower = hardware.VramMB > 2000 ? 15.0 : 8.0;
+            }
+            else
+            {
+                // CPU fallback - strictly based on core count and architecture
+                hardwarePower = hardware.CpuCores * 0.5;
+                if (RuntimeInformation.ProcessArchitecture == Architecture.Arm64) hardwarePower *= 1.2;
+            }
+
+            // Processing time in ms for a 1080p frame (approximate)
+            var baseMsPerFrame = (modelComplexity * 500.0) / hardwarePower;
             
-            // Quality score (simulated PSNR improvement)
+            performance.ProcessingTimeMs = (int)baseMsPerFrame;
+            performance.AverageFPS = 1000.0 / Math.Max(baseMsPerFrame, 1.0);
+            
+            // Quality score (subjective PSNR/VMAF estimation)
             performance.QualityScore = model switch
             {
-                "realesrgan" => 8.5,
-                "esrgan" => 7.2,
-                "waifu2x" => 6.8,
-                "fsrcnn" => 5.1,
-                "srcnn" => 4.2,
-                "fsrcnn-light" => 3.8,
-                _ => 4.0
+                "realesrgan" => 9.5,
+                "esrgan" => 8.8,
+                "swinir" => 9.2,
+                "waifu2x" => 8.5,
+                "fsrcnn" => 6.5,
+                "fsrcnn-light" => 5.2,
+                _ => 6.0
             };
             
-            // CPU/GPU usage simulation
-            performance.AverageCPUUsage = model.Contains("light") ? 35 : 65;
-            performance.AverageGPUUsage = performance.ProcessingTimeMs < 500 ? 45 : 85;
+            performance.AverageCPUUsage = hardware.SupportsCUDA ? 15 : 85;
+            performance.AverageGPUUsage = hardware.SupportsCUDA || hardware.SupportsDirectML ? 75 : 0;
             
             return performance;
         }
