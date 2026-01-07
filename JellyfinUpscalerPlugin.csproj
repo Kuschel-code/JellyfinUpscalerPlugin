@@ -41,52 +41,24 @@
 
   <!-- Embedded resources for configuration -->
   <ItemGroup>
-    <EmbeddedResource Include="Configuration\configPage.html" />
     <EmbeddedResource Include="Configuration\configurationpage.html" />
-    <EmbeddedResource Include="Configuration\configurationpage-enhanced.html" />
     <EmbeddedResource Include="Configuration\config.js" />
     <EmbeddedResource Include="Configuration\quick-menu.js" />
     <EmbeddedResource Include="Configuration\player-integration.js" />
-    <EmbeddedResource Include="Configuration\beginner-presets.html" />
     <EmbeddedResource Include="Configuration\sidebar-upscaler.js" />
-    <EmbeddedResource Include="Configuration\sidebar-integration.js" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="thumb.jpg" CopyToOutputDirectory="Always" />
     <None Include="meta.json" CopyToOutputDirectory="Always" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Exclude backup directories and old versions from compilation -->
-    <Compile Remove="JellyfinUpscalerPlugin-Backup/**" />
-    <Compile Remove="JellyfinUpscalerPlugin-Backup-*/**" />
-    <Compile Remove="JellyfinUpscalerPlugin_Backup_*/**" />
-    <Compile Remove="JellyfinUpscalerPlugin-v1.3.5/**" />
-    <Compile Remove="archive/**" />
-    <Compile Remove="docs/**" />
-    <Compile Remove="**/archive/**" />
-    <Compile Remove="dist/**" />
-    <Compile Remove="GitHub-Upload/**" />
-    <Compile Remove="publish-output/**" />
-    <Compile Remove="release-build/**" />
-    <Compile Remove="bin/**" />
-    <Compile Remove="obj/**" />
-    <Compile Remove=".backups/**" />
-    <Compile Remove="release-v*/**" />
-    <Compile Remove="wiki/**" />
-
-    <Compile Remove="web/**" />
-    <Compile Remove="src/**" />
-    <Compile Remove="shaders/**" />
-    <Compile Remove="_exclude/**" />
-    
-    <!-- Exclude complex manager classes that cause build issues -->
-    <Compile Remove="Plugin-Complex.cs" />
-    <Compile Remove="PluginConfiguration-Complex.cs" />
-    <Compile Remove="Plugin-Enhanced-*.cs" />
-    <Compile Remove="PluginConfiguration-Enhanced-*.cs" />
-    <Compile Remove="AV1VideoProcessor-Enhanced-*.cs" />
+    <!-- Exclude common temporary and build directories -->
+    <Compile Remove="bin\**" />
+    <Compile Remove="obj\**" />
+    <Compile Remove="publish\**" />
+    <Compile Remove="wiki\**" />
+    <Compile Remove="assets\**" />
   </ItemGroup>
 
 </Project>

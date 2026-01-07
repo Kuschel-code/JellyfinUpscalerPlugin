@@ -16,6 +16,8 @@
 
 ## 🔥 **STABLE VERSION: v1.4.0 - HARDWARE INTELLIGENCE**
 
+Welcome to the official documentation for the **Jellyfin AI Upscaler Plugin**. Version 1.4.0 introduces a robust, synchronized architecture with real hardware detection capabilities.
+
 ### 🚀 **MAJOR HIGHLIGHTS:**
 - 🔬 **Real Hardware Probing** - Uses ONNX Runtime and `nvidia-smi` for accurate system analysis.
 - ⚙️ **Perfect Property Sync** - Fully synchronized frontend and backend configuration model.
@@ -32,27 +34,21 @@
 
 ### 🚀 **Quick Start**
 - 📖 **[Installation Guide](Installation)** - Step-by-step setup instructions.
-- ⚙️ **[Configuration](Configuration)** - Detailed explanation of all 25+ settings.
+- ⚙️ **[Configuration](Configuration)** - Detailed explanation of settings.
 - 🎯 **[Hardware Compatibility](Hardware-Compatibility)** - Supported GPUs and system requirements.
 - 🎮 **[Usage Guide](Usage)** - How to use the plugin in your video player.
 
 ### 🔧 **Advanced**
-- 🤖 **[AI Models](AI-Models)** - Guide to the 14 available AI models.
-- 📊 **[Performance](Performance)** - Optimization tips and benchmarks.
+- 🤖 **[AI Models](AI-Models)** - Guide to the available AI models.
+- 📊 **[Performance Benchmarks](Performance-Benchmarks)** - Optimization tips and benchmarks.
 - 🔍 **[Troubleshooting](Troubleshooting)** - Fix common setup issues.
 - ❓ **[FAQ](FAQ)** - Frequently asked questions.
 
 ---
 
-## 📋 **Version History**
+## 📋 **Latest Release**
 
-### 🔥 **Latest Release**
 - **[Version 1.4.0 STABLE](Version-1.4.0)** - Hardware Intelligence & Property Sync *(Current)*
-
-### 🏗️ **Previous Versions**
-- **[Version 1.3.6 ULTIMATE](Version-1.3.6)** - Multi-GPU & ECO Mode
-- **[Version 1.3.5](Version-1.3.5)** - AV1 Hardware Acceleration
-- **[Version 1.0.0](Version-1.0.0)** - Initial Release
 
 ---
 
@@ -67,8 +63,8 @@ https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/repos
 ### 2️⃣ **Quick Setup**
 1. Install plugin from the Jellyfin Catalog.
 2. Restart your Jellyfin server.
-3. Go to **Plugins -> AI Upscaler**.
-4. Click **🚀 Run Hardware Test** to auto-configure your system.
+3. Go to **Dashboard -> Plugins -> AI Upscaler**.
+4. The plugin will automatically detect your hardware.
 5. Enjoy the crystal clear AI video quality! 🎬
 
 ---

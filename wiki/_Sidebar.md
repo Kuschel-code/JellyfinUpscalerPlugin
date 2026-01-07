@@ -1,49 +1,36 @@
 # 🚀 AI Upscaler Plugin v1.4.0 STABLE
 
 ## 📚 **QUICK START**
-- **[🏠 Home](Home)** - Main overview
-- **[🚀 Installation](Installation)** - Setup guide
-- **[⚡ Quick Start](Quick-Start)** - Get started fast
-- **[❓ FAQ](FAQ)** - Common questions
+- **[🏠 Home](Home)**
+- **[🚀 Installation](Installation)**
+- **[⚡ Quick Start](Quick-Start)**
+- **[❓ FAQ](FAQ)**
 
 ---
 
 ## 🎯 **FEATURES & USAGE**
-- **[🌟 Features](Features)** - Complete feature list
-- **[🎮 Usage Guide](Usage)** - How to use
-- **[⚙️ Configuration](Configuration)** - Settings explained
-- **[🎨 AI Models](AI-Models)** - 14 AI models guide
+- **[🌟 Features](Features)**
+- **[🎮 Usage Guide](Usage)**
+- **[⚙️ Configuration](Configuration)**
+- **[🎨 AI Models](AI-Models)**
 
 ---
 
 ## 🔧 **TECHNICAL**
-- **[💻 Hardware](Hardware-Compatibility)** - System requirements
-- **[🐛 Troubleshooting](Troubleshooting)** - Fix common issues
-- **[📊 Performance](Performance)** - Optimization tips
-- **[🔒 Security](Security)** - Safety information
+- **[💻 Hardware](Hardware-Compatibility)**
+- **[🐛 Troubleshooting](Troubleshooting)**
+- **[📊 Performance](Performance-Benchmarks)**
 
 ---
 
 ## 📖 **VERSION HISTORY**
-- **[🌟 v1.4.0 STABLE](Version-1.4.0)** - Current version
-- **[🔥 v1.3.6 ULTIMATE](Version-1.3.6)** - Previous release
-- **[📜 v1.3.5](Version-1.3.5)** - Legacy release
-- **[📋 All Versions](Versions)** - Complete history
-
----
-
-## 🌍 **ADVANCED**
-- **[🗣️ Multi-Language](Multi-Language)** - Language support
-- **[🐳 Docker](Docker)** - Container setup
-- **[🏢 Enterprise](Enterprise)** - Business features
-- **[🔧 Development](Development)** - Developer guide
+- **[🌟 v1.4.0 STABLE](Version-1.4.0)**
 
 ---
 
 ## 📞 **SUPPORT**
 - **[💬 Community](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions)** 
 - **[🐛 Bug Reports](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)**
-- **[💡 Feature Requests](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/new)**
 
 ---
 
