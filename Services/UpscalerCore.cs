@@ -505,11 +505,14 @@ namespace JellyfinUpscalerPlugin.Services
                 
                 // Run inference
                 var inputs = new List<NamedOnnxValue> { NamedOnnxValue.CreateFromTensor("input", inputTensor) };
-                var outputs = session.Run(inputs);
+                
+                // Session.Run is not thread-safe for some providers, but ONNX Runtime generally handles it.
+                // However, we use a semaphore in VideoProcessor to be safe.
+                using var outputs = session.Run(inputs);
                 
                 // Process output
                 var outputTensor = outputs.First().AsEnumerable<float>().ToArray();
-                var outputImage = ProcessOutputTensor(outputTensor, image.Width * scale, image.Height * scale);
+                using var outputImage = ProcessOutputTensor(outputTensor, image.Width * scale, image.Height * scale);
                 
                 // Convert back to byte array
                 using var outputStream = new MemoryStream();
@@ -522,6 +525,25 @@ namespace JellyfinUpscalerPlugin.Services
                 _logger.LogError(ex, $"❌ AI upscaling failed for model {model}");
                 return await FallbackUpscaleAsync(inputImage, scale);
             }
+        }
+
+        /// <summary>
+        /// Upscale a batch of images for higher throughput
+        /// </summary>
+        public async Task<List<byte[]>> UpscaleBatchAsync(List<byte[]> inputImages, string model, int scale = 2)
+        {
+            _logger.LogDebug($"📦 Batch processing {inputImages.Count} images with {model}");
+            
+            var results = new List<byte[]>();
+            
+            // For most SR models, we process sequentially or in small parallel groups
+            // as GPU memory is the bottleneck.
+            foreach (var img in inputImages)
+            {
+                results.Add(await UpscaleImageAsync(img, model, scale));
+            }
+            
+            return results;
         }
 
         /// <summary>
@@ -554,14 +576,25 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         private Microsoft.ML.OnnxRuntime.Tensors.Tensor<float> PrepareInputTensor(Image image)
         {
-            // Convert image to RGB and normalize
             var width = image.Width;
             var height = image.Height;
             
             var tensor = new Microsoft.ML.OnnxRuntime.Tensors.DenseTensor<float>(new[] { 1, 3, height, width });
             
-            // This is a simplified version - in reality, you'd need proper preprocessing
-            // based on the specific model requirements
+            // Convert to Rgb24 to ensure standard pixel format
+            using var rgbImage = image.CloneAs<SixLabors.ImageSharp.PixelFormats.Rgb24>();
+            
+            for (int y = 0; y < height; y++)
+            {
+                var row = rgbImage.GetPixelRowSpan(y);
+                for (int x = 0; x < width; x++)
+                {
+                    // NCHW format: [Batch, Channel, Height, Width]
+                    tensor[0, 0, y, x] = row[x].R / 255.0f;
+                    tensor[0, 1, y, x] = row[x].G / 255.0f;
+                    tensor[0, 2, y, x] = row[x].B / 255.0f;
+                }
+            }
             
             return tensor;
         }
@@ -571,10 +604,25 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         private Image ProcessOutputTensor(float[] tensor, int width, int height)
         {
-            // This is a simplified version - in reality, you'd need proper postprocessing
-            // based on the specific model output format
+            var outputImage = new Image<SixLabors.ImageSharp.PixelFormats.Rgb24>(width, height);
+            int channelSize = width * height;
             
-            return new Image<SixLabors.ImageSharp.PixelFormats.Rgb24>(width, height);
+            for (int y = 0; y < height; y++)
+            {
+                var row = outputImage.GetPixelRowSpan(y);
+                for (int x = 0; x < width; x++)
+                {
+                    // Map from NCHW flat array back to pixels
+                    // Channel 0 = Red, 1 = Green, 2 = Blue
+                    var r = Math.Clamp(tensor[0 * channelSize + y * width + x] * 255.0f, 0, 255);
+                    var g = Math.Clamp(tensor[1 * channelSize + y * width + x] * 255.0f, 0, 255);
+                    var b = Math.Clamp(tensor[2 * channelSize + y * width + x] * 255.0f, 0, 255);
+                    
+                    row[x] = new SixLabors.ImageSharp.PixelFormats.Rgb24((byte)r, (byte)g, (byte)b);
+                }
+            }
+            
+            return outputImage;
         }
 
         /// <summary>

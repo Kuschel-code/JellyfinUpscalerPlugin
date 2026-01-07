@@ -336,6 +336,40 @@
                 </div>
             </div>
 
+            <div class="config-section" id="comparison-section">
+                <h2>🔍 AI Comparison Preview</h2>
+                <div class="form-group">
+                    <label for="comparison-item">Select Media Item for Preview:</label>
+                    <div style="display: flex; gap: 10px;">
+                        <select id="comparison-item" style="flex-grow: 1; background: rgba(0, 164, 220, 0.1); border-color: rgba(0, 164, 220, 0.3);">
+                            <option value="">Loading items...</option>
+                        </select>
+                        <button type="button" class="btn btn-primary" onclick="generateComparison()" id="btn-compare" style="margin: 0; min-width: 150px;">
+                            ✨ Generate Preview
+                        </button>
+                    </div>
+                    <div class="description">Select a movie or episode to see a side-by-side AI upscaling comparison</div>
+                </div>
+                <div id="comparison-result" style="display: none; margin-top: 20px; animation: fadeIn 0.5s ease;">
+                    <div class="grid-2col">
+                        <div style="text-align: center;">
+                            <h4 style="color: #00a4dc; margin-bottom: 10px;">Original Image</h4>
+                            <div style="position: relative; overflow: hidden; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                                <img id="img-original" style="width: 100%; display: block; filter: saturate(0.8);">
+                                <div style="position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px; font-size: 0.8em;">BEFORE</div>
+                            </div>
+                        </div>
+                        <div style="text-align: center;">
+                            <h4 style="color: #00a4dc; margin-bottom: 10px;">AI Upscaled (x<span id="display-scale">2</span>)</h4>
+                            <div style="position: relative; overflow: hidden; border-radius: 12px; border: 2px solid #00a4dc; box-shadow: 0 0 20px rgba(0, 164, 220, 0.3);">
+                                <img id="img-upscaled" style="width: 100%; display: block;">
+                                <div style="position: absolute; bottom: 10px; right: 10px; background: #00a4dc; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">AFTER</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="button-group">
                 <button type="button" class="btn btn-primary" onclick="saveConfiguration()">
                     💾 Save Configuration
@@ -374,8 +408,90 @@
                 console.log('AI Upscaler Plugin: Configuration page initializing...');
                 loadConfiguration();
                 updateUI();
+                loadMediaItems();
                 console.log('AI Upscaler Plugin: Configuration page loaded successfully');
             }
+
+            // Load media items for comparison
+            function loadMediaItems() {
+                if (typeof ApiClient === 'undefined') return;
+                
+                console.log('AI Upscaler: Loading media items for comparison...');
+                
+                ApiClient.getItems(ApiClient.getCurrentUserId(), {
+                    IncludeItemTypes: "Movie,Episode",
+                    Recursive: true,
+                    Limit: 15,
+                    SortBy: "DateCreated",
+                    SortOrder: "Descending",
+                    ImageTypes: "Primary"
+                }).then(function(result) {
+                    var select = document.getElementById('comparison-item');
+                    if (!select) return;
+                    
+                    select.innerHTML = '';
+                    
+                    if (result.Items && result.Items.length > 0) {
+                        result.Items.forEach(function(item) {
+                            var option = document.createElement('option');
+                            option.value = item.Id;
+                            option.textContent = item.Name + (item.ProductionYear ? ' (' + item.ProductionYear + ')' : '');
+                            select.appendChild(option);
+                        });
+                        console.log('AI Upscaler: Loaded ' + result.Items.length + ' items for comparison');
+                    } else {
+                        var option = document.createElement('option');
+                        option.value = "";
+                        option.textContent = "No items with images found";
+                        select.appendChild(option);
+                    }
+                }).catch(function(error) {
+                    console.error('AI Upscaler: Failed to load items -', error);
+                });
+            }
+
+            // Generate AI comparison
+            window.generateComparison = function() {
+                var itemId = document.getElementById('comparison-item').value;
+                if (!itemId) {
+                    alert('Please select a media item first.');
+                    return;
+                }
+                
+                var btn = document.getElementById('btn-compare');
+                var originalText = btn.innerHTML;
+                btn.innerHTML = '⌛ Processing AI...';
+                btn.disabled = true;
+                
+                var model = document.getElementById('Model').value;
+                var scale = document.getElementById('ScaleFactor').value;
+                document.getElementById('display-scale').textContent = scale;
+                
+                var url = ApiClient.getUrl('api/Upscaler/compare/' + itemId, {
+                    model: model,
+                    scale: scale
+                });
+                
+                console.log('AI Upscaler: Requesting comparison for item ' + itemId);
+                
+                ApiClient.getJSON(url).then(function(data) {
+                    if (data && data.upscaledBase64) {
+                        document.getElementById('img-original').src = data.originalBase64;
+                        document.getElementById('img-upscaled').src = data.upscaledBase64;
+                        document.getElementById('comparison-result').style.display = 'block';
+                        
+                        // Scroll to result
+                        document.getElementById('comparison-result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }).catch(function(error) {
+                    console.error('AI Upscaler: Comparison failed -', error);
+                    alert('AI Comparison failed: ' + (error.message || 'Unknown error'));
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                });
+            };
 
             // Load configuration from Jellyfin
             function loadConfiguration() {
@@ -564,38 +680,31 @@
             // Load Quick Menu and Player Integration
             function loadJavaScriptComponents() {
                 try {
-                    // Load Sidebar Integration
-                    fetch(ApiClient.getUrl('ConfigurationPage', { name: 'aiupscaler-sidebar.js' }))
-                        .then(response => response.text())
-                        .then(script => {
-                            const scriptElement = document.createElement('script');
-                            scriptElement.textContent = script;
-                            document.head.appendChild(scriptElement);
-                            console.log('AI Upscaler: Sidebar Integration loaded');
-                        })
-                        .catch(error => console.log('Sidebar load error:', error));
+                    const components = [
+                        { id: 'aiupscaler-sidebar', name: 'sidebar-upscaler.js' },
+                        { id: 'aiupscaler-quickmenu', name: 'quick-menu.js' },
+                        { id: 'aiupscaler-player', name: 'player-integration.js' }
+                    ];
 
-                    // Load Quick Menu
-                    fetch(ApiClient.getUrl('ConfigurationPage', { name: 'aiupscaler-quickmenu.js' }))
-                        .then(response => response.text())
-                        .then(script => {
-                            const scriptElement = document.createElement('script');
-                            scriptElement.textContent = script;
-                            document.head.appendChild(scriptElement);
-                            console.log('AI Upscaler: Quick Menu loaded');
-                        })
-                        .catch(error => console.log('Quick Menu load error:', error));
+                    components.forEach(component => {
+                        fetch(ApiClient.getUrl('api/Upscaler/js/' + component.name))
+                            .then(response => {
+                                if (!response.ok) throw new Error('Network response was not ok');
+                                return response.text();
+                            })
+                            .then(script => {
+                                // Remove existing script if any
+                                const existing = document.getElementById(component.id);
+                                if (existing) existing.remove();
 
-                    // Load Player Integration  
-                    fetch(ApiClient.getUrl('ConfigurationPage', { name: 'aiupscaler-player.js' }))
-                        .then(response => response.text())
-                        .then(script => {
-                            const scriptElement = document.createElement('script');
-                            scriptElement.textContent = script;
-                            document.head.appendChild(scriptElement);
-                            console.log('AI Upscaler: Player Integration loaded');
-                        })
-                        .catch(error => console.log('Player Integration load error:', error));
+                                const scriptElement = document.createElement('script');
+                                scriptElement.id = component.id;
+                                scriptElement.textContent = script;
+                                document.head.appendChild(scriptElement);
+                                console.log('AI Upscaler: Component ' + component.name + ' loaded');
+                            })
+                            .catch(error => console.log('Component ' + component.name + ' load error:', error));
+                    });
                 } catch (error) {
                     console.log('JavaScript components load error:', error);
                 }

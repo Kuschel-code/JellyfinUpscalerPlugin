@@ -443,26 +443,19 @@ namespace JellyfinUpscalerPlugin.Services
         {
             try
             {
-                _logger.LogInformation("📦 Starting batch processing");
+                _logger.LogInformation("📦 Starting batch AI processing (redirecting to frame-by-frame pipeline)");
                 
-                // Use FFmpeg with scale filter for now
-                // TODO: Implement batch AI processing
-                var args = BuildFFmpegCommand(inputPath, outputPath, job.OptimizedOptions, job.HardwareProfile);
-                
-                var result = await Cli.Wrap(_ffmpegPath)
-                    .WithArguments(args)
-                    .WithValidation(CommandResultValidation.None)
-                    .ExecuteAsync(cancellationToken);
-                
-                var success = result.ExitCode == 0;
+                // For v1.4.0, we use the stable frame-by-frame pipeline for batch processing
+                // as it provides the most consistent AI quality and progress tracking.
+                var result = await ProcessFrameByFrameAsync(inputPath, outputPath, job, cancellationToken);
                 
                 return new VideoProcessingResult
                 {
-                    Success = success,
-                    OutputPath = outputPath,
+                    Success = result.Success,
+                    OutputPath = result.OutputPath,
                     ProcessingTime = DateTime.Now - job.StartTime,
                     Method = ProcessingMethod.Batch,
-                    Error = success ? null : $"FFmpeg exited with code {result.ExitCode}"
+                    Error = result.Error
                 };
             }
             catch (Exception ex)
@@ -505,29 +498,57 @@ namespace JellyfinUpscalerPlugin.Services
             CancellationToken cancellationToken)
         {
             var frameFiles = Directory.GetFiles(framesDir, "*.png").OrderBy(f => f).ToArray();
+            int totalFrames = frameFiles.Length;
             
-            var processingTasks = frameFiles.Select(async (frameFile, index) =>
+            // Use a semaphore to limit concurrency based on hardware capabilities
+            // Default to 1 for safety if not specified
+            int maxConcurrency = 1;
+            try 
             {
-                try
+                var profile = await _upscalerCore.DetectHardwareAsync();
+                maxConcurrency = Math.Max(1, profile.MaxConcurrentStreams);
+            }
+            catch { }
+
+            using var semaphore = new SemaphoreSlim(maxConcurrency);
+            var tasks = new List<Task>();
+
+            _logger.LogInformation($"🚀 Processing {totalFrames} frames with max concurrency: {maxConcurrency}");
+
+            for (int i = 0; i < totalFrames; i++)
+            {
+                int index = i;
+                string frameFile = frameFiles[i];
+
+                await semaphore.WaitAsync(cancellationToken);
+
+                tasks.Add(Task.Run(async () =>
                 {
-                    var frameData = await File.ReadAllBytesAsync(frameFile, cancellationToken);
-                    var upscaledData = await _upscalerCore.UpscaleImageAsync(frameData, options.Model, options.ScaleFactor);
-                    
-                    var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFile));
-                    await File.WriteAllBytesAsync(outputFile, upscaledData, cancellationToken);
-                    
-                    if (index % 100 == 0)
+                    try
                     {
-                        _logger.LogInformation($"📸 Processed {index}/{frameFiles.Length} frames");
+                        var frameData = await File.ReadAllBytesAsync(frameFile, cancellationToken);
+                        var upscaledData = await _upscalerCore.UpscaleImageAsync(frameData, options.Model, options.ScaleFactor);
+                        
+                        var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFile));
+                        await File.WriteAllBytesAsync(outputFile, upscaledData, cancellationToken);
+                        
+                        if (index % 100 == 0 || index == totalFrames - 1)
+                        {
+                            _logger.LogInformation($"📸 Processed {index + 1}/{totalFrames} frames");
+                        }
                     }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, $"⚠️ Failed to process frame {frameFile}");
-                }
-            });
-            
-            await Task.WhenAll(processingTasks);
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, $"⚠️ Failed to process frame {frameFile}");
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                }, cancellationToken));
+            }
+
+            await Task.WhenAll(tasks);
         }
 
         /// <summary>
