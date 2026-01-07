@@ -29,7 +29,7 @@ namespace JellyfinUpscalerPlugin
             // Background Services
             serviceCollection.AddHostedService<UpscalerService>();
             
-            // Hardware Benchmark Service (v1.4.0)
+            // Hardware Benchmark Service (v1.4.1)
             serviceCollection.AddSingleton<HardwareBenchmarkService>();
             serviceCollection.AddHostedService<HardwareBenchmarkService>(provider => provider.GetService<HardwareBenchmarkService>());
         }

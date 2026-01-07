@@ -1,4 +1,4 @@
-# 🎮 AI Upscaler Plugin v1.4.1 STABLE
+# 🎮 AI Upscaler v1.4.1 STABLE
 
 Willkommen in der offiziellen Dokumentation für das **Jellyfin AI Upscaler Plugin**. Dieses Plugin bringt modernste künstliche Intelligenz zur Videoverbesserung direkt in deinen Jellyfin-Medienserver.
 
@@ -8,17 +8,18 @@ Das AI Upscaler Plugin ermöglicht es dir, Inhalte mit niedriger Auflösung (SD/
 
 ## ✨ Hauptfunktionen
 
-*   **Fortschrittliche AI-Modelle**: Unterstützung für Real-ESRGAN, ESRGAN, SwinIR, Waifu2x und mehr.
+*   **Fortschrittliche AI-Modelle**: Unterstützung für Real-ESRGAN, ESRGAN, SwinIR, Waifu2x und mehr (v1.4.1 erweitert die Liste auf 14 Modelle).
 *   **Hardware-Beschleunigung**: Native Unterstützung für **NVIDIA CUDA** und **Windows DirectML**.
+*   **Modernste UI**: Volle Integration in das Jellyfin 10.10+ Dashboard mit nativer JavaScript-Steuerung.
 *   **Vergleichsvorschau**: Erlebe die AI-Magie in Aktion mit einem Side-by-Side "Vorher vs. Nachher" Tool direkt im Dashboard.
 *   **Automatisches Benchmarking**: Intelligente Systemerkennung, um die besten Einstellungen für deine Hardware zu finden.
-*   **Nahtlose Integration**: Ein dedizierter "🎮 AI"-Button im Jellyfin-Player ermöglicht die Steuerung während der Wiedergabe.
+*   **Nahtlose Player-Integration**: Ein dedizierter "AI"-Button im Jellyfin-Player ermöglicht die Steuerung während der Wiedergabe.
 
 ## 🏁 Schnellstart
 
-1.  **Installation**: Installiere das Plugin über das offizielle Repository.
-2.  **Modelle**: Lade ONNX-Modelle in den `models`-Ordner deines Plugin-Verzeichnisses hoch.
-3.  **Hardware-Check**: Führe das Benchmark im Dashboard aus, um dein System zu optimieren.
+1.  **[🚀 Installation](Installation)**: Installiere das Plugin über das offizielle Repository.
+2.  **[🎨 AI Modelle](AI-Models)**: Lade ONNX-Modelle in dein Plugin-Verzeichniss hoch.
+3.  **[⚙️ Konfiguration](Configuration)**: Führe das Benchmark im Dashboard aus, um dein System zu optimieren.
 4.  **Genießen**: Starte die Wiedergabe und aktiviere die AI-Verbesserung über den Player-Button.
 
 ---

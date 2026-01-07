@@ -197,10 +197,13 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             _logger.LogInformation("AI Upscaler: Getting plugin info");
 
+            var assembly = typeof(Plugin).Assembly;
+            var version = assembly.GetName().Version?.ToString(3) ?? "1.4.1";
+
             var info = new
             {
                 name = "AI Upscaler Plugin",
-                version = "1.4.1",
+                version = version,
                 description = "AI-powered video upscaling with modern UI integration and hardware benchmarking",
                 author = "Kuschel-code",
                 features = new[]
@@ -230,7 +233,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
-        /// Run hardware benchmark - v1.4.0 NEW
+        /// Run hardware benchmark - v1.4.1 NEW
         /// </summary>
         /// <returns>Comprehensive hardware benchmark results</returns>
         [HttpPost("benchmark")]
@@ -268,7 +271,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
-        /// Get hardware recommendations - v1.4.0 NEW
+        /// Get hardware recommendations - v1.4.1 NEW
         /// </summary>
         /// <returns>Hardware-specific recommendations</returns>
         [HttpGet("recommendations")]
@@ -324,7 +327,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
-        /// Get comparison data for before/after preview - v1.4.0 NEW
+        /// Get comparison data for before/after preview - v1.4.1 NEW
         /// </summary>
         /// <param name="itemId">Media item ID</param>
         /// <param name="model">AI model to use for comparison</param>
@@ -404,7 +407,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
-        /// Process video with AI upscaling - NEW v1.4.0
+        /// Process video with AI upscaling - NEW v1.4.1
         /// </summary>
         [HttpPost("process")]
         [Consumes(MediaTypeNames.Application.Json)]
@@ -444,7 +447,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
-        /// Get cache statistics - NEW v1.4.0
+        /// Get cache statistics - NEW v1.4.1
         /// </summary>
         [HttpGet("cache/stats")]
         [Produces(MediaTypeNames.Application.Json)]
@@ -473,7 +476,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
-        /// Clear cache - NEW v1.4.0
+        /// Clear cache - NEW v1.4.1
         /// </summary>
         [HttpPost("cache/clear")]
         [Produces(MediaTypeNames.Application.Json)]
@@ -493,7 +496,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
-        /// Get hardware profile - NEW v1.4.0
+        /// Get hardware profile - NEW v1.4.1
         /// </summary>
         [HttpGet("hardware")]
         [Produces(MediaTypeNames.Application.Json)]
@@ -528,7 +531,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
-        /// Upscale image - NEW v1.4.0
+        /// Upscale image - NEW v1.4.1
         /// </summary>
         [HttpPost("upscale/image")]
         [Consumes("application/octet-stream")]
@@ -555,7 +558,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
-        /// Pre-process video for caching - NEW v1.4.0
+        /// Pre-process video for caching - NEW v1.4.1
         /// </summary>
         [HttpPost("preprocess")]
         [Consumes(MediaTypeNames.Application.Json)]
@@ -584,7 +587,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
         /// <summary>
-        /// Enable/disable pre-processing cache - v1.4.0
+        /// Enable/disable pre-processing cache - v1.4.1
         /// </summary>
         /// <param name="request">Pre-processing cache settings</param>
         /// <returns>Cache operation result</returns>
@@ -626,7 +629,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
-        /// Get fallback system status - v1.4.0
+        /// Get fallback system status - v1.4.1
         /// </summary>
         /// <returns>Fallback system information</returns>
         [HttpGet("fallback")]
@@ -679,7 +682,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
     /// <summary>
-    /// Video processing request model - v1.4.0 NEW
+    /// Video processing request model - v1.4.1 NEW
     /// </summary>
     public class VideoProcessRequest
     {
@@ -691,7 +694,7 @@ namespace JellyfinUpscalerPlugin.Controllers
     }
 
     /// <summary>
-    /// Pre-processing request model - v1.4.0 NEW
+    /// Pre-processing request model - v1.4.1 NEW
     /// </summary>
     public class PreProcessRequest
     {

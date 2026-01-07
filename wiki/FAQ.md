@@ -1,6 +1,6 @@
 # ❓ Häufig gestellte Fragen (FAQ)
 
-Fragen und Antworten zum Jellyfin AI Upscaler Plugin v1.4.0 STABLE.
+Fragen und Antworten zum Jellyfin AI Upscaler Plugin v1.4.1 STABLE.
 
 ---
 
@@ -12,8 +12,8 @@ Es ist eine Erweiterung für Jellyfin, die künstliche Intelligenz nutzt, um Vid
 ### **Ist das Plugin kostenlos?**
 **Ja!** Das Plugin ist quelloffen und unter der MIT-Lizenz absolut kostenlos.
 
-### **Was ist neu in v1.4.0 STABLE?**
-Im Gegensatz zu früheren Versionen nutzt v1.4.0 **echte Hardware-Erkennung** (ONNX Runtime, nvidia-smi), um sicherzustellen, dass die Einstellungen perfekt auf die tatsächlichen Fähigkeiten deines Servers abgestimmt sind.
+### **Was ist neu in v1.4.1 STABLE?**
+Im Gegensatz zu früheren Versionen nutzt v1.4.1 **echte Hardware-Erkennung** (ONNX Runtime, nvidia-smi), um sicherzustellen, dass die Einstellungen perfekt auf die tatsächlichen Fähigkeiten deines Servers abgestimmt sind.
 
 ---
 
@@ -40,7 +40,7 @@ Upscaling ist rechenintensiv. Bei Verwendung von Hardware-Beschleunigung (GPU) b
 3. Prüfe, ob das Plugin im Jellyfin-Dashboard als "Aktiv" gelistet ist.
 
 ### **Speichert das Plugin meine Einstellungen nicht?**
-Bitte stelle sicher, dass du Version **1.4.0** installiert hast. In älteren Versionen gab es einen Fehler bei der Speicherung, der in der Stable-Version behoben wurde.
+Bitte stelle sicher, dass du Version **1.4.1** installiert hast. In älteren Versionen gab es einen Fehler bei der Speicherung, der in der Stable-Version behoben wurde.
 
 ---
 

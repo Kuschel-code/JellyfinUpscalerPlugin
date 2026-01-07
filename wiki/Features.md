@@ -1,6 +1,6 @@
 # ✨ Funktionen
 
-Das Jellyfin AI Upscaler Plugin v1.4.0 bietet eine Vielzahl von Funktionen zur Verbesserung deines Fernseherlebnisses.
+Das Jellyfin AI Upscaler Plugin v1.4.1 bietet eine Vielzahl von Funktionen zur Verbesserung deines Fernseherlebnisses.
 
 ## 🤖 Modernste AI-Modelle
 *   **Real-ESRGAN**: Der Goldstandard für die Wiederherstellung von Details und Texturen.

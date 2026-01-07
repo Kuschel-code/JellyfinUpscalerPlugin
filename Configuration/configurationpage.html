@@ -4,7 +4,7 @@
             <div class="verticalSection">
                 <div class="sectionTitleContainer flex align-items-center">
                     <h2 class="sectionTitle">🎮 AI Upscaler Plugin</h2>
-                    <span class="bubble ml-1">v1.4.0 STABLE</span>
+                    <span class="bubble ml-1">v1.4.1 STABLE</span>
                 </div>
                 <p class="sectionDescription">Professional AI Video Enhancement for Jellyfin</p>
             </div>
@@ -186,8 +186,52 @@
 
             function loadModels(page) {
                 ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/models')).then(function(models) {
+                    window.upscalerModels = models;
                     const select = page.querySelector('#Model');
                     select.innerHTML = models.map(m => `<option value="${m.id}">${m.name} - ${m.description}</option>`).join('');
+                    
+                    // Trigger initial scale update
+                    updateScaleFactors(page, select.value);
+                });
+            }
+
+            function updateScaleFactors(page, modelId) {
+                if (!window.upscalerModels) return;
+                const model = window.upscalerModels.find(m => m.id === modelId);
+                if (!model) return;
+
+                const scaleSelect = page.querySelector('#ScaleFactor');
+                const currentValue = scaleSelect.value;
+                
+                scaleSelect.innerHTML = model.scale.map(s => `<option value="${s}">${s}x Upscaling</option>`).join('');
+                
+                // Restore value if still valid, otherwise use first available
+                if (model.scale.includes(parseInt(currentValue))) {
+                    scaleSelect.value = currentValue;
+                }
+            }
+
+            function loadJavaScriptComponents() {
+                const components = [
+                    { id: 'aiupscaler-sidebar', name: 'sidebar-upscaler.js' },
+                    { id: 'aiupscaler-quickmenu', name: 'quick-menu.js' },
+                    { id: 'aiupscaler-player', name: 'player-integration.js' }
+                ];
+
+                components.forEach(component => {
+                    fetch(ApiClient.getUrl('api/Upscaler/js/' + component.name))
+                        .then(response => response.ok ? response.text() : Promise.reject())
+                        .then(script => {
+                            const existing = document.getElementById(component.id);
+                            if (existing) existing.remove();
+
+                            const scriptElement = document.createElement('script');
+                            scriptElement.id = component.id;
+                            scriptElement.textContent = script;
+                            document.head.appendChild(scriptElement);
+                            console.log('AI Upscaler: Component ' + component.name + ' injected');
+                        })
+                        .catch(err => console.error('Failed to inject ' + component.name, err));
                 });
             }
 
@@ -258,6 +302,11 @@
                 loadConfig(page);
                 loadMediaItems(page);
                 updateHardwareStatus(page);
+                loadJavaScriptComponents();
+
+                page.querySelector('#Model').addEventListener('change', function() {
+                    updateScaleFactors(page, this.value);
+                });
 
                 page.querySelector('#btn-compare').addEventListener('click', function() {
                     generateComparison(page);
