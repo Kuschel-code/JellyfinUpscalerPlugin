@@ -1,10 +1,10 @@
-# 🎮 AI Upscaler Plugin v1.4.0 STABLE
+# 🎮 AI Upscaler Plugin v1.4.1 STABLE
 
 Willkommen in der offiziellen Dokumentation für das **Jellyfin AI Upscaler Plugin**. Dieses Plugin bringt modernste künstliche Intelligenz zur Videoverbesserung direkt in deinen Jellyfin-Medienserver.
 
 ## 🚀 Übersicht
 
-Das AI Upscaler Plugin ermöglicht es dir, Inhalte mit niedriger Auflösung (SD/HD) mithilfe fortschrittlicher neuronaler Netze auf High-Definition (4K) zu verbessern. Version 1.4.0 führt eine stabile Hochleistungs-Engine mit Echtzeit-Hardware-Benchmarking und einer Side-by-Side-Vergleichsvorschau ein.
+Das AI Upscaler Plugin ermöglicht es dir, Inhalte mit niedriger Auflösung (SD/HD) mithilfe fortschrittlicher neuronaler Netze auf High-Definition (4K) zu verbessern. Version 1.4.1 führt eine vollständig überarbeitete Benutzeroberfläche für Jellyfin 10.10+ ein, mit synchronisierten AI-Modellen und verbesserter Hardware-Erkennung.
 
 ## ✨ Hauptfunktionen
 

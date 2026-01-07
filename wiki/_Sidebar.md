@@ -1,4 +1,4 @@
-# 🚀 AI Upscaler Plugin v1.4.0 STABLE
+# 🚀 AI Upscaler Plugin v1.4.1 STABLE
 
 ## 📚 **SCHNELLSTART**
 - **[🏠 Startseite](Home)**
@@ -24,7 +24,8 @@
 ---
 
 ## 📖 **VERSIONEN**
-- **[🌟 v1.4.0 STABLE](Version-1.4.0)**
+- **[🌟 v1.4.1 STABLE](Version-1.4.1)**
+- **[⭐ v1.4.0 STABLE](Version-1.4.0)**
 
 ---
 

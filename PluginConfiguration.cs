@@ -5,7 +5,7 @@ using MediaBrowser.Model.Plugins;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// Plugin Configuration - v1.4.0 Stable
+    /// Plugin Configuration - v1.4.1 Stable
     /// </summary>
     public class PluginConfiguration : BasePluginConfiguration
     {
@@ -32,12 +32,12 @@ namespace JellyfinUpscalerPlugin
         public bool EnablePreProcessingCache { get; set; } = false;
         
         // Version tracking
-        public string PluginVersion { get; set; } = "1.4.0";
+        public string PluginVersion { get; set; } = "1.4.1";
         public DateTime LastConfigUpdate { get; set; } = DateTime.UtcNow;
 
         public PluginConfiguration()
         {
-            PluginVersion = "1.4.0";
+            PluginVersion = "1.4.1";
             LastConfigUpdate = DateTime.UtcNow;
         }
     }

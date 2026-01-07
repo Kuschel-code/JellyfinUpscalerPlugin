@@ -69,7 +69,7 @@
                     <button type="button" class="headerBackButton" id="aiUpscalerBack">
                         <span class="material-icons">arrow_back</span>
                     </button>
-                    <h1 class="pageTitle">AI Upscaler Plugin 1.4</h1>
+                    <h1 class="pageTitle">AI Upscaler Plugin 1.4.1</h1>
                 </div>
             </div>
 
@@ -82,7 +82,7 @@
                         <div class="cardBox visualCardBox" style="margin: 1em 0;">
                             <div class="cardText" id="systemStatus">
                                 <div>Status: <span id="pluginStatus" style="color: #00a4dc;">Loading...</span></div>
-                                <div>Version: 1.4.0</div>
+                                <div>Version: 1.4.1</div>
                                 <div>Hardware: <span id="hardwareInfo">Detecting...</span></div>
                                 <div>Performance: <span id="performanceInfo">Monitoring...</span></div>
                             </div>

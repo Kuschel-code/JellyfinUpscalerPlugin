@@ -15,7 +15,7 @@ using JellyfinUpscalerPlugin.Services;
 namespace JellyfinUpscalerPlugin.Controllers
 {
     /// <summary>
-    /// AI Upscaler API Controller v1.4.0 - Enhanced with Hardware Benchmarking
+    /// AI Upscaler API Controller v1.4.1 - Enhanced with Modern UI Sync
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
@@ -69,12 +69,20 @@ namespace JellyfinUpscalerPlugin.Controllers
 
             var models = new List<object>
             {
-                new { id = "realesrgan", name = "Real-ESRGAN", description = "High quality anime/photo upscaling", scale = new[] { 2, 4 } },
-                new { id = "esrgan", name = "ESRGAN", description = "Enhanced Super-Resolution GAN", scale = new[] { 2, 4 } },
-                new { id = "swinir", name = "SwinIR", description = "Transformer-based image restoration", scale = new[] { 2, 4, 8 } },
-                new { id = "waifu2x", name = "Waifu2x", description = "Anime-style art upscaling", scale = new[] { 2 } },
-                new { id = "srcnn", name = "SRCNN", description = "Super-Resolution CNN", scale = new[] { 2, 3 } },
-                new { id = "bicubic", name = "Bicubic", description = "Traditional bicubic interpolation", scale = new[] { 2, 3, 4 } }
+                new { id = "realesrgan", name = "Real-ESRGAN", description = "Best Overall Quality (Anime/Photo)", scale = new[] { 2, 3, 4 } },
+                new { id = "esrgan-pro", name = "ESRGAN Pro", description = "Optimized for Movies & TV Shows", scale = new[] { 2, 4 } },
+                new { id = "swinir", name = "SwinIR", description = "State-of-the-art Transformer based", scale = new[] { 2, 4, 8 } },
+                new { id = "srcnn-light", name = "SRCNN Light", description = "Fast processing for low-end hardware", scale = new[] { 2, 3 } },
+                new { id = "waifu2x", name = "Waifu2x", description = "Classic Anime upscaling", scale = new[] { 2 } },
+                new { id = "hat", name = "HAT", description = "High Detail Enhancement", scale = new[] { 2, 4 } },
+                new { id = "edsr", name = "EDSR", description = "Precise Super-Resolution", scale = new[] { 2, 3, 4 } },
+                new { id = "vdsr", name = "VDSR", description = "Deep Learning approach", scale = new[] { 2, 3, 4 } },
+                new { id = "rdn", name = "RDN", description = "Enhanced Texture Detail", scale = new[] { 2, 4 } },
+                new { id = "srresnet", name = "SRResNet", description = "Balanced Performance", scale = new[] { 2, 4 } },
+                new { id = "carn", name = "CARN", description = "Compact & Fast", scale = new[] { 2, 3, 4 } },
+                new { id = "rrdbnet", name = "RRDBNet", description = "High Fidelity Quality", scale = new[] { 2, 4 } },
+                new { id = "drln", name = "DRLN", description = "Advanced Noise Reduction", scale = new[] { 2, 4 } },
+                new { id = "fsrcnn", name = "FSRCNN", description = "Lightweight Real-time capable", scale = new[] { 2, 3, 4 } }
             };
 
             return Ok(models);
@@ -192,8 +200,8 @@ namespace JellyfinUpscalerPlugin.Controllers
             var info = new
             {
                 name = "AI Upscaler Plugin",
-                version = "1.4.0",
-                description = "AI-powered video upscaling with hardware benchmarking and advanced optimization",
+                version = "1.4.1",
+                description = "AI-powered video upscaling with modern UI integration and hardware benchmarking",
                 author = "Kuschel-code",
                 features = new[]
                 {

@@ -1,7 +1,7 @@
-# 🎮 Jellyfin AI Upscaler Plugin v1.4.0 STABLE
+# 🎮 Jellyfin AI Upscaler Plugin v1.4.1 STABLE
 
 [![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.10.x-00A4DC.svg)](https://jellyfin.org)
+[![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.10.x+-00A4DC.svg)](https://jellyfin.org)
 
 Ein fortschrittliches, AI-gestütztes Videoverbesserungs-Plugin für Jellyfin. Verbessere deine Medien in Echtzeit oder per Vorverarbeitung mit modernsten neuronalen Netzen.
 
@@ -11,7 +11,7 @@ Ein fortschrittliches, AI-gestütztes Videoverbesserungs-Plugin für Jellyfin. V
 - **Hardware-Beschleunigung**: Volle Unterstützung für NVIDIA (CUDA) und DirectML (AMD/Intel).
 - **Mehrere AI-Modelle**: Unterstützung für Real-ESRGAN, SwinIR, Waifu2x und mehr.
 - **Hardware-Benchmarking**: Integrierte Tools zur Erkennung und Optimierung basierend auf der Server-Leistung.
-- **Nahtlose Integration**: Modernes Dashboard und Quick-Access-Menü direkt im Player.
+- **Modernste UI Integration**: Vollständig kompatibel mit Jellyfin 10.10+ Dashboard und Player.
 
 ## 🛠️ Installation
 
@@ -20,7 +20,7 @@ Ein fortschrittliches, AI-gestütztes Videoverbesserungs-Plugin für Jellyfin. V
 2. Gehe zu **Plugins** > **Repositories**.
 3. Füge ein neues Repository mit folgender URL hinzu:
    `https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/repository-jellyfin.json`
-4. Gehe zum **Katalog**, suche nach "AI Upscaler Plugin" und installiere Version **1.4.0**.
+4. Gehe zum **Katalog**, suche nach "AI Upscaler Plugin" und installiere Version **1.4.1**.
 5. Starte Jellyfin neu.
 
 ## ⚙️ Konfiguration
