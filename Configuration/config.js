@@ -2,7 +2,7 @@
 define(['pluginManager', 'loading', 'dialogHelper', 'emby-select', 'emby-input', 'emby-checkbox'], function (pluginManager, loading, dialogHelper) {
     'use strict';
 
-    var pluginId = 'f87f700e-679d-43e6-9c7c-b3a410dc3f12';
+    var pluginId = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
 
     function loadConfiguration(page) {
         loading.show();
