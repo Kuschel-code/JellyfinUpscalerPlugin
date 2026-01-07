@@ -284,10 +284,12 @@
         setInterval(() => {
             ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/status')).then(function(status) {
                 if (status) {
-                    document.getElementById('fpsDisplay').textContent = status.isProcessing ? (Math.random() * 20 + 30).toFixed(1) : '0.0';
-                    document.getElementById('cpuUsage').textContent = (Math.random() * 15 + 5).toFixed(1) + '%';
-                    document.getElementById('gpuUsage').textContent = status.isProcessing ? (Math.random() * 30 + 20).toFixed(1) + '%' : '0%';
-                    document.getElementById('cacheSize').textContent = '1.2 GB';
+                    // Note: Real-time FPS/Usage from backend requires integration with current playback sessions
+                    // For now, we display 'Active' if processing is happening
+                    document.getElementById('fpsDisplay').textContent = status.isProcessing ? 'Active' : 'Idle';
+                    document.getElementById('cpuUsage').textContent = status.isProcessing ? 'Processing' : '0%';
+                    document.getElementById('gpuUsage').textContent = status.isProcessing ? 'Processing' : '0%';
+                    document.getElementById('cacheSize').textContent = 'Calculated';
                 }
             });
         }, 5000);
@@ -296,38 +298,39 @@
     // Quick action functions
     function runBenchmark() {
         const console = document.getElementById('benchmarkConsole');
-        const steps = [
-            'Initializing benchmark...',
-            'Detecting hardware configuration...',
-            'Testing CPU performance...',
-            'Testing GPU performance...',
-            'Testing memory bandwidth...',
-            'Testing AI model performance...',
-            'Benchmark completed successfully!'
-        ];
         
-        let stepIndex = 0;
-        const interval = setInterval(() => {
-            if (stepIndex < steps.length) {
-                const step = document.createElement('div');
-                step.textContent = steps[stepIndex];
-                console.appendChild(step);
-                console.scrollTop = console.scrollHeight;
-                stepIndex++;
-            } else {
-                clearInterval(interval);
-                const result = document.createElement('div');
-                result.innerHTML = `<div style="color: #00ff00; margin-top: 1em;">
-                    Recommended Settings:<br>
-                    - Model: ESRGAN<br>
-                    - Quality: High<br>
-                    - Scale: 2x<br>
-                    - Hardware Acceleration: Enabled
+        const startMsg = document.createElement('div');
+        startMsg.textContent = 'Starting REAL hardware benchmark via API...';
+        console.appendChild(startMsg);
+        console.scrollTop = console.scrollHeight;
+
+        ApiClient.postJSON(ApiClient.getUrl('api/Upscaler/benchmark')).then(function(response) {
+            if (response && response.success) {
+                const results = response.results;
+                const resultDiv = document.createElement('div');
+                resultDiv.innerHTML = `<div style="color: #00ff00; margin-top: 1em;">
+                    Benchmark Results:<br>
+                    - CPU: ${results.systemInfo.detectedCPU}<br>
+                    - GPU: ${results.systemInfo.detectedGPU}<br>
+                    - Duration: ${results.duration.toFixed(2)}s<br>
+                    - Recommended Model: ${results.optimalSettings.model}<br>
+                    - Optimal Scale: ${results.optimalSettings.scale}x
                 </div>`;
-                console.appendChild(result);
-                console.scrollTop = console.scrollHeight;
+                console.appendChild(resultDiv);
+            } else {
+                const errorDiv = document.createElement('div');
+                errorDiv.textContent = 'Benchmark failed: ' + (response ? response.message : 'Unknown error');
+                errorDiv.style.color = '#ff0000';
+                console.appendChild(errorDiv);
             }
-        }, 800);
+            console.scrollTop = console.scrollHeight;
+        }).catch(function(error) {
+            const errorDiv = document.createElement('div');
+            errorDiv.textContent = 'API Error: ' + error;
+            errorDiv.style.color = '#ff0000';
+            console.appendChild(errorDiv);
+            console.scrollTop = console.scrollHeight;
+        });
     }
 
     function autoOptimize() {

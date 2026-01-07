@@ -10,10 +10,10 @@ define(['pluginManager', 'loading', 'dialogHelper', 'emby-select', 'emby-input',
         // Load plugin configuration
         ApiClient.getPluginConfiguration(pluginId).then(function (config) {
             // Set form values
-            page.querySelector('#chkEnablePlugin').checked = config.EnablePlugin || false;
-            page.querySelector('#selectModel').value = config.Model || 'realesrgan';
-            page.querySelector('#selectScaleFactor').value = config.ScaleFactor || 2;
-            page.querySelector('#selectQualityLevel').value = config.QualityLevel || 'balanced';
+            page.querySelector('#EnablePlugin').checked = config.EnablePlugin || false;
+            page.querySelector('#Model').value = config.Model || 'realesrgan';
+            page.querySelector('#ScaleFactor').value = config.ScaleFactor || 2;
+            page.querySelector('#QualityLevel').value = config.QualityLevel || 'balanced';
             
             loading.hide();
         }).catch(function () {
@@ -25,10 +25,10 @@ define(['pluginManager', 'loading', 'dialogHelper', 'emby-select', 'emby-input',
         loading.show();
 
         var config = {
-            EnablePlugin: page.querySelector('#chkEnablePlugin').checked,
-            Model: page.querySelector('#selectModel').value,
-            ScaleFactor: parseInt(page.querySelector('#selectScaleFactor').value),
-            QualityLevel: page.querySelector('#selectQualityLevel').value
+            EnablePlugin: page.querySelector('#EnablePlugin').checked,
+            Model: page.querySelector('#Model').value,
+            ScaleFactor: parseInt(page.querySelector('#ScaleFactor').value),
+            QualityLevel: page.querySelector('#QualityLevel').value
         };
 
         ApiClient.updatePluginConfiguration(pluginId, config).then(function () {

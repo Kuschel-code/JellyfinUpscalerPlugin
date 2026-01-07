@@ -217,20 +217,20 @@
                 <h2>⚙️ Basic Settings</h2>
                 
                 <div class="checkbox-group">
-                    <input type="checkbox" id="EnablePlugin" checked>
+                    <input type="checkbox" id="EnablePlugin" name="EnablePlugin" checked>
                     <label for="EnablePlugin">Enable AI Upscaler Plugin</label>
                 </div>
                 <div class="description">Master switch to enable or disable the plugin</div>
                 
                 <div class="checkbox-group">
-                    <input type="checkbox" id="PlayerButton" checked>
+                    <input type="checkbox" id="PlayerButton" name="PlayerButton" checked>
                     <label for="PlayerButton">Show AI Button in Video Player</label>
                 </div>
                 <div class="description">Adds the AI upscaling button to video player controls</div>
                 
                 <div class="form-group">
                     <label for="Model">Default AI Model:</label>
-                    <select id="Model">
+                    <select id="Model" name="Model">
                         <option value="realesrgan" selected>Real-ESRGAN (Best Overall Quality)</option>
                         <option value="esrgan-pro">ESRGAN Pro (Movies & TV Shows)</option>
                         <option value="swinir">SwinIR (Complex Scenes)</option>
@@ -252,7 +252,7 @@
                 <div class="grid-2col">
                     <div class="form-group">
                         <label for="ScaleFactor">Scale Factor:</label>
-                        <select id="ScaleFactor">
+                        <select id="ScaleFactor" name="ScaleFactor">
                             <option value="2">2x Upscaling</option>
                             <option value="3" selected>3x Upscaling</option>
                             <option value="4">4x Upscaling</option>
@@ -262,7 +262,7 @@
                     
                     <div class="form-group">
                         <label for="QualityLevel">Quality Level:</label>
-                        <select id="QualityLevel">
+                        <select id="QualityLevel" name="QualityLevel">
                             <option value="high">High Quality (Best Results)</option>
                             <option value="medium" selected>Medium Quality (Balanced)</option>
                             <option value="low">Low Quality (Fastest)</option>
@@ -276,7 +276,7 @@
                 <h2>🔧 Hardware Settings</h2>
                 
                 <div class="checkbox-group">
-                    <input type="checkbox" id="HardwareAcceleration" checked>
+                    <input type="checkbox" id="HardwareAcceleration" name="HardwareAcceleration" checked>
                     <label for="HardwareAcceleration">Enable Hardware Acceleration</label>
                 </div>
                 <div class="description">Use GPU for faster processing when available</div>
@@ -284,13 +284,13 @@
                 <div class="grid-2col">
                     <div class="form-group">
                         <label for="MaxVRAMUsage">Max VRAM Usage (MB):</label>
-                        <input type="number" id="MaxVRAMUsage" value="2048" min="512" max="16384">
+                        <input type="number" id="MaxVRAMUsage" name="MaxVRAMUsage" value="2048" min="512" max="16384">
                         <div class="description">Maximum VRAM to use for upscaling</div>
                     </div>
                     
                     <div class="form-group">
                         <label for="CpuThreads">CPU Threads:</label>
-                        <input type="number" id="CpuThreads" value="4" min="1" max="32">
+                        <input type="number" id="CpuThreads" name="CpuThreads" value="4" min="1" max="32">
                         <div class="description">Number of CPU threads for processing</div>
                     </div>
                 </div>
@@ -300,25 +300,39 @@
                 <h2>🎮 Video Player Integration</h2>
                 
                 <div class="checkbox-group">
-                    <input type="checkbox" id="Notifications" checked>
+                    <input type="checkbox" id="Notifications" name="Notifications" checked>
                     <label for="Notifications">Enable Progress Notifications</label>
                 </div>
                 <div class="description">Show upscaling progress notifications</div>
                 
                 <div class="checkbox-group">
-                    <input type="checkbox" id="AutoRetryButton" checked>
+                    <input type="checkbox" id="AutoRetryButton" name="AutoRetryButton" checked>
                     <label for="AutoRetryButton">Auto-Retry Button Injection</label>
                 </div>
                 <div class="description">Automatically retry if AI button doesn't appear</div>
                 
                 <div class="form-group">
                     <label for="ButtonPosition">Button Position:</label>
-                    <select id="ButtonPosition">
+                    <select id="ButtonPosition" name="ButtonPosition">
                         <option value="right" selected>Right Side</option>
                         <option value="left">Left Side</option>
                         <option value="center">Center</option>
                     </select>
                     <div class="description">Position of AI button in video player</div>
+                </div>
+            </div>
+
+            <div class="config-section" id="hardware-status-section">
+                <h2>📊 Live Hardware Status</h2>
+                <div class="grid-2col">
+                    <div class="info-card" style="background: rgba(0, 164, 220, 0.1); border-color: rgba(0, 164, 220, 0.3);">
+                        <h3 style="color: #00a4dc;">CPU Status</h3>
+                        <p id="cpu-status-text">Detecting...</p>
+                    </div>
+                    <div class="info-card" style="background: rgba(0, 164, 220, 0.1); border-color: rgba(0, 164, 220, 0.3);">
+                        <h3 style="color: #00a4dc;">GPU Status</h3>
+                        <p id="gpu-status-text">Detecting...</p>
+                    </div>
                 </div>
             </div>
 
@@ -550,8 +564,19 @@
             // Load Quick Menu and Player Integration
             function loadJavaScriptComponents() {
                 try {
+                    // Load Sidebar Integration
+                    fetch(ApiClient.getUrl('ConfigurationPage', { name: 'aiupscaler-sidebar.js' }))
+                        .then(response => response.text())
+                        .then(script => {
+                            const scriptElement = document.createElement('script');
+                            scriptElement.textContent = script;
+                            document.head.appendChild(scriptElement);
+                            console.log('AI Upscaler: Sidebar Integration loaded');
+                        })
+                        .catch(error => console.log('Sidebar load error:', error));
+
                     // Load Quick Menu
-                    fetch('/web/ConfigurationPage?name=aiupscaler-quickmenu.js')
+                    fetch(ApiClient.getUrl('ConfigurationPage', { name: 'aiupscaler-quickmenu.js' }))
                         .then(response => response.text())
                         .then(script => {
                             const scriptElement = document.createElement('script');
@@ -562,7 +587,7 @@
                         .catch(error => console.log('Quick Menu load error:', error));
 
                     // Load Player Integration  
-                    fetch('/web/ConfigurationPage?name=aiupscaler-player.js')
+                    fetch(ApiClient.getUrl('ConfigurationPage', { name: 'aiupscaler-player.js' }))
                         .then(response => response.text())
                         .then(script => {
                             const scriptElement = document.createElement('script');
@@ -576,8 +601,32 @@
                 }
             }
 
-            // Load components after page init
-            setTimeout(loadJavaScriptComponents, 1000);
+            // Update Hardware Status from real API
+            function updateHardwareStatus() {
+                if (typeof ApiClient === 'undefined') return;
+
+                ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/recommendations')).then(function(data) {
+                    if (data && data.hardwareInfo) {
+                        document.getElementById('cpu-status-text').textContent = data.hardwareInfo.detectedCPU || 'Auto-detected';
+                        document.getElementById('gpu-status-text').textContent = data.hardwareInfo.detectedGPU || 'Auto-detected';
+                    }
+                }).catch(function(error) {
+                    console.error('Failed to update hardware status:', error);
+                });
+            }
+
+            // Initialize when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    init();
+                    updateHardwareStatus();
+                    loadJavaScriptComponents();
+                });
+            } else {
+                init();
+                updateHardwareStatus();
+                loadJavaScriptComponents();
+            }
         })();
     </script>
 </body>

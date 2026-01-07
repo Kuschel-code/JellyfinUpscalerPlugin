@@ -195,17 +195,15 @@
         
         // Toggle upscaling on/off
         toggleUpscaling: function() {
-            const currentState = this.getPluginConfig().EnablePlugin;
-            const newState = !currentState;
-            
-            this.updatePluginConfig({ EnablePlugin: newState });
-            this.showPlayerNotification(
-                `🔄 Upscaling ${newState ? 'enabled' : 'disabled'}`, 
-                newState ? 'success' : 'warning'
-            );
-            
-            // Update button status
-            this.updateButtonStatus(newState);
+            this.getPluginConfig().then(config => {
+                const newState = !config.EnablePlugin;
+                this.updatePluginConfig({ EnablePlugin: newState });
+                this.showPlayerNotification(
+                    `🔄 Upscaling ${newState ? 'enabled' : 'disabled'}`, 
+                    newState ? 'success' : 'warning'
+                );
+                this.updateButtonStatus(newState);
+            });
             
             const menu = document.querySelector('#aiUpscalerQuickMenu');
             if (menu) menu.remove();
@@ -213,66 +211,62 @@
         
         // Show current statistics
         showCurrentStats: function() {
-            const stats = this.getCurrentStats();
-            
-            const statsWindow = window.open('', '_blank', 'width=600,height=400');
-            statsWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>AI Upscaler - Current Statistics</title>
-                    <style>
-                        body { font-family: monospace; background: #1a1a1a; color: #00ff00; padding: 20px; }
-                        .header { color: #00d4ff; font-size: 1.5em; margin-bottom: 20px; }
-                        .stat-item { margin: 10px 0; padding: 10px; background: #2a2a2a; border-radius: 5px; }
-                        .stat-label { color: #ffd700; font-weight: bold; }
-                        .stat-value { color: #ffffff; margin-left: 10px; }
-                        .good { color: #00ff00; }
-                        .warning { color: #ffa500; }
-                        .error { color: #ff0000; }
-                    </style>
-                </head>
-                <body>
-                    <div class="header">📊 AI Upscaler Statistics</div>
-                    <div class="stat-item">
-                        <span class="stat-label">Status:</span>
-                        <span class="stat-value ${stats.EnablePlugin ? 'good' : 'warning'}">
-                            ${stats.EnablePlugin ? '✅ Active' : '⚠️ Inactive'}
-                        </span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Model:</span>
-                        <span class="stat-value">${stats.Model}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Scale:</span>
-                        <span class="stat-value">${stats.ScaleFactor}x</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Quality:</span>
-                        <span class="stat-value">${stats.QualityLevel}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Hardware Acceleration:</span>
-                        <span class="stat-value ${stats.HardwareAcceleration ? 'good' : 'warning'}">
-                            ${stats.HardwareAcceleration ? '✅ Enabled' : '⚠️ Disabled'}
-                        </span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Cache Size:</span>
-                        <span class="stat-value">${stats.CacheSizeMB} MB</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Performance:</span>
-                        <span class="stat-value good">✅ Optimal</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Last Updated:</span>
-                        <span class="stat-value">${new Date().toLocaleString()}</span>
-                    </div>
-                </body>
-                </html>
-            `);
+            this.getCurrentStats().then(stats => {
+                const statsWindow = window.open('', '_blank', 'width=600,height=400');
+                statsWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>AI Upscaler - Current Statistics</title>
+                        <style>
+                            body { font-family: monospace; background: #1a1a1a; color: #00ff00; padding: 20px; }
+                            .header { color: #00d4ff; font-size: 1.5em; margin-bottom: 20px; }
+                            .stat-item { margin: 10px 0; padding: 10px; background: #2a2a2a; border-radius: 5px; }
+                            .stat-label { color: #ffd700; font-weight: bold; }
+                            .stat-value { color: #ffffff; margin-left: 10px; }
+                            .good { color: #00ff00; }
+                            .warning { color: #ffa500; }
+                            .error { color: #ff0000; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header">📊 AI Upscaler Statistics</div>
+                        <div class="stat-item">
+                            <span class="stat-label">Status:</span>
+                            <span class="stat-value ${stats.EnablePlugin ? 'good' : 'warning'}">
+                                ${stats.EnablePlugin ? '✅ Active' : '⚠️ Inactive'}
+                            </span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Model:</span>
+                            <span class="stat-value">${stats.Model}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Scale:</span>
+                            <span class="stat-value">${stats.ScaleFactor}x</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Quality:</span>
+                            <span class="stat-value">${stats.QualityLevel}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Hardware Acceleration:</span>
+                            <span class="stat-value ${stats.HardwareAcceleration ? 'good' : 'warning'}">
+                                ${stats.HardwareAcceleration ? '✅ Enabled' : '⚠️ Disabled'}
+                            </span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Processing:</span>
+                            <span class="stat-value">${stats.isProcessing ? 'Yes' : 'No'}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Last Updated:</span>
+                            <span class="stat-value">${new Date().toLocaleString()}</span>
+                        </div>
+                    </body>
+                    </html>
+                `);
+            });
             
             const menu = document.querySelector('#aiUpscalerQuickMenu');
             if (menu) menu.remove();
@@ -344,28 +338,33 @@
         
         // Configuration management
         getPluginConfig: function() {
-            // Return mock configuration - in real implementation, fetch from server
-            return {
-                EnablePlugin: true,
-                Model: 'realesrgan',
-                ScaleFactor: 2,
-                QualityLevel: 'balanced',
-                HardwareAcceleration: true,
-                CacheSizeMB: 1024
-            };
+            if (typeof ApiClient !== 'undefined') {
+                return ApiClient.getPluginConfiguration(PLUGIN_ID);
+            }
+            return Promise.resolve({});
         },
         
         updatePluginConfig: function(updates) {
-            // In real implementation, update server configuration
-            console.log('AI Upscaler: Updating config', updates);
+            if (typeof ApiClient !== 'undefined') {
+                this.getPluginConfig().then(config => {
+                    const newConfig = Object.assign({}, config, updates);
+                    ApiClient.updatePluginConfiguration(PLUGIN_ID, newConfig).then(() => {
+                        console.log('AI Upscaler: Configuration updated via player');
+                    });
+                });
+            }
         },
         
         getCurrentStats: function() {
-            const config = this.getPluginConfig();
-            return {
-                ...config,
-                timestamp: new Date().toISOString()
-            };
+            // Fetch real stats from API
+            return ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/status')).then(status => {
+                return {
+                    ...status,
+                    timestamp: new Date().toISOString()
+                };
+            }).catch(() => {
+                return { EnablePlugin: false, Model: 'Unknown', ScaleFactor: 0, QualityLevel: 'Unknown', HardwareAcceleration: false, CacheSizeMB: 0 };
+            });
         },
         
         // Update button status
