@@ -217,8 +217,8 @@
                 <h2>⚙️ Basic Settings</h2>
                 
                 <div class="checkbox-group">
-                    <input type="checkbox" id="Enabled" checked>
-                    <label for="Enabled">Enable AI Upscaler Plugin</label>
+                    <input type="checkbox" id="EnablePlugin" checked>
+                    <label for="EnablePlugin">Enable AI Upscaler Plugin</label>
                 </div>
                 <div class="description">Master switch to enable or disable the plugin</div>
                 
@@ -251,8 +251,8 @@
                 
                 <div class="grid-2col">
                     <div class="form-group">
-                        <label for="Scale">Scale Factor:</label>
-                        <select id="Scale">
+                        <label for="ScaleFactor">Scale Factor:</label>
+                        <select id="ScaleFactor">
                             <option value="2">2x Upscaling</option>
                             <option value="3" selected>3x Upscaling</option>
                             <option value="4">4x Upscaling</option>
@@ -261,8 +261,8 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="Quality">Quality Level:</label>
-                        <select id="Quality">
+                        <label for="QualityLevel">Quality Level:</label>
+                        <select id="QualityLevel">
                             <option value="high">High Quality (Best Results)</option>
                             <option value="medium" selected>Medium Quality (Balanced)</option>
                             <option value="low">Low Quality (Fastest)</option>
@@ -339,11 +339,11 @@
             
             // Configuration object with defaults
             var config = {
-                Enabled: true,
+                EnablePlugin: true,
                 PlayerButton: true,
                 Model: 'realesrgan',
-                Scale: 3,
-                Quality: 'medium',
+                ScaleFactor: 3,
+                QualityLevel: 'medium',
                 HardwareAcceleration: true,
                 MaxVRAMUsage: 2048,
                 CpuThreads: 4,
@@ -467,11 +467,11 @@
             window.resetConfiguration = function() {
                 if (confirm('Reset all settings to defaults?')) {
                     config = {
-                        Enabled: true,
+                        EnablePlugin: true,
                         PlayerButton: true,
                         Model: 'realesrgan',
-                        Scale: 3,
-                        Quality: 'medium',
+                        ScaleFactor: 3,
+                        QualityLevel: 'medium',
                         HardwareAcceleration: true,
                         MaxVRAMUsage: 2048,
                         CpuThreads: 4,
@@ -487,7 +487,7 @@
 
             // Inject player button after save
             function injectPlayerButton() {
-                if (!config.ShowPlayerButton) return;
+                if (!config.PlayerButton) return;
                 
                 // Create and inject the player integration script
                 var script = document.createElement('script');

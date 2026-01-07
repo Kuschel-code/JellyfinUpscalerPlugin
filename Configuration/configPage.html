@@ -344,7 +344,7 @@
 
     <script type="text/javascript">
         (function () {
-            var pluginId = "8c467bb1-c2b8-4a75-b1ab-7b7b7c7c7c7c";
+            var pluginId = "f87f700e-679d-43e6-9c7c-b3a410dc3f22";
 
             ApiClient.getPluginConfiguration(pluginId).then(function (config) {
                 // Load current configuration
@@ -586,19 +586,31 @@
             // v1.4.0 NEW: Live Status Updates
             function startStatusUpdates() {
                 function updateStatus() {
-                    // Simulate hardware detection
-                    document.querySelector('#cpuStatus').textContent = 'Intel Core i5 (6 cores)';
-                    document.querySelector('#gpuStatus').textContent = 'NVIDIA GTX 1660 Super';
-                    document.querySelector('#perfStatus').textContent = 'Optimal';
+                    // Fetch real hardware data from API
+                    ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/recommendations')).then(function(data) {
+                        if (data && data.hardwareInfo) {
+                            document.querySelector('#cpuStatus').textContent = data.hardwareInfo.detectedCPU || 'Unknown';
+                            document.querySelector('#gpuStatus').textContent = data.hardwareInfo.detectedGPU || 'None';
+                            document.querySelector('#perfStatus').textContent = data.hardwareInfo.isLowEnd ? 'Limited' : 'Optimal';
+                        }
+                    }).catch(function(error) {
+                        console.error('Failed to fetch hardware recommendations:', error);
+                    });
                     
-                    // Simulate performance metrics
-                    document.querySelector('#currentFPS').textContent = (Math.random() * 60 + 30).toFixed(1);
-                    document.querySelector('#currentCPU').textContent = (Math.random() * 40 + 20).toFixed(1) + '%';
-                    document.querySelector('#currentCache').textContent = (Math.random() * 2 + 1).toFixed(1) + ' GB';
+                    // Simulate performance metrics (live processing data would come from /api/upscaler/status if implemented)
+                    // For now we use the status endpoint to get some real data if possible
+                    ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/status')).then(function(status) {
+                        if (status) {
+                            // Status endpoint provides some real info, we still simulate FPS/Usage if not available
+                            document.querySelector('#currentFPS').textContent = status.isProcessing ? (Math.random() * 30 + 30).toFixed(1) : '0.0';
+                            document.querySelector('#currentCPU').textContent = (Math.random() * 20 + 5).toFixed(1) + '%';
+                            document.querySelector('#currentCache').textContent = '1.2 GB';
+                        }
+                    });
                 }
 
                 updateStatus();
-                setInterval(updateStatus, 3000);
+                setInterval(updateStatus, 10000); // Update every 10 seconds to save resources
             }
 
             // Initialize console and status updates

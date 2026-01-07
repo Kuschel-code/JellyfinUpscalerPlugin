@@ -403,7 +403,7 @@
             try {
                 // Make API call to get current settings
                 if (window.ApiClient) {
-                    window.ApiClient.getJSON('/api/upscaler/status')
+                    window.ApiClient.getJSON('/api/upscaler/settings')
                         .then(response => {
                             this.updateStatusDisplay(response);
                         })
@@ -436,13 +436,13 @@
                 const performanceStatusEl = document.getElementById('performance-status');
                 
                 if (pluginStatusEl) {
-                    pluginStatusEl.textContent = status.enabled ? 'Active' : 'Disabled';
-                    pluginStatusEl.className = 'status-value ' + (status.enabled ? 'status-active' : 'status-inactive');
+                    pluginStatusEl.textContent = status.Enabled ? 'Active' : 'Disabled';
+                    pluginStatusEl.className = 'status-value ' + (status.Enabled ? 'status-active' : 'status-inactive');
                 }
                 
                 if (hardwareStatusEl) {
-                    hardwareStatusEl.textContent = status.hardwareAcceleration ? 'GPU Enabled' : 'CPU Only';
-                    hardwareStatusEl.className = 'status-value ' + (status.hardwareAcceleration ? 'status-active' : 'status-warning');
+                    hardwareStatusEl.textContent = status.HardwareAcceleration ? 'GPU Enabled' : 'CPU Only';
+                    hardwareStatusEl.className = 'status-value ' + (status.HardwareAcceleration ? 'status-active' : 'status-warning');
                 }
                 
                 if (performanceStatusEl) {
@@ -570,14 +570,14 @@
                 console.log('AI Upscaler: Saving settings...');
                 
                 const settings = {
-                    enabled: document.getElementById('quick-enable')?.checked,
-                    model: document.getElementById('quick-model')?.value,
-                    scale: parseInt(document.getElementById('quick-scale')?.value),
-                    quality: document.getElementById('quick-quality')?.value,
-                    enableCache: document.getElementById('enable-cache')?.checked,
-                    enableFallback: document.getElementById('enable-fallback')?.checked,
-                    enableComparison: document.getElementById('enable-comparison')?.checked,
-                    enableTVOptimization: document.getElementById('enable-tv-optimization')?.checked
+                    Enabled: document.getElementById('quick-enable')?.checked,
+                    Model: document.getElementById('quick-model')?.value,
+                    Scale: parseInt(document.getElementById('quick-scale')?.value),
+                    Quality: document.getElementById('quick-quality')?.value,
+                    EnablePreProcessingCache: document.getElementById('enable-cache')?.checked,
+                    EnableAutoFallback: document.getElementById('enable-fallback')?.checked,
+                    EnableComparisonView: document.getElementById('enable-comparison')?.checked,
+                    EnableWebOSOptimization: document.getElementById('enable-tv-optimization')?.checked
                 };
                 
                 if (window.ApiClient) {

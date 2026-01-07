@@ -81,14 +81,14 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
-        /// Get current upscaler status
+        /// Get current upscaler settings
         /// </summary>
         /// <returns>Current status of the AI upscaler</returns>
-        [HttpGet("status")]
+        [HttpGet("settings")]
         [Produces(MediaTypeNames.Application.Json)]
-        public ActionResult<object> GetStatus()
+        public ActionResult<object> GetSettings()
         {
-            _logger.LogInformation("AI Upscaler: Getting status");
+            _logger.LogInformation("AI Upscaler: Getting settings");
 
             var config = Plugin.Instance?.Configuration;
             if (config == null)
@@ -96,18 +96,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 return BadRequest("Plugin configuration not available");
             }
 
-            var status = new
-            {
-                enabled = config.Enabled,
-                currentModel = config.Model,
-                scale = config.Scale,
-                quality = config.Quality,
-                hardwareAcceleration = config.HardwareAcceleration,
-                playerButtonEnabled = config.PlayerButton,
-                version = "1.4.0"
-            };
-
-            return Ok(status);
+            return Ok(config);
         }
 
         /// <summary>
@@ -134,14 +123,14 @@ namespace JellyfinUpscalerPlugin.Controllers
                 if (!string.IsNullOrEmpty(settings.Model))
                     config.Model = settings.Model;
 
-                if (settings.Scale.HasValue)
-                    config.Scale = settings.Scale.Value;
+                if (settings.ScaleFactor.HasValue)
+                    config.ScaleFactor = settings.ScaleFactor.Value;
 
-                if (!string.IsNullOrEmpty(settings.Quality))
-                    config.Quality = settings.Quality;
+                if (!string.IsNullOrEmpty(settings.QualityLevel))
+                    config.QualityLevel = settings.QualityLevel;
 
-                if (settings.Enabled.HasValue)
-                    config.Enabled = settings.Enabled.Value;
+                if (settings.EnablePlugin.HasValue)
+                    config.EnablePlugin = settings.EnablePlugin.Value;
 
                 if (settings.HardwareAcceleration.HasValue)
                     config.HardwareAcceleration = settings.HardwareAcceleration.Value;
@@ -690,24 +679,6 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
-        /// <summary>
-        /// Get plugin settings
-        /// </summary>
-        [HttpGet("settings")]
-        [Produces(MediaTypeNames.Application.Json)]
-        public ActionResult<PluginConfiguration> GetSettings()
-        {
-            _logger.LogInformation("AI Upscaler: Getting settings");
-
-            var config = Plugin.Instance?.Configuration;
-            if (config == null)
-            {
-                return BadRequest("Plugin configuration not available");
-            }
-
-            return Ok(config);
-        }
-
 
 
         /// <summary>
@@ -859,9 +830,9 @@ namespace JellyfinUpscalerPlugin.Controllers
         public class UpscalerSettings
         {
             public string? Model { get; set; }
-            public int? Scale { get; set; }
-            public string? Quality { get; set; }
-            public bool? Enabled { get; set; }
+            public int? ScaleFactor { get; set; }
+            public string? QualityLevel { get; set; }
+            public bool? EnablePlugin { get; set; }
             public bool? HardwareAcceleration { get; set; }
             public bool? PlayerButton { get; set; }
             public int? MaxVRAMUsage { get; set; }

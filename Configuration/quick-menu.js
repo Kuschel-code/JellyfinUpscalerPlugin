@@ -1,4 +1,4 @@
-// AI Upscaler Plugin - Enhanced Quick Menu v1.3.6.7
+// AI Upscaler Plugin - Enhanced Quick Menu v1.4.0
 // Advanced compatibility and quick actions
 
 (function() {
@@ -6,7 +6,7 @@
     
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.3.6.7';
+    const PLUGIN_VERSION = '1.4.0';
     
     // Quick menu actions
     const QuickMenuActions = {

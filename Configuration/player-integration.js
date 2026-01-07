@@ -1,4 +1,4 @@
-// AI Upscaler Plugin - Player Integration v1.3.6.7
+// AI Upscaler Plugin - Player Integration v1.4.0
 // Enhanced player button and streaming integration
 
 (function() {
@@ -6,7 +6,7 @@
     
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.3.6.7';
+    const PLUGIN_VERSION = '1.4.0';
     
     // Player integration manager
     const PlayerIntegration = {
@@ -172,7 +172,7 @@
             console.log(`AI Upscaler: Setting model to ${model}`);
             
             // Update configuration
-            this.updatePluginConfig({ model: model });
+            this.updatePluginConfig({ Model: model });
             
             // Show notification
             this.showPlayerNotification(`🎯 Model set to ${model}`, 'success');
@@ -186,7 +186,7 @@
         setScale: function(scale) {
             console.log(`AI Upscaler: Setting scale to ${scale}x`);
             
-            this.updatePluginConfig({ scale: scale });
+            this.updatePluginConfig({ Scale: scale });
             this.showPlayerNotification(`📏 Scale set to ${scale}x`, 'success');
             
             const menu = document.querySelector('#aiUpscalerQuickMenu');
@@ -195,10 +195,10 @@
         
         // Toggle upscaling on/off
         toggleUpscaling: function() {
-            const currentState = this.getPluginConfig().enabled;
+            const currentState = this.getPluginConfig().Enabled;
             const newState = !currentState;
             
-            this.updatePluginConfig({ enabled: newState });
+            this.updatePluginConfig({ Enabled: newState });
             this.showPlayerNotification(
                 `🔄 Upscaling ${newState ? 'enabled' : 'disabled'}`, 
                 newState ? 'success' : 'warning'
@@ -236,31 +236,31 @@
                     <div class="header">📊 AI Upscaler Statistics</div>
                     <div class="stat-item">
                         <span class="stat-label">Status:</span>
-                        <span class="stat-value ${stats.enabled ? 'good' : 'warning'}">
-                            ${stats.enabled ? '✅ Active' : '⚠️ Inactive'}
+                        <span class="stat-value ${stats.Enabled ? 'good' : 'warning'}">
+                            ${stats.Enabled ? '✅ Active' : '⚠️ Inactive'}
                         </span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Model:</span>
-                        <span class="stat-value">${stats.model}</span>
+                        <span class="stat-value">${stats.Model}</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Scale:</span>
-                        <span class="stat-value">${stats.scale}x</span>
+                        <span class="stat-value">${stats.Scale}x</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Quality:</span>
-                        <span class="stat-value">${stats.quality}</span>
+                        <span class="stat-value">${stats.Quality}</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Hardware Acceleration:</span>
-                        <span class="stat-value ${stats.hardwareAcceleration ? 'good' : 'warning'}">
-                            ${stats.hardwareAcceleration ? '✅ Enabled' : '⚠️ Disabled'}
+                        <span class="stat-value ${stats.HardwareAcceleration ? 'good' : 'warning'}">
+                            ${stats.HardwareAcceleration ? '✅ Enabled' : '⚠️ Disabled'}
                         </span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Cache Size:</span>
-                        <span class="stat-value">${stats.cacheSizeMB} MB</span>
+                        <span class="stat-value">${stats.CacheSizeMB} MB</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Performance:</span>
@@ -307,7 +307,7 @@
         // Handle playback start
         onPlaybackStart: function() {
             const config = this.getPluginConfig();
-            if (config.enabled) {
+            if (config.Enabled) {
                 this.showPlayerNotification('🚀 AI Upscaler active', 'info');
             }
         },
@@ -346,12 +346,12 @@
         getPluginConfig: function() {
             // Return mock configuration - in real implementation, fetch from server
             return {
-                enabled: true,
-                model: 'realesrgan',
-                scale: 2,
-                quality: 'balanced',
-                hardwareAcceleration: true,
-                cacheSizeMB: 1024
+                Enabled: true,
+                Model: 'realesrgan',
+                Scale: 2,
+                Quality: 'balanced',
+                HardwareAcceleration: true,
+                CacheSizeMB: 1024
             };
         },
         
