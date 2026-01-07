@@ -1,0 +1,92 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <AssemblyTitle>AI Upscaler Plugin 1.4</AssemblyTitle>
+    <AssemblyVersion>1.4.0.0</AssemblyVersion>
+    <FileVersion>1.4.0.0</FileVersion>
+    <NoWarn>CS8632</NoWarn>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Jellyfin.Controller" Version="10.10.6" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    
+    <!-- AI & Machine Learning Libraries -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.16.3" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.Gpu" Version="1.16.3" />
+    <PackageReference Include="OpenCvSharp4" Version="4.8.0.20230708" />
+    <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.8.0.20230708" />
+    
+    <!-- FFmpeg Integration -->
+    <PackageReference Include="FFMpegCore" Version="5.1.0" />
+    <PackageReference Include="CliWrap" Version="3.6.4" />
+    
+    <!-- Image Processing -->
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.9" />
+    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.4" />
+    
+    <!-- Performance -->
+    <PackageReference Include="System.Memory" Version="4.5.5" />
+    <PackageReference Include="System.Numerics.Vectors" Version="4.5.0" />
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
+  </ItemGroup>
+
+  <!-- Embedded resources for configuration -->
+  <ItemGroup>
+    <EmbeddedResource Include="Configuration\configPage.html" />
+    <EmbeddedResource Include="Configuration\configurationpage.html" />
+    <EmbeddedResource Include="Configuration\configurationpage-enhanced.html" />
+    <EmbeddedResource Include="Configuration\config.js" />
+    <EmbeddedResource Include="Configuration\quick-menu.js" />
+    <EmbeddedResource Include="Configuration\player-integration.js" />
+    <EmbeddedResource Include="Configuration\beginner-presets.html" />
+    <EmbeddedResource Include="Configuration\sidebar-upscaler.js" />
+    <EmbeddedResource Include="Configuration\sidebar-integration.js" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="thumb.jpg" CopyToOutputDirectory="Always" />
+    <None Include="meta.json" CopyToOutputDirectory="Always" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Exclude backup directories and old versions from compilation -->
+    <Compile Remove="JellyfinUpscalerPlugin-Backup/**" />
+    <Compile Remove="JellyfinUpscalerPlugin-Backup-*/**" />
+    <Compile Remove="JellyfinUpscalerPlugin_Backup_*/**" />
+    <Compile Remove="JellyfinUpscalerPlugin-v1.3.5/**" />
+    <Compile Remove="archive/**" />
+    <Compile Remove="docs/**" />
+    <Compile Remove="**/archive/**" />
+    <Compile Remove="dist/**" />
+    <Compile Remove="GitHub-Upload/**" />
+    <Compile Remove="publish-output/**" />
+    <Compile Remove="release-build/**" />
+    <Compile Remove="bin/**" />
+    <Compile Remove="obj/**" />
+    <Compile Remove=".backups/**" />
+    <Compile Remove="release-v*/**" />
+    <Compile Remove="wiki/**" />
+
+    <Compile Remove="web/**" />
+    <Compile Remove="src/**" />
+    <Compile Remove="shaders/**" />
+    <Compile Remove="_exclude/**" />
+    
+    <!-- Exclude complex manager classes that cause build issues -->
+    <Compile Remove="Plugin-Complex.cs" />
+    <Compile Remove="PluginConfiguration-Complex.cs" />
+    <Compile Remove="Plugin-Enhanced-*.cs" />
+    <Compile Remove="PluginConfiguration-Enhanced-*.cs" />
+    <Compile Remove="AV1VideoProcessor-Enhanced-*.cs" />
+  </ItemGroup>
+
+</Project>

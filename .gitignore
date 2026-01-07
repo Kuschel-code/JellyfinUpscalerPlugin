@@ -1,0 +1,32 @@
+# Build artifacts
+bin/
+obj/
+*.dll
+*.pdb
+
+# Plugin packages
+plugin-package/
+*.zip
+
+# IDE files
+.vs/
+.vscode/settings.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Archive (keep in repo but ignore in builds)
+# archive/
+
+# Backup directories (nested git repos)
+.backups/
+.archive/
+JellyfinUpscalerPlugin-Backup*/
+JellyfinUpscalerPlugin_Backup_*/
+JellyfinUpscalerPlugin-v1.3.5/

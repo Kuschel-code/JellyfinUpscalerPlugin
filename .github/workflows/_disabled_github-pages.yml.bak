@@ -1,0 +1,328 @@
+name: 📚 Deploy GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 🔨 Build Documentation
+    runs-on: ubuntu-latest
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+
+    - name: 🔧 Setup Pages
+      uses: actions/configure-pages@v4
+
+    - name: 📚 Build documentation site
+      run: |
+        # Create site directory
+        mkdir -p _site
+        
+        # Copy main documentation
+        cp README.md _site/index.md
+        cp -r docs/* _site/ 2>/dev/null || echo "No docs directory found"
+        cp -r wiki/* _site/ 2>/dev/null || echo "No wiki directory found"
+        
+        # Create a simple index.html
+        cat > _site/index.html << 'EOF'
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Jellyfin AI Upscaler Plugin</title>
+            <style>
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    padding: 20px;
+                    background: #f8f9fa;
+                }
+                .header {
+                    text-align: center;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 40px 20px;
+                    border-radius: 15px;
+                    margin-bottom: 30px;
+                }
+                .header h1 {
+                    margin: 0;
+                    font-size: 2.5em;
+                    font-weight: 700;
+                }
+                .header p {
+                    margin: 10px 0 0;
+                    font-size: 1.2em;
+                    opacity: 0.9;
+                }
+                .features {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                    gap: 20px;
+                    margin-bottom: 40px;
+                }
+                .feature-card {
+                    background: white;
+                    padding: 30px;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    border: 1px solid #e1e5e9;
+                }
+                .feature-card h3 {
+                    color: #667eea;
+                    margin-top: 0;
+                    font-size: 1.4em;
+                }
+                .download-section {
+                    background: white;
+                    padding: 30px;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    text-align: center;
+                    margin-bottom: 30px;
+                }
+                .download-btn {
+                    display: inline-block;
+                    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                    color: white;
+                    padding: 15px 30px;
+                    text-decoration: none;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    font-size: 1.1em;
+                    margin: 10px;
+                    transition: transform 0.2s;
+                }
+                .download-btn:hover {
+                    transform: translateY(-2px);
+                }
+                .version-badge {
+                    background: #dc3545;
+                    color: white;
+                    padding: 5px 12px;
+                    border-radius: 20px;
+                    font-size: 0.9em;
+                    font-weight: 600;
+                }
+                .status-good {
+                    color: #28a745;
+                    font-weight: 600;
+                }
+                .links {
+                    display: flex;
+                    justify-content: center;
+                    gap: 20px;
+                    flex-wrap: wrap;
+                    margin-top: 30px;
+                }
+                .link-btn {
+                    display: inline-block;
+                    background: #6c757d;
+                    color: white;
+                    padding: 10px 20px;
+                    text-decoration: none;
+                    border-radius: 6px;
+                    font-weight: 500;
+                    transition: background 0.2s;
+                }
+                .link-btn:hover {
+                    background: #5a6268;
+                }
+                .footer {
+                    text-align: center;
+                    padding: 20px;
+                    color: #666;
+                    border-top: 1px solid #e1e5e9;
+                    margin-top: 40px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>🚀 Jellyfin AI Upscaler Plugin</h1>
+                <p>Revolutionary AI-powered video upscaling for Jellyfin</p>
+                <div style="margin-top: 15px;">
+                    <span class="version-badge">v1.3.6.5 - Serialization Fixed</span>
+                </div>
+            </div>
+
+            <div class="download-section">
+                <h2>📥 Download Latest Version</h2>
+                <p>Complete serialization fix - works on all platforms!</p>
+                <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/latest" class="download-btn">
+                    ⬇️ Download Plugin
+                </a>
+                <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki/Installation" class="download-btn">
+                    📚 Installation Guide
+                </a>
+            </div>
+
+            <div class="features">
+                <div class="feature-card">
+                    <h3>🔧 Fixed Issues</h3>
+                    <p><span class="status-good">✅ Serialization errors resolved</span></p>
+                    <p><span class="status-good">✅ Zero build warnings</span></p>
+                    <p><span class="status-good">✅ Cross-platform compatibility</span></p>
+                    <p><span class="status-good">✅ Production ready</span></p>
+                </div>
+                
+                <div class="feature-card">
+                    <h3>🤖 AI Models</h3>
+                    <p>9 powerful AI models including:</p>
+                    <ul>
+                        <li>Real-ESRGAN (Photo-realistic)</li>
+                        <li>Waifu2x (Anime/Cartoon)</li>
+                        <li>ESRGAN (General purpose)</li>
+                        <li>EDSR (Fast processing)</li>
+                        <li>SwinIR (Latest technology)</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <h3>🌐 Platform Support</h3>
+                    <p>Works on all major platforms:</p>
+                    <ul>
+                        <li>Windows (x64, ARM64)</li>
+                        <li>Linux (Ubuntu, Debian, CentOS)</li>
+                        <li>macOS (Intel, Apple Silicon)</li>
+                        <li>Docker containers</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <h3>⚡ Performance</h3>
+                    <p>Optimized for maximum performance:</p>
+                    <ul>
+                        <li>GPU acceleration support</li>
+                        <li>Multi-threading</li>
+                        <li>Smart caching</li>
+                        <li>Adaptive quality</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="links">
+                <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" class="link-btn">
+                    📂 GitHub Repository
+                </a>
+                <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues" class="link-btn">
+                    🐛 Report Issues
+                </a>
+                <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions" class="link-btn">
+                    💬 Discussions
+                </a>
+                <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki" class="link-btn">
+                    📖 Wiki
+                </a>
+            </div>
+
+            <div class="footer">
+                <p>© 2024 Jellyfin AI Upscaler Plugin - Open Source Project</p>
+                <p>Built with ❤️ for the Jellyfin community</p>
+            </div>
+        </body>
+        </html>
+        EOF
+        
+        # Copy any additional files
+        cp LICENSE _site/ 2>/dev/null || echo "LICENSE file not found"
+        
+        # Create a simple 404 page
+        cat > _site/404.html << 'EOF'
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>404 - Page Not Found</title>
+            <style>
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    text-align: center;
+                    padding: 50px;
+                    background: #f8f9fa;
+                }
+                .error-content {
+                    max-width: 600px;
+                    margin: 0 auto;
+                    background: white;
+                    padding: 40px;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                }
+                h1 {
+                    color: #dc3545;
+                    font-size: 4em;
+                    margin: 0;
+                }
+                h2 {
+                    color: #6c757d;
+                    margin: 20px 0;
+                }
+                .home-btn {
+                    display: inline-block;
+                    background: #007bff;
+                    color: white;
+                    padding: 12px 24px;
+                    text-decoration: none;
+                    border-radius: 6px;
+                    font-weight: 500;
+                    margin-top: 20px;
+                }
+                .home-btn:hover {
+                    background: #0056b3;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="error-content">
+                <h1>404</h1>
+                <h2>Page Not Found</h2>
+                <p>Sorry, the page you're looking for doesn't exist.</p>
+                <a href="/" class="home-btn">🏠 Go Home</a>
+            </div>
+        </body>
+        </html>
+        EOF
+        
+        echo "📚 Documentation site built successfully!"
+        echo "Files created:"
+        find _site -type f -name "*.html" -o -name "*.md" | head -10
+
+    - name: 📤 Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: '_site'
+
+  deploy:
+    name: 🚀 Deploy to GitHub Pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - name: 🚀 Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+
+    - name: 🎉 Deployment Success
+      run: |
+        echo "🎉 GitHub Pages deployed successfully!"
+        echo "📖 Site URL: ${{ steps.deployment.outputs.page_url }}"

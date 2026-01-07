@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>AI Upscaler Configuration</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: transparent;
+            color: inherit;
+        }
+        
+        .pluginConfigurationPage {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .config-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 25px;
+            background: linear-gradient(135deg, rgba(0, 164, 220, 0.1), rgba(0, 164, 220, 0.05));
+            border-radius: 12px;
+            border: 2px solid rgba(0, 164, 220, 0.3);
+        }
+        
+        .config-header h1 {
+            color: #00a4dc;
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+        
+        .config-header .subtitle {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1em;
+            margin: 0;
+        }
+        
+        .config-section {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .config-section h2 {
+            color: #00a4dc;
+            margin-top: 0;
+            margin-bottom: 25px;
+            font-size: 1.6em;
+            font-weight: 600;
+            border-bottom: 3px solid rgba(0, 164, 220, 0.4);
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #00a4dc;
+            font-size: 1.1em;
+        }
+        
+        .form-group input, 
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(0, 164, 220, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: inherit;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #00a4dc;
+            box-shadow: 0 0 0 3px rgba(0, 164, 220, 0.2);
+        }
+        
+        .form-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .checkbox-group label {
+            margin-bottom: 0;
+            margin-left: 10px;
+            font-weight: 500;
+        }
+        
+        .description {
+            font-size: 0.9em;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 5px;
+            font-style: italic;
+        }
+        
+        .button-group {
+            text-align: center;
+            margin-top: 30px;
+            padding: 25px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+        }
+        
+        .btn {
+            padding: 12px 25px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #00a4dc, #0080b3);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #0080b3, #006699);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 164, 220, 0.4);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d, #545b62);
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #545b62, #424649);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+        }
+        
+        .success-message {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+        
+        .info-card {
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(40, 167, 69, 0.05));
+            border: 2px solid rgba(40, 167, 69, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .info-card h3 {
+            color: #28a745;
+            margin: 0 0 10px 0;
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+        
+        .info-card p {
+            margin: 0;
+            font-size: 1.1em;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .grid-2col {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="pluginConfigurationPage">
+        <div class="config-header">
+            <h1>🎮 AI Upscaler Plugin</h1>
+            <p class="subtitle">Version 1.3.6.4 - Ultimate AI Video Enhancement</p>
+        </div>
+
+        <div class="info-card">
+            <h3>🚀 Plugin Successfully Installed!</h3>
+            <p>The AI Upscaler Plugin is now active and ready to enhance your videos. Configure your settings below and look for the "🎮 AI" button in your video player.</p>
+        </div>
+
+        <form id="configForm">
+            <div class="config-section">
+                <h2>⚙️ Basic Settings</h2>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="EnablePlugin" checked>
+                    <label for="EnablePlugin">Enable AI Upscaler Plugin</label>
+                </div>
+                <div class="description">Master switch to enable or disable the plugin</div>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="ShowPlayerButton" checked>
+                    <label for="ShowPlayerButton">Show AI Button in Video Player</label>
+                </div>
+                <div class="description">Adds the AI upscaling button to video player controls</div>
+                
+                <div class="form-group">
+                    <label for="Model">Default AI Model:</label>
+                    <select id="Model">
+                        <option value="realesrgan" selected>Real-ESRGAN (Best Overall Quality)</option>
+                        <option value="esrgan-pro">ESRGAN Pro (Movies & TV Shows)</option>
+                        <option value="swinir">SwinIR (Complex Scenes)</option>
+                        <option value="srcnn-light">SRCNN Light (Fast Processing)</option>
+                        <option value="waifu2x">Waifu2x (Anime Content)</option>
+                        <option value="hat">HAT (High Detail Enhancement)</option>
+                        <option value="edsr">EDSR (Precise Upscaling)</option>
+                        <option value="vdsr">VDSR (Deep Learning)</option>
+                        <option value="rdn">RDN (Texture Enhancement)</option>
+                        <option value="srresnet">SRResNet (Balanced Performance)</option>
+                        <option value="carn">CARN (Compact & Fast)</option>
+                        <option value="rrdbnet">RRDBNet (High Quality)</option>
+                        <option value="drln">DRLN (Noise Reduction)</option>
+                        <option value="fsrcnn">FSRCNN (Lightweight)</option>
+                    </select>
+                    <div class="description">Select the primary AI model for video upscaling</div>
+                </div>
+                
+                <div class="grid-2col">
+                    <div class="form-group">
+                        <label for="ScaleFactor">Scale Factor:</label>
+                        <select id="ScaleFactor">
+                            <option value="2">2x Upscaling</option>
+                            <option value="3" selected>3x Upscaling</option>
+                            <option value="4">4x Upscaling</option>
+                        </select>
+                        <div class="description">Default upscaling factor</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="QualityLevel">Quality Level:</label>
+                        <select id="QualityLevel">
+                            <option value="high">High Quality (Best Results)</option>
+                            <option value="medium" selected>Medium Quality (Balanced)</option>
+                            <option value="low">Low Quality (Fastest)</option>
+                        </select>
+                        <div class="description">Balance between quality and speed</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h2>🔧 Hardware Settings</h2>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="EnableHardwareAcceleration" checked>
+                    <label for="EnableHardwareAcceleration">Enable Hardware Acceleration</label>
+                </div>
+                <div class="description">Use GPU for faster processing when available</div>
+                
+                <div class="grid-2col">
+                    <div class="form-group">
+                        <label for="MaxVRAMUsage">Max VRAM Usage (MB):</label>
+                        <input type="number" id="MaxVRAMUsage" value="2048" min="512" max="16384">
+                        <div class="description">Maximum VRAM to use for upscaling</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="CpuThreads">CPU Threads:</label>
+                        <input type="number" id="CpuThreads" value="4" min="1" max="32">
+                        <div class="description">Number of CPU threads for processing</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h2>🎮 Video Player Integration</h2>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="EnableNotifications" checked>
+                    <label for="EnableNotifications">Enable Progress Notifications</label>
+                </div>
+                <div class="description">Show upscaling progress notifications</div>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="AutoRetryButton" checked>
+                    <label for="AutoRetryButton">Auto-Retry Button Injection</label>
+                </div>
+                <div class="description">Automatically retry if AI button doesn't appear</div>
+                
+                <div class="form-group">
+                    <label for="ButtonPosition">Button Position:</label>
+                    <select id="ButtonPosition">
+                        <option value="right" selected>Right Side</option>
+                        <option value="left">Left Side</option>
+                        <option value="center">Center</option>
+                    </select>
+                    <div class="description">Position of AI button in video player</div>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button type="button" class="btn btn-primary" onclick="saveConfiguration()">
+                    💾 Save Configuration
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="resetConfiguration()">
+                    🔄 Reset to Defaults
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script type="text/javascript">
+        (function() {
+            'use strict';
+            
+            // Configuration object with defaults
+            var config = {
+                EnablePlugin: true,
+                ShowPlayerButton: true,
+                Model: 'realesrgan',
+                ScaleFactor: 3,
+                QualityLevel: 'medium',
+                EnableHardwareAcceleration: true,
+                MaxVRAMUsage: 2048,
+                CpuThreads: 4,
+                EnableNotifications: true,
+                AutoRetryButton: true,
+                ButtonPosition: 'right'
+            };
+
+            // Plugin ID for API calls
+            var pluginId = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
+
+            // Initialize the configuration page
+            function init() {
+                console.log('AI Upscaler Plugin: Configuration page initializing...');
+                loadConfiguration();
+                updateUI();
+                console.log('AI Upscaler Plugin: Configuration page loaded successfully');
+            }
+
+            // Load configuration from Jellyfin
+            function loadConfiguration() {
+                try {
+                    // Try to load from Jellyfin API first
+                    if (typeof ApiClient !== 'undefined' && ApiClient.getPluginConfiguration) {
+                        ApiClient.getPluginConfiguration(pluginId).then(function(currentConfig) {
+                            if (currentConfig) {
+                                config = Object.assign(config, currentConfig);
+                                updateUI();
+                                console.log('AI Upscaler: Configuration loaded from Jellyfin API');
+                            }
+                        }).catch(function(error) {
+                            console.log('AI Upscaler: Fallback to localStorage -', error);
+                            loadFromLocalStorage();
+                        });
+                    } else {
+                        loadFromLocalStorage();
+                    }
+                } catch (error) {
+                    console.log('AI Upscaler: Error loading configuration -', error);
+                    loadFromLocalStorage();
+                }
+            }
+
+            // Load from localStorage as fallback
+            function loadFromLocalStorage() {
+                try {
+                    var stored = localStorage.getItem('aiUpscalerConfig');
+                    if (stored) {
+                        config = Object.assign(config, JSON.parse(stored));
+                        updateUI();
+                        console.log('AI Upscaler: Configuration loaded from localStorage');
+                    }
+                } catch (error) {
+                    console.log('AI Upscaler: Using default configuration');
+                }
+            }
+
+            // Update UI with current configuration
+            function updateUI() {
+                Object.keys(config).forEach(function(key) {
+                    var element = document.getElementById(key);
+                    if (element) {
+                        if (element.type === 'checkbox') {
+                            element.checked = !!config[key];
+                        } else if (element.type === 'number') {
+                            element.value = config[key] || 0;
+                        } else {
+                            element.value = config[key] || '';
+                        }
+                    }
+                });
+            }
+
+            // Save configuration
+            window.saveConfiguration = function() {
+                try {
+                    // Collect all form values
+                    Object.keys(config).forEach(function(key) {
+                        var element = document.getElementById(key);
+                        if (element) {
+                            if (element.type === 'checkbox') {
+                                config[key] = element.checked;
+                            } else if (element.type === 'number') {
+                                config[key] = parseInt(element.value) || 0;
+                            } else {
+                                config[key] = element.value;
+                            }
+                        }
+                    });
+
+                    // Save to Jellyfin API
+                    if (typeof ApiClient !== 'undefined' && ApiClient.updatePluginConfiguration) {
+                        ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
+                            showSuccessMessage('✅ Configuration saved successfully!');
+                            injectPlayerButton();
+                        }).catch(function(error) {
+                            console.error('AI Upscaler: API save failed -', error);
+                            fallbackSave();
+                        });
+                    } else {
+                        fallbackSave();
+                    }
+                } catch (error) {
+                    console.error('AI Upscaler: Save error -', error);
+                    fallbackSave();
+                }
+            };
+
+            // Fallback save method
+            function fallbackSave() {
+                try {
+                    localStorage.setItem('aiUpscalerConfig', JSON.stringify(config));
+                    showSuccessMessage('✅ Configuration saved (fallback mode)');
+                    injectPlayerButton();
+                } catch (error) {
+                    showErrorMessage('❌ Save failed: ' + error.message);
+                }
+            }
+
+            // Reset to defaults
+            window.resetConfiguration = function() {
+                if (confirm('Reset all settings to defaults?')) {
+                    config = {
+                        EnablePlugin: true,
+                        ShowPlayerButton: true,
+                        Model: 'realesrgan',
+                        ScaleFactor: 3,
+                        QualityLevel: 'medium',
+                        EnableHardwareAcceleration: true,
+                        MaxVRAMUsage: 2048,
+                        CpuThreads: 4,
+                        EnableNotifications: true,
+                        AutoRetryButton: true,
+                        ButtonPosition: 'right'
+                    };
+                    
+                    updateUI();
+                    showSuccessMessage('✅ Settings reset to defaults');
+                }
+            };
+
+            // Inject player button after save
+            function injectPlayerButton() {
+                if (!config.ShowPlayerButton) return;
+                
+                // Create and inject the player integration script
+                var script = document.createElement('script');
+                script.src = 'web/player-integration.js';
+                script.onload = function() {
+                    console.log('AI Upscaler: Player integration script loaded');
+                };
+                document.head.appendChild(script);
+            }
+
+            // Show success message
+            function showSuccessMessage(message) {
+                removeExistingMessage();
+                
+                var messageDiv = document.createElement('div');
+                messageDiv.className = 'success-message';
+                messageDiv.textContent = message;
+                messageDiv.id = 'configMessage';
+                
+                var container = document.querySelector('.pluginConfigurationPage');
+                container.insertBefore(messageDiv, container.firstChild);
+                
+                setTimeout(function() {
+                    removeExistingMessage();
+                }, 3000);
+            }
+
+            // Show error message
+            function showErrorMessage(message) {
+                removeExistingMessage();
+                
+                var messageDiv = document.createElement('div');
+                messageDiv.style.cssText = 'background: #dc3545; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: 600;';
+                messageDiv.textContent = message;
+                messageDiv.id = 'configMessage';
+                
+                var container = document.querySelector('.pluginConfigurationPage');
+                container.insertBefore(messageDiv, container.firstChild);
+                
+                setTimeout(function() {
+                    removeExistingMessage();
+                }, 5000);
+            }
+
+            // Remove existing message
+            function removeExistingMessage() {
+                var existing = document.getElementById('configMessage');
+                if (existing) {
+                    existing.remove();
+                }
+            }
+
+            // Initialize when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+
+            // Load Quick Menu and Player Integration
+            function loadJavaScriptComponents() {
+                try {
+                    // Load Quick Menu
+                    fetch('/web/ConfigurationPage?name=aiupscaler-quickmenu.js')
+                        .then(response => response.text())
+                        .then(script => {
+                            const scriptElement = document.createElement('script');
+                            scriptElement.textContent = script;
+                            document.head.appendChild(scriptElement);
+                            console.log('AI Upscaler: Quick Menu loaded');
+                        })
+                        .catch(error => console.log('Quick Menu load error:', error));
+
+                    // Load Player Integration  
+                    fetch('/web/ConfigurationPage?name=aiupscaler-player.js')
+                        .then(response => response.text())
+                        .then(script => {
+                            const scriptElement = document.createElement('script');
+                            scriptElement.textContent = script;
+                            document.head.appendChild(scriptElement);
+                            console.log('AI Upscaler: Player Integration loaded');
+                        })
+                        .catch(error => console.log('Player Integration load error:', error));
+                } catch (error) {
+                    console.log('JavaScript components load error:', error);
+                }
+            }
+
+            // Load components after page init
+            setTimeout(loadJavaScriptComponents, 1000);
+        })();
+    </script>
+</body>
+</html>

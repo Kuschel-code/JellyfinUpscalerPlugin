@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Upscaler Logo Generator</title>
+</head>
+<body>
+    <canvas id="logoCanvas" width="512" height="512"></canvas>
+    <script>
+        const canvas = document.getElementById('logoCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Background gradient
+        const gradient = ctx.createLinearGradient(0, 0, 512, 512);
+        gradient.addColorStop(0, '#3498db');
+        gradient.addColorStop(0.5, '#2980b9');
+        gradient.addColorStop(1, '#1f4e79');
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 512, 512);
+
+        // Add glow effect
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.3)';
+        ctx.shadowBlur = 20;
+
+        // Main circle
+        ctx.beginPath();
+        ctx.arc(256, 256, 200, 0, 2 * Math.PI);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.fill();
+
+        // AI Symbol (center)
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 80px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('AI', 256, 220);
+
+        // Upscale arrows
+        ctx.strokeStyle = '#00d4ff';
+        ctx.lineWidth = 12;
+        ctx.lineCap = 'round';
+        
+        // Up arrow
+        ctx.beginPath();
+        ctx.moveTo(200, 320);
+        ctx.lineTo(230, 290);
+        ctx.lineTo(260, 320);
+        ctx.stroke();
+        
+        // Right arrow
+        ctx.beginPath();
+        ctx.moveTo(290, 280);
+        ctx.lineTo(320, 310);
+        ctx.lineTo(290, 340);
+        ctx.stroke();
+
+        // Corner elements
+        ctx.fillStyle = '#00d4ff';
+        const corners = [
+            {x: 100, y: 100}, {x: 412, y: 100},
+            {x: 100, y: 412}, {x: 412, y: 412}
+        ];
+        
+        corners.forEach(corner => {
+            ctx.beginPath();
+            ctx.arc(corner.x, corner.y, 8, 0, 2 * Math.PI);
+            ctx.fill();
+        });
+
+        // Download link
+        setTimeout(() => {
+            const link = document.createElement('a');
+            link.download = 'ai-upscaler-logo.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }, 100);
+    </script>
+</body>
+</html>

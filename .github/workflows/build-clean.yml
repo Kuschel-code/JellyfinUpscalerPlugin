@@ -1,0 +1,55 @@
+name: Build Plugin
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: "8.0.x"
+
+jobs:
+  build:
+    name: Build Plugin
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Clean
+      run: dotnet clean
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Verify build output
+      run: |
+        echo "Build completed successfully!"
+        echo "Checking for DLL:"
+        ls -la bin/Release/net8.0/
+        if [ -f "bin/Release/net8.0/JellyfinUpscalerPlugin.dll" ]; then
+          echo "Plugin DLL found!"
+        else
+          echo "Plugin DLL not found!"
+          exit 1
+        fi
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: plugin-build
+        path: |
+          bin/Release/net8.0/*.dll
+          bin/Release/net8.0/*.json
+          bin/Release/net8.0/*.jpg

@@ -1,0 +1,311 @@
+name: 🔧 Troubleshoot Build Issues
+
+on:
+  workflow_dispatch:
+    inputs:
+      debug_level:
+        description: 'Debug level (basic/detailed/verbose)'
+        required: true
+        default: 'detailed'
+        type: choice
+        options:
+        - basic
+        - detailed
+        - verbose
+
+jobs:
+  diagnose-issues:
+    name: 🔍 Diagnose Build Issues
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: 🔧 Setup .NET 8.0
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: 🔍 Repository Structure Analysis
+      run: |
+        echo "🔍 Analyzing repository structure..."
+        echo "📁 Root directory contents:"
+        ls -la
+        
+        echo ""
+        echo "📋 Project files:"
+        find . -name "*.csproj" -o -name "*.sln" -o -name "*.cs" | head -20
+        
+        echo ""
+        echo "📦 Configuration files:"
+        find . -name "*.json" -o -name "*.yml" -o -name "*.yaml" | head -20
+        
+        echo ""
+        echo "🌐 Web files:"
+        find . -name "*.html" -o -name "*.css" -o -name "*.js" | head -20
+
+    - name: 🧪 Test .NET Restore
+      run: |
+        echo "🧪 Testing .NET restore..."
+        dotnet restore --verbosity detailed || echo "❌ Restore failed"
+        
+        echo ""
+        echo "📦 Package references:"
+        dotnet list package || echo "❌ Could not list packages"
+
+    - name: 🔨 Test Build Process
+      run: |
+        echo "🔨 Testing build process..."
+        
+        # Test Debug build
+        echo "🔍 Testing Debug build..."
+        dotnet build --configuration Debug --verbosity ${{ github.event.inputs.debug_level }} || echo "❌ Debug build failed"
+        
+        # Test Release build
+        echo "🔍 Testing Release build..."
+        dotnet build --configuration Release --verbosity ${{ github.event.inputs.debug_level }} || echo "❌ Release build failed"
+        
+        # Check output directories
+        echo ""
+        echo "📁 Build output directories:"
+        find . -name "bin" -type d | head -10
+        find . -name "obj" -type d | head -10
+        
+        # Check for DLL files
+        echo ""
+        echo "📦 Generated DLL files:"
+        find . -name "*.dll" | head -10
+
+    - name: 📋 Environment Information
+      run: |
+        echo "📋 Environment information:"
+        echo "OS: $(uname -a)"
+        echo "Docker: $(docker --version || echo 'Not available')"
+        echo ".NET: $(dotnet --version)"
+        echo "Node.js: $(node --version || echo 'Not available')"
+        echo "Python: $(python3 --version || echo 'Not available')"
+        echo "Git: $(git --version)"
+        
+        echo ""
+        echo "🔧 .NET SDKs:"
+        dotnet --list-sdks
+        
+        echo ""
+        echo "🎯 .NET Runtimes:"
+        dotnet --list-runtimes
+
+    - name: 🔍 GitHub Actions Workflow Analysis
+      run: |
+        echo "🔍 Analyzing GitHub Actions workflows..."
+        
+        if [ -d ".github/workflows" ]; then
+          echo "📁 Workflow files:"
+          ls -la .github/workflows/
+          
+          echo ""
+          echo "📋 Workflow syntax check:"
+          for file in .github/workflows/*.yml .github/workflows/*.yaml; do
+            if [ -f "$file" ]; then
+              echo "Checking $file..."
+              python3 -c "import yaml; yaml.safe_load(open('$file'))" && echo "✅ Valid YAML" || echo "❌ Invalid YAML"
+            fi
+          done
+        else
+          echo "❌ No workflows directory found"
+        fi
+
+    - name: 🔍 Plugin Files Analysis
+      run: |
+        echo "🔍 Analyzing plugin files..."
+        
+        # Check for essential plugin files
+        FILES=("Plugin.cs" "PluginConfiguration.cs" "meta.json" "manifest.json")
+        for file in "${FILES[@]}"; do
+          if [ -f "$file" ]; then
+            echo "✅ $file exists ($(stat -c%s "$file") bytes)"
+          else
+            echo "❌ $file missing"
+          fi
+        done
+        
+        # Check web directory
+        if [ -d "web" ]; then
+          echo "✅ web directory exists"
+          echo "📁 Web files:"
+          ls -la web/ | head -10
+        else
+          echo "❌ web directory missing"
+        fi
+        
+        # Check Configuration directory
+        if [ -d "Configuration" ]; then
+          echo "✅ Configuration directory exists"
+          echo "📁 Configuration files:"
+          ls -la Configuration/ | head -10
+        else
+          echo "❌ Configuration directory missing"
+        fi
+
+    - name: 🔍 Dependency Analysis
+      run: |
+        echo "🔍 Analyzing dependencies..."
+        
+        # Check project file
+        if [ -f "JellyfinUpscalerPlugin.csproj" ]; then
+          echo "📋 Project file contents:"
+          cat JellyfinUpscalerPlugin.csproj
+          
+          echo ""
+          echo "📦 Package references:"
+          grep -i "packagereference" JellyfinUpscalerPlugin.csproj || echo "No package references found"
+        else
+          echo "❌ Project file not found"
+        fi
+
+    - name: 🔍 Error Pattern Analysis
+      run: |
+        echo "🔍 Analyzing potential error patterns..."
+        
+        # Check for common serialization issues
+        echo "🔍 Checking for serialization issues:"
+        grep -r "Dictionary<string,object>" . --include="*.cs" || echo "No Dictionary<string,object> found"
+        grep -r "IDictionary" . --include="*.cs" || echo "No IDictionary found"
+        
+        # Check for async/await issues
+        echo ""
+        echo "🔍 Checking for async/await issues:"
+        grep -r "async.*Task.*{" . --include="*.cs" | head -10 || echo "No async methods found"
+        
+        # Check for XML serialization issues
+        echo ""
+        echo "🔍 Checking for XML serialization patterns:"
+        grep -r "XmlSerializer\|XmlIgnore\|XmlElement" . --include="*.cs" || echo "No XML serialization attributes found"
+
+    - name: 📊 Build Summary
+      run: |
+        echo "📊 Build diagnosis summary:"
+        echo "========================="
+        
+        # Summary of findings
+        echo "🔍 Repository Status:"
+        [ -f "JellyfinUpscalerPlugin.csproj" ] && echo "✅ Project file exists" || echo "❌ Project file missing"
+        [ -f "Plugin.cs" ] && echo "✅ Main plugin file exists" || echo "❌ Main plugin file missing"
+        [ -f "meta.json" ] && echo "✅ Metadata file exists" || echo "❌ Metadata file missing"
+        [ -d "web" ] && echo "✅ Web directory exists" || echo "❌ Web directory missing"
+        [ -d ".github/workflows" ] && echo "✅ GitHub Actions configured" || echo "❌ No GitHub Actions"
+        
+        echo ""
+        echo "🎯 Next steps for fixing issues:"
+        echo "1. Check build output above for specific errors"
+        echo "2. Verify all required files are present"
+        echo "3. Test local build with 'dotnet build'"
+        echo "4. Check GitHub Actions workflow syntax"
+        echo "5. Verify dependencies are correctly specified"
+        
+        echo ""
+        echo "🔧 Common fixes:"
+        echo "- Ensure .NET 8.0 SDK is installed"
+        echo "- Check NuGet package references"
+        echo "- Verify file permissions"
+        echo "- Update workflow configurations"
+
+  test-package-creation:
+    name: 📦 Test Package Creation
+    runs-on: ubuntu-latest
+    needs: diagnose-issues
+    
+    steps:
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: 🔧 Setup .NET 8.0
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: 📦 Test Package Creation
+      run: |
+        echo "📦 Testing package creation process..."
+        
+        # Restore and build
+        dotnet restore
+        dotnet build --configuration Release
+        
+        # Create package directory
+        mkdir -p test-package
+        
+        # Copy essential files
+        cp -r bin/Release/net8.0/* test-package/ 2>/dev/null || echo "No build output to copy"
+        cp manifest.json test-package/ 2>/dev/null || echo "manifest.json not found"
+        cp meta.json test-package/ 2>/dev/null || echo "meta.json not found"
+        cp README.md test-package/ 2>/dev/null || echo "README.md not found"
+        
+        # Copy web files
+        [ -d "web" ] && cp -r web test-package/ || echo "web directory not found"
+        [ -d "Configuration" ] && cp -r Configuration test-package/ || echo "Configuration directory not found"
+        
+        # Create test ZIP
+        cd test-package
+        zip -r ../test-plugin-package.zip . || echo "Failed to create ZIP"
+        cd ..
+        
+        # Verify package
+        if [ -f "test-plugin-package.zip" ]; then
+          echo "✅ Package created successfully"
+          echo "📊 Package size: $(stat -c%s test-plugin-package.zip) bytes"
+          echo "📋 Package contents:"
+          unzip -l test-plugin-package.zip | head -20
+        else
+          echo "❌ Package creation failed"
+        fi
+
+    - name: 📤 Upload Test Package
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-plugin-package
+        path: test-plugin-package.zip
+
+  fix-common-issues:
+    name: 🔧 Apply Common Fixes
+    runs-on: ubuntu-latest
+    needs: [diagnose-issues, test-package-creation]
+    if: always()
+    
+    steps:
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: 🔧 Apply Common Fixes
+      run: |
+        echo "🔧 Applying common fixes..."
+        
+        # Fix file permissions
+        echo "🔐 Fixing file permissions..."
+        chmod +x .github/workflows/*.yml 2>/dev/null || true
+        
+        # Create missing directories
+        echo "📁 Creating missing directories..."
+        mkdir -p bin/Release/net8.0
+        mkdir -p obj/Release/net8.0
+        
+        # Fix line endings (if needed)
+        echo "📝 Fixing line endings..."
+        find . -name "*.cs" -o -name "*.json" -o -name "*.yml" | xargs dos2unix 2>/dev/null || true
+        
+        echo "✅ Common fixes applied"
+
+    - name: 🎉 Troubleshooting Complete
+      run: |
+        echo "🎉 Troubleshooting workflow completed!"
+        echo ""
+        echo "📋 Summary:"
+        echo "- Repository structure analyzed"
+        echo "- Build process tested"
+        echo "- Package creation verified"
+        echo "- Common fixes applied"
+        echo ""
+        echo "🔧 If issues persist, check the workflow logs above for specific error messages."

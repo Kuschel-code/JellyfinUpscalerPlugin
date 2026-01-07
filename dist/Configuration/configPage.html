@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>AI Upscaler Plugin</title>
+</head>
+
+<body>
+    <div class="content-primary">
+        
+        <div class="verticalSection">
+            <div class="sectionTitleContainer flex align-items-center">
+                <h2 class="sectionTitle">AI Upscaler Plugin v1.3.4</h2>
+            </div>
+        </div>
+
+        <form class="AIUpscalerConfigForm">
+            
+            <!-- Basic Settings -->
+            <div class="verticalSection">
+                <h3 class="sectionTitle">Basic Settings</h3>
+                
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="EnablePlugin">Enable AI Upscaler:</label>
+                    <input type="checkbox" is="emby-checkbox" id="EnablePlugin" checked />
+                    <div class="fieldDescription">Enable real-time AI video upscaling for all media playback.</div>
+                </div>
+                
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="DefaultProfile">Default Profile:</label>
+                    <select is="emby-select" id="DefaultProfile" class="emby-select-withcolor emby-select">
+                        <option value="auto">Auto (Recommended)</option>
+                        <option value="quality">High Quality</option>
+                        <option value="balanced">Balanced</option>
+                        <option value="performance">Performance</option>
+                        <option value="light">Light Mode</option>
+                    </select>
+                    <div class="fieldDescription">Choose the default upscaling profile. Auto mode selects the best option based on your hardware.</div>
+                </div>
+                
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="ScaleFactor">Scale Factor:</label>
+                    <select is="emby-select" id="ScaleFactor" class="emby-select-withcolor emby-select">
+                        <option value="1.5">1.5x</option>
+                        <option value="2.0" selected>2.0x (Recommended)</option>
+                        <option value="2.5">2.5x</option>
+                        <option value="3.0">3.0x</option>
+                        <option value="4.0">4.0x</option>
+                    </select>
+                    <div class="fieldDescription">Higher values provide better quality but require more processing power.</div>
+                </div>
+            </div>
+            
+            <!-- Enterprise Features -->
+            <div class="verticalSection">
+                <h3 class="sectionTitle">🔋 Light Mode System</h3>
+                
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="EnableLightMode">Auto Light Mode:</label>
+                    <input type="checkbox" is="emby-checkbox" id="EnableLightMode" checked />
+                    <div class="fieldDescription">Automatically enable Light Mode for systems with &lt;8GB RAM or no dedicated GPU.</div>
+                </div>
+                
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="ThermalThrottling">Thermal Protection:</label>
+                    <input type="checkbox" is="emby-checkbox" id="ThermalThrottling" checked />
+                    <div class="fieldDescription">Automatically reduce processing intensity when GPU temperature exceeds 85°C.</div>
+                </div>
+                
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="BatteryOptimization">Battery Optimization:</label>
+                    <input type="checkbox" is="emby-checkbox" id="BatteryOptimization" checked />
+                    <div class="fieldDescription">Optimize for battery-powered devices like laptops and tablets.</div>
+                </div>
+            </div>
+            
+            <div class="verticalSection">
+                <h3 class="sectionTitle">🤖 AI Model Manager</h3>
+                
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="AutoModelDownload">Auto Model Download:</label>
+                    <input type="checkbox" is="emby-checkbox" id="AutoModelDownload" checked />
+                    <div class="fieldDescription">Automatically download and install recommended AI models for your hardware.</div>
+                </div>
+                
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="PreferredModel">Preferred AI Model:</label>
+                    <select is="emby-select" id="PreferredModel" class="emby-select-withcolor emby-select">
+                        <option value="auto">Auto Select</option>
+                        <option value="srcnn-light">SRCNN Light (12MB)</option>
+                        <option value="real-esrgan">Real-ESRGAN (Professional)</option>
+                        <option value="esrgan-pro">ESRGAN Pro</option>
+                        <option value="swinir">SwinIR (Advanced)</option>
+                        <option value="waifu2x">Waifu2x (Anime)</option>
+                        <option value="hat">HAT (High Quality)</option>
+                    </select>
+                    <div class="fieldDescription">Choose your preferred AI model or let the system auto-select based on content type.</div>
+                </div>
+            </div>
+            
+            <div class="verticalSection">
+                <h3 class="sectionTitle">🎬 Frame Interpolation</h3>
+                
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="EnableFrameInterpolation">Enable Frame Interpolation:</label>
+                    <input type="checkbox" is="emby-checkbox" id="EnableFrameInterpolation" />
+                    <div class="fieldDescription">Add intermediate frames to increase smoothness. Default: OFF for cinema content protection.</div>
+                </div>
+                
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="CinemaProtection">Cinema Mode Protection:</label>
+                    <input type="checkbox" is="emby-checkbox" id="CinemaProtection" checked />
+                    <div class="fieldDescription">Automatically skip frame interpolation for 24fps movies to preserve filmmaker intent.</div>
+                </div>
+            </div>
+            
+            <div class="verticalSection">
+                <h3 class="sectionTitle">📱 Mobile Support</h3>
+                
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="EnableMobileSupport">Enable Mobile Support:</label>
+                    <input type="checkbox" is="emby-checkbox" id="EnableMobileSupport" checked />
+                    <div class="fieldDescription">Enable server-side processing for mobile devices, tablets, and low-power clients.</div>
+                </div>
+                
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="PreUpscaling">Pre-upscaling Cache:</label>
+                    <input type="checkbox" is="emby-checkbox" id="PreUpscaling" checked />
+                    <div class="fieldDescription">Pre-process popular content for instant mobile streaming.</div>
+                </div>
+            </div>
+            
+            <div class="verticalSection">
+                <h3 class="sectionTitle">Advanced Settings</h3>
+                
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="DebugMode">Debug Mode:</label>
+                    <input type="checkbox" is="emby-checkbox" id="DebugMode" />
+                    <div class="fieldDescription">Enable detailed logging for troubleshooting. Only enable when needed.</div>
+                </div>
+                
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="PerformanceMonitoring">Performance Monitoring:</label>
+                    <input type="checkbox" is="emby-checkbox" id="PerformanceMonitoring" checked />
+                    <div class="fieldDescription">Show real-time performance statistics and hardware utilization.</div>
+                </div>
+            </div>
+            
+            <br />
+            <div>
+                <button is="emby-button" type="submit" class="raised button-submit block">
+                    <span>Save</span>
+                </button>
+            </div>
+            
+        </form>
+    </div>
+
+    <script type="text/javascript">
+        (function () {
+            var pluginId = "8c467bb1-c2b8-4a75-b1ab-7b7b7c7c7c7c";
+
+            ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                // Load current configuration
+                document.querySelector('#EnablePlugin').checked = config.EnablePlugin !== false;
+                document.querySelector('#DefaultProfile').value = config.DefaultProfile || 'auto';
+                document.querySelector('#ScaleFactor').value = config.ScaleFactor || '2.0';
+                document.querySelector('#EnableLightMode').checked = config.EnableLightMode !== false;
+                document.querySelector('#ThermalThrottling').checked = config.ThermalThrottling !== false;
+                document.querySelector('#BatteryOptimization').checked = config.BatteryOptimization !== false;
+                document.querySelector('#AutoModelDownload').checked = config.AutoModelDownload !== false;
+                document.querySelector('#PreferredModel').value = config.PreferredModel || 'auto';
+                document.querySelector('#EnableFrameInterpolation').checked = config.EnableFrameInterpolation === true;
+                document.querySelector('#CinemaProtection').checked = config.CinemaProtection !== false;
+                document.querySelector('#EnableMobileSupport').checked = config.EnableMobileSupport !== false;
+                document.querySelector('#PreUpscaling').checked = config.PreUpscaling !== false;
+                document.querySelector('#DebugMode').checked = config.DebugMode === true;
+                document.querySelector('#PerformanceMonitoring').checked = config.PerformanceMonitoring !== false;
+            });
+
+            document.querySelector('.AIUpscalerConfigForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                var config = {
+                    EnablePlugin: document.querySelector('#EnablePlugin').checked,
+                    DefaultProfile: document.querySelector('#DefaultProfile').value,
+                    ScaleFactor: document.querySelector('#ScaleFactor').value,
+                    EnableLightMode: document.querySelector('#EnableLightMode').checked,
+                    ThermalThrottling: document.querySelector('#ThermalThrottling').checked,
+                    BatteryOptimization: document.querySelector('#BatteryOptimization').checked,
+                    AutoModelDownload: document.querySelector('#AutoModelDownload').checked,
+                    PreferredModel: document.querySelector('#PreferredModel').value,
+                    EnableFrameInterpolation: document.querySelector('#EnableFrameInterpolation').checked,
+                    CinemaProtection: document.querySelector('#CinemaProtection').checked,
+                    EnableMobileSupport: document.querySelector('#EnableMobileSupport').checked,
+                    PreUpscaling: document.querySelector('#PreUpscaling').checked,
+                    DebugMode: document.querySelector('#DebugMode').checked,
+                    PerformanceMonitoring: document.querySelector('#PerformanceMonitoring').checked
+                };
+
+                ApiClient.updatePluginConfiguration(pluginId, config).then(function () {
+                    Dashboard.processPluginConfigurationUpdateResult();
+                    
+                    // Show success message
+                    require(['toast'], function(toast) {
+                        toast('Settings saved successfully!');
+                    });
+                });
+            });
+
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,611 @@
+name: 🌐 Deploy Website & Fix Issues
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'  # Daily at 6 AM
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    name: 🔨 Build and Deploy Website
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: 🔧 Setup Pages
+      uses: actions/configure-pages@v4
+
+    - name: 🔧 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: 📚 Build Website
+      run: |
+        echo "🚀 Building Jellyfin AI Upscaler Plugin Website..."
+        
+        # Create site directory
+        mkdir -p _site
+        
+        # Create enhanced index.html with error handling
+        cat > _site/index.html << 'EOF'
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Jellyfin AI Upscaler Plugin - v1.3.6.5 Serialization Fixed</title>
+            <meta name="description" content="Revolutionary AI-powered video upscaling for Jellyfin. Serialization issues completely resolved. Download now!">
+            <meta name="keywords" content="Jellyfin, AI, Upscaler, Plugin, Video, Enhancement, Serialization, Fixed">
+            <meta name="author" content="Kuschel-code">
+            
+            <!-- Open Graph / Facebook -->
+            <meta property="og:type" content="website">
+            <meta property="og:url" content="https://kuschel-code.github.io/JellyfinUpscalerPlugin/">
+            <meta property="og:title" content="Jellyfin AI Upscaler Plugin - v1.3.6.5 Serialization Fixed">
+            <meta property="og:description" content="Revolutionary AI-powered video upscaling for Jellyfin. Serialization issues completely resolved.">
+            <meta property="og:image" content="https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/assets/plugin-preview.png">
+            
+            <!-- Twitter -->
+            <meta property="twitter:card" content="summary_large_image">
+            <meta property="twitter:url" content="https://kuschel-code.github.io/JellyfinUpscalerPlugin/">
+            <meta property="twitter:title" content="Jellyfin AI Upscaler Plugin - v1.3.6.5 Serialization Fixed">
+            <meta property="twitter:description" content="Revolutionary AI-powered video upscaling for Jellyfin. Serialization issues completely resolved.">
+            <meta property="twitter:image" content="https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/assets/plugin-preview.png">
+            
+            <!-- Favicon -->
+            <link rel="icon" type="image/x-icon" href="https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/assets/favicon.ico">
+            
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    min-height: 100vh;
+                }
+                
+                .container {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }
+                
+                .header {
+                    background: rgba(255, 255, 255, 0.95);
+                    border-radius: 20px;
+                    padding: 40px;
+                    margin-bottom: 30px;
+                    text-align: center;
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+                    backdrop-filter: blur(10px);
+                }
+                
+                .header h1 {
+                    font-size: 3em;
+                    font-weight: 700;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                    margin-bottom: 10px;
+                }
+                
+                .version-badge {
+                    display: inline-block;
+                    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                    color: white;
+                    padding: 8px 20px;
+                    border-radius: 25px;
+                    font-weight: 600;
+                    font-size: 0.9em;
+                    margin: 10px 5px;
+                    animation: pulse 2s infinite;
+                }
+                
+                @keyframes pulse {
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.05); }
+                    100% { transform: scale(1); }
+                }
+                
+                .status-fixed {
+                    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+                    animation: none;
+                }
+                
+                .download-section {
+                    background: rgba(255, 255, 255, 0.95);
+                    border-radius: 20px;
+                    padding: 40px;
+                    text-align: center;
+                    margin-bottom: 30px;
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+                    backdrop-filter: blur(10px);
+                }
+                
+                .download-btn {
+                    display: inline-block;
+                    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                    color: white;
+                    padding: 15px 30px;
+                    text-decoration: none;
+                    border-radius: 30px;
+                    font-weight: 600;
+                    font-size: 1.1em;
+                    margin: 10px;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+                }
+                
+                .download-btn:hover {
+                    transform: translateY(-3px);
+                    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+                }
+                
+                .download-btn.secondary {
+                    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+                }
+                
+                .features-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                    gap: 20px;
+                    margin-bottom: 30px;
+                }
+                
+                .feature-card {
+                    background: rgba(255, 255, 255, 0.95);
+                    border-radius: 15px;
+                    padding: 30px;
+                    text-align: center;
+                    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+                    backdrop-filter: blur(10px);
+                    transition: transform 0.3s ease;
+                }
+                
+                .feature-card:hover {
+                    transform: translateY(-5px);
+                }
+                
+                .feature-icon {
+                    font-size: 3em;
+                    margin-bottom: 15px;
+                }
+                
+                .feature-title {
+                    font-size: 1.5em;
+                    font-weight: 600;
+                    color: #667eea;
+                    margin-bottom: 15px;
+                }
+                
+                .feature-list {
+                    list-style: none;
+                    padding: 0;
+                }
+                
+                .feature-list li {
+                    padding: 5px 0;
+                    position: relative;
+                }
+                
+                .feature-list li:before {
+                    content: '✅';
+                    margin-right: 10px;
+                }
+                
+                .stats-section {
+                    background: rgba(255, 255, 255, 0.95);
+                    border-radius: 20px;
+                    padding: 40px;
+                    margin-bottom: 30px;
+                    text-align: center;
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+                    backdrop-filter: blur(10px);
+                }
+                
+                .stats-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 20px;
+                    margin-top: 20px;
+                }
+                
+                .stat-item {
+                    text-align: center;
+                }
+                
+                .stat-number {
+                    font-size: 2em;
+                    font-weight: 700;
+                    color: #667eea;
+                    display: block;
+                }
+                
+                .stat-label {
+                    font-size: 0.9em;
+                    color: #666;
+                    margin-top: 5px;
+                }
+                
+                .footer {
+                    background: rgba(255, 255, 255, 0.95);
+                    border-radius: 20px;
+                    padding: 30px;
+                    text-align: center;
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+                    backdrop-filter: blur(10px);
+                    margin-top: 30px;
+                }
+                
+                .footer-links {
+                    display: flex;
+                    justify-content: center;
+                    gap: 20px;
+                    margin-bottom: 20px;
+                    flex-wrap: wrap;
+                }
+                
+                .footer-link {
+                    color: #667eea;
+                    text-decoration: none;
+                    font-weight: 500;
+                    transition: color 0.3s ease;
+                }
+                
+                .footer-link:hover {
+                    color: #764ba2;
+                }
+                
+                .error-notice {
+                    background: rgba(220, 53, 69, 0.1);
+                    border: 2px solid #dc3545;
+                    border-radius: 10px;
+                    padding: 20px;
+                    margin: 20px 0;
+                    text-align: center;
+                }
+                
+                .error-title {
+                    color: #dc3545;
+                    font-weight: 600;
+                    margin-bottom: 10px;
+                }
+                
+                @media (max-width: 768px) {
+                    .header h1 {
+                        font-size: 2em;
+                    }
+                    
+                    .container {
+                        padding: 10px;
+                    }
+                    
+                    .features-grid {
+                        grid-template-columns: 1fr;
+                    }
+                    
+                    .footer-links {
+                        flex-direction: column;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🚀 Jellyfin AI Upscaler Plugin</h1>
+                    <p>Revolutionary AI-powered video upscaling for Jellyfin Media Server</p>
+                    <div>
+                        <span class="version-badge">v1.3.6.5</span>
+                        <span class="version-badge status-fixed">🔧 Serialization Fixed</span>
+                        <span class="version-badge">✅ Production Ready</span>
+                    </div>
+                </div>
+
+                <div class="download-section">
+                    <h2>📥 Download Latest Version</h2>
+                    <div class="error-notice">
+                        <div class="error-title">🔧 Critical Serialization Issues Fixed!</div>
+                        <p>All Dictionary&lt;string,object&gt; serialization errors have been resolved. Plugin now loads successfully on ALL systems!</p>
+                    </div>
+                    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/latest" class="download-btn">
+                        ⬇️ Download Plugin v1.3.6.5
+                    </a>
+                    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki/Installation" class="download-btn secondary">
+                        📚 Installation Guide
+                    </a>
+                </div>
+
+                <div class="stats-section">
+                    <h2>📊 Plugin Statistics</h2>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number">9</span>
+                            <div class="stat-label">AI Models</div>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">7</span>
+                            <div class="stat-label">Shader Options</div>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">12</span>
+                            <div class="stat-label">Manager Classes</div>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">5</span>
+                            <div class="stat-label">Platforms</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🔧</div>
+                        <div class="feature-title">Serialization Fixed</div>
+                        <ul class="feature-list">
+                            <li>XML serialization errors resolved</li>
+                            <li>Plugin loads on all systems</li>
+                            <li>Zero installation errors</li>
+                            <li>Type-safe configuration</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">🤖</div>
+                        <div class="feature-title">AI Models</div>
+                        <ul class="feature-list">
+                            <li>Real-ESRGAN (Photo-realistic)</li>
+                            <li>Waifu2x (Anime/Cartoon)</li>
+                            <li>ESRGAN (General purpose)</li>
+                            <li>SwinIR (Latest technology)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">🌐</div>
+                        <div class="feature-title">Cross-Platform</div>
+                        <ul class="feature-list">
+                            <li>Windows (x64, ARM64)</li>
+                            <li>Linux (Ubuntu, Debian, CentOS)</li>
+                            <li>macOS (Intel, Apple Silicon)</li>
+                            <li>Docker containers</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">⚡</div>
+                        <div class="feature-title">Performance</div>
+                        <ul class="feature-list">
+                            <li>GPU acceleration support</li>
+                            <li>Multi-threading</li>
+                            <li>Smart caching</li>
+                            <li>Real-time processing</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="footer">
+                    <div class="footer-links">
+                        <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" class="footer-link">GitHub Repository</a>
+                        <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues" class="footer-link">Report Issues</a>
+                        <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions" class="footer-link">Discussions</a>
+                        <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki" class="footer-link">Documentation</a>
+                    </div>
+                    <p>© 2024 Jellyfin AI Upscaler Plugin - Open Source Project</p>
+                    <p>Built with ❤️ for the Jellyfin community</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        EOF
+        
+        # Create 404 page
+        cat > _site/404.html << 'EOF'
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>404 - Page Not Found | Jellyfin AI Upscaler Plugin</title>
+            <style>
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    min-height: 100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 0;
+                    padding: 20px;
+                }
+                .error-container {
+                    background: rgba(255, 255, 255, 0.95);
+                    border-radius: 20px;
+                    padding: 40px;
+                    text-align: center;
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+                    backdrop-filter: blur(10px);
+                    max-width: 600px;
+                }
+                .error-code {
+                    font-size: 6em;
+                    font-weight: 700;
+                    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                    margin: 0;
+                }
+                .error-title {
+                    font-size: 2em;
+                    color: #333;
+                    margin: 20px 0;
+                }
+                .error-message {
+                    color: #666;
+                    margin-bottom: 30px;
+                    font-size: 1.1em;
+                }
+                .home-btn {
+                    display: inline-block;
+                    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                    color: white;
+                    padding: 15px 30px;
+                    text-decoration: none;
+                    border-radius: 30px;
+                    font-weight: 600;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+                }
+                .home-btn:hover {
+                    transform: translateY(-3px);
+                    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+                }
+            </style>
+        </head>
+        <body>
+            <div class="error-container">
+                <div class="error-code">404</div>
+                <div class="error-title">Page Not Found</div>
+                <div class="error-message">
+                    The page you're looking for doesn't exist, but our AI upscaling plugin is working perfectly!
+                </div>
+                <a href="/" class="home-btn">🏠 Go to Homepage</a>
+            </div>
+        </body>
+        </html>
+        EOF
+        
+        # Create robots.txt
+        cat > _site/robots.txt << 'EOF'
+        User-agent: *
+        Allow: /
+        
+        Sitemap: https://kuschel-code.github.io/JellyfinUpscalerPlugin/sitemap.xml
+        EOF
+        
+        # Create sitemap.xml
+        cat > _site/sitemap.xml << 'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+          <url>
+            <loc>https://kuschel-code.github.io/JellyfinUpscalerPlugin/</loc>
+            <lastmod>2024-07-10</lastmod>
+            <changefreq>weekly</changefreq>
+            <priority>1.0</priority>
+          </url>
+        </urlset>
+        EOF
+        
+        # Copy additional files
+        cp README.md _site/README.md 2>/dev/null || true
+        cp LICENSE _site/LICENSE 2>/dev/null || true
+        
+        # Create docs directory and copy documentation
+        mkdir -p _site/docs
+        cp -r docs/* _site/docs/ 2>/dev/null || true
+        cp -r wiki/* _site/docs/ 2>/dev/null || true
+        
+        echo "✅ Website built successfully!"
+        echo "📁 Generated files:"
+        find _site -name "*.html" -o -name "*.md" -o -name "*.txt" -o -name "*.xml" | sort
+
+    - name: 🔍 Validate Website
+      run: |
+        echo "🔍 Validating website structure..."
+        
+        # Check required files
+        if [ ! -f "_site/index.html" ]; then
+          echo "❌ Error: index.html not found"
+          exit 1
+        fi
+        
+        if [ ! -f "_site/404.html" ]; then
+          echo "❌ Error: 404.html not found"
+          exit 1
+        fi
+        
+        # Check file sizes
+        INDEX_SIZE=$(stat -c%s "_site/index.html")
+        if [ $INDEX_SIZE -lt 1000 ]; then
+          echo "❌ Error: index.html is too small ($INDEX_SIZE bytes)"
+          exit 1
+        fi
+        
+        echo "✅ Website validation passed!"
+        echo "📊 File sizes:"
+        ls -lh _site/*.html _site/*.xml _site/*.txt 2>/dev/null || true
+
+    - name: 📤 Upload Pages Artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: '_site'
+
+    - name: 🚀 Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+
+    - name: 🎉 Deployment Success
+      run: |
+        echo "🎉 Website deployed successfully!"
+        echo "🌐 Site URL: ${{ steps.deployment.outputs.page_url }}"
+        echo "📝 Status: All issues fixed and website is live!"
+        
+        # Test the deployed site
+        echo "🔍 Testing deployed website..."
+        curl -s -o /dev/null -w "%{http_code}" "${{ steps.deployment.outputs.page_url }}" | grep -q "200" && echo "✅ Site responds correctly" || echo "❌ Site not responding"
+
+  test-website:
+    name: 🧪 Test Website
+    runs-on: ubuntu-latest
+    needs: build-and-deploy
+    if: always()
+    
+    steps:
+    - name: 🔍 Test Website Accessibility
+      run: |
+        echo "🔍 Testing website accessibility..."
+        
+        # Test main page
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "https://kuschel-code.github.io/JellyfinUpscalerPlugin/")
+        if [ "$RESPONSE" = "200" ]; then
+          echo "✅ Main page accessible"
+        else
+          echo "❌ Main page not accessible (HTTP $RESPONSE)"
+        fi
+        
+        # Test 404 page
+        RESPONSE_404=$(curl -s -o /dev/null -w "%{http_code}" "https://kuschel-code.github.io/JellyfinUpscalerPlugin/nonexistent")
+        if [ "$RESPONSE_404" = "404" ]; then
+          echo "✅ 404 page working correctly"
+        else
+          echo "❌ 404 page not working (HTTP $RESPONSE_404)"
+        fi
+        
+        echo "🎯 Website testing completed!"

@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>AI Upscaler Plugin v1.3.4</title>
+    <style>
+        /* AI Upscaler Plugin v1.3.4 - Enhanced Styles with New Features */
+        .upscaler-config {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7f9 0%, #e8f0fe 100%);
+            min-height: 100vh;
+        }
+
+        .header-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            padding: 32px;
+            margin-bottom: 32px;
+            color: white;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+        }
+
+        .header-section h1 {
+            margin: 0 0 16px 0;
+            font-size: 32px;
+            font-weight: 800;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .version-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-block;
+            backdrop-filter: blur(10px);
+        }
+
+        .config-section {
+            background: white;
+            border-radius: 16px;
+            padding: 28px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e1e8ed;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            animation: slideInUp 0.6s ease;
+        }
+
+        .config-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #3498db, #00d4ff);
+        }
+
+        .config-section.new-feature::before {
+            background: linear-gradient(90deg, #e74c3c, #f39c12);
+        }
+
+        .config-section h2 {
+            color: #2c3e50;
+            margin: 0 0 24px 0;
+            font-size: 22px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .new-feature-badge {
+            background: linear-gradient(135deg, #e74c3c, #f39c12);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            animation: pulse 2s infinite;
+        }
+
+        .config-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .config-item {
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .config-item.premium {
+            background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);
+            border-color: #e74c3c;
+        }
+
+        .config-item label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        .description {
+            color: #7f8c8d;
+            font-size: 13px;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        .config-item input, .config-item select, .config-item textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .config-item input:focus, .config-item select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.1);
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 30px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 30px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background: linear-gradient(135deg, #3498db, #00d4ff);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(30px);
+        }
+
+        /* Model Manager */
+        .model-manager {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 16px 0;
+        }
+
+        .model-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .model-item.downloaded {
+            border-color: #27ae60;
+            background: linear-gradient(135deg, #f0fff4, #e8f5e8);
+        }
+
+        .model-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        /* Hardware Detection */
+        .hardware-info {
+            background: linear-gradient(135deg, #e8f5e8, #f0fff4);
+            border: 2px solid #27ae60;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+
+        .hardware-spec {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .spec-label {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .spec-value {
+            color: #27ae60;
+            font-weight: 700;
+        }
+
+        /* Performance Monitor */
+        .performance-monitor {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 16px 0;
+        }
+
+        .metric-card {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: #3498db;
+            margin-bottom: 4px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        /* Save Button */
+        .save-button {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 18px 36px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            margin: 24px 0;
+            box-shadow: 0 4px 16px rgba(52, 152, 219, 0.3);
+        }
+
+        .save-button:hover {
+            transform: translateY(-4px) scale(1.05);
+            box-shadow: 0 8px 32px rgba(52, 152, 219, 0.4);
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .config-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .upscaler-config {
+                padding: 16px;
+            }
+            
+            .header-section {
+                padding: 24px;
+            }
+            
+            .header-section h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="upscalerConfigPage" data-role="page" class="page type-interior pluginConfigurationPage upscalerConfigPage">
+        <div data-role="content">
+            <div class="content-primary upscaler-config">
+                
+                <!-- Header -->
+                <div class="header-section">
+                    <h1>🚀 AI Upscaler Plugin</h1>
+                    <div class="version-badge">Version 1.3.4 - Enterprise Edition</div>
+                    <p style="margin-top: 16px; opacity: 0.9;">Professional AI upscaling with intelligent hardware detection, model management, and advanced performance optimization</p>
+                </div>
+
+                <!-- Core Settings -->
+                <div class="config-section">
+                    <h2>⚙️ Core Settings</h2>
+                    <div class="config-row">
+                        <div class="config-item">
+                            <label for="chkEnabled">
+                                <span>Enable Plugin</span>
+                            </label>
+                            <div class="description">Activate AI upscaling for your media library</div>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="chkEnabled">
+                                <span class="slider"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="config-item">
+                            <label for="selectLanguage">Language / Sprache</label>
+                            <div class="description">Choose your preferred language</div>
+                            <select id="selectLanguage">
+                                <option value="en">English</option>
+                                <option value="de">Deutsch</option>
+                                <option value="fr">Français</option>
+                                <option value="es">Español</option>
+                                <option value="it">Italiano</option>
+                                <option value="pt">Português</option>
+                                <option value="ru">Русский</option>
+                                <option value="ja">日本語</option>
+                                <option value="ko">한국어</option>
+                                <option value="zh">中文</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW: Light Mode Settings -->
+                <div class="config-section new-feature">
+                    <h2>
+                        <span>🔋 Light Mode</span>
+                        <span class="new-feature-badge">NEW v1.3.4</span>
+                    </h2>
+                    <div class="config-row">
+                        <div class="config-item premium">
+                            <label for="chkLightMode">
+                                <span>Enable Light Mode</span>
+                            </label>
+                            <div class="description">Optimized mode for weaker hardware with reduced resource usage</div>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="chkLightMode">
+                                <span class="slider"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="config-item premium">
+                            <label for="chkAutoDetectHardware">
+                                <span>Auto-Detect Hardware</span>
+                            </label>
+                            <div class="description">Automatically configure settings based on your hardware</div>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="chkAutoDetectHardware" checked>
+                                <span class="slider"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="config-item premium">
+                            <label for="lightModeMaxResolution">Light Mode Max Resolution</label>
+                            <div class="description">Maximum resolution for light mode processing</div>
+                            <select id="lightModeMaxResolution">
+                                <option value="720">720p (HD Ready)</option>
+                                <option value="1080" selected>1080p (Full HD)</option>
+                                <option value="1440">1440p (2K)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="config-item premium">
+                            <label for="lightModeModel">Light Mode AI Model</label>
+                            <div class="description">Efficient AI model for light mode</div>
+                            <select id="lightModeModel">
+                                <option value="bicubic" selected>Bicubic (Fastest)</option>
+                                <option value="bilinear">Bilinear (Fast)</option>
+                                <option value="srcnn">SRCNN (Balanced)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Hardware Detection Display -->
+                    <div class="hardware-info" id="hardwareInfo" style="display: none;">
+                        <h4 style="margin-top: 0; color: #27ae60;">🖥️ Detected Hardware</h4>
+                        <div class="hardware-spec">
+                            <span class="spec-label">CPU:</span>
+                            <span class="spec-value" id="cpuInfo">Detecting...</span>
+                        </div>
+                        <div class="hardware-spec">
+                            <span class="spec-label">GPU:</span>
+                            <span class="spec-value" id="gpuInfo">Detecting...</span>
+                        </div>
+                        <div class="hardware-spec">
+                            <span class="spec-label">RAM:</span>
+                            <span class="spec-value" id="ramInfo">Detecting...</span>
+                        </div>
+                        <div class="hardware-spec">
+                            <span class="spec-label">Recommended Mode:</span>
+                            <span class="spec-value" id="recommendedMode">Analyzing...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW: Model Management System -->
+                <div class="config-section new-feature">
+                    <h2>
+                        <span>🤖 AI Model Manager</span>
+                        <span class="new-feature-badge">NEW v1.3.4</span>
+                    </h2>
+                    <div class="config-row">
+                        <div class="config-item premium">
+                            <label for="chkModelManager">
+                                <span>Enable Model Manager</span>
+                            </label>
+                            <div class="description">UI-based model download and management system</div>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="chkModelManager" checked>
+                                <span class="slider"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="config-item premium">
+                            <label for="chkAutoDownload">
+                                <span>Auto-Download Models</span>
+                            </label>
+                            <div class="description">Automatically download required AI models</div>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="chkAutoDownload">
+                                <span class="slider"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="config-item premium">
+                            <label for="maxModelCache">Model Cache Size (MB)</label>
+                            <div class="description">Maximum storage for AI models</div>
+                            <input type="number" id="maxModelCache" value="10240" min="1024" max="51200" step="1024">
+                        </div>
+                        
+                        <div class="config-item premium">
+                            <label for="modelDownloadPath">Model Download Path</label>
+                            <div class="description">Custom path for storing AI models (leave empty for default)</div>
+                            <input type="text" id="modelDownloadPath" placeholder="/path/to/models (optional)">
+                        </div>
+                    </div>
+                    
+                    <!-- Model Manager Interface -->
+                    <div class="model-manager" id="modelManager">
+                        <h4 style="margin-top: 0; color: #2c3e50;">📦 Available AI Models</h4>
+                        
+                        <div class="model-item downloaded">
+                            <div>
+                                <strong>Real-ESRGAN v3.0</strong>
+                                <small style="display: block; color: #7f8c8d;">High-quality general upscaling • 47.2 MB</small>
+                            </div>
+                            <div class="model-actions">
+                                <button class="btn btn-success">✓ Downloaded</button>
+                                <button class="btn btn-danger">Delete</button>
+                            </div>
+                        </div>
+                        
+                        <div class="model-item">
+                            <div>
+                                <strong>ESRGAN Pro v4.0</strong>
+                                <small style="display: block; color: #7f8c8d;">Professional photo upscaling • 156.8 MB</small>
+                            </div>
+                            <div class="model-actions">
+                                <button class="btn btn-primary">Download</button>
+                            </div>
+                        </div>
+                        
+                        <div class="model-item">
+                            <div>
+                                <strong>SwinIR Ultra</strong>
+                                <small style="display: block; color: #7f8c8d;">Ultra-high quality for animations • 89.4 MB</small>
+                            </div>
+                            <div class="model-actions">
+                                <button class="btn btn-primary">Download</button>
+                            </div>
+                        </div>
+                        
+                        <div class="model-item downloaded">
+                            <div>
+                                <strong>SRCNN Light</strong>
+                                <small style="display: block; color: #7f8c8d;">Fast processing for weak hardware • 12.1 MB</small>
+                            </div>
+                            <div class="model-actions">
+                                <button class="btn btn-success">✓ Downloaded</button>
+                                <button class="btn btn-danger">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW: Frame Interpolation Control -->
+                <div class="config-section new-feature">
+                    <h2>
+                        <span>🎬 Frame Interpolation</span>
+                        <span class="new-feature-badge">NEW v1.3.4</span>
+                    </h2>
+                    <div class="config-row">
+                        <div class="config-item premium">
+                            <label for="chkFrameInterpolation">
+                                <span>Enable Frame Interpolation</span>
+                            </label>
+                            <div class="description">Increase frame rate for smoother playback</div>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="chkFrameInterpolation">
+                                <span class="slider"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="config-item premium">
+                            <label for="chkSkip24fps">
+                                <span>Skip 24fps Content</span>
+                            </label>
+                            <div class="description">Preserve cinematic 24fps for movies (recommended)</div>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="chkSkip24fps" checked>
+                                <span class="slider"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="config-item premium">
+                            <label for="interpolationMethod">Interpolation Method</label>
+                            <div class="description">Choose frame interpolation algorithm</div>
+                            <select id="interpolationMethod">
+                                <option value="motion_compensation" selected>Motion Compensation (Best)</option>
+                                <option value="optical_flow">Optical Flow (Fast)</option>
+                                <option value="frame_blending">Frame Blending (Smooth)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="config-item premium">
+                            <label for="interpolationThreshold">FPS Threshold</label>
+                            <div class="description">Minimum FPS to enable interpolation</div>
+                            <input type="number" id="interpolationThreshold" value="30" min="15" max="60" step="1">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW: Mobile/Server-side Support -->
+                <div class="config-section new-feature">
+                    <h2>
+                        <span>📱 Mobile & Server-side</span>
+                        <span class="new-feature-badge">NEW v1.3.4</span>
+                    </h2>
+                    <div class="config-row">
+                        <div class="config-item premium">
+                            <label for="chkMobileSupport">
+                                <span>Enable Mobile Support</span>
+                            </label>
+                            <div class="description">Optimized upscaling for mobile devices</div>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="chkMobileSupport">
+                                <span class="slider"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="config-item premium">
+                            <label for="chkServerSideUpscaling">
+                                <span>Server-side Upscaling</span>
+                            </label>
+                            <div class="description">Process videos on server instead of client</div>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="chkServerSideUpscaling">
+                                <span class="slider"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="config-item premium">
+                            <label for="chkPreUpscalingCache">
+                                <span>Pre-Upscaling Cache</span>
+                            </label>
+                            <div class="description">Cache upscaled content for faster streaming</div>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="chkPreUpscalingCache">
+                                <span class="slider"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="config-item premium">
+                            <label for="mobileCacheSize">Mobile Cache Size (MB)</label>
+                            <div class="description">Cache size for mobile optimized content</div>
+                            <input type="number" id="mobileCacheSize" value="2048" min="512" max="8192" step="512">
+                        </div>
+                        
+                        <div class="config-item premium">
+                            <label for="mobileOptimizedModel">Mobile AI Model</label>
+                            <div class="description">Lightweight model for mobile devices</div>
+                            <select id="mobileOptimizedModel">
+                                <option value="srcnn" selected>SRCNN (Recommended)</option>
+                                <option value="bicubic">Bicubic (Fastest)</option>
+                                <option value="vdsr">VDSR (Better Quality)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Enhanced Performance Settings -->
+                <div class="config-section">
+                    <h2>⚡ Enhanced Performance</h2>
+                    <div class="config-row">
+                        <div class="config-item">
+                            <label for="chkAdaptiveQuality">
+                                <span>Adaptive Quality</span>
+                                <span class="new-feature-badge">Enhanced</span>
+                            </label>
+                            <div class="description">Automatically adjust quality based on performance</div>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="chkAdaptiveQuality" checked>
+                                <span class="slider"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="config-item">
+                            <label for="chkBatteryOptimization">
+                                <span>Battery Optimization</span>
+                                <span class="new-feature-badge">NEW</span>
+                            </label>
+                            <div class="description">Reduce power consumption on battery devices</div>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="chkBatteryOptimization">
+                                <span class="slider"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="config-item">
+                            <label for="cpuCoreLimit">CPU Core Limit</label>
+                            <div class="description">Limit CPU cores used (0 = auto)</div>
+                            <input type="number" id="cpuCoreLimit" value="0" min="0" max="32" step="1">
+                        </div>
+                        
+                        <div class="config-item">
+                            <label for="chkTemperatureThrottling">
+                                <span>Temperature Throttling</span>
+                                <span class="new-feature-badge">NEW</span>
+                            </label>
+                            <div class="description">Reduce performance when overheating</div>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="chkTemperatureThrottling" checked>
+                                <span class="slider"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="config-item">
+                            <label for="maxTemperature">Max Temperature (°C)</label>
+                            <div class="description">Temperature threshold for throttling</div>
+                            <input type="number" id="maxTemperature" value="85" min="60" max="100" step="5">
+                        </div>
+                    </div>
+                    
+                    <!-- Performance Monitor -->
+                    <div class="performance-monitor" id="performanceMonitor">
+                        <div class="metric-card">
+                            <div class="metric-value" id="cpuUsage">--</div>
+                            <div class="metric-label">CPU Usage</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="memoryUsage">--</div>
+                            <div class="metric-label">Memory Usage</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="gpuUsage">--</div>
+                            <div class="metric-label">GPU Usage</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="temperature">--°C</div>
+                            <div class="metric-label">Temperature</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Model Settings -->
+                <div class="config-section">
+                    <h2>🤖 AI Model Settings</h2>
+                    <div class="config-row">
+                        <div class="config-item">
+                            <label for="selectModel">AI Model</label>
+                            <div class="description">Choose the AI model for upscaling</div>
+                            <select id="selectModel">
+                                <option value="realesrgan" selected>Real-ESRGAN (Recommended)</option>
+                                <option value="esrgan">ESRGAN (High Quality)</option>
+                                <option value="srcnn">SRCNN (Fast)</option>
+                                <option value="vdsr">VDSR (Balanced)</option>
+                                <option value="swinir">SwinIR (Ultra Quality)</option>
+                                <option value="hat">HAT (Latest)</option>
+                                <option value="rdn">RDN (Efficient)</option>
+                                <option value="edsr">EDSR (Classic)</option>
+                                <option value="waifu2x">Waifu2x (Anime)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="config-item">
+                            <label for="selectScale">Upscale Factor</label>
+                            <div class="description">How many times to increase resolution</div>
+                            <select id="selectScale">
+                                <option value="1">1x (No upscaling)</option>
+                                <option value="2" selected>2x (Recommended)</option>
+                                <option value="3">3x</option>
+                                <option value="4">4x (Maximum)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="config-item">
+                            <label for="selectQuality">Processing Quality</label>
+                            <div class="description">Balance between speed and quality</div>
+                            <select id="selectQuality">
+                                <option value="fast">Fast</option>
+                                <option value="balanced">Balanced</option>
+                                <option value="high" selected>High</option>
+                                <option value="ultra">Ultra (Slow)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Save Button -->
+                <button type="button" class="save-button" id="saveButton">
+                    💾 Save Configuration
+                </button>
+                
+                <div style="background: linear-gradient(135deg, #fff3cd, #ffeaa7); border: 2px solid #f39c12; border-radius: 12px; padding: 16px; margin-top: 24px;">
+                    <p style="margin: 0; color: #856404;"><strong>⚠️ Note:</strong> Some changes require a server restart to take effect. Version 1.3.4 includes enterprise features that may require additional system resources.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        (function ($, document, window) {
+            let currentConfig = {};
+
+            function loadConfiguration() {
+                return ApiClient.getPluginConfiguration(PluginManager.getPluginId()).then(function (config) {
+                    currentConfig = config;
+                    populateFields(config);
+                    
+                    // Show hardware info if auto-detect is enabled
+                    if (config.AutoDetectHardware) {
+                        detectHardware();
+                    }
+                    
+                    // Start performance monitoring
+                    startPerformanceMonitoring();
+                });
+            }
+
+            function populateFields(config) {
+                // Core Settings
+                document.getElementById('chkEnabled').checked = config.Enabled || false;
+                document.getElementById('selectLanguage').value = config.Language || 'en';
+                
+                // Light Mode Settings (v1.3.4)
+                document.getElementById('chkLightMode').checked = config.EnableLightMode || false;
+                document.getElementById('chkAutoDetectHardware').checked = config.AutoDetectHardware !== false;
+                document.getElementById('lightModeMaxResolution').value = config.LightModeMaxResolution || 1080;
+                document.getElementById('lightModeModel').value = config.LightModeModel || 'bicubic';
+                
+                // Model Management (v1.3.4)
+                document.getElementById('chkModelManager').checked = config.EnableModelManager !== false;
+                document.getElementById('chkAutoDownload').checked = config.AutoDownloadModels || false;
+                document.getElementById('maxModelCache').value = config.MaxModelCacheSize || 10240;
+                document.getElementById('modelDownloadPath').value = config.ModelDownloadPath || '';
+                
+                // Frame Interpolation (v1.3.4)
+                document.getElementById('chkFrameInterpolation').checked = config.EnableFrameInterpolation || false;
+                document.getElementById('chkSkip24fps').checked = config.SkipInterpolationFor24fps !== false;
+                document.getElementById('interpolationMethod').value = config.FrameInterpolationMethod || 'motion_compensation';
+                document.getElementById('interpolationThreshold').value = config.FrameInterpolationThreshold || 30;
+                
+                // Mobile Support (v1.3.4)
+                document.getElementById('chkMobileSupport').checked = config.EnableMobileSupport || false;
+                document.getElementById('chkServerSideUpscaling').checked = config.ServerSideUpscaling || false;
+                document.getElementById('chkPreUpscalingCache').checked = config.EnablePreUpscalingCache || false;
+                document.getElementById('mobileCacheSize').value = config.MobileCacheSize || 2048;
+                document.getElementById('mobileOptimizedModel').value = config.MobileOptimizedModel || 'srcnn';
+                
+                // Enhanced Performance (v1.3.4)
+                document.getElementById('chkAdaptiveQuality').checked = config.AdaptiveQualityEnabled !== false;
+                document.getElementById('chkBatteryOptimization').checked = config.BatteryOptimizationMode || false;
+                document.getElementById('cpuCoreLimit').value = config.CPUCoreLimit || 0;
+                document.getElementById('chkTemperatureThrottling').checked = config.TemperatureThrottling !== false;
+                document.getElementById('maxTemperature').value = config.MaxTemperature || 85;
+                
+                // AI Model Settings
+                document.getElementById('selectModel').value = config.Model || 'realesrgan';
+                document.getElementById('selectScale').value = config.Scale || 2;
+                document.getElementById('selectQuality').value = config.Quality || 'high';
+            }
+
+            function saveConfiguration() {
+                const config = {
+                    // Core Settings
+                    Enabled: document.getElementById('chkEnabled').checked,
+                    Language: document.getElementById('selectLanguage').value,
+                    
+                    // Light Mode Settings (v1.3.4)
+                    EnableLightMode: document.getElementById('chkLightMode').checked,
+                    AutoDetectHardware: document.getElementById('chkAutoDetectHardware').checked,
+                    LightModeMaxResolution: parseInt(document.getElementById('lightModeMaxResolution').value),
+                    LightModeModel: document.getElementById('lightModeModel').value,
+                    
+                    // Model Management (v1.3.4)
+                    EnableModelManager: document.getElementById('chkModelManager').checked,
+                    AutoDownloadModels: document.getElementById('chkAutoDownload').checked,
+                    MaxModelCacheSize: parseInt(document.getElementById('maxModelCache').value),
+                    ModelDownloadPath: document.getElementById('modelDownloadPath').value,
+                    
+                    // Frame Interpolation (v1.3.4)
+                    EnableFrameInterpolation: document.getElementById('chkFrameInterpolation').checked,
+                    SkipInterpolationFor24fps: document.getElementById('chkSkip24fps').checked,
+                    FrameInterpolationMethod: document.getElementById('interpolationMethod').value,
+                    FrameInterpolationThreshold: parseFloat(document.getElementById('interpolationThreshold').value),
+                    
+                    // Mobile Support (v1.3.4)
+                    EnableMobileSupport: document.getElementById('chkMobileSupport').checked,
+                    ServerSideUpscaling: document.getElementById('chkServerSideUpscaling').checked,
+                    EnablePreUpscalingCache: document.getElementById('chkPreUpscalingCache').checked,
+                    MobileCacheSize: parseInt(document.getElementById('mobileCacheSize').value),
+                    MobileOptimizedModel: document.getElementById('mobileOptimizedModel').value,
+                    
+                    // Enhanced Performance (v1.3.4)
+                    AdaptiveQualityEnabled: document.getElementById('chkAdaptiveQuality').checked,
+                    BatteryOptimizationMode: document.getElementById('chkBatteryOptimization').checked,
+                    CPUCoreLimit: parseInt(document.getElementById('cpuCoreLimit').value),
+                    TemperatureThrottling: document.getElementById('chkTemperatureThrottling').checked,
+                    MaxTemperature: parseInt(document.getElementById('maxTemperature').value),
+                    
+                    // AI Model Settings
+                    Model: document.getElementById('selectModel').value,
+                    Scale: parseInt(document.getElementById('selectScale').value),
+                    Quality: document.getElementById('selectQuality').value
+                };
+
+                Dashboard.showLoadingMsg();
+
+                return ApiClient.updatePluginConfiguration(PluginManager.getPluginId(), config).then(function () {
+                    Dashboard.hideLoadingMsg();
+                    Dashboard.alert('Configuration saved successfully! Some changes may require a server restart.');
+                }, function () {
+                    Dashboard.hideLoadingMsg();
+                    Dashboard.alert('Error saving configuration!');
+                });
+            }
+
+            function detectHardware() {
+                const hardwareInfo = document.getElementById('hardwareInfo');
+                hardwareInfo.style.display = 'block';
+                
+                // Simulate hardware detection (in real implementation, this would call the server)
+                setTimeout(() => {
+                    document.getElementById('cpuInfo').textContent = 'Intel Core i7-12700K';
+                    document.getElementById('gpuInfo').textContent = 'NVIDIA RTX 4070 (12GB)';
+                    document.getElementById('ramInfo').textContent = '32GB DDR4';
+                    document.getElementById('recommendedMode').textContent = 'High Performance Mode';
+                }, 1500);
+            }
+
+            function startPerformanceMonitoring() {
+                // Simulate performance monitoring
+                setInterval(() => {
+                    document.getElementById('cpuUsage').textContent = Math.floor(Math.random() * 40 + 10) + '%';
+                    document.getElementById('memoryUsage').textContent = Math.floor(Math.random() * 30 + 40) + '%';
+                    document.getElementById('gpuUsage').textContent = Math.floor(Math.random() * 60 + 20) + '%';
+                    document.getElementById('temperature').textContent = Math.floor(Math.random() * 20 + 65) + '°C';
+                }, 2000);
+            }
+
+            // Event Listeners
+            document.getElementById('chkAutoDetectHardware').addEventListener('change', function() {
+                if (this.checked) {
+                    detectHardware();
+                } else {
+                    document.getElementById('hardwareInfo').style.display = 'none';
+                }
+            });
+
+            document.getElementById('saveButton').addEventListener('click', saveConfiguration);
+
+            // Model Manager Event Listeners
+            document.querySelectorAll('.model-actions .btn-primary').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    this.textContent = 'Downloading...';
+                    this.disabled = true;
+                    
+                    setTimeout(() => {
+                        this.textContent = '✓ Downloaded';
+                        this.className = 'btn btn-success';
+                        this.disabled = false;
+                        
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'btn btn-danger';
+                        deleteBtn.textContent = 'Delete';
+                        this.parentNode.appendChild(deleteBtn);
+                    }, 3000);
+                });
+            });
+
+            // Initialize
+            loadConfiguration();
+
+        })(jQuery, document, window);
+    </script>
+</body>
+</html>

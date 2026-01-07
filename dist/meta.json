@@ -1,0 +1,12 @@
+{
+    "guid": "f87f700e-679d-43e6-9c7c-b3a410dc3f22",
+    "name": "AI Upscaler Plugin - Enhanced",
+    "overview": "AI-Powered Video Upscaling Plugin - Enhanced with Crash Prevention",
+    "description": "Enhanced AI upscaling plugin with advanced crash prevention, cross-platform compatibility, and extensive device support. Features multiple AI models, hardware acceleration, error handling, and performance optimization. Production-ready with comprehensive diagnostics.",
+    "version": "1.3.6.7",
+    "targetAbi": "10.10.0.0",
+    "framework": "net8.0",
+    "owner": "Kuschel-code",
+    "category": "Media Enhancement",
+    "changelog": "v1.3.6.7: Enhanced with crash prevention system, advanced error handling, cross-platform compatibility, device-specific optimizations, hardware acceleration support, performance monitoring, auto-recovery features, comprehensive diagnostics, production-ready stability"
+}
