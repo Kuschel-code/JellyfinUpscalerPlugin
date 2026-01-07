@@ -201,8 +201,8 @@ namespace JellyfinUpscalerPlugin.Services
 
         private async Task<ModelPerformance> SimulateModelBenchmark(string model)
         {
+            // ESTIMATE: Heuristic-based performance calculation
             // In a real implementation, this would run actual AI models
-            // For now, we simulate based on known performance characteristics
             
             var performance = new ModelPerformance { ModelName = model };
             
@@ -298,6 +298,7 @@ namespace JellyfinUpscalerPlugin.Services
 
         private async Task<ResolutionPerformance> SimulateResolutionBenchmark(int sourceHeight, int targetHeight)
         {
+            // ESTIMATE: Heuristic-based scaling performance calculation
             var performance = new ResolutionPerformance
             {
                 SourceHeight = sourceHeight,

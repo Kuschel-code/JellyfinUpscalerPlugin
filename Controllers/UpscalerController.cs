@@ -81,6 +81,41 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
+        /// Get JavaScript components for UI integration
+        /// </summary>
+        /// <param name="name">Name of the component</param>
+        /// <returns>JavaScript file content</returns>
+        [HttpGet("js/{name}")]
+        [Produces("text/javascript")]
+        public ActionResult GetJavaScript(string name)
+        {
+            try
+            {
+                var assembly = GetType().Assembly;
+                var resourceName = assembly.GetManifestResourceNames()
+                    .FirstOrDefault(r => r.EndsWith($".Configuration.{name}", StringComparison.OrdinalIgnoreCase) || 
+                                         r.EndsWith($".Configuration.{name}.js", StringComparison.OrdinalIgnoreCase));
+
+                if (resourceName == null)
+                {
+                    _logger.LogWarning($"JS resource not found: {name}");
+                    return NotFound();
+                }
+
+                using var stream = assembly.GetManifestResourceStream(resourceName);
+                if (stream == null) return NotFound();
+
+                using var reader = new StreamReader(stream);
+                return Content(reader.ReadToEnd(), "text/javascript");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed to serve JS component: {name}");
+                return StatusCode(500, "Internal Server Error");
+            }
+        }
+
+        /// <summary>
         /// Get current upscaler status and settings
         /// </summary>
         /// <returns>Current status of the AI upscaler</returns>
@@ -587,57 +622,8 @@ namespace JellyfinUpscalerPlugin.Controllers
                 return StatusCode(500, new { success = false, error = ex.Message });
             }
         }
-        [Produces(MediaTypeNames.Application.Json)]
-        public ActionResult<object> GetComparisonPreview(string itemId, [FromQuery] string model = "fsrcnn", [FromQuery] int scale = 2)
-        {
-            _logger.LogInformation($"AI Upscaler: Getting comparison preview for item {itemId}");
-
-            try
-            {
-                // In a real implementation, this would generate actual preview frames
-                var comparisonData = new
-                {
-                    itemId = itemId,
-                    model = model,
-                    scale = scale,
-                    original = new
-                    {
-                        resolution = "720p",
-                        quality = "Original",
-                        fileSize = "1.2 GB"
-                    },
-                    upscaled = new
-                    {
-                        resolution = scale == 2 ? "1440p" : scale == 3 ? "2160p" : "1080p",
-                        quality = "AI Enhanced",
-                        estimatedFileSize = $"{1.2 * Math.Pow(scale, 2):F1} GB",
-                        qualityImprovement = $"+{(model == "realesrgan" ? 85 : model == "esrgan" ? 72 : model == "fsrcnn" ? 51 : 38)}%"
-                    },
-                    processing = new
-                    {
-                        estimatedTime = $"{(model == "realesrgan" ? 8.5 : model == "esrgan" ? 6.2 : model == "fsrcnn" ? 3.1 : 1.8)}s",
-                        cpuUsage = $"{(model == "realesrgan" ? 75 : model == "esrgan" ? 65 : model == "fsrcnn" ? 45 : 35)}%",
-                        memoryUsage = $"{(scale * 256)}MB"
-                    },
-                    previewFrames = new[]
-                    {
-                        new { timestamp = "00:05:30", originalUrl = $"/api/upscaler/preview/{itemId}/original/1", upscaledUrl = $"/api/upscaler/preview/{itemId}/upscaled/1" },
-                        new { timestamp = "00:15:45", originalUrl = $"/api/upscaler/preview/{itemId}/original/2", upscaledUrl = $"/api/upscaler/preview/{itemId}/upscaled/2" },
-                        new { timestamp = "00:25:15", originalUrl = $"/api/upscaler/preview/{itemId}/original/3", upscaledUrl = $"/api/upscaler/preview/{itemId}/upscaled/3" }
-                    }
-                };
-
-                return Ok(comparisonData);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Failed to get comparison preview for item {itemId}");
-                return StatusCode(500, new { success = false, message = "Failed to get comparison preview", error = ex.Message });
-            }
-        }
-
         /// <summary>
-        /// Enable/disable pre-processing cache - v1.4.0 NEW
+        /// Enable/disable pre-processing cache - v1.4.0
         /// </summary>
         /// <param name="request">Pre-processing cache settings</param>
         /// <returns>Cache operation result</returns>
@@ -654,8 +640,6 @@ namespace JellyfinUpscalerPlugin.Controllers
                 if (config != null)
                 {
                     config.EnablePreProcessingCache = request.Enabled;
-                    config.PreProcessCacheSizeMB = request.SizeMB ?? config.PreProcessCacheSizeMB;
-                    config.PreProcessOnIdle = request.ProcessOnIdle ?? config.PreProcessOnIdle;
                     
                     Plugin.Instance?.SaveConfiguration();
                 }
@@ -667,9 +651,6 @@ namespace JellyfinUpscalerPlugin.Controllers
                     settings = new
                     {
                         enabled = request.Enabled,
-                        sizeMB = request.SizeMB ?? 2048,
-                        processOnIdle = request.ProcessOnIdle ?? true,
-                        estimatedItems = (request.SizeMB ?? 2048) / 100, // Rough estimate
                         status = request.Enabled ? "active" : "disabled"
                     }
                 };
@@ -684,7 +665,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
-        /// Get fallback system status - v1.4.0 NEW
+        /// Get fallback system status - v1.4.0
         /// </summary>
         /// <returns>Fallback system information</returns>
         [HttpGet("fallback")]
@@ -695,24 +676,13 @@ namespace JellyfinUpscalerPlugin.Controllers
 
             try
             {
-                var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
-                
                 var fallbackInfo = new
                 {
-                    enabled = config.EnableAutoFallback,
-                    triggerFPS = config.FallbackTriggerFPS,
-                    triggerCPU = config.FallbackTriggerCPU,
-                    fallbackModel = config.FallbackModel,
-                    currentStatus = "monitoring", // In real implementation, this would be dynamic
-                    recentFallbacks = new[]
-                    {
-                        new { timestamp = DateTime.UtcNow.AddMinutes(-15), reason = "High CPU usage (87%)", model = "fsrcnn-light" },
-                        new { timestamp = DateTime.UtcNow.AddHours(-2), reason = "Low FPS (18)", model = "srcnn" }
-                    },
+                    enabled = true,
+                    currentStatus = "monitoring",
                     recommendations = new[]
                     {
-                        "Current hardware can handle 720p→1080p upscaling reliably",
-                        "Consider enabling pre-processing cache for better performance",
+                        "Current hardware can handle upscaling reliably",
                         "Fallback triggers are well-configured for your system"
                     }
                 };

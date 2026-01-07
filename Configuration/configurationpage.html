@@ -680,38 +680,31 @@
             // Load Quick Menu and Player Integration
             function loadJavaScriptComponents() {
                 try {
-                    // Load Sidebar Integration
-                    fetch(ApiClient.getUrl('ConfigurationPage', { name: 'aiupscaler-sidebar.js' }))
-                        .then(response => response.text())
-                        .then(script => {
-                            const scriptElement = document.createElement('script');
-                            scriptElement.textContent = script;
-                            document.head.appendChild(scriptElement);
-                            console.log('AI Upscaler: Sidebar Integration loaded');
-                        })
-                        .catch(error => console.log('Sidebar load error:', error));
+                    const components = [
+                        { id: 'aiupscaler-sidebar', name: 'sidebar-upscaler.js' },
+                        { id: 'aiupscaler-quickmenu', name: 'quick-menu.js' },
+                        { id: 'aiupscaler-player', name: 'player-integration.js' }
+                    ];
 
-                    // Load Quick Menu
-                    fetch(ApiClient.getUrl('ConfigurationPage', { name: 'aiupscaler-quickmenu.js' }))
-                        .then(response => response.text())
-                        .then(script => {
-                            const scriptElement = document.createElement('script');
-                            scriptElement.textContent = script;
-                            document.head.appendChild(scriptElement);
-                            console.log('AI Upscaler: Quick Menu loaded');
-                        })
-                        .catch(error => console.log('Quick Menu load error:', error));
+                    components.forEach(component => {
+                        fetch(ApiClient.getUrl('api/Upscaler/js/' + component.name))
+                            .then(response => {
+                                if (!response.ok) throw new Error('Network response was not ok');
+                                return response.text();
+                            })
+                            .then(script => {
+                                // Remove existing script if any
+                                const existing = document.getElementById(component.id);
+                                if (existing) existing.remove();
 
-                    // Load Player Integration  
-                    fetch(ApiClient.getUrl('ConfigurationPage', { name: 'aiupscaler-player.js' }))
-                        .then(response => response.text())
-                        .then(script => {
-                            const scriptElement = document.createElement('script');
-                            scriptElement.textContent = script;
-                            document.head.appendChild(scriptElement);
-                            console.log('AI Upscaler: Player Integration loaded');
-                        })
-                        .catch(error => console.log('Player Integration load error:', error));
+                                const scriptElement = document.createElement('script');
+                                scriptElement.id = component.id;
+                                scriptElement.textContent = script;
+                                document.head.appendChild(scriptElement);
+                                console.log('AI Upscaler: Component ' + component.name + ' loaded');
+                            })
+                            .catch(error => console.log('Component ' + component.name + ' load error:', error));
+                    });
                 } catch (error) {
                     console.log('JavaScript components load error:', error);
                 }

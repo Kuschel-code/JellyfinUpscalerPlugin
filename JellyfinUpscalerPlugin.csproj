@@ -42,7 +42,6 @@
   <!-- Embedded resources for configuration -->
   <ItemGroup>
     <EmbeddedResource Include="Configuration\configurationpage.html" />
-    <EmbeddedResource Include="Configuration\config.js" />
     <EmbeddedResource Include="Configuration\quick-menu.js" />
     <EmbeddedResource Include="Configuration\player-integration.js" />
     <EmbeddedResource Include="Configuration\sidebar-upscaler.js" />
