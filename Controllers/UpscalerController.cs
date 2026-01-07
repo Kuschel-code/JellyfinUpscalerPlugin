@@ -354,10 +354,57 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// <returns>Comparison preview data</returns>
         [HttpGet("compare/{itemId}")]
         [Produces(MediaTypeNames.Application.Json)]
-        public ActionResult<object> GetComparisonData(string itemId, [FromQuery] string model = "realesrgan", [FromQuery] int scale = 2)
+        public async Task<ActionResult<object>> GetComparisonData(string itemId, [FromQuery] string model = "realesrgan", [FromQuery] int scale = 2)
         {
-            // TODO: Implement comparison data generation
-            return Ok(new { message = "Comparison data endpoint - Phase 4 implementation" });
+            try
+            {
+                _logger.LogInformation($"🔍 Generating comparison data for item {itemId} with model {model} (x{scale})");
+                
+                var item = _libraryManager.GetItemById(itemId);
+                if (item == null)
+                {
+                    return NotFound(new { message = "Item not found" });
+                }
+
+                // Try to get primary image or first available
+                var imagePath = item.GetImagePath(MediaBrowser.Model.Entities.ImageType.Primary);
+                if (string.IsNullOrEmpty(imagePath))
+                {
+                    _logger.LogWarning($"⚠️ No primary image found for item {itemId}, trying fallbacks");
+                    var images = item.GetImages().ToList();
+                    if (images.Count == 0)
+                    {
+                        return BadRequest(new { message = "No image available for this item" });
+                    }
+                    imagePath = images[0].Path;
+                }
+
+                if (!System.IO.File.Exists(imagePath))
+                {
+                    return NotFound(new { message = "Image file not found on disk" });
+                }
+
+                // Read image data
+                byte[] originalData = await System.IO.File.ReadAllBytesAsync(imagePath);
+                
+                // Perform AI upscaling
+                byte[] upscaledData = await _upscalerCore.UpscaleImageAsync(originalData, model, scale);
+
+                return Ok(new
+                {
+                    itemId = itemId,
+                    model = model,
+                    scale = scale,
+                    originalBase64 = $"data:image/jpeg;base64,{Convert.ToBase64String(originalData)}",
+                    upscaledBase64 = $"data:image/jpeg;base64,{Convert.ToBase64String(upscaledData)}",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"❌ Failed to generate comparison data for item {itemId}");
+                return StatusCode(500, new { message = "Comparison failed", error = ex.Message });
+            }
         }
 
         /// <summary>
