@@ -13,6 +13,7 @@ using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Querying;
 using JellyfinUpscalerPlugin.Services;
 using Microsoft.Extensions.Logging;
+using Jellyfin.Data.Enums;
 
 namespace JellyfinUpscalerPlugin.Tasks
 {
@@ -65,10 +66,9 @@ namespace JellyfinUpscalerPlugin.Tasks
 
             var query = new InternalItemsQuery
             {
-                IncludeItemTypes = new[] { "Movie", "Episode" },
+                IncludeItemTypes = new[] { BaseItemKind.Movie, BaseItemKind.Episode },
                 Recursive = true,
-                IsFolder = false,
-                DtoOptions = new MediaBrowser.Model.Dto.DtoOptions(true)
+                IsFolder = false
             };
 
             var items = _libraryManager.GetItemList(query)
@@ -135,7 +135,7 @@ namespace JellyfinUpscalerPlugin.Tasks
                                 tags.Add("AI-Upscaled");
                                 item.Tags = tags.ToArray();
                                 
-                                _libraryManager.UpdateItem(item, item, ItemUpdateType.MetadataEdit, CancellationToken.None);
+                                await item.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, cancellationToken);
                                 upscaledCount++;
                             }
                         }

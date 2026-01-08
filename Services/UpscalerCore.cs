@@ -586,13 +586,13 @@ namespace JellyfinUpscalerPlugin.Services
             
             for (int y = 0; y < height; y++)
             {
-                var row = rgbImage.GetPixelRowSpan(y);
                 for (int x = 0; x < width; x++)
                 {
+                    var pixel = rgbImage[x, y];
                     // NCHW format: [Batch, Channel, Height, Width]
-                    tensor[0, 0, y, x] = row[x].R / 255.0f;
-                    tensor[0, 1, y, x] = row[x].G / 255.0f;
-                    tensor[0, 2, y, x] = row[x].B / 255.0f;
+                    tensor[0, 0, y, x] = pixel.R / 255.0f;
+                    tensor[0, 1, y, x] = pixel.G / 255.0f;
+                    tensor[0, 2, y, x] = pixel.B / 255.0f;
                 }
             }
             
@@ -609,7 +609,6 @@ namespace JellyfinUpscalerPlugin.Services
             
             for (int y = 0; y < height; y++)
             {
-                var row = outputImage.GetPixelRowSpan(y);
                 for (int x = 0; x < width; x++)
                 {
                     // Map from NCHW flat array back to pixels
@@ -618,7 +617,7 @@ namespace JellyfinUpscalerPlugin.Services
                     var g = Math.Clamp(tensor[1 * channelSize + y * width + x] * 255.0f, 0, 255);
                     var b = Math.Clamp(tensor[2 * channelSize + y * width + x] * 255.0f, 0, 255);
                     
-                    row[x] = new SixLabors.ImageSharp.PixelFormats.Rgb24((byte)r, (byte)g, (byte)b);
+                    outputImage[x, y] = new SixLabors.ImageSharp.PixelFormats.Rgb24((byte)r, (byte)g, (byte)b);
                 }
             }
             

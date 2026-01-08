@@ -31,8 +31,8 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly string _indexFile;
         
         // Cache monitoring
-        private readonly Timer _cleanupTimer;
-        private readonly Timer _statsTimer;
+        private readonly Timer? _cleanupTimer;
+        private readonly Timer? _statsTimer;
         
         // Performance tracking
         private long _totalCacheSize;
@@ -553,7 +553,7 @@ namespace JellyfinUpscalerPlugin.Services
         /// <summary>
         /// Cleanup timer callback
         /// </summary>
-        private async void CleanupCallback(object state)
+        private async void CleanupCallback(object? state)
         {
             try
             {
@@ -568,7 +568,7 @@ namespace JellyfinUpscalerPlugin.Services
         /// <summary>
         /// Stats timer callback
         /// </summary>
-        private void StatsCallback(object state)
+        private void StatsCallback(object? state)
         {
             try
             {

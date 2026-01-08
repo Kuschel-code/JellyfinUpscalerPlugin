@@ -10,7 +10,12 @@ using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Session;
 using MediaBrowser.Controller.Net;
 using System.Net.Mime;
+using System.Threading;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
 using JellyfinUpscalerPlugin.Services;
+using MediaBrowser.Model.Entities;
+using Image = SixLabors.ImageSharp.Image;
 
 namespace JellyfinUpscalerPlugin.Controllers
 {
@@ -348,11 +353,11 @@ namespace JellyfinUpscalerPlugin.Controllers
                 }
 
                 // Try to get primary image or first available
-                var imagePath = item.GetImagePath(MediaBrowser.Model.Entities.ImageType.Primary);
+                var imagePath = item.GetImagePath(ImageType.Primary, 0);
                 if (string.IsNullOrEmpty(imagePath))
                 {
                     _logger.LogWarning($"⚠️ No primary image found for item {itemId}, trying fallbacks");
-                    var images = item.GetImages().ToList();
+                    var images = item.GetImages(ImageType.Primary).ToList();
                     if (images.Count == 0)
                     {
                         return BadRequest(new { message = "No image available for this item" });
@@ -481,7 +486,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                     {
                         tags.Add("AI-Upscaled");
                         item.Tags = tags.ToArray();
-                        _libraryManager.UpdateItem(item, item, ItemUpdateType.MetadataEdit, CancellationToken.None);
+                        await item.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, CancellationToken.None);
                     }
                 }
 

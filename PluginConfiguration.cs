@@ -30,6 +30,12 @@ namespace JellyfinUpscalerPlugin
         // Features
         public bool EnableComparisonView { get; set; } = true;
         public bool EnablePreProcessingCache { get; set; } = false;
+        public bool EnablePerformanceMetrics { get; set; } = true;
+        public bool EnableAutoBenchmarking { get; set; } = true;
+        
+        // Cache Settings
+        public int MaxCacheAgeDays { get; set; } = 30;
+        public int CacheSizeMB { get; set; } = 5120; // 5GB default
         
         // Scheduled Task Settings - v1.4.1 NEW
         public bool EnableScheduledUpscaling { get; set; } = false;

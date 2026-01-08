@@ -38,11 +38,11 @@ namespace JellyfinUpscalerPlugin.Services
         
         // Performance monitoring
         private readonly Dictionary<string, VideoProcessingMetrics> _performanceHistory = new();
-        private readonly Timer _statisticsTimer;
+        private readonly Timer? _statisticsTimer;
         
         // FFmpeg configuration
-        private string _ffmpegPath;
-        private string _ffprobePath;
+        private string _ffmpegPath = string.Empty;
+        private string _ffprobePath = string.Empty;
         
         public VideoProcessor(
             ILogger<VideoProcessor> logger,
@@ -90,7 +90,7 @@ namespace JellyfinUpscalerPlugin.Services
                 // Configure FFMpegCore
                 GlobalFFOptions.Configure(new FFOptions
                 {
-                    BinaryFolder = Path.GetDirectoryName(_ffmpegPath),
+                    BinaryFolder = Path.GetDirectoryName(_ffmpegPath) ?? string.Empty,
                     TemporaryFilesFolder = Path.GetTempPath()
                 });
                 
@@ -711,7 +711,7 @@ namespace JellyfinUpscalerPlugin.Services
         /// <summary>
         /// Update statistics timer callback
         /// </summary>
-        private void UpdateStatistics(object state)
+        private void UpdateStatistics(object? state)
         {
             try
             {
@@ -745,6 +745,10 @@ namespace JellyfinUpscalerPlugin.Services
         public string Model { get; set; } = "auto";
         public int ScaleFactor { get; set; } = 2;
         public string QualityLevel { get; set; } = "medium";
+        
+        public int Scale { get => ScaleFactor; set => ScaleFactor = value; }
+        public string Quality { get => QualityLevel; set => QualityLevel = value; }
+        
         public string HardwareAcceleration { get; set; } = "auto";
         public bool EnableRealTimeProcessing { get; set; } = false;
         public bool PreserveAudio { get; set; } = true;
