@@ -267,13 +267,17 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 optimized.HardwareAcceleration = "cuda";
             }
-            else if (hardwareProfile.SupportsDirectML)
+            else if (hardwareProfile.AvailableHwAccels.Contains("vaapi"))
             {
-                optimized.HardwareAcceleration = "directml";
+                optimized.HardwareAcceleration = "vaapi";
             }
             else if (hardwareProfile.AvailableHwAccels.Contains("qsv"))
             {
                 optimized.HardwareAcceleration = "qsv";
+            }
+            else if (hardwareProfile.SupportsDirectML)
+            {
+                optimized.HardwareAcceleration = "directml";
             }
             
             _logger.LogInformation($"🎯 Optimized options: {optimized.Model} @ {optimized.ScaleFactor}x, {optimized.QualityLevel} quality, {optimized.HardwareAcceleration} accel");
@@ -588,6 +592,7 @@ namespace JellyfinUpscalerPlugin.Services
             VideoProcessingOptions options,
             HardwareProfile hardwareProfile)
         {
+            _logger.LogInformation("🛠️ Building FFmpeg command for hardware acceleration...");
             var args = new List<string>();
             
             // Hardware acceleration
@@ -596,9 +601,16 @@ namespace JellyfinUpscalerPlugin.Services
                 args.Add("-hwaccel cuda");
                 args.Add("-hwaccel_output_format cuda");
             }
+            else if (options.HardwareAcceleration == "vaapi" && hardwareProfile.AvailableHwAccels.Contains("vaapi"))
+            {
+                args.Add("-hwaccel vaapi");
+                args.Add("-hwaccel_output_format vaapi");
+                args.Add("-vaapi_device /dev/dri/renderD128");
+            }
             else if (options.HardwareAcceleration == "qsv" && hardwareProfile.AvailableHwAccels.Contains("qsv"))
             {
                 args.Add("-hwaccel qsv");
+                args.Add("-hwaccel_output_format qsv");
             }
             
             // Input
@@ -614,16 +626,31 @@ namespace JellyfinUpscalerPlugin.Services
                 {
                     filters.Add($"scale_cuda={options.ScaleFactor}*iw:{options.ScaleFactor}*ih");
                 }
+                else if (options.HardwareAcceleration == "vaapi")
+                {
+                    filters.Add($"scale_vaapi={options.ScaleFactor}*iw:{options.ScaleFactor}*ih");
+                }
+                else if (options.HardwareAcceleration == "qsv")
+                {
+                    filters.Add($"scale_qsv={options.ScaleFactor}*iw:{options.ScaleFactor}*ih");
+                }
                 else
                 {
-                    filters.Add($"scale={options.ScaleFactor}*iw:{options.ScaleFactor}*ih:lanczos");
+                    filters.Add($"scale={options.ScaleFactor}*iw:{options.ScaleFactor}*ih:flags=lanczos");
                 }
             }
             
             // Quality filters
             if (options.QualityLevel == "high")
             {
-                filters.Add("unsharp=5:5:1.0:5:5:0.0");
+                if (options.HardwareAcceleration == "vaapi")
+                {
+                    filters.Add("sharpen_vaapi");
+                }
+                else
+                {
+                    filters.Add("unsharp=5:5:1.0:5:5:0.0");
+                }
             }
             
             if (filters.Count > 0)
@@ -634,15 +661,19 @@ namespace JellyfinUpscalerPlugin.Services
             // Output encoding
             if (options.HardwareAcceleration == "cuda")
             {
-                args.Add("-c:v h264_nvenc");
+                args.Add("-c:v h264_nvenc -preset p4 -tune hq -b:v 5M");
+            }
+            else if (options.HardwareAcceleration == "vaapi")
+            {
+                args.Add("-c:v h264_vaapi -qp 20");
             }
             else if (options.HardwareAcceleration == "qsv")
             {
-                args.Add("-c:v h264_qsv");
+                args.Add("-c:v h264_qsv -preset slow -b:v 5M");
             }
             else
             {
-                args.Add("-c:v libx264");
+                args.Add("-c:v libx264 -preset medium -crf 23");
             }
             
             // Audio
@@ -651,7 +682,10 @@ namespace JellyfinUpscalerPlugin.Services
             // Output
             args.Add($"-y \"{outputPath}\"");
             
-            return string.Join(" ", args);
+            var fullCommand = string.Join(" ", args);
+            _logger.LogDebug($"💻 Generated FFmpeg Command: ffmpeg {fullCommand}");
+            
+            return fullCommand;
         }
 
         /// <summary>

@@ -8,7 +8,7 @@ An advanced, AI-powered video enhancement plugin for Jellyfin. Improve your medi
 ## 🚀 Key Features
 
 - **Real-Time Upscaling**: Experience crystal-clear images during playback.
-- **Hardware Acceleration**: Full support for NVIDIA (CUDA) and DirectML (AMD/Intel).
+- **Hardware Acceleration**: Full support for NVIDIA (CUDA), VAAPI (Linux), QSV (Intel), and DirectML (Windows).
 - **Multiple AI Models**: Support for Real-ESRGAN, SwinIR, Waifu2x, and more.
 - **Automated Tasks**: Background library scanning and automated upscaling of low-resolution content.
 - **Hardware Benchmarking**: Built-in tools for detection and optimization based on server performance.
