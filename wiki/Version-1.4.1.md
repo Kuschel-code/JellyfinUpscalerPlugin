@@ -24,6 +24,11 @@
 *   **Präzisere Schätzungen**: Verbesserte Algorithmen zur Leistungsberechnung basierend auf der tatsächlichen Hardware-Kapazität.
 *   **Auto-Optimization**: Schnellere Erkennung und Anwendung optimaler Einstellungen für den ersten Start.
 
+### **Neu: Automatisierung & Metadaten**
+*   **Automatisierte Mediathek-Skalierung**: Ein neuer Scheduled Task ermöglicht das automatische Upscaling von Inhalten im Hintergrund (z. B. nachts).
+*   **Native Metadaten-Tags**: Upscaled Content wird nun automatisch mit dem Tag `AI-Upscaled` markiert, was die Filterung und Suche erleichtert.
+*   **Einstellbare Schwellenwerte**: Definieren Sie, ab welcher Auflösung Inhalte automatisch verbessert werden sollen.
+
 ---
 
 ## 🛠️ **Technische Änderungen**

@@ -109,6 +109,30 @@
                 </div>
 
                 <div class="verticalSection">
+                    <h2 class="sectionTitle">🕒 Scheduled Upscaling (Beta)</h2>
+                    
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input type="checkbox" is="emby-checkbox" id="EnableScheduledUpscaling" name="EnableScheduledUpscaling" />
+                            <span>Enable Automated Background Upscaling</span>
+                        </label>
+                        <div class="fieldDescription">Automatically upscale library content during maintenance hours</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="UpscaleResolutionThreshold">Resolution Threshold (p):</label>
+                        <input is="emby-input" type="number" id="UpscaleResolutionThreshold" name="UpscaleResolutionThreshold" min="240" max="2160" />
+                        <div class="fieldDescription">Only upscale items with width less than this value (e.g., 1080 for Full HD)</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="MaxItemsPerTask">Max Items per Session:</label>
+                        <input is="emby-input" type="number" id="MaxItemsPerTask" name="MaxItemsPerTask" min="1" max="100" />
+                        <div class="fieldDescription">Maximum number of items to upscale in a single scheduled task run</div>
+                    </div>
+                </div>
+
+                <div class="verticalSection">
                     <h2 class="sectionTitle">📊 Live Hardware Status</h2>
                     <div id="hardwareStatusContainer" class="flex align-items-center justify-content-center flex-wrap-wrap">
                         <div class="card p-1 m-0-5 flex-grow-1" style="background: rgba(0, 164, 220, 0.1);">
@@ -179,6 +203,11 @@
                     page.querySelector('#Notifications').checked = config.Notifications;
                     page.querySelector('#AutoRetryButton').checked = config.AutoRetryButton;
                     page.querySelector('#ButtonPosition').value = config.ButtonPosition || 'right';
+                    
+                    // Scheduled Task Settings
+                    page.querySelector('#EnableScheduledUpscaling').checked = config.EnableScheduledUpscaling;
+                    page.querySelector('#UpscaleResolutionThreshold').value = config.UpscaleResolutionThreshold || 1080;
+                    page.querySelector('#MaxItemsPerTask').value = config.MaxItemsPerTask || 5;
                     
                     Dashboard.hideLoading();
                 });
@@ -327,7 +356,10 @@
                         CpuThreads: parseInt(page.querySelector('#CpuThreads').value),
                         Notifications: page.querySelector('#Notifications').checked,
                         AutoRetryButton: page.querySelector('#AutoRetryButton').checked,
-                        ButtonPosition: page.querySelector('#ButtonPosition').value
+                        ButtonPosition: page.querySelector('#ButtonPosition').value,
+                        EnableScheduledUpscaling: page.querySelector('#EnableScheduledUpscaling').checked,
+                        UpscaleResolutionThreshold: parseInt(page.querySelector('#UpscaleResolutionThreshold').value),
+                        MaxItemsPerTask: parseInt(page.querySelector('#MaxItemsPerTask').value)
                     };
 
                     ApiClient.updatePluginConfiguration(pluginId, config).then(function() {

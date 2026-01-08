@@ -447,6 +447,60 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
+        /// Process a specific library item - NEW v1.4.1
+        /// </summary>
+        [HttpPost("process/item/{itemId}")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult<object>> ProcessItem(string itemId, [FromQuery] string? model = null, [FromQuery] int? scale = null)
+        {
+            try
+            {
+                var item = _libraryManager.GetItemById(itemId);
+                if (item == null) return NotFound(new { message = "Item not found" });
+
+                var config = Plugin.Instance?.Configuration;
+                var options = new VideoProcessingOptions
+                {
+                    Model = model ?? config?.Model ?? "auto",
+                    ScaleFactor = scale ?? config?.ScaleFactor ?? 2,
+                    QualityLevel = config?.QualityLevel ?? "medium"
+                };
+
+                var outputPath = Path.Combine(
+                    Path.GetDirectoryName(item.Path) ?? "",
+                    Path.GetFileNameWithoutExtension(item.Path) + "_upscaled" + Path.GetExtension(item.Path)
+                );
+
+                var result = await _videoProcessor.ProcessVideoAsync(item.Path, outputPath, options);
+
+                if (result.Success)
+                {
+                    // Add AI-Upscaled tag
+                    var tags = item.Tags.ToList();
+                    if (!tags.Contains("AI-Upscaled"))
+                    {
+                        tags.Add("AI-Upscaled");
+                        item.Tags = tags.ToArray();
+                        _libraryManager.UpdateItem(item, item, ItemUpdateType.MetadataEdit, CancellationToken.None);
+                    }
+                }
+
+                return Ok(new
+                {
+                    success = result.Success,
+                    itemId = itemId,
+                    outputPath = result.OutputPath,
+                    error = result.Error
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed to process item {itemId}");
+                return StatusCode(500, new { success = false, error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Get cache statistics - NEW v1.4.1
         /// </summary>
         [HttpGet("cache/stats")]

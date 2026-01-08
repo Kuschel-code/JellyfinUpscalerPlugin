@@ -31,6 +31,12 @@ namespace JellyfinUpscalerPlugin
         public bool EnableComparisonView { get; set; } = true;
         public bool EnablePreProcessingCache { get; set; } = false;
         
+        // Scheduled Task Settings - v1.4.1 NEW
+        public bool EnableScheduledUpscaling { get; set; } = false;
+        public int UpscaleResolutionThreshold { get; set; } = 1080;
+        public int MaxItemsPerTask { get; set; } = 5;
+        public string[] AutoUpscaleFolders { get; set; } = Array.Empty<string>();
+        
         // Version tracking
         public string PluginVersion { get; set; } = "1.4.1";
         public DateTime LastConfigUpdate { get; set; } = DateTime.UtcNow;
