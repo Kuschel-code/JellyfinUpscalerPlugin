@@ -5,6 +5,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller.Entities;
+using MediaBrowser.Controller.Entities.Movies;
+using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Model.Tasks;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Querying;
@@ -98,48 +101,48 @@ namespace JellyfinUpscalerPlugin.Tasks
                 }
 
                 // Check resolution - only upscale content below threshold
-                var videoStream = item.GetMediaSources(false).FirstOrDefault()?.VideoStream;
-                if (videoStream == null) continue;
-
-                bool shouldUpscale = videoStream.Width > 0 && videoStream.Width < config.UpscaleResolutionThreshold;
-
-                if (shouldUpscale)
+                if (item is Video video)
                 {
-                    _logger.LogInformation($"✨ AI Upscaler: Automatically upscaling {item.Name} ({videoStream.Width}p -> {videoStream.Width * config.ScaleFactor}p)");
+                    bool shouldUpscale = video.Width > 0 && video.Width < config.UpscaleResolutionThreshold;
 
-                    try
+                    if (shouldUpscale)
                     {
-                        var options = new VideoProcessingOptions
+                        _logger.LogInformation($"✨ AI Upscaler: Automatically upscaling {item.Name} ({video.Width}p -> {video.Width * config.ScaleFactor}p)");
+
+                        try
                         {
-                            Model = config.Model,
-                            ScaleFactor = config.ScaleFactor,
-                            QualityLevel = config.QualityLevel,
-                            HardwareAcceleration = config.HardwareAcceleration ? "auto" : "none"
-                        };
+                            var options = new VideoProcessingOptions
+                            {
+                                Model = config.Model,
+                                ScaleFactor = config.ScaleFactor,
+                                QualityLevel = config.QualityLevel,
+                                HardwareAcceleration = config.HardwareAcceleration ? "auto" : "none"
+                            };
 
-                        var outputPath = Path.Combine(
-                            Path.GetDirectoryName(item.Path) ?? "",
-                            Path.GetFileNameWithoutExtension(item.Path) + "_upscaled" + Path.GetExtension(item.Path)
-                        );
+                            var outputPath = Path.Combine(
+                                Path.GetDirectoryName(item.Path) ?? "",
+                                Path.GetFileNameWithoutExtension(item.Path) + "_upscaled" + Path.GetExtension(item.Path)
+                            );
 
-                        var result = await _videoProcessor.ProcessVideoAsync(item.Path, outputPath, options, cancellationToken);
+                            var result = await _videoProcessor.ProcessVideoAsync(item.Path, outputPath, options, cancellationToken);
 
-                        if (result.Success)
-                        {
-                            _logger.LogInformation($"✅ AI Upscaler: Successfully upscaled {item.Name}");
-                            
-                            // Add tag to original item to mark as processed
-                            var tags = item.Tags.ToList();
-                            tags.Add("AI-Upscaled");
-                            item.Tags = tags.ToArray();
-                            
-                            _libraryManager.UpdateItem(item, item, ItemUpdateType.MetadataEdit, CancellationToken.None);
-                            upscaledCount++;
+                            if (result.Success)
+                            {
+                                _logger.LogInformation($"✅ AI Upscaler: Successfully upscaled {item.Name}");
+                                
+                                // Add tag to original item to mark as processed
+                                var tags = item.Tags.ToList();
+                                tags.Add("AI-Upscaled");
+                                item.Tags = tags.ToArray();
+                                
+                                _libraryManager.UpdateItem(item, item, ItemUpdateType.MetadataEdit, CancellationToken.None);
+                                upscaledCount++;
+                            }
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, $"❌ AI Upscaler: Failed to upscale {item.Name}");
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"❌ AI Upscaler: Failed to upscale {item.Name}");
+                        }
                     }
                 }
             }
