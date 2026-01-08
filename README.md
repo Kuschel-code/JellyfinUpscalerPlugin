@@ -1,45 +1,48 @@
 # 🎮 Jellyfin AI Upscaler Plugin v1.4.1 STABLE
 
-[![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.10.x+-00A4DC.svg)](https://jellyfin.org)
 
-Ein fortschrittliches, AI-gestütztes Videoverbesserungs-Plugin für Jellyfin. Verbessere deine Medien in Echtzeit oder per Vorverarbeitung mit modernsten neuronalen Netzen.
+An advanced, AI-powered video enhancement plugin for Jellyfin. Improve your media in real-time or via pre-processing using state-of-the-art neural networks.
 
-## 🚀 Hauptfunktionen
+## 🚀 Key Features
 
-- **Echtzeit-Upscaling**: Erlebe kristallklare Bilder während der Wiedergabe.
-- **Hardware-Beschleunigung**: Volle Unterstützung für NVIDIA (CUDA) und DirectML (AMD/Intel).
-- **Mehrere AI-Modelle**: Unterstützung für Real-ESRGAN, SwinIR, Waifu2x und mehr.
-- **Hardware-Benchmarking**: Integrierte Tools zur Erkennung und Optimierung basierend auf der Server-Leistung.
-- **Modernste UI Integration**: Vollständig kompatibel mit Jellyfin 10.10+ Dashboard und Player.
+- **Real-Time Upscaling**: Experience crystal-clear images during playback.
+- **Hardware Acceleration**: Full support for NVIDIA (CUDA) and DirectML (AMD/Intel).
+- **Multiple AI Models**: Support for Real-ESRGAN, SwinIR, Waifu2x, and more.
+- **Automated Tasks**: Background library scanning and automated upscaling of low-resolution content.
+- **Hardware Benchmarking**: Built-in tools for detection and optimization based on server performance.
+- **Modern UI Integration**: Fully compatible with Jellyfin 10.10+ Dashboard and Player.
+- **Native Tagging**: Automatically tags processed media as `AI-Upscaled` for easy filtering.
 
 ## 🛠️ Installation
 
-### Repository-Methode (Empfohlen)
-1. Öffne dein Jellyfin-Dashboard.
-2. Gehe zu **Plugins** > **Repositories**.
-3. Füge ein neues Repository mit folgender URL hinzu:
+### Repository Method (Recommended)
+1. Open your Jellyfin Dashboard.
+2. Go to **Plugins** > **Repositories**.
+3. Add a new repository with the following URL:
    `https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/repository-jellyfin.json`
-4. Gehe zum **Katalog**, suche nach "AI Upscaler Plugin" und installiere Version **1.4.1**.
-5. Starte Jellyfin neu.
+4. Go to the **Catalog**, search for "AI Upscaler Plugin", and install version **1.4.1**.
+5. Restart Jellyfin.
 
-## ⚙️ Konfiguration
+## ⚙️ Configuration
 
-Nach der Installation findest du die Einstellungen unter **Dashboard > Plugins > AI Upscaler Plugin**.
+After installation, you can find settings under **Dashboard > Plugins > AI Upscaler Plugin**.
 
-- **Plugin aktivieren**: Globaler Schalter für den Upscaler.
-- **Skalierungsfaktor**: Wähle zwischen 2x, 4x oder benutzerdefinierter Skalierung.
-- **Hardware-Erkennung**: Das Plugin erkennt automatisch verfügbare GPUs und schlägt optimale Einstellungen vor.
+- **Enable Plugin**: Global switch for the upscaler.
+- **Scaling Factor**: Choose between 2x, 4x, or custom scaling.
+- **Scheduled Tasks**: Configure automatic background upscaling for low-resolution library items.
+- **Hardware Detection**: The plugin automatically detects available GPUs and suggests optimal settings.
 
 ## 📖 Wiki & Support
 
-Detaillierte Anleitungen, Hardware-Listen und Fehlerbehebung findest du in unserem **[GitHub Wiki](wiki/Home.md)**.
+Detailed guides, hardware lists, and troubleshooting can be found in our **[GitHub Wiki](wiki/Home.md)**.
 
-- [Erste Schritte](wiki/Quick-Start.md)
-- [Hardware-Kompatibilität](wiki/Hardware-Compatibility.md)
-- [Performance-Benchmarks](wiki/Performance-Benchmarks.md)
+- [Getting Started](wiki/Quick-Start.md)
+- [Hardware Compatibility](wiki/Hardware-Compatibility.md)
+- [Performance Benchmarks](wiki/Performance-Benchmarks.md)
 - [FAQ](wiki/FAQ.md)
 
-## 📄 Lizenz
+## 📄 License
 
-Dieses Projekt lizenziert unter der MIT-Lizenz - siehe [LICENSE](LICENSE) für Details.
+This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
