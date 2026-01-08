@@ -52,7 +52,7 @@ namespace JellyfinUpscalerPlugin.Tasks
             };
         }
 
-        public async Task Execute(CancellationToken cancellationToken, IProgress<double> progress)
+        public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
         {
             var config = Plugin.Instance?.Configuration;
             if (config == null || !config.EnablePlugin || !config.EnableScheduledUpscaling)

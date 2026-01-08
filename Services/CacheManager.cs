@@ -271,7 +271,7 @@ namespace JellyfinUpscalerPlugin.Services
             int scale, 
             string quality,
             TimeSpan processingTime,
-            Dictionary<string, object> metadata = null)
+            Dictionary<string, object>? metadata = null)
         {
             try
             {
