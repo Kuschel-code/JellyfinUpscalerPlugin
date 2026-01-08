@@ -379,10 +379,10 @@ namespace JellyfinUpscalerPlugin.Controllers
                     // If image is larger than 720p, downscale it for preview to save memory
                     if (image.Width > 1280 || image.Height > 720)
                     {
-                        image.Mutate(x => x.Resize(new SixLabors.ImageSharp.ResizeOptions
+                        image.Mutate(x => x.Resize(new ResizeOptions
                         {
-                            Size = new SixLabors.ImageSharp.Size(1280, 720),
-                            Mode = SixLabors.ImageSharp.Processing.ResizeMode.Max
+                            Size = new Size(1280, 720),
+                            Mode = ResizeMode.Max
                         }));
                         
                         using var ms = new MemoryStream();

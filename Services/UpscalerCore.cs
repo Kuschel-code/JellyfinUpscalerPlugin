@@ -32,7 +32,7 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly PluginConfiguration _config;
         
         // AI Model Sessions
-        private readonly Dictionary<string, InferenceSession> _modelSessions = new();
+        private readonly Dictionary<string, InferenceSession?> _modelSessions = new();
         private readonly Dictionary<string, SessionOptions> _sessionOptions = new();
         
         // Hardware detection cache
@@ -187,7 +187,7 @@ namespace JellyfinUpscalerPlugin.Services
             if (_hardwareCache.ContainsKey("profile") && 
                 DateTime.Now - _lastHardwareCheck < TimeSpan.FromMinutes(5))
             {
-                return _hardwareCache["profile"] as HardwareProfile;
+                return _hardwareCache["profile"] as HardwareProfile ?? new HardwareProfile();
             }
 
             _logger.LogInformation("🔍 Detecting hardware capabilities...");
@@ -282,16 +282,19 @@ namespace JellyfinUpscalerPlugin.Services
                     };
 
                     using var process = Process.Start(processInfo);
-                    var output = await process.StandardOutput.ReadToEndAsync();
-                    
-                    if (!string.IsNullOrEmpty(output))
+                    if (process != null)
                     {
-                        var parts = output.Trim().Split(',');
-                        if (parts.Length >= 3)
+                        var output = await process.StandardOutput.ReadToEndAsync();
+                        
+                        if (!string.IsNullOrEmpty(output))
                         {
-                            profile.GpuModel = parts[0].Trim();
-                            profile.DriverVersion = parts[1].Trim();
-                            profile.VramMB = int.TryParse(parts[2].Trim(), out var vram) ? vram : 0;
+                            var parts = output.Trim().Split(',');
+                            if (parts.Length >= 3)
+                            {
+                                profile.GpuModel = parts[0].Trim();
+                                profile.DriverVersion = parts[1].Trim();
+                                profile.VramMB = int.TryParse(parts[2].Trim(), out var vram) ? vram : 0;
+                            }
                         }
                     }
                 }
@@ -339,8 +342,12 @@ namespace JellyfinUpscalerPlugin.Services
                 
                 // Available disk space
                 var tempPath = Path.GetTempPath();
-                var driveInfo = new DriveInfo(Path.GetPathRoot(tempPath));
-                profile.TempDiskSpaceGB = (int)(driveInfo.AvailableFreeSpace / 1024 / 1024 / 1024);
+                var root = Path.GetPathRoot(tempPath);
+                if (!string.IsNullOrEmpty(root))
+                {
+                    var driveInfo = new DriveInfo(root);
+                    profile.TempDiskSpaceGB = (int)(driveInfo.AvailableFreeSpace / 1024 / 1024 / 1024);
+                }
                 
                 _logger.LogInformation($"💾 System: {profile.SystemRamMB}MB RAM, {profile.CpuCores} CPU cores, {profile.TempDiskSpaceGB}GB temp space");
                 
@@ -377,12 +384,15 @@ namespace JellyfinUpscalerPlugin.Services
                 };
 
                 using var process = Process.Start(processInfo);
-                var output = await process.StandardOutput.ReadToEndAsync();
-                
-                profile.AvailableHwAccels = output.Split('\n')
-                    .Where(line => !string.IsNullOrWhiteSpace(line) && !line.Contains("Hardware"))
-                    .Select(line => line.Trim())
-                    .ToList();
+                if (process != null)
+                {
+                    var output = await process.StandardOutput.ReadToEndAsync();
+                    
+                    profile.AvailableHwAccels = output.Split('\n')
+                        .Where(line => !string.IsNullOrWhiteSpace(line) && !line.Contains("Hardware"))
+                        .Select(line => line.Trim())
+                        .ToList();
+                }
 
                 _logger.LogInformation($"🎬 FFmpeg HW Accels: {string.Join(", ", profile.AvailableHwAccels)}");
             }

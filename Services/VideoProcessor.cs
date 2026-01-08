@@ -351,7 +351,7 @@ namespace JellyfinUpscalerPlugin.Services
                     OutputPath = outputPath,
                     ProcessingTime = DateTime.Now - job.StartTime,
                     Method = ProcessingMethod.RealTime,
-                    Error = success ? null : $"FFmpeg exited with code {result.ExitCode}"
+                    Error = success ? string.Empty : $"FFmpeg exited with code {result.ExitCode}"
                 };
             }
             catch (Exception ex)
