@@ -1,37 +1,37 @@
 # 🛠️ Installation
 
-Folge diesen Schritten, um das Jellyfin AI Upscaler Plugin auf deinem Server zu installieren.
+Follow these steps to install the Jellyfin AI Upscaler Plugin on your server.
 
-## 📦 Option 1: Über das Repository (Empfohlen)
+## 📦 Option 1: Via Repository (Recommended)
 
-1.  Öffne dein Jellyfin-Dashboard.
-2.  Gehe zu **Plugins** -> **Katalog**.
-3.  Klicke auf das Zahnrad-Symbol oben rechts (Repositories).
-4.  Füge die Repository-URL hinzu: `https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/repository.json`
-5.  Suche das **AI Upscaler Plugin** im Katalog und klicke auf **Installieren**.
-6.  Starte deinen Jellyfin-Server neu.
+1.  Open your Jellyfin Dashboard.
+2.  Go to **Plugins** -> **Catalog**.
+3.  Click the gear icon at the top right (Repositories).
+4.  Add the repository URL: `https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/repository.json`
+5.  Search for **AI Upscaler Plugin** in the catalog and click **Install**.
+6.  Restart your Jellyfin server.
 
-## 📂 Option 2: Manuelle Installation
+## 📂 Option 2: Manual Installation
 
-1.  Lade die neueste `.zip`-Datei von der [Releases-Seite](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases) herunter.
-2.  Extrahiere den Inhalt in dein Jellyfin `plugins` Verzeichnis:
+1.  Download the latest `.zip` file from the [Releases page](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases).
+2.  Extract the contents into your Jellyfin `plugins` directory:
     *   **Windows**: `C:\ProgramData\Jellyfin\Server\plugins\AIUpscaler`
     *   **Linux**: `/var/lib/jellyfin/plugins/AIUpscaler`
-    *   **Docker**: Mappe das `/plugins` Volume entsprechend.
-3.  Starte deinen Jellyfin-Server neu.
+    *   **Docker**: Map the `/plugins` volume accordingly.
+3.  Restart your Jellyfin server.
 
-## 📦 AI-Modelle hinzufügen
+## 📦 Adding AI Models
 
-Das Plugin benötigt ONNX-Modelle, um zu funktionieren.
+The plugin requires ONNX models to function.
 
-1.  Erstelle einen Ordner namens `models` in deinem Plugin-Konfigurationsverzeichnis:
+1.  Create a folder named `models` in your plugin configuration directory:
     *   **Windows**: `%AppData%\Jellyfin-Server\plugins\configurations\JellyfinUpscalerPlugin\models`
     *   **Linux**: `/etc/jellyfin/plugins/configurations/JellyfinUpscalerPlugin/models`
-2.  Lade kompatible `.onnx`-Modelle herunter (z.B. Real-ESRGAN) und platziere sie in diesem Ordner.
-3.  Die Modelle werden beim nächsten Start automatisch erkannt.
+2.  Download compatible `.onnx` models (e.g., Real-ESRGAN) and place them in this folder.
+3.  Models will be automatically detected on the next start.
 
-## ⚙️ Voraussetzungen
+## ⚙️ Requirements
 
-*   **Jellyfin Server v10.10.0** oder höher.
-*   **Grafikkarte (Optional, aber empfohlen)**: NVIDIA GPU für CUDA oder eine DirectML-kompatible GPU für beste Leistung.
-*   **RAM**: Mindestens 4GB (8GB+ empfohlen für 4K Upscaling).
+*   **Jellyfin Server v10.10.0** or higher.
+*   **Graphics Card (Optional but recommended)**: NVIDIA GPU for CUDA or a DirectML compatible GPU for best performance.
+*   **RAM**: At least 4GB (8GB+ recommended for 4K upscaling).

@@ -14,6 +14,7 @@ using System.Threading;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using JellyfinUpscalerPlugin.Services;
+using JellyfinUpscalerPlugin.Models;
 using MediaBrowser.Model.Entities;
 using Image = SixLabors.ImageSharp.Image;
 
@@ -33,6 +34,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         private readonly UpscalerCore _upscalerCore;
         private readonly VideoProcessor _videoProcessor;
         private readonly CacheManager _cacheManager;
+        private readonly MediaProcessingService _mediaProcessingService;
 
         /// <summary>
         /// Initializes a new instance of the UpscalerController class.
@@ -44,6 +46,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// <param name="upscalerCore">Upscaler core service.</param>
         /// <param name="videoProcessor">Video processor service.</param>
         /// <param name="cacheManager">Cache manager service.</param>
+        /// <param name="mediaProcessingService">Media processing service.</param>
         public UpscalerController(
             ILogger<UpscalerController> logger,
             ILibraryManager libraryManager,
@@ -51,7 +54,8 @@ namespace JellyfinUpscalerPlugin.Controllers
             HardwareBenchmarkService benchmarkService,
             UpscalerCore upscalerCore,
             VideoProcessor videoProcessor,
-            CacheManager cacheManager)
+            CacheManager cacheManager,
+            MediaProcessingService mediaProcessingService)
         {
             _logger = logger;
             _libraryManager = libraryManager;
@@ -60,6 +64,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             _upscalerCore = upscalerCore;
             _videoProcessor = videoProcessor;
             _cacheManager = cacheManager;
+            _mediaProcessingService = mediaProcessingService;
         }
 
         /// <summary>
@@ -71,26 +76,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         public ActionResult<List<object>> GetAvailableModels()
         {
             _logger.LogInformation("AI Upscaler: Getting available models");
-
-            var models = new List<object>
-            {
-                new { id = "realesrgan", name = "Real-ESRGAN", description = "Best Overall Quality (Anime/Photo)", scale = new[] { 2, 3, 4 } },
-                new { id = "esrgan-pro", name = "ESRGAN Pro", description = "Optimized for Movies & TV Shows", scale = new[] { 2, 4 } },
-                new { id = "swinir", name = "SwinIR", description = "State-of-the-art Transformer based", scale = new[] { 2, 4, 8 } },
-                new { id = "srcnn-light", name = "SRCNN Light", description = "Fast processing for low-end hardware", scale = new[] { 2, 3 } },
-                new { id = "waifu2x", name = "Waifu2x", description = "Classic Anime upscaling", scale = new[] { 2 } },
-                new { id = "hat", name = "HAT", description = "High Detail Enhancement", scale = new[] { 2, 4 } },
-                new { id = "edsr", name = "EDSR", description = "Precise Super-Resolution", scale = new[] { 2, 3, 4 } },
-                new { id = "vdsr", name = "VDSR", description = "Deep Learning approach", scale = new[] { 2, 3, 4 } },
-                new { id = "rdn", name = "RDN", description = "Enhanced Texture Detail", scale = new[] { 2, 4 } },
-                new { id = "srresnet", name = "SRResNet", description = "Balanced Performance", scale = new[] { 2, 4 } },
-                new { id = "carn", name = "CARN", description = "Compact & Fast", scale = new[] { 2, 3, 4 } },
-                new { id = "rrdbnet", name = "RRDBNet", description = "High Fidelity Quality", scale = new[] { 2, 4 } },
-                new { id = "drln", name = "DRLN", description = "Advanced Noise Reduction", scale = new[] { 2, 4 } },
-                new { id = "fsrcnn", name = "FSRCNN", description = "Lightweight Real-time capable", scale = new[] { 2, 3, 4 } }
-            };
-
-            return Ok(models);
+            return Ok(PluginInfoService.GetAvailableModels());
         }
 
         /// <summary>
@@ -201,40 +187,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         public ActionResult<object> GetPluginInfo()
         {
             _logger.LogInformation("AI Upscaler: Getting plugin info");
-
-            var assembly = typeof(Plugin).Assembly;
-            var version = assembly.GetName().Version?.ToString(3) ?? "1.4.1";
-
-            var info = new
-            {
-                name = "AI Upscaler Plugin",
-                version = version,
-                description = "AI-powered video upscaling with modern UI integration and hardware benchmarking",
-                author = "Kuschel-code",
-                features = new[]
-                {
-                    "Real-time AI video upscaling",
-                    "Multiple AI models (Real-ESRGAN, ESRGAN, SwinIR, Waifu2x)",
-                    "Hardware acceleration support",
-                    "Player integration with control buttons",
-                    "Cross-platform compatibility",
-                    "Performance optimization",
-                    "Automated hardware benchmarking",
-                    "Low-end hardware fallback system",
-                    "Pre-processing cache for better performance",
-                    "TV remote optimization",
-                    "Comparison view for quality testing"
-                },
-                supportedPlatforms = new[]
-                {
-                    "Windows", "Linux", "macOS", "Docker",
-                    "Smart TVs", "Android TV", "iOS", "Android",
-                    "NAS (Synology, QNAP, Unraid, TrueNAS)",
-                    "ARM devices (Raspberry Pi, ARM64)"
-                }
-            };
-
-            return Ok(info);
+            return Ok(PluginInfoService.GetPluginMetadata());
         }
 
         /// <summary>
@@ -287,42 +240,7 @@ namespace JellyfinUpscalerPlugin.Controllers
 
             try
             {
-                var hardware = await _upscalerCore.DetectHardwareAsync();
-                
-                var recommendations = new
-                {
-                    recommended = new
-                    {
-                        model = hardware.RecommendedModel,
-                        maxResolution = hardware.MaxConcurrentStreams > 1 ? "1080p→4K" : "720p→1080p",
-                        quality = hardware.SupportsCUDA ? "high" : "balanced",
-                        enableFallback = hardware.CpuCores < 8,
-                        maxConcurrentStreams = hardware.MaxConcurrentStreams
-                    },
-                    alternatives = new[]
-                    {
-                        new { model = "realesrgan", description = "Best quality, requires high-end GPU" },
-                        new { model = "fsrcnn-light", description = "Fastest processing, good for CPU/NAS" },
-                        new { model = "esrgan", description = "High quality, balanced performance" }
-                    },
-                    hardwareInfo = new
-                    {
-                        detectedCPU = hardware.CpuCores + " cores",
-                        detectedGPU = hardware.GpuModel ?? "None",
-                        platform = System.Runtime.InteropServices.RuntimeInformation.OSDescription,
-                        architecture = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture.ToString(),
-                        isLowEnd = hardware.CpuCores < 4 && !hardware.SupportsCUDA
-                    },
-                    tips = new[]
-                    {
-                        hardware.SupportsCUDA ? "CUDA detected - enjoy high performance upscaling!" : "Consider adding an NVIDIA GPU for faster upscaling",
-                        "Use lower scale factors (2x) for real-time playback if you experience lag",
-                        "Enable pre-processing cache for frequently watched content",
-                        hardware.CpuCores < 4 ? "Low CPU cores detected - pre-processing is highly recommended" : "Your CPU is capable of handling multiple streams"
-                    }
-                };
-
-                return Ok(recommendations);
+                return Ok(await _benchmarkService.GetRecommendationsAsync());
             }
             catch (Exception ex)
             {
@@ -344,65 +262,19 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
-                _logger.LogInformation($"🔍 Generating comparison data for item {itemId} with model {model} (x{scale})");
-                
-                var item = _libraryManager.GetItemById(itemId);
-                if (item == null)
-                {
-                    return NotFound(new { message = "Item not found" });
-                }
-
-                // Try to get primary image or first available
-                var imagePath = item.GetImagePath(ImageType.Primary, 0);
-                if (string.IsNullOrEmpty(imagePath))
-                {
-                    _logger.LogWarning($"⚠️ No primary image found for item {itemId}, trying fallbacks");
-                    var images = item.GetImages(ImageType.Primary).ToList();
-                    if (images.Count == 0)
-                    {
-                        return BadRequest(new { message = "No image available for this item" });
-                    }
-                    imagePath = images[0].Path;
-                }
-
-                if (!System.IO.File.Exists(imagePath))
-                {
-                    return NotFound(new { message = "Image file not found on disk" });
-                }
-
-                // Read image data
-                byte[] originalData = await System.IO.File.ReadAllBytesAsync(imagePath);
-                
-                // Optimize memory: Resize large images before upscaling for preview
-                using (var image = SixLabors.ImageSharp.Image.Load(originalData))
-                {
-                    // If image is larger than 720p, downscale it for preview to save memory
-                    if (image.Width > 1280 || image.Height > 720)
-                    {
-                        image.Mutate(x => x.Resize(new ResizeOptions
-                        {
-                            Size = new Size(1280, 720),
-                            Mode = ResizeMode.Max
-                        }));
-                        
-                        using var ms = new MemoryStream();
-                        image.SaveAsJpeg(ms);
-                        originalData = ms.ToArray();
-                    }
-                }
-                
-                // Perform AI upscaling
-                byte[] upscaledData = await _upscalerCore.UpscaleImageAsync(originalData, model, scale);
-
-                return Ok(new
-                {
-                    itemId = itemId,
-                    model = model,
-                    scale = scale,
-                    originalBase64 = $"data:image/jpeg;base64,{Convert.ToBase64String(originalData)}",
-                    upscaledBase64 = $"data:image/jpeg;base64,{Convert.ToBase64String(upscaledData)}",
-                    timestamp = DateTime.UtcNow
-                });
+                return Ok(await _mediaProcessingService.GenerateComparisonDataAsync(itemId, model, scale));
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (FileNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -460,35 +332,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
-                var item = _libraryManager.GetItemById(itemId);
-                if (item == null) return NotFound(new { message = "Item not found" });
-
-                var config = Plugin.Instance?.Configuration;
-                var options = new VideoProcessingOptions
-                {
-                    Model = model ?? config?.Model ?? "auto",
-                    ScaleFactor = scale ?? config?.ScaleFactor ?? 2,
-                    QualityLevel = config?.QualityLevel ?? "medium"
-                };
-
-                var outputPath = Path.Combine(
-                    Path.GetDirectoryName(item.Path) ?? "",
-                    Path.GetFileNameWithoutExtension(item.Path) + "_upscaled" + Path.GetExtension(item.Path)
-                );
-
-                var result = await _videoProcessor.ProcessVideoAsync(item.Path, outputPath, options);
-
-                if (result.Success)
-                {
-                    // Add AI-Upscaled tag
-                    var tags = item.Tags.ToList();
-                    if (!tags.Contains("AI-Upscaled"))
-                    {
-                        tags.Add("AI-Upscaled");
-                        item.Tags = tags.ToArray();
-                        await item.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, CancellationToken.None);
-                    }
-                }
+                var result = await _mediaProcessingService.ProcessLibraryItemAsync(itemId, model, scale);
 
                 return Ok(new
                 {
@@ -497,6 +341,10 @@ namespace JellyfinUpscalerPlugin.Controllers
                     outputPath = result.OutputPath,
                     error = result.Error
                 });
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -605,7 +453,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 await Request.Body.CopyToAsync(memoryStream);
                 var inputImage = memoryStream.ToArray();
                 
-                var upscaledImage = await _upscalerCore.UpscaleImageAsync(inputImage, model, scale);
+                var upscaledImage = await _mediaProcessingService.UpscaleImageAsync(inputImage, model, scale);
                 
                 return File(upscaledImage, "image/jpeg");
             }
@@ -626,12 +474,12 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
-                var success = await _cacheManager.PreProcessContentAsync(
+                var success = await _mediaProcessingService.PreProcessVideoAsync(
                     request.InputPath,
-                    request.Model ?? "auto",
-                    request.Scale ?? 2,
-                    request.Quality ?? "medium",
-                    _videoProcessor);
+                    request.Model,
+                    request.Scale,
+                    request.Quality,
+                    _cacheManager);
                 
                 return Ok(new 
                 {
@@ -699,18 +547,7 @@ namespace JellyfinUpscalerPlugin.Controllers
 
             try
             {
-                var fallbackInfo = new
-                {
-                    enabled = true,
-                    currentStatus = "monitoring",
-                    recommendations = new[]
-                    {
-                        "Current hardware can handle upscaling reliably",
-                        "Fallback triggers are well-configured for your system"
-                    }
-                };
-
-                return Ok(fallbackInfo);
+                return Ok(_benchmarkService.GetFallbackStatus());
             }
             catch (Exception ex)
             {
@@ -721,54 +558,5 @@ namespace JellyfinUpscalerPlugin.Controllers
 
 
 
-    }
-
-        /// <summary>
-        /// Upscaler settings model
-        /// </summary>
-        public class UpscalerSettings
-        {
-            public string? Model { get; set; }
-            public int? ScaleFactor { get; set; }
-            public string? QualityLevel { get; set; }
-            public bool? EnablePlugin { get; set; }
-            public bool? HardwareAcceleration { get; set; }
-            public bool? PlayerButton { get; set; }
-            public int? MaxVRAMUsage { get; set; }
-            public int? CpuThreads { get; set; }
-            public bool? AutoRetryButton { get; set; }
-            public string? ButtonPosition { get; set; }
-        }
-
-    /// <summary>
-    /// Video processing request model - v1.4.1 NEW
-    /// </summary>
-    public class VideoProcessRequest
-    {
-        public string InputPath { get; set; } = "";
-        public string OutputPath { get; set; } = "";
-        public string? Model { get; set; }
-        public int? Scale { get; set; }
-        public string? Quality { get; set; }
-    }
-
-    /// <summary>
-    /// Pre-processing request model - v1.4.1 NEW
-    /// </summary>
-    public class PreProcessRequest
-    {
-        public string InputPath { get; set; } = "";
-        public string? Model { get; set; }
-        public int? Scale { get; set; }
-        public string? Quality { get; set; }
-    }
-
-    // Request/Response classes
-    public class PreProcessingCacheRequest
-    {
-        public bool Enabled { get; set; }
-        public int? SizeMB { get; set; }
-        public bool? ProcessOnIdle { get; set; }
-        public List<string>? Resolutions { get; set; }
     }
 }

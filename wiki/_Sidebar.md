@@ -1,30 +1,15 @@
 # 🎮 AI Upscaler v1.4.1
 
-## 📚 **DOKUMENTATION**
+## 📚 **DOCUMENTATION**
 - **[🏠 Home](Home)**
 - **[🚀 Installation](Installation)**
-- **[⚡ Quick Start](Quick-Start)**
+- **[⚙️ Configuration](Configuration)**
 - **[❓ FAQ](FAQ)**
-
----
-
-## 🎯 **FEATURES**
-- **[🌟 Funktionen](Features)**
-- **[🎮 Nutzung](Usage)**
-- **[⚙️ Konfiguration](Configuration)**
-- **[🎨 AI Modelle](AI-Models)**
-
----
-
-## 🔧 **TECHNIK**
-- **[💻 Hardware](Hardware-Compatibility)**
-- **[📊 Benchmarks](Performance-Benchmarks)**
-- **[🐛 Troubleshooting](Troubleshooting)**
+- **[🎯 Hardware Compatibility](Hardware-Compatibility)**
 
 ---
 
 ## 📖 **RELEASES**
-- **[🚀 v1.4.1 STABLE](Version-1.4.1)**
 - **[📦 Archiv](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases)**
 
 ---

@@ -1,48 +1,48 @@
-# ❓ Häufig gestellte Fragen (FAQ)
+# ❓ Frequently Asked Questions (FAQ)
 
-Fragen und Antworten zum Jellyfin AI Upscaler Plugin v1.4.1 STABLE.
-
----
-
-## 🔥 Allgemeine Fragen
-
-### **Was ist das AI Upscaler Plugin?**
-Es ist eine Erweiterung für Jellyfin, die künstliche Intelligenz nutzt, um Videos mit niedriger Auflösung in Echtzeit oder per Vorverarbeitung zu verbessern (z. B. von SD auf 4K).
-
-### **Ist das Plugin kostenlos?**
-**Ja!** Das Plugin ist quelloffen und unter der MIT-Lizenz absolut kostenlos.
-
-### **Was ist neu in v1.4.1 STABLE?**
-Im Gegensatz zu früheren Versionen nutzt v1.4.1 **echte Hardware-Erkennung** (ONNX Runtime, nvidia-smi), um sicherzustellen, dass die Einstellungen perfekt auf die tatsächlichen Fähigkeiten deines Servers abgestimmt sind.
+Questions and answers about the Jellyfin AI Upscaler Plugin v1.4.1 STABLE.
 
 ---
 
-## 🖥️ Hardware & Leistung
+## 🔥 General Questions
 
-### **Welche Hardware benötige ich?**
-*   **Minimum**: Eine CPU mit mindestens 4 Kernen oder eine Einsteiger-GPU (GTX 1050).
-*   **Empfohlen**: NVIDIA RTX 3060 oder besser für 4K-Echtzeit-Upscaling.
-*   **NAS**: Funktioniert am besten mit Pre-Processing (Vorab-Berechnung).
+### **What is the AI Upscaler Plugin?**
+It is an extension for Jellyfin that uses artificial intelligence to enhance low-resolution videos in real-time or via pre-processing (e.g., from SD to 4K).
 
-### **Unterstützt es integrierte Grafikkarten?**
-**Ja!** Dank **DirectML** läuft das Plugin auch auf Intel UHD/Iris, AMD APUs und Apple Silicon (M1/M2/M3).
+### **Is the plugin free?**
+**Yes!** The plugin is open-source and absolutely free under the MIT license.
 
-### **Wird mein Server dadurch langsam?**
-Upscaling ist rechenintensiv. Bei Verwendung von Hardware-Beschleunigung (GPU) bleibt die CPU jedoch frei für andere Aufgaben wie Transkodierung.
+### **What's new in v1.4.1 STABLE?**
+Unlike earlier versions, v1.4.1 uses **real hardware detection** (ONNX Runtime, nvidia-smi) to ensure that settings are perfectly matched to your server's actual capabilities.
 
 ---
 
-## 🎮 Bedienung
+## 🖥️ Hardware & Performance
 
-### **Warum sehe ich keinen AI-Button im Player?**
-1. Stelle sicher, dass "Player-Button anzeigen" in den Plugin-Einstellungen aktiviert ist.
-2. Leere den Browser-Cache (Strg+F5).
-3. Prüfe, ob das Plugin im Jellyfin-Dashboard als "Aktiv" gelistet ist.
+### **What hardware do I need?**
+*   **Minimum**: A CPU with at least 4 cores or an entry-level GPU (GTX 1050).
+*   **Recommended**: NVIDIA RTX 3060 or better for 4K real-time upscaling.
+*   **NAS**: Works best with pre-processing (advance calculation).
 
-### **Speichert das Plugin meine Einstellungen nicht?**
-Bitte stelle sicher, dass du Version **1.4.1** installiert hast. In älteren Versionen gab es einen Fehler bei der Speicherung, der in der Stable-Version behoben wurde.
+### **Does it support integrated graphics cards?**
+**Yes!** Thanks to **DirectML**, the plugin also runs on Intel UHD/Iris, AMD APUs, and Apple Silicon (M1/M2/M3).
+
+### **Will my server become slow?**
+Upscaling is computationally intensive. However, when using hardware acceleration (GPU), the CPU remains free for other tasks like transcoding.
+
+---
+
+## 🎮 Operation
+
+### **Why don't I see an AI button in the player?**
+1. Ensure that "Show Player Button" is enabled in the plugin settings.
+2. Clear the browser cache (Ctrl+F5).
+3. Check if the plugin is listed as "Active" in the Jellyfin Dashboard.
+
+### **Does the plugin not save my settings?**
+Please ensure you have version **1.4.1** installed. In older versions, there was a bug in saving settings that has been fixed in the stable version.
 
 ---
 
 ## 📞 Support
-Falls du weitere Fragen hast, nutze unsere [GitHub Diskussionen](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions).
+If you have further questions, use our [GitHub Discussions](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions).

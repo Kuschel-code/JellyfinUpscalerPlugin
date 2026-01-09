@@ -1,31 +1,31 @@
-# 🎯 Hardware-Kompatibilität
+# 🎯 Hardware Compatibility
 
-Das AI Upscaler Plugin v1.4.1 nutzt **ONNX Runtime**, um eine plattformübergreifende Hardware-Beschleunigung zu ermöglichen.
+The AI Upscaler Plugin v1.4.1 uses **ONNX Runtime** to enable cross-platform hardware acceleration.
 
-## 🟢 NVIDIA Grafikkarten (Empfohlen)
-NVIDIA-Karten bieten die beste Leistung durch den **CUDA Execution Provider**.
-- **RTX 40er Serie**: Exzellent (unterstützt AV1, Hochgeschwindigkeits-4K-Upscaling).
-- **RTX 30er Serie**: Exzellent (sehr stabile CUDA-Leistung).
-- **RTX 20er Serie**: Sehr gut.
-- **GTX 10/16er Serie**: Gut (benötigt mindestens 4GB VRAM für 1080p).
+## 🟢 NVIDIA Graphics Cards (Recommended)
+NVIDIA cards offer the best performance through the **CUDA Execution Provider**.
+- **RTX 40 Series**: Excellent (supports AV1, high-speed 4K upscaling).
+- **RTX 30 Series**: Excellent (very stable CUDA performance).
+- **RTX 20 Series**: Very good.
+- **GTX 10/16 Series**: Good (requires at least 4GB VRAM for 1080p).
 
-## 🔵 Intel & AMD Grafikkarten
-Unter Windows nutzen diese Karten den **DirectML Execution Provider**.
-- **Intel Arc Serie**: Sehr gut (hervorragende ONNX-Kompatibilität).
-- **AMD Radeon RX 6000/7000**: Sehr gut.
-- **AMD Radeon RX 500/5000**: Gut.
-- **Intel UHD/Iris Xe**: Befriedigend (empfohlen nur für 720p-Verbesserung).
+## 🔵 Intel & AMD Graphics Cards
+Under Windows, these cards use the **DirectML Execution Provider**.
+- **Intel Arc Series**: Very good (excellent ONNX compatibility).
+- **AMD Radeon RX 6000/7000**: Very good.
+- **AMD Radeon RX 500/5000**: Good.
+- **Intel UHD/Iris Xe**: Satisfactory (recommended only for 720p enhancement).
 
-## 🖥️ CPU-Verarbeitung (Fallback)
-Wenn keine kompatible GPU gefunden wird, nutzt das Plugin eine optimierte Multi-Thread-CPU-Verarbeitung.
-- **High-End (12+ Kerne)**: Kann Echtzeit-720p-Upscaling bewältigen.
-- **Mittelklasse (6-8 Kerne)**: Empfohlen für 480p -> 720p oder Hintergrund-Preprocessing.
-- **Einsteiger/NAS (2-4 Kerne)**: Hintergrund-Preprocessing wird dringend empfohlen.
+## 🖥️ CPU Processing (Fallback)
+If no compatible GPU is found, the plugin uses optimized multi-threaded CPU processing.
+- **High-End (12+ Cores)**: Can handle real-time 720p upscaling.
+- **Mid-Range (6-8 Cores)**: Recommended for 480p -> 720p or background pre-processing.
+- **Entry-Level/NAS (2-4 Cores)**: Background pre-processing is strongly recommended.
 
-## 💾 Speicheranforderungen
-- **1080p Upscaling**: ca. 2GB VRAM / 4GB System-RAM.
-- **4K Upscaling**: ca. 6GB VRAM / 8GB System-RAM.
-- **8K Vorschau**: ca. 12GB VRAM / 16GB System-RAM.
+## 💾 Memory Requirements
+- **1080p Upscaling**: approx. 2GB VRAM / 4GB System RAM.
+- **4K Upscaling**: approx. 6GB VRAM / 8GB System RAM.
+- **8K Preview**: approx. 12GB VRAM / 16GB System RAM.
 
-## 🐧 Linux Unterstützung
-Linux-Nutzer sollten sicherstellen, dass sie die neuesten **NVIDIA-Treiber** und das `nvidia-container-toolkit` installiert haben (falls Docker verwendet wird). Die Unterstützung für Open-Source-Treiber (Mesa) erfolgt derzeit über CPU oder experimentelle Vulkan-Provider.
+## 🐧 Linux Support
+Linux users should ensure they have the latest **NVIDIA drivers** and the `nvidia-container-toolkit` installed (if using Docker). Support for open-source drivers (Mesa) is currently via CPU or experimental Vulkan providers.

@@ -16,6 +16,7 @@ using System.Drawing;
 using System.Text.Json;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
+using JellyfinUpscalerPlugin.Models;
 using Image = SixLabors.ImageSharp.Image;
 
 namespace JellyfinUpscalerPlugin.Services
@@ -651,44 +652,5 @@ namespace JellyfinUpscalerPlugin.Services
             }
             _sessionOptions.Clear();
         }
-    }
-
-    /// <summary>
-    /// Hardware profile information
-    /// </summary>
-    public class HardwareProfile
-    {
-        public string GpuVendor { get; set; } = "";
-        public string GpuModel { get; set; } = "";
-        public string DriverVersion { get; set; } = "";
-        public int VramMB { get; set; }
-        public int CpuCores { get; set; }
-        public int SystemRamMB { get; set; }
-        public int TempDiskSpaceGB { get; set; }
-        
-        public bool SupportsCUDA { get; set; }
-        public bool SupportsDirectML { get; set; }
-        public bool OpenCVSupportsCUDA { get; set; }
-        
-        public List<string> AvailableProviders { get; set; } = new();
-        public List<string> AvailableHwAccels { get; set; } = new();
-        public string OpenCVInfo { get; set; } = "";
-        
-        public string RecommendedModel { get; set; } = "";
-        public int RecommendedScale { get; set; } = 2;
-        public int MaxConcurrentStreams { get; set; } = 1;
-    }
-
-    /// <summary>
-    /// Performance metrics
-    /// </summary>
-    public class PerformanceMetrics
-    {
-        public string ModelName { get; set; } = "";
-        public double ProcessingTimeMs { get; set; }
-        public double MemoryUsageMB { get; set; }
-        public double CpuUsage { get; set; }
-        public double GpuUsage { get; set; }
-        public DateTime Timestamp { get; set; }
     }
 }

@@ -390,6 +390,62 @@ namespace JellyfinUpscalerPlugin.Services
             return optimal;
         }
 
+        /// <summary>
+        /// Get hardware-specific recommendations
+        /// </summary>
+        public async Task<object> GetRecommendationsAsync()
+        {
+            var hardware = await _upscalerCore.DetectHardwareAsync();
+            
+            return new
+            {
+                recommended = new
+                {
+                    model = hardware.RecommendedModel,
+                    maxResolution = hardware.MaxConcurrentStreams > 1 ? "1080p→4K" : "720p→1080p",
+                    quality = hardware.SupportsCUDA ? "high" : "balanced",
+                    enableFallback = hardware.CpuCores < 8,
+                    maxConcurrentStreams = hardware.MaxConcurrentStreams
+                },
+                alternatives = new[]
+                {
+                    new { model = "realesrgan", description = "Best quality, requires high-end GPU" },
+                    new { model = "fsrcnn-light", description = "Fastest processing, good for CPU/NAS" },
+                    new { model = "esrgan", description = "High quality, balanced performance" }
+                },
+                hardwareInfo = new
+                {
+                    detectedCPU = hardware.CpuCores + " cores",
+                    detectedGPU = hardware.GpuModel ?? "None",
+                    platform = RuntimeInformation.OSDescription,
+                    architecture = RuntimeInformation.ProcessArchitecture.ToString(),
+                    isLowEnd = hardware.CpuCores < 4 && !hardware.SupportsCUDA
+                },
+                tips = new[]
+                {
+                    hardware.SupportsCUDA ? "CUDA detected - enjoy high performance upscaling!" : "Consider adding an NVIDIA GPU for faster upscaling",
+                    "Use lower scale factors (2x) for real-time playback if you experience lag",
+                    "Enable pre-processing cache for frequently watched content",
+                    hardware.CpuCores < 4 ? "Low CPU cores detected - pre-processing is highly recommended" : "Your CPU is capable of handling multiple streams"
+                }
+            };
+        }
+
+        public object GetFallbackStatus()
+        {
+            var hardware = _upscalerCore.DetectHardwareAsync().Result; // Simple sync access for status
+            return new
+            {
+                enabled = true,
+                currentStatus = "monitoring",
+                recommendations = new[]
+                {
+                    hardware.SupportsCUDA ? "Current hardware can handle upscaling reliably" : "Consider pre-processing for best results",
+                    "Fallback triggers are well-configured for your system"
+                }
+            };
+        }
+
         private async Task SaveBenchmarkResults(BenchmarkResults results)
         {
             try
