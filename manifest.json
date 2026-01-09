@@ -11,7 +11,7 @@
       "changelog": "v1.4.1 STABLE: Full refactor of the configuration page for modern Jellyfin (10.10+), synchronized AI model lists, automated background upscaling tasks, and native metadata tagging.",
       "targetAbi": "10.10.0.0",
       "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/archive/refs/heads/main.zip",
-      "checksum": "A1B2C3D4E5F6789012345678901234567890ABCD",
+      "checksum": "E6618B659D282AF99D56069D7DD87575",
       "timestamp": "2026-01-08T20:00:00.000Z"
     }
   ],
