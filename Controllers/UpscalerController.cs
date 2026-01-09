@@ -322,17 +322,6 @@ namespace JellyfinUpscalerPlugin.Controllers
 
                 var result = await _videoProcessor.ProcessVideoAsync(item.Path, outputPath, options);
 
-                if (result.Success)
-                {
-                    var tags = item.Tags.ToList();
-                    if (!tags.Contains("AI-Upscaled"))
-                    {
-                        tags.Add("AI-Upscaled");
-                        item.Tags = tags.ToArray();
-                        await item.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, CancellationToken.None);
-                    }
-                }
-
                 return Ok(new { success = result.Success, itemId = itemId, outputPath = result.OutputPath, error = result.Error });
             }
             catch (Exception ex)

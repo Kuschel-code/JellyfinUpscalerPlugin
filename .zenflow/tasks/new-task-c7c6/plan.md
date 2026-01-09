@@ -29,6 +29,10 @@ Save findings to `{@artifacts_path}/investigation.md` with:
 <!-- chat-id: 8cc0439b-4b31-48a7-9fa5-e856c40adb94 -->
 <!-- agent: ZEN_CLI -->
 
-### [ ] Step: fix
+### [x] Step: fix
 <!-- chat-id: 7828ce5e-e554-4a23-88a8-fc0005b98419 -->
+<!-- agent: ZEN_CLI -->
+
+### [x] Step: hm
+<!-- chat-id: 714af896-916f-4271-863f-c34002e24b1d -->
 <!-- agent: ZEN_CLI -->

@@ -1,30 +1,30 @@
-# ⚙️ Configuration Guide
+# ⚙️ Konfigurations-Anleitung
 
-The AI Upscaler Plugin offers extensive settings to optimally balance image quality and system performance.
+Das AI Upscaler Plugin bietet umfangreiche Einstellungen, um die Bildqualität und die Systemleistung optimal auszubalancieren.
 
-## 🛠️ Basic Settings
-- **Enable Plugin**: The main switch. If disabled, all upscaling logic is skipped.
-- **Default AI Model**: The neural network used for enhancement (e.g., Real-ESRGAN).
-- **Scaling Factor**: Choose between 2x, 3x, or 4x upscaling. Higher factors require significantly more processing power.
-- **Quality Level**: Adjusts the internal precision of the models (Low, Medium, High).
+## 🛠️ Basis-Einstellungen
+- **Plugin aktivieren**: Der Hauptschalter. Wenn deaktiviert, wird die gesamte Upscaling-Logik übersprungen.
+- **Standard AI-Modell**: Das neuronale Netzwerk, das für die Verbesserung verwendet wird (z. B. Real-ESRGAN).
+- **Skalierungsfaktor**: Wähle zwischen 2x, 3x oder 4x Upscaling. Höhere Faktoren benötigen deutlich mehr Rechenleistung.
+- **Qualitätsstufe**: Passt die interne Präzision der Modelle an (Low, Medium, High).
 
-## 🔧 Hardware Settings
-- **Hardware Acceleration**: Strongly recommended if you have a GPU (NVIDIA, AMD, or Intel).
-- **Max VRAM Usage**: Limits the video memory the plugin is allowed to consume.
-- **CPU Threads**: Number of concurrent threads for image processing. Recommendation: Half of your physical cores for best stability.
+## 🔧 Hardware-Einstellungen
+- **Hardware-Beschleunigung**: Dringend empfohlen, wenn du eine GPU (NVIDIA, AMD oder Intel) besitzt.
+- **Max VRAM Nutzung**: Begrenzt den Grafikspeicher, den das Plugin verbrauchen darf.
+- **CPU Threads**: Anzahl der gleichzeitigen Threads für die Bildverarbeitung. Empfehlung: Die Hälfte deiner physischen Kerne für beste Stabilität.
 
 ## 📊 Live Hardware Status
-This section shows real-time data from your server:
-- **CPU Status**: Shows the detected processor and current core utilization.
-- **GPU Status**: Shows the detected GPU (e.g., NVIDIA RTX 3080) and the acceleration provider (CUDA/DirectML).
+Dieser Bereich zeigt Echtzeitdaten deines Servers an:
+- **CPU Status**: Zeigt den erkannten Prozessor und die aktuelle Kern-Auslastung.
+- **GPU Status**: Zeigt die erkannte GPU (z. B. NVIDIA RTX 3080) und den Beschleunigungs-Provider (CUDA/DirectML) an.
 
-## 🔍 AI Comparison Preview
-Use this tool to test your settings:
-1.  **Select Item**: Choose a movie or episode from the dropdown menu.
-2.  **Generate**: Click "✨ Generate Preview".
-3.  **Compare**: View the images side-by-side. The AI-enhanced version is on the right.
+## 🔍 AI Vergleichsvorschau (Comparison Preview)
+Nutze dieses Tool, um deine Einstellungen zu prüfen:
+1.  **Element wählen**: Suche einen Film oder eine Episode aus dem Dropdown-Menü aus.
+2.  **Generieren**: Klicke auf "✨ Generate Preview".
+3.  **Vergleichen**: Betrachte die Bilder nebeneinander. Die AI-verbesserte Version befindet sich rechts.
 
 ## 🎬 Video Player Integration
-- **Show Player Button**: Toggles the visibility of the "🎮 AI" button in the player controls.
-- **Button Position**: Choose where the button appears in the player bar.
-- **Notifications**: Enables or disables status popups during playback.
+- **Player-Button anzeigen**: Schaltet die Sichtbarkeit des "🎮 AI"-Buttons in der Player-Steuerung um.
+- **Button-Position**: Wähle, wo der Button in der Player-Leiste erscheinen soll.
+- **Benachrichtigungen**: Aktiviert oder deaktiviert Status-Popups während der Wiedergabe.
