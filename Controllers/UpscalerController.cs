@@ -227,9 +227,9 @@ namespace JellyfinUpscalerPlugin.Controllers
                     imagePath = images[0].Path;
                 }
 
-                if (!File.Exists(imagePath)) return NotFound(new { message = "Image file not found" });
+                if (!System.IO.File.Exists(imagePath)) return NotFound(new { message = "Image file not found" });
 
-                byte[] originalData = await File.ReadAllBytesAsync(imagePath);
+                byte[] originalData = await System.IO.File.ReadAllBytesAsync(imagePath);
                 
                 using (var image = Image.Load(originalData))
                 {

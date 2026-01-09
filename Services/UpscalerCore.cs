@@ -500,13 +500,11 @@ namespace JellyfinUpscalerPlugin.Services
         {
             try
             {
-                if (!_modelSessions.ContainsKey(model) || _modelSessions[model] == null)
+                if (!_modelSessions.TryGetValue(model, out var session) || session == null)
                 {
                     _logger.LogWarning($"⚠️ Model {model} not available, using fallback");
                     return await FallbackUpscaleAsync(inputImage, scale);
                 }
-
-                var session = _modelSessions[model];
                 
                 // Load image with ImageSharp
                 using var image = Image.Load(inputImage);
@@ -519,7 +517,7 @@ namespace JellyfinUpscalerPlugin.Services
                 
                 // Session.Run is not thread-safe for some providers, but ONNX Runtime generally handles it.
                 // However, we use a semaphore in VideoProcessor to be safe.
-                using var outputs = session.Run(inputs);
+                using var outputs = session!.Run(inputs);
                 
                 // Process output
                 var outputTensor = outputs.First().AsEnumerable<float>().ToArray();

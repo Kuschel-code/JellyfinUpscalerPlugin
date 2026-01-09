@@ -1,14 +1,14 @@
-# 🎮 AI Upscaler v1.4.0 STABLE
+# 🎮 AI Upscaler v1.4.1 STABLE
 
 Welcome to the official documentation for the **Jellyfin AI Upscaler Plugin**. This plugin brings state-of-the-art artificial intelligence for video enhancement directly to your Jellyfin media server.
 
 ## 🚀 Overview
 
-The AI Upscaler Plugin allows you to enhance low-resolution content (SD/HD) to high-definition (4K) using advanced neural networks. Version 1.4.0 introduces a completely redesigned user interface for Jellyfin 10.10+, with synchronized AI models and improved hardware detection.
+The AI Upscaler Plugin allows you to enhance low-resolution content (SD/HD) to high-definition (4K) using advanced neural networks. Version 1.4.1 introduces a completely redesigned user interface for Jellyfin 10.10+, with synchronized AI models and improved hardware detection.
 
 ## ✨ Key Features
 
-*   **Advanced AI Models**: Support for Real-ESRGAN, ESRGAN, SwinIR, Waifu2x, and more (v1.4.0 expands the list to 14 models).
+*   **Advanced AI Models**: Support for Real-ESRGAN, ESRGAN, SwinIR, Waifu2x, and more (v1.4.1 expands the list to 14 models).
 *   **Hardware Acceleration**: Native support for **NVIDIA CUDA** and **Windows DirectML**.
 *   **Modern UI**: Full integration into the Jellyfin 10.10+ Dashboard with native JavaScript control.
 *   **Comparison Preview**: Experience the AI magic in action with a side-by-side "Before vs. After" tool directly in the Dashboard.

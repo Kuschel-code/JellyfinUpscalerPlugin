@@ -1,6 +1,6 @@
 # ✨ Features
 
-The Jellyfin AI Upscaler Plugin v1.4.0 offers a variety of features to enhance your viewing experience.
+The Jellyfin AI Upscaler Plugin v1.4.1 offers a variety of features to enhance your viewing experience.
 
 ## 🤖 State-of-the-art AI Models
 *   **Real-ESRGAN**: The gold standard for restoring details and textures.

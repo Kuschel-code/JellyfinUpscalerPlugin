@@ -69,7 +69,7 @@
                     <button type="button" class="headerBackButton" id="aiUpscalerBack">
                         <span class="material-icons">arrow_back</span>
                     </button>
-                    <h1 class="pageTitle">AI Upscaler Plugin 1.4.0</h1>
+                    <h1 class="pageTitle">AI Upscaler Plugin 1.4.1</h1>
                 </div>
             </div>
 
@@ -82,7 +82,7 @@
                         <div class="cardBox visualCardBox" style="margin: 1em 0;">
                             <div class="cardText" id="systemStatus">
                                 <div>Status: <span id="pluginStatus" style="color: #00a4dc;">Loading...</span></div>
-                                <div>Version: 1.4.0</div>
+                                <div>Version: 1.4.1</div>
                                 <div>Hardware: <span id="hardwareInfo">Detecting...</span></div>
                                 <div>Performance: <span id="performanceInfo">Monitoring...</span></div>
                             </div>
@@ -113,7 +113,7 @@
                         <h2 class="sectionTitle">Benchmark Console</h2>
                         <div class="cardBox visualCardBox" style="margin: 1em 0;">
                             <div style="background: #1a1a1a; color: #00ff00; font-family: 'Courier New', monospace; padding: 1em; border-radius: 4px; height: 300px; overflow-y: auto; font-size: 12px;" id="benchmarkConsole">
-                                <div>AI Upscaler Plugin v1.4.0 - Benchmark Console</div>
+                                <div>AI Upscaler Plugin v1.4.1 - Benchmark Console</div>
                                 <div>Ready for hardware testing...</div>
                                 <div>Type 'help' for available commands</div>
                                 <div style="margin-top: 1em;">
@@ -225,7 +225,7 @@
                 runBenchmark();
                 break;
             case 'status':
-                response.innerHTML = `Plugin Status: Active<br>Version: 1.4.0<br>Hardware: Auto-detected<br>Cache: Available`;
+                response.innerHTML = `Plugin Status: Active<br>Version: 1.4.1<br>Hardware: Auto-detected<br>Cache: Available`;
                 console.appendChild(response);
                 break;
             case 'optimize':
@@ -234,7 +234,7 @@
                 autoOptimize();
                 break;
             case 'clear':
-                console.innerHTML = `<div>AI Upscaler Plugin v1.4.0 - Benchmark Console</div>
+                console.innerHTML = `<div>AI Upscaler Plugin v1.4.1 - Benchmark Console</div>
                                    <div>Console cleared</div>
                                    <div style="margin-top: 1em;">
                                        <span style="color: #ffff00;">upscaler@jellyfin:~$</span>

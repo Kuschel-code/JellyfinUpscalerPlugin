@@ -1,4 +1,4 @@
-// AI Upscaler Plugin - Player Integration v1.4.0
+// AI Upscaler Plugin - Player Integration v1.4.1
 // Enhanced player button and streaming integration
 
 (function() {
@@ -6,7 +6,7 @@
     
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.4.0';
+    const PLUGIN_VERSION = '1.4.1';
     
     // Player integration manager
     const PlayerIntegration = {

@@ -450,7 +450,7 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 _logger.LogInformation("📦 Starting batch AI processing (redirecting to frame-by-frame pipeline)");
                 
-                // For v1.4.0, we use the stable frame-by-frame pipeline for batch processing
+                // For v1.4.1, we use the stable frame-by-frame pipeline for batch processing
                 // as it provides the most consistent AI quality and progress tracking.
                 var result = await ProcessFrameByFrameAsync(inputPath, outputPath, job, cancellationToken);
                 

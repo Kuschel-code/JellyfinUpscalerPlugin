@@ -13,7 +13,7 @@ using JellyfinUpscalerPlugin.Models;
 namespace JellyfinUpscalerPlugin.Services
 {
     /// <summary>
-    /// Hardware Benchmarking Service v1.4.0 - Automated Hardware Detection & Testing
+    /// Hardware Benchmarking Service v1.4.1 - Automated Hardware Detection & Testing
     /// </summary>
     public class HardwareBenchmarkService : IHostedService, IDisposable
     {
@@ -36,7 +36,7 @@ namespace JellyfinUpscalerPlugin.Services
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("AI Upscaler Hardware Benchmark Service v1.4.0 starting...");
+            _logger.LogInformation("AI Upscaler Hardware Benchmark Service v1.4.1 starting...");
             
             if (_config.EnableAutoBenchmarking)
             {

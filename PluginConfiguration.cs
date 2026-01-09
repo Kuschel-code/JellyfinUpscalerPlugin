@@ -19,8 +19,10 @@ namespace JellyfinUpscalerPlugin
         public bool Notifications { get; set; } = true;
         
         // Performance Settings
+        public int MaxConcurrentStreams { get; set; } = 1;
         public int MaxVRAMUsage { get; set; } = 2048;
         public int CpuThreads { get; set; } = 4;
+        public bool EnableAutoBenchmarking { get; set; } = true;
         
         // UI Settings
         public string ButtonPosition { get; set; } = "right";

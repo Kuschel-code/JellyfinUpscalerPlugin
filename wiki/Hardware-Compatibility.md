@@ -1,6 +1,6 @@
 # 🎯 Hardware Compatibility
 
-The AI Upscaler Plugin v1.4.0 uses **ONNX Runtime** to enable cross-platform hardware acceleration.
+The AI Upscaler Plugin v1.4.1 uses **ONNX Runtime** to enable cross-platform hardware acceleration.
 
 ## 🟢 NVIDIA Graphics Cards (Recommended)
 NVIDIA cards provide the best performance through the **CUDA Execution Provider**.

@@ -68,6 +68,20 @@
                         <div class="fieldDescription">Use GPU for faster processing when available</div>
                     </div>
 
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input type="checkbox" is="emby-checkbox" id="EnableAutoBenchmarking" name="EnableAutoBenchmarking" />
+                            <span>Enable Auto-Benchmarking</span>
+                        </label>
+                        <div class="fieldDescription">Periodically test hardware to optimize settings</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="MaxConcurrentStreams">Max Concurrent Streams:</label>
+                        <input is="emby-input" type="number" id="MaxConcurrentStreams" name="MaxConcurrentStreams" min="1" max="10" />
+                        <div class="fieldDescription">Maximum number of parallel AI processing jobs</div>
+                    </div>
+
                     <div class="inputContainer">
                         <label class="inputLabel" for="MaxVRAMUsage">Max VRAM Usage (MB):</label>
                         <input is="emby-input" type="number" id="MaxVRAMUsage" name="MaxVRAMUsage" min="512" max="32768" />
@@ -218,6 +232,8 @@
                     page.querySelector('#ScaleFactor').value = config.ScaleFactor || 2;
                     page.querySelector('#QualityLevel').value = config.QualityLevel || 'medium';
                     page.querySelector('#HardwareAcceleration').checked = config.HardwareAcceleration;
+                    page.querySelector('#EnableAutoBenchmarking').checked = config.EnableAutoBenchmarking;
+                    page.querySelector('#MaxConcurrentStreams').value = config.MaxConcurrentStreams || 1;
                     page.querySelector('#MaxVRAMUsage').value = config.MaxVRAMUsage || 2048;
                     page.querySelector('#CpuThreads').value = config.CpuThreads || 4;
                     page.querySelector('#Notifications').checked = config.Notifications;
@@ -376,6 +392,8 @@
                         ScaleFactor: parseInt(page.querySelector('#ScaleFactor').value),
                         QualityLevel: page.querySelector('#QualityLevel').value,
                         HardwareAcceleration: page.querySelector('#HardwareAcceleration').checked,
+                        EnableAutoBenchmarking: page.querySelector('#EnableAutoBenchmarking').checked,
+                        MaxConcurrentStreams: parseInt(page.querySelector('#MaxConcurrentStreams').value),
                         MaxVRAMUsage: parseInt(page.querySelector('#MaxVRAMUsage').value),
                         CpuThreads: parseInt(page.querySelector('#CpuThreads').value),
                         Notifications: page.querySelector('#Notifications').checked,
