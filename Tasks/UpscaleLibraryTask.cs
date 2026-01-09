@@ -12,13 +12,14 @@ using MediaBrowser.Model.Tasks;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Querying;
 using JellyfinUpscalerPlugin.Services;
+using JellyfinUpscalerPlugin.Models;
 using Microsoft.Extensions.Logging;
 using Jellyfin.Data.Enums;
 
 namespace JellyfinUpscalerPlugin.Tasks
 {
     /// <summary>
-    /// Scheduled task for automated library upscaling - v1.4.1 NEW
+    /// Scheduled task for automated library upscaling - v1.4.0 NEW
     /// </summary>
     public class UpscaleLibraryTask : IScheduledTask
     {

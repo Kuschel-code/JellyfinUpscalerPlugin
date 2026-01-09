@@ -4,6 +4,35 @@ using System.Collections.Generic;
 namespace JellyfinUpscalerPlugin.Models
 {
     /// <summary>
+    /// Upscaler settings model
+    /// </summary>
+    public class UpscalerSettings
+    {
+        public string? Model { get; set; }
+        public int? ScaleFactor { get; set; }
+        public string? QualityLevel { get; set; }
+        public bool? EnablePlugin { get; set; }
+        public bool? HardwareAcceleration { get; set; }
+        public bool? PlayerButton { get; set; }
+        public int? MaxVRAMUsage { get; set; }
+        public int? CpuThreads { get; set; }
+        public bool? AutoRetryButton { get; set; }
+        public string? ButtonPosition { get; set; }
+    }
+
+    /// <summary>
+    /// Video processing request model
+    /// </summary>
+    public class VideoProcessRequest
+    {
+        public string InputPath { get; set; } = "";
+        public string OutputPath { get; set; } = "";
+        public string? Model { get; set; }
+        public int? Scale { get; set; }
+        public string? Quality { get; set; }
+    }
+
+    /// <summary>
     /// Video processing options
     /// </summary>
     public class VideoProcessingOptions
@@ -107,6 +136,15 @@ namespace JellyfinUpscalerPlugin.Models
         public DateTime Timestamp { get; set; }
     }
 
+    public class PerformanceMetrics
+    {
+        public string ModelName { get; set; } = "";
+        public long TotalFrames { get; set; }
+        public TimeSpan TotalTime { get; set; }
+        public double AverageFps { get; set; }
+        public double PeakMemoryMB { get; set; }
+    }
+
     /// <summary>
     /// Hardware profile information
     /// </summary>
@@ -131,6 +169,39 @@ namespace JellyfinUpscalerPlugin.Models
         public string RecommendedModel { get; set; } = "";
         public int RecommendedScale { get; set; } = 2;
         public int MaxConcurrentStreams { get; set; } = 1;
+    }
+
+    /// <summary>
+    /// Cache entry information
+    /// </summary>
+    public class CacheEntry
+    {
+        public string Key { get; set; } = "";
+        public string InputPath { get; set; } = "";
+        public string FilePath { get; set; } = "";
+        public string Model { get; set; } = "";
+        public int Scale { get; set; }
+        public string Quality { get; set; } = "";
+        public long FileSize { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime LastAccessedAt { get; set; }
+        public int AccessCount { get; set; }
+        public TimeSpan ProcessingTime { get; set; }
+        public Dictionary<string, object> Metadata { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Cache statistics
+    /// </summary>
+    public class CacheStatistics
+    {
+        public int TotalEntries { get; set; }
+        public long TotalSize { get; set; }
+        public long MaxSize { get; set; }
+        public double HitRate { get; set; }
+        public int TotalHits { get; set; }
+        public int TotalMisses { get; set; }
+        public double UsagePercentage { get; set; }
     }
 
     /// <summary>
@@ -166,5 +237,99 @@ namespace JellyfinUpscalerPlugin.Models
         Medium,
         High,
         VeryHigh
+    }
+
+    // Data classes for benchmark results
+    public class BenchmarkResults
+    {
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
+        public TimeSpan TotalDuration { get; set; }
+        public SystemInfo SystemInfo { get; set; } = new();
+        public HardwareProfile Hardware { get; set; } = new();
+        public GPUInfo GPUInfo { get; set; } = new();
+        public CPUInfo CPUInfo { get; set; } = new();
+        public MemoryInfo MemoryInfo { get; set; } = new();
+        public Dictionary<string, ModelPerformance> ModelPerformance { get; set; } = new();
+        public Dictionary<string, ResolutionPerformance> ResolutionPerformance { get; set; } = new();
+        public OptimalSettings OptimalSettings { get; set; } = new();
+    }
+
+    public class SystemInfo
+    {
+        public string OS { get; set; } = "";
+        public string Architecture { get; set; } = "";
+        public int ProcessorCount { get; set; }
+        public string Platform { get; set; } = "";
+        public bool IsContainer { get; set; }
+        public bool IsNAS { get; set; }
+        public bool IsARM { get; set; }
+        public string iGPUType { get; set; } = "";
+    }
+
+    public class GPUInfo
+    {
+        public string Name { get; set; } = "";
+        public string Vendor { get; set; } = "";
+        public int VRAMSizeMB { get; set; }
+    }
+
+    public class CPUInfo
+    {
+        public string Name { get; set; } = "";
+        public int Cores { get; set; }
+        public string Architecture { get; set; } = "";
+    }
+
+    public class MemoryInfo
+    {
+        public int TotalMemoryMB { get; set; }
+        public int AvailableMemoryMB { get; set; }
+    }
+
+    public class ModelPerformance
+    {
+        public string ModelName { get; set; } = "";
+        public int ProcessingTimeMs { get; set; }
+        public double AverageFPS { get; set; }
+        public double QualityScore { get; set; }
+        public double AverageCPUUsage { get; set; }
+        public double AverageGPUUsage { get; set; }
+        public bool IsRecommended { get; set; }
+    }
+
+    public class ResolutionPerformance
+    {
+        public string ResolutionName { get; set; } = "";
+        public int SourceHeight { get; set; }
+        public int TargetHeight { get; set; }
+        public int ProcessingTimeMs { get; set; }
+        public int MemoryUsageMB { get; set; }
+        public double QualityImprovement { get; set; }
+        public bool IsRecommended { get; set; }
+    }
+
+    public class OptimalSettings
+    {
+        public string RecommendedModel { get; set; } = "";
+        public string RecommendedMaxResolution { get; set; } = "";
+        public string RecommendedQuality { get; set; } = "";
+        public bool HardwareAcceleration { get; set; }
+        public bool EnableAutoFallback { get; set; }
+        public string FallbackModel { get; set; } = "";
+        public int MaxConcurrentStreams { get; set; }
+    }
+
+    public class PreProcessRequest
+    {
+        public string InputPath { get; set; } = "";
+        public string? Model { get; set; }
+        public int? Scale { get; set; }
+        public string? Quality { get; set; }
+    }
+
+    public class PreProcessingCacheRequest
+    {
+        public bool Enabled { get; set; }
     }
 }

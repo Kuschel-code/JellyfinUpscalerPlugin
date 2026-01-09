@@ -16,12 +16,13 @@ using SixLabors.ImageSharp.Processing;
 using JellyfinUpscalerPlugin.Services;
 using JellyfinUpscalerPlugin.Models;
 using MediaBrowser.Model.Entities;
+using MediaBrowser.Controller.Entities;
 using Image = SixLabors.ImageSharp.Image;
 
 namespace JellyfinUpscalerPlugin.Controllers
 {
     /// <summary>
-    /// AI Upscaler API Controller v1.4.1 - Enhanced with Modern UI Sync
+    /// AI Upscaler API Controller
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
@@ -34,19 +35,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         private readonly UpscalerCore _upscalerCore;
         private readonly VideoProcessor _videoProcessor;
         private readonly CacheManager _cacheManager;
-        private readonly MediaProcessingService _mediaProcessingService;
 
-        /// <summary>
-        /// Initializes a new instance of the UpscalerController class.
-        /// </summary>
-        /// <param name="logger">Logger instance.</param>
-        /// <param name="libraryManager">Library manager instance.</param>
-        /// <param name="sessionManager">Session manager instance.</param>
-        /// <param name="benchmarkService">Hardware benchmark service.</param>
-        /// <param name="upscalerCore">Upscaler core service.</param>
-        /// <param name="videoProcessor">Video processor service.</param>
-        /// <param name="cacheManager">Cache manager service.</param>
-        /// <param name="mediaProcessingService">Media processing service.</param>
         public UpscalerController(
             ILogger<UpscalerController> logger,
             ILibraryManager libraryManager,
@@ -54,8 +43,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             HardwareBenchmarkService benchmarkService,
             UpscalerCore upscalerCore,
             VideoProcessor videoProcessor,
-            CacheManager cacheManager,
-            MediaProcessingService mediaProcessingService)
+            CacheManager cacheManager)
         {
             _logger = logger;
             _libraryManager = libraryManager;
@@ -64,26 +52,31 @@ namespace JellyfinUpscalerPlugin.Controllers
             _upscalerCore = upscalerCore;
             _videoProcessor = videoProcessor;
             _cacheManager = cacheManager;
-            _mediaProcessingService = mediaProcessingService;
         }
 
-        /// <summary>
-        /// Get available AI models
-        /// </summary>
-        /// <returns>List of available AI upscaling models</returns>
         [HttpGet("models")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<List<object>> GetAvailableModels()
         {
-            _logger.LogInformation("AI Upscaler: Getting available models");
-            return Ok(PluginInfoService.GetAvailableModels());
+            return Ok(new List<object>
+            {
+                new { id = "realesrgan", name = "Real-ESRGAN", description = "Best Overall Quality (Anime/Photo)", scale = new[] { 2, 3, 4 } },
+                new { id = "esrgan-pro", name = "ESRGAN Pro", description = "Optimized for Movies & TV Shows", scale = new[] { 2, 4 } },
+                new { id = "swinir", name = "SwinIR", description = "State-of-the-art Transformer based", scale = new[] { 2, 4, 8 } },
+                new { id = "srcnn-light", name = "SRCNN Light", description = "Fast processing for low-end hardware", scale = new[] { 2, 3 } },
+                new { id = "waifu2x", name = "Waifu2x", description = "Classic Anime upscaling", scale = new[] { 2 } },
+                new { id = "hat", name = "HAT", description = "High Detail Enhancement", scale = new[] { 2, 4 } },
+                new { id = "edsr", name = "EDSR", description = "Precise Super-Resolution", scale = new[] { 2, 3, 4 } },
+                new { id = "vdsr", name = "VDSR", description = "Deep Learning approach", scale = new[] { 2, 3, 4 } },
+                new { id = "rdn", name = "RDN", description = "Enhanced Texture Detail", scale = new[] { 2, 4 } },
+                new { id = "srresnet", name = "SRResNet", description = "Balanced Performance", scale = new[] { 2, 4 } },
+                new { id = "carn", name = "CARN", description = "Compact & Fast", scale = new[] { 2, 3, 4 } },
+                new { id = "rrdbnet", name = "RRDBNet", description = "High Fidelity Quality", scale = new[] { 2, 4 } },
+                new { id = "drln", name = "DRLN", description = "Advanced Noise Reduction", scale = new[] { 2, 4 } },
+                new { id = "fsrcnn", name = "FSRCNN", description = "Lightweight Real-time capable", scale = new[] { 2, 3, 4 } }
+            });
         }
 
-        /// <summary>
-        /// Get JavaScript components for UI integration
-        /// </summary>
-        /// <param name="name">Name of the component</param>
-        /// <returns>JavaScript file content</returns>
         [HttpGet("js/{name}")]
         [Produces("text/javascript")]
         public ActionResult GetJavaScript(string name)
@@ -95,11 +88,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                     .FirstOrDefault(r => r.EndsWith($".Configuration.{name}", StringComparison.OrdinalIgnoreCase) || 
                                          r.EndsWith($".Configuration.{name}.js", StringComparison.OrdinalIgnoreCase));
 
-                if (resourceName == null)
-                {
-                    _logger.LogWarning($"JS resource not found: {name}");
-                    return NotFound();
-                }
+                if (resourceName == null) return NotFound();
 
                 using var stream = assembly.GetManifestResourceStream(resourceName);
                 if (stream == null) return NotFound();
@@ -110,51 +99,30 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Failed to serve JS component: {name}");
-                return StatusCode(500, "Internal Server Error");
+                return StatusCode(500);
             }
         }
 
-        /// <summary>
-        /// Get current upscaler status and settings
-        /// </summary>
-        /// <returns>Current status of the AI upscaler</returns>
         [HttpGet("status")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetStatus()
         {
-            _logger.LogInformation("AI Upscaler: Getting status");
-
             var config = Plugin.Instance?.Configuration;
-            if (config == null)
-            {
-                return BadRequest("Plugin configuration not available");
-            }
-
+            if (config == null) return BadRequest();
             return Ok(config);
         }
 
-        /// <summary>
-        /// Test AI upscaling with current settings
-        /// </summary>
-        /// <returns>Test result</returns>
         [HttpPost("test")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> TestUpscaling()
         {
-            _logger.LogInformation("AI Upscaler: Testing upscaling");
-
             var config = Plugin.Instance?.Configuration;
-            if (config == null)
-            {
-                return BadRequest("Plugin configuration not available");
-            }
+            if (config == null) return BadRequest();
 
             try
             {
-                // Detect hardware for real test info
                 var hardware = await _upscalerCore.DetectHardwareAsync();
-                
-                var testResult = new
+                return Ok(new
                 {
                     success = true,
                     model = config.Model,
@@ -165,11 +133,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                     supportsCUDA = hardware.SupportsCUDA,
                     estimatedPerformance = hardware.SupportsCUDA ? "High (GPU/CUDA)" : (hardware.SupportsDirectML ? "Medium (GPU/DirectML)" : "Low (CPU)"),
                     message = $"AI upscaling test successful on {hardware.GpuModel ?? "CPU"} with {config.Model} model at {config.ScaleFactor}x scale"
-                };
-
-                _logger.LogInformation("AI Upscaler: Test completed successfully");
-
-                return Ok(testResult);
+                });
             }
             catch (Exception ex)
             {
@@ -178,33 +142,38 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
-        /// <summary>
-        /// Get plugin information
-        /// </summary>
-        /// <returns>Plugin information</returns>
         [HttpGet("info")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetPluginInfo()
         {
-            _logger.LogInformation("AI Upscaler: Getting plugin info");
-            return Ok(PluginInfoService.GetPluginMetadata());
+            var assembly = typeof(Plugin).Assembly;
+            var version = assembly.GetName().Version?.ToString(3) ?? "1.4.0";
+
+            return Ok(new
+            {
+                name = "AI Upscaler Plugin",
+                version = version,
+                description = "AI-powered video upscaling with modern UI integration and hardware benchmarking",
+                author = "Kuschel-code",
+                features = new[]
+                {
+                    "Real-time AI video upscaling",
+                    "Multiple AI models",
+                    "Hardware acceleration support",
+                    "Player integration",
+                    "Automated hardware benchmarking"
+                }
+            });
         }
 
-        /// <summary>
-        /// Run hardware benchmark - v1.4.1 NEW
-        /// </summary>
-        /// <returns>Comprehensive hardware benchmark results</returns>
         [HttpPost("benchmark")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> RunHardwareBenchmark()
         {
-            _logger.LogInformation("AI Upscaler: Starting hardware benchmark");
-
             try
             {
                 var results = await _benchmarkService.RunHardwareBenchmark();
-                
-                var response = new
+                return Ok(new
                 {
                     success = true,
                     message = "Hardware benchmark completed successfully",
@@ -217,9 +186,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                         resolutionPerformance = results.ResolutionPerformance,
                         timestamp = results.EndTime
                     }
-                };
-
-                return Ok(response);
+                });
             }
             catch (Exception ex)
             {
@@ -228,16 +195,10 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
-        /// <summary>
-        /// Get hardware recommendations - v1.4.1 NEW
-        /// </summary>
-        /// <returns>Hardware-specific recommendations</returns>
         [HttpGet("recommendations")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> GetHardwareRecommendations()
         {
-            _logger.LogInformation("AI Upscaler: Getting hardware recommendations");
-
             try
             {
                 return Ok(await _benchmarkService.GetRecommendationsAsync());
@@ -245,47 +206,66 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to get hardware recommendations");
-                return StatusCode(500, new { success = false, message = "Failed to get recommendations", error = ex.Message });
+                return StatusCode(500, new { success = false, error = ex.Message });
             }
         }
 
-        /// <summary>
-        /// Get comparison data for before/after preview - v1.4.1 NEW
-        /// </summary>
-        /// <param name="itemId">Media item ID</param>
-        /// <param name="model">AI model to use for comparison</param>
-        /// <param name="scale">Scale factor</param>
-        /// <returns>Comparison preview data</returns>
         [HttpGet("compare/{itemId}")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> GetComparisonData(string itemId, [FromQuery] string model = "realesrgan", [FromQuery] int scale = 2)
         {
             try
             {
-                return Ok(await _mediaProcessingService.GenerateComparisonDataAsync(itemId, model, scale));
-            }
-            catch (ArgumentException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (FileNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
+                var item = _libraryManager.GetItemById(itemId);
+                if (item == null) return NotFound(new { message = "Item not found" });
+
+                var imagePath = item.GetImagePath(ImageType.Primary, 0);
+                if (string.IsNullOrEmpty(imagePath))
+                {
+                    var images = item.GetImages(ImageType.Primary).ToList();
+                    if (images.Count == 0) return BadRequest(new { message = "No image available" });
+                    imagePath = images[0].Path;
+                }
+
+                if (!File.Exists(imagePath)) return NotFound(new { message = "Image file not found" });
+
+                byte[] originalData = await File.ReadAllBytesAsync(imagePath);
+                
+                using (var image = Image.Load(originalData))
+                {
+                    if (image.Width > 1280 || image.Height > 720)
+                    {
+                        image.Mutate(x => x.Resize(new ResizeOptions
+                        {
+                            Size = new Size(1280, 720),
+                            Mode = ResizeMode.Max
+                        }));
+                        
+                        using var ms = new MemoryStream();
+                        image.SaveAsJpeg(ms);
+                        originalData = ms.ToArray();
+                    }
+                }
+
+                var upscaledData = await _upscalerCore.UpscaleImageAsync(originalData, model, scale);
+
+                return Ok(new
+                {
+                    itemId = itemId,
+                    model = model,
+                    scale = scale,
+                    originalBase64 = $"data:image/jpeg;base64,{Convert.ToBase64String(originalData)}",
+                    upscaledBase64 = $"data:image/jpeg;base64,{Convert.ToBase64String(upscaledData)}",
+                    timestamp = DateTime.UtcNow
+                });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"❌ Failed to generate comparison data for item {itemId}");
+                _logger.LogError(ex, $"Failed to generate comparison data for item {itemId}");
                 return StatusCode(500, new { message = "Comparison failed", error = ex.Message });
             }
         }
 
-        /// <summary>
-        /// Process video with AI upscaling - NEW v1.4.1
-        /// </summary>
         [HttpPost("process")]
         [Consumes(MediaTypeNames.Application.Json)]
         [Produces(MediaTypeNames.Application.Json)]
@@ -293,8 +273,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
-                _logger.LogInformation($"🚀 Processing video: {request.InputPath}");
-                
                 var options = new VideoProcessingOptions
                 {
                     Model = request.Model ?? "auto",
@@ -302,10 +280,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                     Quality = request.Quality ?? "medium"
                 };
                 
-                var result = await _videoProcessor.ProcessVideoAsync(
-                    request.InputPath, 
-                    request.OutputPath, 
-                    options);
+                var result = await _videoProcessor.ProcessVideoAsync(request.InputPath, request.OutputPath, options);
                 
                 return Ok(new 
                 {
@@ -323,28 +298,42 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
-        /// <summary>
-        /// Process a specific library item - NEW v1.4.1
-        /// </summary>
         [HttpPost("process/item/{itemId}")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> ProcessItem(string itemId, [FromQuery] string? model = null, [FromQuery] int? scale = null)
         {
             try
             {
-                var result = await _mediaProcessingService.ProcessLibraryItemAsync(itemId, model, scale);
+                var item = _libraryManager.GetItemById(itemId);
+                if (item == null) return NotFound(new { message = "Item not found" });
 
-                return Ok(new
+                var config = Plugin.Instance?.Configuration;
+                var options = new VideoProcessingOptions
                 {
-                    success = result.Success,
-                    itemId = itemId,
-                    outputPath = result.OutputPath,
-                    error = result.Error
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return NotFound(new { message = ex.Message });
+                    Model = model ?? config?.Model ?? "auto",
+                    ScaleFactor = scale ?? config?.ScaleFactor ?? 2,
+                    QualityLevel = config?.QualityLevel ?? "medium"
+                };
+
+                var outputPath = Path.Combine(
+                    Path.GetDirectoryName(item.Path) ?? "",
+                    Path.GetFileNameWithoutExtension(item.Path) + "_upscaled" + Path.GetExtension(item.Path)
+                );
+
+                var result = await _videoProcessor.ProcessVideoAsync(item.Path, outputPath, options);
+
+                if (result.Success)
+                {
+                    var tags = item.Tags.ToList();
+                    if (!tags.Contains("AI-Upscaled"))
+                    {
+                        tags.Add("AI-Upscaled");
+                        item.Tags = tags.ToArray();
+                        await item.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, CancellationToken.None);
+                    }
+                }
+
+                return Ok(new { success = result.Success, itemId = itemId, outputPath = result.OutputPath, error = result.Error });
             }
             catch (Exception ex)
             {
@@ -353,9 +342,6 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
-        /// <summary>
-        /// Get cache statistics - NEW v1.4.1
-        /// </summary>
         [HttpGet("cache/stats")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetCacheStats()
@@ -363,17 +349,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             try
             {
                 var stats = _cacheManager.GetCacheStatistics();
-                
-                return Ok(new
-                {
-                    totalEntries = stats.TotalEntries,
-                    totalSize = stats.TotalSize,
-                    maxSize = stats.MaxSize,
-                    hitRate = stats.HitRate,
-                    totalHits = stats.TotalHits,
-                    totalMisses = stats.TotalMisses,
-                    usagePercentage = stats.UsagePercentage
-                });
+                return Ok(stats);
             }
             catch (Exception ex)
             {
@@ -382,9 +358,6 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
-        /// <summary>
-        /// Clear cache - NEW v1.4.1
-        /// </summary>
         [HttpPost("cache/clear")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> ClearCache()
@@ -392,8 +365,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             try
             {
                 await _cacheManager.ClearCacheAsync();
-                
-                return Ok(new { success = true, message = "Cache cleared successfully" });
+                return Ok(new { success = true });
             }
             catch (Exception ex)
             {
@@ -402,33 +374,13 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
-        /// <summary>
-        /// Get hardware profile - NEW v1.4.1
-        /// </summary>
         [HttpGet("hardware")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> GetHardwareProfile()
         {
             try
             {
-                var profile = await _upscalerCore.DetectHardwareAsync();
-                
-                return Ok(new
-                {
-                    gpuVendor = profile.GpuVendor,
-                    gpuModel = profile.GpuModel,
-                    driverVersion = profile.DriverVersion,
-                    vramMB = profile.VramMB,
-                    cpuCores = profile.CpuCores,
-                    systemRamMB = profile.SystemRamMB,
-                    supportsCUDA = profile.SupportsCUDA,
-                    supportsDirectML = profile.SupportsDirectML,
-                    recommendedModel = profile.RecommendedModel,
-                    recommendedScale = profile.RecommendedScale,
-                    maxConcurrentStreams = profile.MaxConcurrentStreams,
-                    availableProviders = profile.AvailableProviders,
-                    availableHwAccels = profile.AvailableHwAccels
-                });
+                return Ok(await _upscalerCore.DetectHardwareAsync());
             }
             catch (Exception ex)
             {
@@ -437,24 +389,17 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
-        /// <summary>
-        /// Upscale image - NEW v1.4.1
-        /// </summary>
         [HttpPost("upscale/image")]
         [Consumes("application/octet-stream")]
         [Produces("application/octet-stream")]
-        public async Task<ActionResult> UpscaleImage(
-            [FromQuery] string model = "realesrgan",
-            [FromQuery] int scale = 2)
+        public async Task<ActionResult> UpscaleImage([FromQuery] string model = "realesrgan", [FromQuery] int scale = 2)
         {
             try
             {
                 using var memoryStream = new MemoryStream();
                 await Request.Body.CopyToAsync(memoryStream);
                 var inputImage = memoryStream.ToArray();
-                
-                var upscaledImage = await _mediaProcessingService.UpscaleImageAsync(inputImage, model, scale);
-                
+                var upscaledImage = await _upscalerCore.UpscaleImageAsync(inputImage, model, scale);
                 return File(upscaledImage, "image/jpeg");
             }
             catch (Exception ex)
@@ -464,9 +409,6 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
-        /// <summary>
-        /// Pre-process video for caching - NEW v1.4.1
-        /// </summary>
         [HttpPost("preprocess")]
         [Consumes(MediaTypeNames.Application.Json)]
         [Produces(MediaTypeNames.Application.Json)]
@@ -474,18 +416,14 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
-                var success = await _mediaProcessingService.PreProcessVideoAsync(
+                var success = await _cacheManager.PreProcessContentAsync(
                     request.InputPath,
-                    request.Model,
-                    request.Scale,
-                    request.Quality,
-                    _cacheManager);
+                    request.Model ?? "auto",
+                    request.Scale ?? 2,
+                    request.Quality ?? "medium",
+                    _videoProcessor);
                 
-                return Ok(new 
-                {
-                    success = success,
-                    message = success ? "Pre-processing completed" : "Pre-processing failed"
-                });
+                return Ok(new { success = success });
             }
             catch (Exception ex)
             {
@@ -493,58 +431,32 @@ namespace JellyfinUpscalerPlugin.Controllers
                 return StatusCode(500, new { success = false, error = ex.Message });
             }
         }
-        /// <summary>
-        /// Enable/disable pre-processing cache - v1.4.1
-        /// </summary>
-        /// <param name="request">Pre-processing cache settings</param>
-        /// <returns>Cache operation result</returns>
-        [HttpPost("cache")]
+
+        [HttpPost("cache/config")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> ConfigurePreProcessingCache([FromBody] PreProcessingCacheRequest request)
         {
-            _logger.LogInformation($"AI Upscaler: Configuring pre-processing cache - enabled: {request.Enabled}");
-
             try
             {
-                // Update plugin configuration
                 var config = Plugin.Instance?.Configuration;
                 if (config != null)
                 {
                     config.EnablePreProcessingCache = request.Enabled;
-                    
                     Plugin.Instance?.SaveConfiguration();
                 }
-
-                var response = new
-                {
-                    success = true,
-                    message = "Pre-processing cache configured successfully",
-                    settings = new
-                    {
-                        enabled = request.Enabled,
-                        status = request.Enabled ? "active" : "disabled"
-                    }
-                };
-
-                return Ok(response);
+                return Ok(new { success = true });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to configure pre-processing cache");
-                return StatusCode(500, new { success = false, message = "Failed to configure cache", error = ex.Message });
+                return StatusCode(500, new { success = false, error = ex.Message });
             }
         }
 
-        /// <summary>
-        /// Get fallback system status - v1.4.1
-        /// </summary>
-        /// <returns>Fallback system information</returns>
         [HttpGet("fallback")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetFallbackStatus()
         {
-            _logger.LogInformation("AI Upscaler: Getting fallback system status");
-
             try
             {
                 return Ok(_benchmarkService.GetFallbackStatus());
@@ -552,11 +464,8 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to get fallback status");
-                return StatusCode(500, new { success = false, message = "Failed to get fallback status", error = ex.Message });
+                return StatusCode(500, new { success = false, error = ex.Message });
             }
         }
-
-
-
     }
 }

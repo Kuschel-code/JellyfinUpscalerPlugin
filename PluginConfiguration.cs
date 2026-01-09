@@ -44,12 +44,12 @@ namespace JellyfinUpscalerPlugin
         public string[] AutoUpscaleFolders { get; set; } = Array.Empty<string>();
         
         // Version tracking
-        public string PluginVersion { get; set; } = "1.4.1";
+        public string PluginVersion { get; set; } = "1.4.0";
         public DateTime LastConfigUpdate { get; set; } = DateTime.UtcNow;
 
         public PluginConfiguration()
         {
-            PluginVersion = "1.4.1";
+            PluginVersion = "1.4.0";
             LastConfigUpdate = DateTime.UtcNow;
         }
     }

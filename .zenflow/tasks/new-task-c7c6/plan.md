@@ -28,3 +28,7 @@ Save findings to `{@artifacts_path}/investigation.md` with:
 ### [x] Step: fix on github
 <!-- chat-id: 8cc0439b-4b31-48a7-9fa5-e856c40adb94 -->
 <!-- agent: ZEN_CLI -->
+
+### [ ] Step: fix
+<!-- chat-id: 7828ce5e-e554-4a23-88a8-fc0005b98419 -->
+<!-- agent: ZEN_CLI -->

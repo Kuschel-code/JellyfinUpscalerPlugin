@@ -8,11 +8,12 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using MediaBrowser.Common.Configuration;
+using JellyfinUpscalerPlugin.Models;
 
 namespace JellyfinUpscalerPlugin.Services
 {
     /// <summary>
-    /// Hardware Benchmarking Service v1.4.1 - Automated Hardware Detection & Testing
+    /// Hardware Benchmarking Service v1.4.0 - Automated Hardware Detection & Testing
     /// </summary>
     public class HardwareBenchmarkService : IHostedService, IDisposable
     {
@@ -35,7 +36,7 @@ namespace JellyfinUpscalerPlugin.Services
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("AI Upscaler Hardware Benchmark Service v1.4.1 starting...");
+            _logger.LogInformation("AI Upscaler Hardware Benchmark Service v1.4.0 starting...");
             
             if (_config.EnableAutoBenchmarking)
             {
@@ -602,86 +603,5 @@ namespace JellyfinUpscalerPlugin.Services
         {
             _benchmarkTimer?.Dispose();
         }
-    }
-
-    // Data classes for benchmark results
-    public class BenchmarkResults
-    {
-        public DateTime StartTime { get; set; }
-        public DateTime EndTime { get; set; }
-        public TimeSpan TotalDuration { get; set; }
-        public SystemInfo SystemInfo { get; set; } = new();
-        public HardwareProfile Hardware { get; set; } = new();
-        public GPUInfo GPUInfo { get; set; } = new();
-        public CPUInfo CPUInfo { get; set; } = new();
-        public MemoryInfo MemoryInfo { get; set; } = new();
-        public Dictionary<string, ModelPerformance> ModelPerformance { get; set; } = new();
-        public Dictionary<string, ResolutionPerformance> ResolutionPerformance { get; set; } = new();
-        public OptimalSettings OptimalSettings { get; set; } = new();
-    }
-
-    public class SystemInfo
-    {
-        public string OS { get; set; } = "";
-        public string Architecture { get; set; } = "";
-        public int ProcessorCount { get; set; }
-        public string Platform { get; set; } = "";
-        public bool IsContainer { get; set; }
-        public bool IsNAS { get; set; }
-        public bool IsARM { get; set; }
-        public string iGPUType { get; set; } = "";
-    }
-
-    public class GPUInfo
-    {
-        public string Name { get; set; } = "";
-        public string Vendor { get; set; } = "";
-        public int VRAMSizeMB { get; set; }
-    }
-
-    public class CPUInfo
-    {
-        public string Name { get; set; } = "";
-        public int Cores { get; set; }
-        public string Architecture { get; set; } = "";
-    }
-
-    public class MemoryInfo
-    {
-        public int TotalMemoryMB { get; set; }
-        public int AvailableMemoryMB { get; set; }
-    }
-
-    public class ModelPerformance
-    {
-        public string ModelName { get; set; } = "";
-        public int ProcessingTimeMs { get; set; }
-        public double AverageFPS { get; set; }
-        public double QualityScore { get; set; }
-        public double AverageCPUUsage { get; set; }
-        public double AverageGPUUsage { get; set; }
-        public bool IsRecommended { get; set; }
-    }
-
-    public class ResolutionPerformance
-    {
-        public string ResolutionName { get; set; } = "";
-        public int SourceHeight { get; set; }
-        public int TargetHeight { get; set; }
-        public int ProcessingTimeMs { get; set; }
-        public int MemoryUsageMB { get; set; }
-        public double QualityImprovement { get; set; }
-        public bool IsRecommended { get; set; }
-    }
-
-    public class OptimalSettings
-    {
-        public string RecommendedModel { get; set; } = "";
-        public string RecommendedMaxResolution { get; set; } = "";
-        public string RecommendedQuality { get; set; } = "";
-        public bool HardwareAcceleration { get; set; }
-        public bool EnableAutoFallback { get; set; }
-        public string FallbackModel { get; set; } = "";
-        public int MaxConcurrentStreams { get; set; }
     }
 }

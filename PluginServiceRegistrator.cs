@@ -32,9 +32,6 @@ namespace JellyfinUpscalerPlugin
             // Hardware Benchmark Service (v1.4.1)
             serviceCollection.AddSingleton<HardwareBenchmarkService>();
             serviceCollection.AddHostedService<HardwareBenchmarkService>(provider => provider.GetRequiredService<HardwareBenchmarkService>());
-            
-            // Media Processing Service (v1.4.1 Refactor)
-            serviceCollection.AddSingleton<MediaProcessingService>();
         }
     }
 }
