@@ -147,7 +147,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         public ActionResult<object> GetPluginInfo()
         {
             var assembly = typeof(Plugin).Assembly;
-            var version = assembly.GetName().Version?.ToString(3) ?? "1.4.0";
+            var version = assembly.GetName().Version?.ToString(3) ?? "1.4.1";
 
             return Ok(new
             {

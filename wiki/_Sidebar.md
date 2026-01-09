@@ -1,4 +1,4 @@
-# 🎮 AI Upscaler v1.4.0
+# 🎮 AI Upscaler v1.4.1
 
 ## 📚 **DOCUMENTATION**
 - **[🏠 Home](Home)**
@@ -24,6 +24,7 @@
 ---
 
 ## 📖 **RELEASES**
+- **[🚀 v1.4.1 STABLE](Version-1.4.1)**
 - **[🚀 v1.4.0 STABLE](Version-1.4.0)**
 - **[📦 Archive](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases)**
 
