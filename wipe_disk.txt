@@ -1,0 +1,8 @@
+select disk 2
+clean
+convert gpt
+create partition primary size=450000
+assign letter=E
+create partition primary
+assign letter=F
+exit

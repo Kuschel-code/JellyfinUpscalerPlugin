@@ -1,0 +1,15 @@
+select disk 2
+select partition 1
+delete partition override
+select partition 2
+delete partition override
+select partition 3
+delete partition override
+select partition 4
+delete partition override
+select partition 5
+shrink desired=460000
+assign letter=E
+create partition primary
+assign letter=F
+exit

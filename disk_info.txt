@@ -1,0 +1,3 @@
+select disk 2
+detail disk
+list partition
