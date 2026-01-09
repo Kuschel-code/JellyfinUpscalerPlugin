@@ -1,0 +1,6 @@
+select disk 2
+clean
+create partition primary
+format fs=ntfs quick
+assign letter=E
+exit
