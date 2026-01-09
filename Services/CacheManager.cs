@@ -328,34 +328,6 @@ namespace JellyfinUpscalerPlugin.Services
         }
 
         /// <summary>
-        /// Get cache statistics
-        /// </summary>
-        public async Task<CacheStats> GetCacheStatsAsync()
-        {
-            double hitRate = 0;
-            double missRate = 0;
-            
-            lock (_statsLock)
-            {
-                var total = _cacheHits + _cacheMisses;
-                if (total > 0)
-                {
-                    hitRate = (double)_cacheHits / total * 100;
-                    missRate = (double)_cacheMisses / total * 100;
-                }
-            }
-            
-            return new CacheStats
-            {
-                TotalSize = (long)_config.CacheSizeMB * 1024 * 1024,
-                UsedSize = _totalCacheSize,
-                HitRate = hitRate,
-                MissRate = missRate,
-                FileCount = _cacheIndex.Count
-            };
-        }
-
-        /// <summary>
         /// Check cache size limit
         /// </summary>
         private async Task<bool> CheckCacheSizeLimitAsync()

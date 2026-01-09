@@ -191,6 +191,16 @@ namespace JellyfinUpscalerPlugin.Models
     }
 
     /// <summary>
+    /// Cache lookup result
+    /// </summary>
+    public class CacheResult
+    {
+        public bool Hit { get; set; }
+        public string FilePath { get; set; } = "";
+        public CacheEntry? Entry { get; set; }
+    }
+
+    /// <summary>
     /// Cache statistics
     /// </summary>
     public class CacheStatistics
