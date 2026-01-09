@@ -10,10 +10,9 @@ An advanced, AI-powered video enhancement plugin for Jellyfin. Improve your medi
 - **Real-Time Upscaling**: Experience crystal-clear images during playback.
 - **Hardware Acceleration**: Full support for NVIDIA (CUDA), VAAPI (Linux), QSV (Intel), and DirectML (Windows).
 - **Multiple AI Models**: Support for Real-ESRGAN, SwinIR, Waifu2x, and more.
-- **Automated Tasks**: Background library scanning and automated upscaling of low-resolution content.
 - **Hardware Benchmarking**: Built-in tools for detection and optimization based on server performance.
 - **Modern UI Integration**: Fully compatible with Jellyfin 10.10+ Dashboard and Player.
-- **Native Tagging**: Automatically tags processed media as `AI-Upscaled` for easy filtering.
+- **Comparison View**: Preview AI upscaling results before applying them to your library.
 
 ## 🛠️ Installation
 
@@ -31,7 +30,6 @@ After installation, you can find settings under **Dashboard > Plugins > AI Upsca
 
 - **Enable Plugin**: Global switch for the upscaler.
 - **Scaling Factor**: Choose between 2x, 4x, or custom scaling.
-- **Scheduled Tasks**: Configure automatic background upscaling for low-resolution library items.
 - **Hardware Detection**: The plugin automatically detects available GPUs and suggests optimal settings.
 
 ## 📖 Wiki & Support

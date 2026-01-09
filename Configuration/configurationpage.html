@@ -109,6 +109,50 @@
                 </div>
 
                 <div class="verticalSection">
+                    <h2 class="sectionTitle">🛠️ Advanced Features</h2>
+                    
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input type="checkbox" is="emby-checkbox" id="EnableComparisonView" name="EnableComparisonView" />
+                            <span>Enable Comparison View</span>
+                        </label>
+                        <div class="fieldDescription">Show side-by-side comparison tools in the dashboard</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input type="checkbox" is="emby-checkbox" id="EnablePerformanceMetrics" name="EnablePerformanceMetrics" />
+                            <span>Enable Performance Metrics</span>
+                        </label>
+                        <div class="fieldDescription">Collect and display processing performance data</div>
+                    </div>
+                </div>
+
+                <div class="verticalSection">
+                    <h2 class="sectionTitle">💾 Cache Settings</h2>
+                    
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input type="checkbox" is="emby-checkbox" id="EnablePreProcessingCache" name="EnablePreProcessingCache" />
+                            <span>Enable Pre-Processing Cache</span>
+                        </label>
+                        <div class="fieldDescription">Cache upscaled frames to improve repeat playback performance</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="MaxCacheAgeDays">Max Cache Age (Days):</label>
+                        <input is="emby-input" type="number" id="MaxCacheAgeDays" name="MaxCacheAgeDays" min="1" max="365" />
+                        <div class="fieldDescription">Automatically remove cached items older than this</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="CacheSizeMB">Cache Size Limit (MB):</label>
+                        <input is="emby-input" type="number" id="CacheSizeMB" name="CacheSizeMB" min="128" max="1048576" />
+                        <div class="fieldDescription">Maximum storage space to use for the AI cache</div>
+                    </div>
+                </div>
+
+                <div class="verticalSection">
                     <h2 class="sectionTitle">📊 Live Hardware Status</h2>
                     <div id="hardwareStatusContainer" class="flex align-items-center justify-content-center flex-wrap-wrap">
                         <div class="card p-1 m-0-5 flex-grow-1" style="background: rgba(0, 164, 220, 0.1);">
@@ -179,6 +223,15 @@
                     page.querySelector('#Notifications').checked = config.Notifications;
                     page.querySelector('#AutoRetryButton').checked = config.AutoRetryButton;
                     page.querySelector('#ButtonPosition').value = config.ButtonPosition || 'right';
+                    
+                    // Advanced & Features
+                    page.querySelector('#EnableComparisonView').checked = config.EnableComparisonView;
+                    page.querySelector('#EnablePerformanceMetrics').checked = config.EnablePerformanceMetrics;
+                    
+                    // Cache
+                    page.querySelector('#EnablePreProcessingCache').checked = config.EnablePreProcessingCache;
+                    page.querySelector('#MaxCacheAgeDays').value = config.MaxCacheAgeDays || 30;
+                    page.querySelector('#CacheSizeMB').value = config.CacheSizeMB || 5120;
                     
                     Dashboard.hideLoading();
                 });
@@ -327,7 +380,12 @@
                         CpuThreads: parseInt(page.querySelector('#CpuThreads').value),
                         Notifications: page.querySelector('#Notifications').checked,
                         AutoRetryButton: page.querySelector('#AutoRetryButton').checked,
-                        ButtonPosition: page.querySelector('#ButtonPosition').value
+                        ButtonPosition: page.querySelector('#ButtonPosition').value,
+                        EnableComparisonView: page.querySelector('#EnableComparisonView').checked,
+                        EnablePerformanceMetrics: page.querySelector('#EnablePerformanceMetrics').checked,
+                        EnablePreProcessingCache: page.querySelector('#EnablePreProcessingCache').checked,
+                        MaxCacheAgeDays: parseInt(page.querySelector('#MaxCacheAgeDays').value),
+                        CacheSizeMB: parseInt(page.querySelector('#CacheSizeMB').value)
                     };
 
                     ApiClient.updatePluginConfiguration(pluginId, config).then(function() {

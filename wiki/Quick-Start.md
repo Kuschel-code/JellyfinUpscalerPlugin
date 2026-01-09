@@ -1,22 +1,22 @@
-# ⚡ Schnellstart (Quick Start)
+# ⚡ Quick Start
 
-Befolge diese Schritte, um dein System in weniger als 5 Minuten startklar zu machen.
+Follow these steps to get your system ready in less than 5 minutes.
 
 ## 1. Installation
-Installiere das Plugin über den Jellyfin-Katalog (siehe [Installation](Installation)). Starte den Server neu.
+Install the plugin via the Jellyfin catalog (see [Installation](Installation)). Restart the server.
 
-## 2. Modelle bereitstellen
-Das Plugin wird ohne Modelle ausgeliefert. Lade mindestens ein `.onnx` Modell (z. B. `realesrgan.onnx`) in den Ordner `plugins/configurations/JellyfinUpscalerPlugin/models/`.
+## 2. Provide Models
+The plugin is shipped without models. Upload at least one `.onnx` model (e.g., `realesrgan.onnx`) to the folder `plugins/configurations/JellyfinUpscalerPlugin/models/`.
 
-## 3. Hardware prüfen
-Gehe zu **Dashboard -> Plugins -> AI Upscaler Plugin**.
-Klicke auf **"Hardware Benchmark"**. Das Plugin analysiert nun deine CPU und GPU und stellt automatisch die empfohlenen Werte ein.
+## 3. Check Hardware
+Go to **Dashboard -> Plugins -> AI Upscaler Plugin**.
+Click on **"Hardware Benchmark"**. The plugin will now analyze your CPU and GPU and automatically set the recommended values.
 
-## 4. Konfiguration speichern
-Scrolle nach unten und klicke auf **"💾 Save Configuration"**.
+## 4. Save Configuration
+Scroll down and click on **"💾 Save Configuration"**.
 
-## 5. Film ab!
-Öffne einen Film in deinem Browser. In der Steuerleiste unten rechts findest du nun den **🎮 AI** Button. Klicke darauf, um das Upscaling zu aktivieren.
+## 5. Movie On!
+Open a movie in your browser. In the control bar at the bottom right, you will now find the **🎮 AI** button. Click on it to activate upscaling.
 
 ---
-**Tipp:** Wenn das Video ruckelt, wähle in den Plugin-Einstellungen einen niedrigeren Skalierungsfaktor (2x statt 4x) oder ein schnelleres Modell wie `FSRCNN`.
+**Tip:** If the video stutters, choose a lower scaling factor (2x instead of 4x) or a faster model like `FSRCNN` in the plugin settings.

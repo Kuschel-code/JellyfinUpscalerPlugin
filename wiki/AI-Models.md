@@ -1,40 +1,40 @@
-# 🎨 AI-Modelle
+# 🎨 AI Models
 
-Das AI Upscaler Plugin unterstützt verschiedene neuronale Netze, die jeweils für unterschiedliche Inhalte und Hardware-Leistung optimiert sind.
+The AI Upscaler Plugin supports various neural networks, each optimized for different types of content and hardware performance.
 
-## 🌟 Hauptmodelle
+## 🌟 Main Models
 
 ### **Real-ESRGAN**
-*   **Bestens geeignet für**: Realfilme, Naturaufnahmen, Fotos.
-*   **Vorteile**: Exzellente Texturwiederherstellung, sehr realistisch.
-*   **Anforderung**: Hoch (NVIDIA RTX 30/40 empfohlen).
+*   **Best for**: Live-action movies, nature footage, photos.
+*   **Advantages**: Excellent texture restoration, very realistic.
+*   **Requirement**: High (NVIDIA RTX 30/40 recommended).
 
 ### **ESRGAN Pro**
-*   **Bestens geeignet für**: Kinofilme, TV-Serien.
-*   **Vorteile**: Guter Kompromiss zwischen Schärfe und Natürlichkeit.
-*   **Anforderung**: Mittel.
+*   **Best for**: Movies, TV shows.
+*   **Advantages**: Good compromise between sharpness and naturalness.
+*   **Requirement**: Medium.
 
 ### **SwinIR**
-*   **Bestens geeignet für**: Komplexe Szenen, Bildrauschen.
-*   **Vorteile**: Nutzt Transformer-Technologie für präzise Details.
-*   **Anforderung**: Hoch.
+*   **Best for**: Complex scenes, image noise.
+*   **Advantages**: Uses transformer technology for precise details.
+*   **Requirement**: High.
 
 ### **Waifu2x**
-*   **Bestens geeignet für**: Anime, Cartoons, gezeichnete Kunst.
-*   **Vorteile**: Reduziert Kompressionsartefakte in flächigen Farben extrem gut.
-*   **Anforderung**: Gering bis Mittel.
+*   **Best for**: Anime, cartoons, drawn art.
+*   **Advantages**: Reduces compression artifacts in flat colors extremely well.
+*   **Requirement**: Low to Medium.
 
-## ⚡ Leichtgewichtige Modelle
+## ⚡ Lightweight Models
 
 ### **FSRCNN / SRCNN**
-*   **Bestens geeignet für**: Schwächere Hardware (NAS, ältere Laptops).
-*   **Vorteile**: Sehr schnell, deutlich besser als herkömmliche Skalierung.
-*   **Anforderung**: Gering.
+*   **Best for**: Weaker hardware (NAS, older laptops).
+*   **Advantages**: Very fast, significantly better than traditional scaling.
+*   **Requirement**: Low.
 
-## 📂 Installation von Modellen
-1.  Lade die `.onnx`-Version deines gewünschten Modells herunter.
-2.  Navigiere zum Plugin-Datenordner:
+## 📂 Installing Models
+1.  Download the `.onnx` version of your desired model.
+2.  Navigate to the plugin data folder:
     *   **Windows**: `%AppData%\Jellyfin-Server\plugins\configurations\JellyfinUpscalerPlugin\models`
     *   **Linux**: `/etc/jellyfin/plugins/configurations/JellyfinUpscalerPlugin/models`
-3.  Platziere die Datei im `models`-Ordner.
-4.  Starte Jellyfin neu, damit das Modell in den Einstellungen erscheint.
+3.  Place the file in the `models` folder.
+4.  Restart Jellyfin so that the model appears in the settings.

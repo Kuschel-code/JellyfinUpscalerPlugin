@@ -79,14 +79,15 @@ namespace JellyfinUpscalerPlugin.Services
                     return;
                 }
 
-                // Monitor active sessions for upscaling opportunities
+                // Monitor active sessions for status reporting
                 var sessions = _sessionManager.Sessions;
                 var activeVideoSessions = 0;
 
                 foreach (var session in sessions)
                 {
                     if (session.PlayState?.PlayMethod != null && 
-                        session.NowPlayingItem != null)
+                        session.NowPlayingItem != null &&
+                        session.NowPlayingItem.MediaType == MediaType.Video)
                     {
                         activeVideoSessions++;
                     }
@@ -94,45 +95,13 @@ namespace JellyfinUpscalerPlugin.Services
 
                 if (activeVideoSessions > 0)
                 {
-                    _logger.LogDebug("AI Upscaler Service: Monitoring {Count} active video sessions", activeVideoSessions);
-                    
-                    // Here would be the actual upscaling logic
-                    ProcessUpscaling(activeVideoSessions, config);
+                    _logger.LogDebug("AI Upscaler: {Count} active video sessions being monitored. Model: {Model}", 
+                        activeVideoSessions, config.Model);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "AI Upscaler Service: Error in background work");
-            }
-        }
-
-        /// <summary>
-        /// Process AI upscaling for active sessions
-        /// </summary>
-        /// <param name="sessionCount">Number of active video sessions</param>
-        /// <param name="config">Plugin configuration</param>
-        private void ProcessUpscaling(int sessionCount, PluginConfiguration config)
-        {
-            try
-            {
-                _logger.LogDebug("AI Upscaler Service: Processing upscaling for {Count} sessions with model {Model} at {Scale}x", 
-                    sessionCount, config.Model, config.ScaleFactor);
-
-                // Simulate AI upscaling processing
-                var processingTime = config.HardwareAcceleration ? 100 : 500; // ms
-                
-                // In a real implementation, this would:
-                // 1. Detect video resolution and quality
-                // 2. Apply AI upscaling using the selected model
-                // 3. Manage hardware acceleration
-                // 4. Handle multiple concurrent streams
-                // 5. Optimize performance based on system capabilities
-
-                _logger.LogDebug("AI Upscaler Service: Simulated processing completed in {Time}ms", processingTime);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "AI Upscaler Service: Error processing upscaling");
             }
         }
 

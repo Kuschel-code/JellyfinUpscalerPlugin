@@ -1,35 +1,35 @@
-# 📖 Verwendung
+# 📖 Usage
 
-Nach der Installation kannst du das AI Upscaler Plugin über die Jellyfin-Oberfläche verwalten und nutzen.
+After installation, you can manage and use the AI Upscaler Plugin via the Jellyfin interface.
 
-## ⚙️ Plugin-Konfiguration
+## ⚙️ Plugin Configuration
 
-Gehe zu **Dashboard** -> **Plugins** -> **AI Upscaler Plugin**.
+Go to **Dashboard** -> **Plugins** -> **AI Upscaler Plugin**.
 
-### Basis-Einstellungen
-*   **Plugin aktivieren**: Aktiviert oder deaktiviert alle Plugin-Funktionen.
-*   **Player-Button anzeigen**: Fügt den "🎮 AI" Button direkt in die Steuerelemente des Videoplayers ein.
-*   **Standard AI-Modell**: Wähle dein bevorzugtes Modell für die Videoverbesserung.
-*   **Skalierungsfaktor**: Bestimme, wie stark das Video vergrößert werden soll (z.B. 2x, 3x, 4x).
+### Basic Settings
+*   **Enable Plugin**: Enables or disables all plugin functions.
+*   **Show Player Button**: Adds the "🎮 AI" button directly into the video player controls.
+*   **Default AI Model**: Choose your preferred model for video enhancement.
+*   **Scale Factor**: Determine how much the video should be enlarged (e.g., 2x, 3x, 4x).
 
-### Hardware-Einstellungen
-*   **Hardware-Beschleunigung**: Nutzt deine GPU für die Verarbeitung. Empfohlen für flüssige Wiedergabe.
-*   **Max VRAM Nutzung**: Limitiert den Grafikspeicher, den das Plugin beanspruchen darf.
-*   **CPU Threads**: Bestimmt die Anzahl der Threads für die CPU-Verarbeitung.
+### Hardware Settings
+*   **Hardware Acceleration**: Uses your GPU for processing. Recommended for smooth playback.
+*   **Max VRAM Usage**: Limits the graphics memory that the plugin may occupy.
+*   **CPU Threads**: Determines the number of threads for CPU processing.
 
-## 🔍 Vergleichsvorschau (Comparison Preview)
+## 🔍 Comparison Preview
 
-In der Plugin-Konfiguration findest du den Bereich **AI Comparison Preview**.
-1.  Wähle ein Medienelement (Film oder Episode) aus dem Dropdown-Menü.
-2.  Klicke auf **✨ Generate Preview**.
-3.  Das Plugin erstellt einen Side-by-Side Vergleich des Originalbildes und der AI-verbesserten Version.
+In the plugin configuration, you will find the **AI Comparison Preview** section.
+1.  Select a media item (movie or episode) from the dropdown menu.
+2.  Click on **✨ Generate Preview**.
+3.  The plugin creates a side-by-side comparison of the original image and the AI-enhanced version.
 
-## 🎮 Nutzung im Player
+## 🎮 Usage in the Player
 
-Während der Videowiedergabe im Web-Browser oder in der Jellyfin App:
-1.  Klicke auf das **🎮 AI** Symbol in der Steuerleiste.
-2.  Aktiviere das Upscaling über das Menü.
-3.  Du siehst sofort die verbesserte Bildqualität!
+While playing video in the web browser or in the Jellyfin app:
+1.  Click on the **🎮 AI** symbol in the control bar.
+2.  Activate upscaling via the menu.
+3.  You will immediately see the improved image quality!
 
 ---
-*Hinweis: Die Leistung hängt stark von deiner Hardware und dem gewählten Modell ab.*
+*Note: Performance strongly depends on your hardware and the chosen model.*
