@@ -1,0 +1,9 @@
+[
+    {
+        "name": "Jellyfin",
+        "host": "\\\\192.168.178.50\\Jellyfin",
+        "share": "Jelly",
+        "username": "Jellyfin",
+        "password": "18"
+    }
+]
