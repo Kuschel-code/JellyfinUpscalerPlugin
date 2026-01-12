@@ -432,9 +432,9 @@ namespace JellyfinUpscalerPlugin.Services
             };
         }
 
-        public object GetFallbackStatus()
+        public async Task<object> GetFallbackStatusAsync()
         {
-            var hardware = _upscalerCore.DetectHardwareAsync().Result; // Simple sync access for status
+            var hardware = await _upscalerCore.DetectHardwareAsync();
             return new
             {
                 enabled = true,

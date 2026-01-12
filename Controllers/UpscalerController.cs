@@ -273,6 +273,22 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
+                if (string.IsNullOrEmpty(request.InputPath) || !File.Exists(request.InputPath))
+                {
+                    return BadRequest(new { success = false, error = "Input file not found" });
+                }
+
+                if (string.IsNullOrEmpty(request.OutputPath))
+                {
+                    return BadRequest(new { success = false, error = "Output path required" });
+                }
+
+                var outputDir = Path.GetDirectoryName(request.OutputPath);
+                if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
+                {
+                    Directory.CreateDirectory(outputDir);
+                }
+
                 var options = new VideoProcessingOptions
                 {
                     Model = request.Model ?? "auto",
@@ -307,6 +323,11 @@ namespace JellyfinUpscalerPlugin.Controllers
                 var item = _libraryManager.GetItemById(itemId);
                 if (item == null) return NotFound(new { message = "Item not found" });
 
+                if (string.IsNullOrEmpty(item.Path) || !File.Exists(item.Path))
+                {
+                    return BadRequest(new { message = "Item path not found or invalid" });
+                }
+
                 var config = Plugin.Instance?.Configuration;
                 var options = new VideoProcessingOptions
                 {
@@ -315,8 +336,14 @@ namespace JellyfinUpscalerPlugin.Controllers
                     QualityLevel = config?.QualityLevel ?? "medium"
                 };
 
+                var directory = Path.GetDirectoryName(item.Path);
+                if (string.IsNullOrEmpty(directory) || !Directory.Exists(directory))
+                {
+                    return BadRequest(new { message = "Output directory not accessible" });
+                }
+
                 var outputPath = Path.Combine(
-                    Path.GetDirectoryName(item.Path) ?? "",
+                    directory,
                     Path.GetFileNameWithoutExtension(item.Path) + "_upscaled" + Path.GetExtension(item.Path)
                 );
 
@@ -444,11 +471,11 @@ namespace JellyfinUpscalerPlugin.Controllers
 
         [HttpGet("fallback")]
         [Produces(MediaTypeNames.Application.Json)]
-        public ActionResult<object> GetFallbackStatus()
+        public async Task<ActionResult<object>> GetFallbackStatus()
         {
             try
             {
-                return Ok(_benchmarkService.GetFallbackStatus());
+                return Ok(await _benchmarkService.GetFallbackStatusAsync());
             }
             catch (Exception ex)
             {

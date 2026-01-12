@@ -12,7 +12,6 @@ using MediaBrowser.Model.Entities;
 using FFMpegCore;
 using FFMpegCore.Enums;
 using FFMpegCore.Pipes;
-using System.Drawing;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using CliWrap;
@@ -566,17 +565,59 @@ namespace JellyfinUpscalerPlugin.Services
             VideoProcessingOptions options,
             CancellationToken cancellationToken)
         {
-            // Get audio from original video
-            var audioArgs = $"-i \"{originalPath}\" -vn -acodec copy -y \"{Path.Combine(Path.GetTempPath(), "temp_audio.aac")}\"";
-            await Cli.Wrap(_ffmpegPath).WithArguments(audioArgs).ExecuteAsync(cancellationToken);
+            var tempAudioPath = Path.Combine(Path.GetTempPath(), $"temp_audio_{Guid.NewGuid()}.aac");
+            var hasAudio = false;
             
-            // Reconstruct video with audio
-            var reconstructArgs = $"-framerate 30 -i \"{processedDir}/frame_%06d.png\" -i \"{Path.Combine(Path.GetTempPath(), "temp_audio.aac")}\" -c:v libx264 -c:a copy -pix_fmt yuv420p -y \"{outputPath}\"";
+            try
+            {
+                // Try to extract audio from original video
+                var audioArgs = $"-i \"{originalPath}\" -vn -acodec copy -y \"{tempAudioPath}\"";
+                var audioResult = await Cli.Wrap(_ffmpegPath)
+                    .WithArguments(audioArgs)
+                    .WithValidation(CommandResultValidation.None)
+                    .ExecuteAsync(cancellationToken);
+                
+                hasAudio = audioResult.ExitCode == 0 && File.Exists(tempAudioPath) && new FileInfo(tempAudioPath).Length > 0;
+                
+                if (!hasAudio)
+                {
+                    _logger.LogInformation("ℹ️ No audio track found in source video");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ Failed to extract audio, continuing without audio");
+                hasAudio = false;
+            }
+            
+            // Reconstruct video with or without audio
+            string reconstructArgs;
+            if (hasAudio && File.Exists(tempAudioPath))
+            {
+                reconstructArgs = $"-framerate 30 -i \"{processedDir}/frame_%06d.png\" -i \"{tempAudioPath}\" -c:v libx264 -c:a copy -pix_fmt yuv420p -y \"{outputPath}\"";
+            }
+            else
+            {
+                reconstructArgs = $"-framerate 30 -i \"{processedDir}/frame_%06d.png\" -c:v libx264 -pix_fmt yuv420p -y \"{outputPath}\"";
+            }
             
             var result = await Cli.Wrap(_ffmpegPath)
                 .WithArguments(reconstructArgs)
                 .WithValidation(CommandResultValidation.None)
                 .ExecuteAsync(cancellationToken);
+            
+            // Cleanup temp audio file
+            try
+            {
+                if (File.Exists(tempAudioPath))
+                {
+                    File.Delete(tempAudioPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to cleanup temp audio file");
+            }
             
             if (result.ExitCode != 0)
             {

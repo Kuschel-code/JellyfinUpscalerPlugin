@@ -21,6 +21,7 @@ namespace JellyfinUpscalerPlugin
         // Performance Settings
         public int MaxVRAMUsage { get; set; } = 2048;
         public int CpuThreads { get; set; } = 4;
+        public int MaxConcurrentStreams { get; set; } = 1;
         
         // UI Settings
         public string ButtonPosition { get; set; } = "right";
@@ -30,6 +31,7 @@ namespace JellyfinUpscalerPlugin
         public bool EnableComparisonView { get; set; } = true;
         public bool EnablePreProcessingCache { get; set; } = false;
         public bool EnablePerformanceMetrics { get; set; } = true;
+        public bool EnableAutoBenchmarking { get; set; } = false;
         
         // Cache Settings
         public int MaxCacheAgeDays { get; set; } = 30;

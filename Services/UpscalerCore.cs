@@ -12,7 +12,6 @@ using MediaBrowser.Model.IO;
 using Microsoft.ML.OnnxRuntime;
 using OpenCvSharp;
 using FFMpegCore;
-using System.Drawing;
 using System.Text.Json;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
@@ -36,9 +35,10 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly Dictionary<string, InferenceSession?> _modelSessions = new();
         private readonly Dictionary<string, SessionOptions> _sessionOptions = new();
         
-        // Hardware detection cache
-        private static Dictionary<string, object> _hardwareCache = new();
+        // Hardware detection cache with thread safety
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, object> _hardwareCache = new();
         private static DateTime _lastHardwareCheck = DateTime.MinValue;
+        private static readonly object _hardwareCacheLock = new();
         
         // Performance monitoring
         private readonly Dictionary<string, PerformanceMetrics> _performanceMetrics = new();
@@ -184,11 +184,14 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         public async Task<HardwareProfile> DetectHardwareAsync()
         {
-            // Cache hardware detection for 5 minutes
-            if (_hardwareCache.ContainsKey("profile") && 
-                DateTime.Now - _lastHardwareCheck < TimeSpan.FromMinutes(5))
+            // Cache hardware detection for 5 minutes with thread safety
+            lock (_hardwareCacheLock)
             {
-                return _hardwareCache["profile"] as HardwareProfile ?? new HardwareProfile();
+                if (_hardwareCache.TryGetValue("profile", out var cachedProfile) && 
+                    DateTime.Now - _lastHardwareCheck < TimeSpan.FromMinutes(5))
+                {
+                    return cachedProfile as HardwareProfile ?? new HardwareProfile();
+                }
             }
 
             _logger.LogInformation("🔍 Detecting hardware capabilities...");
@@ -212,8 +215,11 @@ namespace JellyfinUpscalerPlugin.Services
                 // 5. Apply Hardware Optimizations
                 ApplyHardwareOptimizations(profile);
                 
-                _hardwareCache["profile"] = profile;
-                _lastHardwareCheck = DateTime.Now;
+                lock (_hardwareCacheLock)
+                {
+                    _hardwareCache["profile"] = profile;
+                    _lastHardwareCheck = DateTime.Now;
+                }
                 
                 _logger.LogInformation($"✅ Hardware Profile: {profile.GpuVendor} {profile.GpuModel}, CUDA: {profile.SupportsCUDA}");
                 
@@ -617,16 +623,24 @@ namespace JellyfinUpscalerPlugin.Services
         {
             var outputImage = new Image<SixLabors.ImageSharp.PixelFormats.Rgb24>(width, height);
             int channelSize = width * height;
+            int requiredSize = channelSize * 3;
+            
+            if (tensor.Length < requiredSize)
+            {
+                throw new InvalidOperationException($"Tensor size mismatch: expected at least {requiredSize} elements, got {tensor.Length}");
+            }
             
             for (int y = 0; y < height; y++)
             {
                 for (int x = 0; x < width; x++)
                 {
+                    int pixelIndex = y * width + x;
+                    
                     // Map from NCHW flat array back to pixels
                     // Channel 0 = Red, 1 = Green, 2 = Blue
-                    var r = Math.Clamp(tensor[0 * channelSize + y * width + x] * 255.0f, 0, 255);
-                    var g = Math.Clamp(tensor[1 * channelSize + y * width + x] * 255.0f, 0, 255);
-                    var b = Math.Clamp(tensor[2 * channelSize + y * width + x] * 255.0f, 0, 255);
+                    var r = Math.Clamp(tensor[0 * channelSize + pixelIndex] * 255.0f, 0, 255);
+                    var g = Math.Clamp(tensor[1 * channelSize + pixelIndex] * 255.0f, 0, 255);
+                    var b = Math.Clamp(tensor[2 * channelSize + pixelIndex] * 255.0f, 0, 255);
                     
                     outputImage[x, y] = new SixLabors.ImageSharp.PixelFormats.Rgb24((byte)r, (byte)g, (byte)b);
                 }
