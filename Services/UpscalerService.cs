@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Session;
 using MediaBrowser.Model.Entities;
+using Jellyfin.Data.Enums;
 
 namespace JellyfinUpscalerPlugin.Services
 {
@@ -87,7 +88,7 @@ namespace JellyfinUpscalerPlugin.Services
                 {
                     if (session.PlayState?.PlayMethod != null && 
                         session.NowPlayingItem != null &&
-                        (session.NowPlayingItem.Type == "Video" || session.NowPlayingItem.Type == "Movie" || session.NowPlayingItem.Type == "Episode"))
+                        (session.NowPlayingItem.Type == BaseItemKind.Video || session.NowPlayingItem.Type == BaseItemKind.Movie || session.NowPlayingItem.Type == BaseItemKind.Episode))
                     {
                         activeVideoSessions++;
                     }
