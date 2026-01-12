@@ -87,7 +87,7 @@ namespace JellyfinUpscalerPlugin.Services
                 {
                     if (session.PlayState?.PlayMethod != null && 
                         session.NowPlayingItem != null &&
-                        session.NowPlayingItem.IsVideo)
+                        (session.NowPlayingItem.Type == "Video" || session.NowPlayingItem.Type == "Movie" || session.NowPlayingItem.Type == "Episode"))
                     {
                         activeVideoSessions++;
                     }
