@@ -29,7 +29,6 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly IMediaEncoder _mediaEncoder;
         private readonly IFileSystem _fileSystem;
         private readonly IApplicationPaths _appPaths;
-        private readonly PluginConfiguration _config;
         
         // AI Model Sessions
         private readonly Dictionary<string, InferenceSession?> _modelSessions = new();
@@ -43,18 +42,18 @@ namespace JellyfinUpscalerPlugin.Services
         // Performance monitoring
         private readonly Dictionary<string, PerformanceMetrics> _performanceMetrics = new();
         
+        private PluginConfiguration Config => Plugin.Instance?.Configuration ?? new PluginConfiguration();
+        
         public UpscalerCore(
             ILogger<UpscalerCore> logger,
             IMediaEncoder mediaEncoder,
             IFileSystem fileSystem,
-            IApplicationPaths appPaths,
-            PluginConfiguration config)
+            IApplicationPaths appPaths)
         {
             _logger = logger;
             _mediaEncoder = mediaEncoder;
             _fileSystem = fileSystem;
             _appPaths = appPaths;
-            _config = config;
             
             InitializeAIModels();
         }
@@ -80,7 +79,7 @@ namespace JellyfinUpscalerPlugin.Services
                 // Try to enable GPU acceleration
                 try
                 {
-                    if (_config.HardwareAcceleration)
+                    if (Config.HardwareAcceleration)
                     {
                         // Try CUDA first
                         try

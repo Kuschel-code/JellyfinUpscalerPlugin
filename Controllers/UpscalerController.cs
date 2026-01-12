@@ -216,7 +216,12 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
-                var item = _libraryManager.GetItemById(itemId);
+                if (!Guid.TryParse(itemId, out var itemGuid))
+                {
+                    return BadRequest(new { message = "Invalid item ID format" });
+                }
+                
+                var item = _libraryManager.GetItemById(itemGuid);
                 if (item == null) return NotFound(new { message = "Item not found" });
 
                 var imagePath = item.GetImagePath(ImageType.Primary, 0);
@@ -320,7 +325,12 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
-                var item = _libraryManager.GetItemById(itemId);
+                if (!Guid.TryParse(itemId, out var itemGuid))
+                {
+                    return BadRequest(new { message = "Invalid item ID format" });
+                }
+                
+                var item = _libraryManager.GetItemById(itemGuid);
                 if (item == null) return NotFound(new { message = "Item not found" });
 
                 if (string.IsNullOrEmpty(item.Path) || !File.Exists(item.Path))

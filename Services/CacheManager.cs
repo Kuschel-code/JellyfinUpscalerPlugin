@@ -24,7 +24,6 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly ILogger<CacheManager> _logger;
         private readonly IApplicationPaths _appPaths;
         private readonly IFileSystem _fileSystem;
-        private readonly PluginConfiguration _config;
         
         // Cache metadata
         private readonly ConcurrentDictionary<string, CacheEntry> _cacheIndex = new();
@@ -41,16 +40,16 @@ namespace JellyfinUpscalerPlugin.Services
         private int _cacheMisses;
         private readonly object _statsLock = new();
         
+        private PluginConfiguration Config => Plugin.Instance?.Configuration ?? new PluginConfiguration();
+        
         public CacheManager(
             ILogger<CacheManager> logger,
             IApplicationPaths appPaths,
-            IFileSystem fileSystem,
-            PluginConfiguration config)
+            IFileSystem fileSystem)
         {
             _logger = logger;
             _appPaths = appPaths;
             _fileSystem = fileSystem;
-            _config = config;
             
             // Initialize cache directory
             _cacheDirectory = Path.Combine(_appPaths.CachePath, "JellyfinUpscaler");
@@ -200,7 +199,7 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         private bool IsEntryExpired(CacheEntry entry)
         {
-            var maxAge = TimeSpan.FromDays(_config.MaxCacheAgeDays);
+            var maxAge = TimeSpan.FromDays(Config.MaxCacheAgeDays);
             return DateTime.Now - entry.CreatedAt > maxAge;
         }
 
@@ -332,7 +331,7 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         private async Task<bool> CheckCacheSizeLimitAsync()
         {
-            var maxCacheSize = (long)_config.CacheSizeMB * 1024 * 1024;
+            var maxCacheSize = (long)Config.CacheSizeMB * 1024 * 1024;
             return _totalCacheSize < maxCacheSize;
         }
 
@@ -412,7 +411,7 @@ namespace JellyfinUpscalerPlugin.Services
         {
             try
             {
-                var maxCacheSize = (long)_config.CacheSizeMB * 1024 * 1024;
+                var maxCacheSize = (long)Config.CacheSizeMB * 1024 * 1024;
                 var currentSize = _totalCacheSize;
                 
                 if (currentSize <= maxCacheSize)
@@ -479,11 +478,11 @@ namespace JellyfinUpscalerPlugin.Services
                 {
                     TotalEntries = _cacheIndex.Count,
                     TotalSize = _totalCacheSize,
-                    MaxSize = (long)_config.CacheSizeMB * 1024 * 1024,
+                    MaxSize = (long)Config.CacheSizeMB * 1024 * 1024,
                     HitRate = hitRate,
                     TotalHits = _cacheHits,
                     TotalMisses = _cacheMisses,
-                    UsagePercentage = ((double)_totalCacheSize / ((long)_config.CacheSizeMB * 1024 * 1024)) * 100
+                    UsagePercentage = ((double)_totalCacheSize / ((long)Config.CacheSizeMB * 1024 * 1024)) * 100
                 };
             }
         }

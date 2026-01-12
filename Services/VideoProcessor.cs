@@ -30,7 +30,6 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly ILogger<VideoProcessor> _logger;
         private readonly IMediaEncoder _mediaEncoder;
         private readonly UpscalerCore _upscalerCore;
-        private readonly PluginConfiguration _config;
         
         // Processing queue for concurrent streams
         private readonly SemaphoreSlim _processingSemaphore;
@@ -44,25 +43,25 @@ namespace JellyfinUpscalerPlugin.Services
         private string _ffmpegPath = string.Empty;
         private string _ffprobePath = string.Empty;
         
+        private PluginConfiguration Config => Plugin.Instance?.Configuration ?? new PluginConfiguration();
+        
         public VideoProcessor(
             ILogger<VideoProcessor> logger,
             IMediaEncoder mediaEncoder,
-            UpscalerCore upscalerCore,
-            PluginConfiguration config)
+            UpscalerCore upscalerCore)
         {
             _logger = logger;
             _mediaEncoder = mediaEncoder;
             _upscalerCore = upscalerCore;
-            _config = config;
             
             // Limit concurrent processing based on hardware
-            _processingSemaphore = new SemaphoreSlim(_config.MaxConcurrentStreams);
+            _processingSemaphore = new SemaphoreSlim(Config.MaxConcurrentStreams);
             
             // Initialize FFmpeg
             InitializeFFmpeg();
             
             // Initialize statistics timer
-            if (_config.EnablePerformanceMetrics)
+            if (Config.EnablePerformanceMetrics)
             {
                 _statisticsTimer = new Timer(UpdateStatistics, null, 
                     TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));

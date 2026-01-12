@@ -21,7 +21,8 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly IApplicationPaths _appPaths;
         private readonly UpscalerCore _upscalerCore;
         private Timer? _benchmarkTimer;
-        private readonly PluginConfiguration _config;
+        
+        private PluginConfiguration Config => Plugin.Instance?.Configuration ?? new PluginConfiguration();
         
         public HardwareBenchmarkService(
             ILogger<HardwareBenchmarkService> logger, 
@@ -31,14 +32,13 @@ namespace JellyfinUpscalerPlugin.Services
             _logger = logger;
             _appPaths = appPaths;
             _upscalerCore = upscalerCore;
-            _config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("AI Upscaler Hardware Benchmark Service v1.4.0 starting...");
+            _logger.LogInformation("AI Upscaler Hardware Benchmark Service v1.4.1 starting...");
             
-            if (_config.EnableAutoBenchmarking)
+            if (Config.EnableAutoBenchmarking)
             {
                 // Start benchmark timer - run initial benchmark after 30 seconds, then every hour
                 _benchmarkTimer = new Timer(RunBenchmarkCallback, null, TimeSpan.FromSeconds(30), TimeSpan.FromHours(1));
