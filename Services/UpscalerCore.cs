@@ -511,7 +511,7 @@ namespace JellyfinUpscalerPlugin.Services
                     return await FallbackUpscaleAsync(inputImage, scale);
                 }
 
-                var session = _modelSessions[model];
+                var session = _modelSessions[model]!;
                 
                 // Load image with ImageSharp
                 using var image = Image.Load(inputImage);

@@ -538,16 +538,19 @@ namespace JellyfinUpscalerPlugin.Services
         /// <summary>
         /// Cleanup timer callback
         /// </summary>
-        private async void CleanupCallback(object? state)
+        private void CleanupCallback(object? state)
         {
-            try
+            _ = Task.Run(async () =>
             {
-                await CleanupOldEntriesAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Cleanup timer failed");
-            }
+                try
+                {
+                    await CleanupOldEntriesAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ Cleanup timer failed");
+                }
+            });
         }
 
         /// <summary>

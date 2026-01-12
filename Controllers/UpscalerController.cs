@@ -18,6 +18,7 @@ using JellyfinUpscalerPlugin.Models;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Controller.Entities;
 using Image = SixLabors.ImageSharp.Image;
+using IOFile = System.IO.File;
 
 namespace JellyfinUpscalerPlugin.Controllers
 {
@@ -232,9 +233,9 @@ namespace JellyfinUpscalerPlugin.Controllers
                     imagePath = images[0].Path;
                 }
 
-                if (!File.Exists(imagePath)) return NotFound(new { message = "Image file not found" });
+                if (!IOFile.Exists(imagePath)) return NotFound(new { message = "Image file not found" });
 
-                byte[] originalData = await File.ReadAllBytesAsync(imagePath);
+                byte[] originalData = await IOFile.ReadAllBytesAsync(imagePath);
                 
                 using (var image = Image.Load(originalData))
                 {
@@ -278,7 +279,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
-                if (string.IsNullOrEmpty(request.InputPath) || !File.Exists(request.InputPath))
+                if (string.IsNullOrEmpty(request.InputPath) || !IOFile.Exists(request.InputPath))
                 {
                     return BadRequest(new { success = false, error = "Input file not found" });
                 }
@@ -333,7 +334,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 var item = _libraryManager.GetItemById(itemGuid);
                 if (item == null) return NotFound(new { message = "Item not found" });
 
-                if (string.IsNullOrEmpty(item.Path) || !File.Exists(item.Path))
+                if (string.IsNullOrEmpty(item.Path) || !IOFile.Exists(item.Path))
                 {
                     return BadRequest(new { message = "Item path not found or invalid" });
                 }

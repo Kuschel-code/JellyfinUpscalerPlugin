@@ -13,7 +13,7 @@ using JellyfinUpscalerPlugin.Models;
 namespace JellyfinUpscalerPlugin.Services
 {
     /// <summary>
-    /// Hardware Benchmarking Service v1.4.0 - Automated Hardware Detection & Testing
+    /// Hardware Benchmarking Service v1.4.1 - Automated Hardware Detection & Testing
     /// </summary>
     public class HardwareBenchmarkService : IHostedService, IDisposable
     {
@@ -55,16 +55,19 @@ namespace JellyfinUpscalerPlugin.Services
             return Task.CompletedTask;
         }
 
-        private async void RunBenchmarkCallback(object? state)
+        private void RunBenchmarkCallback(object? state)
         {
-            try
+            _ = Task.Run(async () =>
             {
-                await RunHardwareBenchmark();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during hardware benchmark");
-            }
+                try
+                {
+                    await RunHardwareBenchmark();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during hardware benchmark");
+                }
+            });
         }
 
         /// <summary>
