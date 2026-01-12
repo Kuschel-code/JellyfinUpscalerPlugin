@@ -574,10 +574,10 @@ namespace JellyfinUpscalerPlugin.Services
             _cleanupTimer?.Dispose();
             _statsTimer?.Dispose();
             
-            // Save index on dispose
+            // Save index on dispose - use GetAwaiter().GetResult() instead of Wait() to avoid deadlocks
             try
             {
-                SaveCacheIndexAsync().Wait();
+                SaveCacheIndexAsync().GetAwaiter().GetResult();
             }
             catch (Exception ex)
             {
