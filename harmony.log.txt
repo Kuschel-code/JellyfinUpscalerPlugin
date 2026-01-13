@@ -1,0 +1,771 @@
+### Harmony id=Mods_Yenyang_Better_Bulldozer, version=2.2.2.0, location=D:\SteamLibrary\steamapps\common\data-000002212983F6A0, env/clr=4.0.30319.42000, platform=Win32NT, ptrsize:runtime/env=8/Bits64, Windows
+### Started from virtual System.Void Better_Bulldozer.BetterBulldozerMod::OnLoad(Game.UpdateSystem updateSystem), location D:\SteamLibrary\steamapps\common\data-000002212FD1E010
+### At 2026-01-13 06.29.41
+### Patch: virtual System.Void Game.Tools.BulldozeToolSystem::InitializeRaycast()
+### Replacement: static System.Void Game.Tools.BulldozeToolSystem::Game.Tools.BulldozeToolSystem.InitializeRaycast_Patch1(Game.Tools.BulldozeToolSystem this)
+IL_0000: Local var 0: Game.Tools.BulldozeToolSystem/Mode
+IL_0000: // start original
+IL_0000: ldarg.0
+IL_0001: call       virtual System.Void Game.Tools.ToolBaseSystem::InitializeRaycast()
+IL_0006: ldarg.0
+IL_0007: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_000C: ldc.i4.s   10
+IL_000E: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_typeMask(Game.Common.TypeMask value)
+IL_0013: ldarg.0
+IL_0014: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_0019: ldc.i4.m1
+IL_001A: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_netLayerMask(Game.Net.Layer value)
+IL_001F: ldarg.0
+IL_0020: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_0025: dup
+IL_0026: callvirt   Game.Common.RaycastFlags Game.Tools.ToolRaycastSystem::get_raycastFlags()
+IL_002B: ldc.i4     262144
+IL_0030: or
+IL_0031: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_raycastFlags(Game.Common.RaycastFlags value)
+IL_0036: ldarg.0
+IL_0037: call       System.Boolean Game.Tools.BulldozeToolSystem::get_underground()
+IL_003C: brfalse => Label0
+IL_0041: ldarg.0
+IL_0042: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_0047: ldc.i4.4
+IL_0048: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_collisionMask(Game.Common.CollisionMask value)
+IL_004D: br =>      Label1
+IL_0052: Label0
+IL_0052: ldarg.0
+IL_0053: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_0058: ldc.i4.3
+IL_0059: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_collisionMask(Game.Common.CollisionMask value)
+IL_005E: Label1
+IL_005E: ldarg.0
+IL_005F: call       Game.Tools.Mode Game.Tools.BulldozeToolSystem::get_actualMode()
+IL_0064: stloc.0
+IL_0065: ldloc.0
+IL_0066: ldc.i4.1
+IL_0067: beq =>     Label2
+IL_006C: ldloc.0
+IL_006D: ldc.i4.2
+IL_006E: beq =>     Label3
+IL_0073: br =>      Label4
+IL_0078: Label2
+IL_0078: ldarg.0
+IL_0079: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_007E: dup
+IL_007F: callvirt   Game.Common.RaycastFlags Game.Tools.ToolRaycastSystem::get_raycastFlags()
+IL_0084: ldc.i4     288
+IL_0089: or
+IL_008A: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_raycastFlags(Game.Common.RaycastFlags value)
+IL_008F: br =>      Label5
+IL_0094: Label3
+IL_0094: ldarg.0
+IL_0095: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_009A: dup
+IL_009B: callvirt   Game.Common.RaycastFlags Game.Tools.ToolRaycastSystem::get_raycastFlags()
+IL_00A0: ldc.i4.s   32
+IL_00A2: or
+IL_00A3: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_raycastFlags(Game.Common.RaycastFlags value)
+IL_00A8: Label4
+IL_00A8: Label5
+IL_00A8: ldarg.0
+IL_00A9: ldfld      Game.Tools.ToolSystem Game.Tools.ToolBaseSystem::m_ToolSystem
+IL_00AE: callvirt   Game.GameMode Game.Tools.ToolSystem::get_actionMode()
+IL_00B3: call       static System.Boolean Game.GameModeExtensions::IsEditor(Game.GameMode gameMode)
+IL_00B8: brfalse => Label6
+IL_00BD: ldarg.0
+IL_00BE: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_00C3: dup
+IL_00C4: callvirt   Game.Common.RaycastFlags Game.Tools.ToolRaycastSystem::get_raycastFlags()
+IL_00C9: ldc.i4     33408
+IL_00CE: or
+IL_00CF: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_raycastFlags(Game.Common.RaycastFlags value)
+IL_00D4: ldarg.0
+IL_00D5: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_00DA: dup
+IL_00DB: callvirt   Game.Common.TypeMask Game.Tools.ToolRaycastSystem::get_typeMask()
+IL_00E0: ldc.i4.s   32
+IL_00E2: or
+IL_00E3: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_typeMask(Game.Common.TypeMask value)
+IL_00E8: ldarg.0
+IL_00E9: call       System.Boolean Game.Tools.BulldozeToolSystem::get_underground()
+IL_00EE: brfalse => Label7
+IL_00F3: ldarg.0
+IL_00F4: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_00F9: ldc.i4.8
+IL_00FA: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_areaTypeMask(Game.Areas.AreaTypeMask value)
+IL_00FF: br =>      Label8
+IL_0104: Label7
+IL_0104: ldarg.0
+IL_0105: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_010A: ldc.i4.s   25
+IL_010C: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_areaTypeMask(Game.Areas.AreaTypeMask value)
+IL_0111: br =>      Label9
+IL_0116: Label6
+IL_0116: ldarg.0
+IL_0117: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_011C: dup
+IL_011D: callvirt   Game.Common.RaycastFlags Game.Tools.ToolRaycastSystem::get_raycastFlags()
+IL_0122: ldc.i4     65536
+IL_0127: or
+IL_0128: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_raycastFlags(Game.Common.RaycastFlags value)
+IL_012D: ldarg.0
+IL_012E: call       System.Boolean Game.Tools.BulldozeToolSystem::get_underground()
+IL_0133: brtrue =>  Label10
+IL_0138: ldarg.0
+IL_0139: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_013E: dup
+IL_013F: callvirt   Game.Common.TypeMask Game.Tools.ToolRaycastSystem::get_typeMask()
+IL_0144: ldc.i4.s   32
+IL_0146: or
+IL_0147: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_typeMask(Game.Common.TypeMask value)
+IL_014C: ldarg.0
+IL_014D: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_0152: ldc.i4.s   17
+IL_0154: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_areaTypeMask(Game.Areas.AreaTypeMask value)
+IL_0159: Label8
+IL_0159: Label9
+IL_0159: Label10
+IL_0159: ldarg.0
+IL_015A: call       System.Boolean Game.Tools.BulldozeToolSystem::get_allowManipulation()
+IL_015F: brfalse => Label11
+IL_0164: ldarg.0
+IL_0165: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_016A: dup
+IL_016B: callvirt   Game.Common.TypeMask Game.Tools.ToolRaycastSystem::get_typeMask()
+IL_0170: ldc.i4.4
+IL_0171: or
+IL_0172: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_typeMask(Game.Common.TypeMask value)
+IL_0177: Label11
+IL_0177: ldarg.0
+IL_0178: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_017D: dup
+IL_017E: callvirt   Game.Common.RaycastFlags Game.Tools.ToolRaycastSystem::get_raycastFlags()
+IL_0183: ldc.i4     16448
+IL_0188: or
+IL_0189: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_raycastFlags(Game.Common.RaycastFlags value)
+IL_018E: // end original
+IL_018E: call       static System.Void Better_Bulldozer.Patches.BulldozeToolSystemInitializeRaycastPatch::Postfix()
+IL_0193: ret
+DONE
+
+### Patch: System.Boolean Game.Tools.ToolBaseSystem::GetRaycastResult(Unity.Entities.Entity& entity, Game.Common.RaycastHit& hit)
+### Replacement: static System.Boolean Game.Tools.ToolBaseSystem::Game.Tools.ToolBaseSystem.GetRaycastResult_Patch1(Game.Tools.ToolBaseSystem this, Unity.Entities.Entity& entity, Game.Common.RaycastHit& hit)
+IL_0000: Local var 0: Game.Common.RaycastResult
+IL_0000: Local var 1: Unity.Entities.EntityManager
+IL_0000: Local var 2: System.Boolean
+IL_0000: Local var 3: System.Boolean
+IL_0000: ldc.i4     0
+IL_0005: stloc      2 (System.Boolean)
+IL_0009: ldc.i4     0
+IL_000E: stloc      3 (System.Boolean)
+IL_0012: ldc.i4.1
+IL_0013: stloc      3 (System.Boolean)
+IL_0017: ldloc      3 (System.Boolean)
+IL_001B: brfalse => Label1
+IL_0020: ldarg      1
+IL_0024: ldarg      2
+IL_0028: call       static System.Boolean Better_Bulldozer.Patches.ToolBaseSystemGetRaycastResultPatch::Prefix(Unity.Entities.Entity& entity, Game.Common.RaycastHit& hit)
+IL_002D: stloc      3 (System.Boolean)
+IL_0031: Label1
+IL_0031: nop
+IL_0032: ldloc      3 (System.Boolean)
+IL_0036: brfalse => Label0
+IL_003B: // start original
+IL_003B: ldarg.0
+IL_003C: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_0041: ldloca.s   0 (Game.Common.RaycastResult)
+IL_0043: callvirt   System.Boolean Game.Tools.ToolRaycastSystem::GetRaycastResult(Game.Common.RaycastResult& result)
+IL_0048: brfalse => Label2
+IL_004D: ldarg.0
+IL_004E: call       Unity.Entities.EntityManager Unity.Entities.ComponentSystemBase::get_EntityManager()
+IL_0053: stloc.1
+IL_0054: ldloca.s   1 (Unity.Entities.EntityManager)
+IL_0056: ldloc.0
+IL_0057: ldfld      Unity.Entities.Entity Game.Common.RaycastResult::m_Owner
+IL_005C: call       System.Boolean Unity.Entities.EntityManager::HasComponent(Unity.Entities.Entity entity)
+IL_0061: brtrue =>  Label3
+IL_0066: ldarg.1
+IL_0067: ldloc.0
+IL_0068: ldfld      Unity.Entities.Entity Game.Common.RaycastResult::m_Owner
+IL_006D: stobj      Unity.Entities.Entity
+IL_0072: ldarg.2
+IL_0073: ldloc.0
+IL_0074: ldfld      Game.Common.RaycastHit Game.Common.RaycastResult::m_Hit
+IL_0079: stobj      Game.Common.RaycastHit
+IL_007E: ldc.i4.1
+IL_007F: br =>      Label4
+IL_0084: Label2
+IL_0084: Label3
+IL_0084: ldarg.1
+IL_0085: call       static Unity.Entities.Entity Unity.Entities.Entity::get_Null()
+IL_008A: stobj      Unity.Entities.Entity
+IL_008F: ldarg.2
+IL_0090: initobj    Game.Common.RaycastHit
+IL_0096: ldc.i4.0
+IL_0097: // end original
+IL_0097: Label4
+IL_0097: stloc      2 (System.Boolean)
+IL_009B: Label0
+IL_009B: ldloc      2 (System.Boolean)
+IL_009F: ret
+DONE
+
+### Harmony id=algernon-529Tiles, version=2.2.2.0, location=D:\SteamLibrary\steamapps\common\data-000002212983F6A0, env/clr=4.0.30319.42000, platform=Win32NT, ptrsize:runtime/env=8/Bits64, Windows
+### Started from System.Void FiveTwentyNineTiles.Patcher::UnPatchAll(), location D:\SteamLibrary\steamapps\common\data-0000022129D36020
+### At 2026-01-13 09.25.25
+### Patch: System.Void Game.Simulation.MapTilePurchaseSystem::UpdateStatus()
+### Replacement: static System.Void Game.Simulation.MapTilePurchaseSystem::Game.Simulation.MapTilePurchaseSystem.UpdateStatus_Patch0(Game.Simulation.MapTilePurchaseSystem this)
+IL_0000: Local var 0: System.Int32
+IL_0000: Local var 1: Unity.Entities.DynamicBuffer`1<Game.Tools.SelectionElement>
+IL_0000: Local var 2: Unity.Entities.ComponentLookup`1<Game.Prefabs.PrefabRef>
+IL_0000: Local var 3: Unity.Entities.ComponentLookup`1<Game.Prefabs.TilePurchaseCostFactor>
+IL_0000: Local var 4: Unity.Entities.ComponentLookup`1<Game.Common.Native>
+IL_0000: Local var 5: Unity.Entities.ComponentLookup`1<Game.Areas.MapTile>
+IL_0000: Local var 6: Unity.Collections.NativeList`1<System.Single>
+IL_0000: Local var 7: System.Int32
+IL_0000: Local var 8: System.Int32
+IL_0000: Local var 9: System.Single
+IL_0000: Local var 10: System.Single
+IL_0000: Local var 11: System.Int32
+IL_0000: Local var 12: Unity.Entities.Entity
+IL_0000: Local var 13: Unity.Entities.DynamicBuffer`1<Game.Areas.MapFeatureElement>
+IL_0000: Local var 14: Unity.Entities.Entity
+IL_0000: Local var 15: System.Single
+IL_0000: Local var 16: Unity.Entities.DynamicBuffer`1<Game.Prefabs.MapFeatureData>
+IL_0000: Local var 17: System.Single
+IL_0000: Local var 18: System.Int32
+IL_0000: Local var 19: System.Single
+IL_0000: Local var 20: System.Double
+IL_0000: Local var 21: Unity.Collections.NativeArray`1<System.Single>&
+IL_0000: Local var 22: System.Int32
+IL_0000: Local var 23: System.Int32
+IL_0000: // start original
+IL_0000: ldarg.0
+IL_0001: ldfld      Unity.Collections.NativeArray`1<System.Single> Game.Simulation.MapTilePurchaseSystem::m_FeatureAmounts
+IL_0006: ldc.r4     0
+IL_000B: call       static System.Void Colossal.Collections.CollectionUtils::Fill(Unity.Collections.NativeArray`1<System.Single> array, System.Single value)
+IL_0010: ldarg.0
+IL_0011: ldc.r4     0
+IL_0016: stfld      System.Single Game.Simulation.MapTilePurchaseSystem::m_Cost
+IL_001B: ldarg.0
+IL_001C: ldc.r4     0
+IL_0021: stfld      System.Single Game.Simulation.MapTilePurchaseSystem::m_Upkeep
+IL_0026: ldarg.0
+IL_0027: call       System.Int32 Game.Simulation.MapTilePurchaseSystem::GetAvailableTiles()
+IL_002C: stloc.0
+IL_002D: ldloc.0
+IL_002E: brtrue =>  Label0
+IL_0033: ldarg.0
+IL_0034: ldarg.0
+IL_0035: call       System.Boolean Game.Simulation.MapTilePurchaseSystem::IsMilestonesLeft()
+IL_003A: brtrue =>  Label1
+IL_003F: ldc.i4.2
+IL_0040: br =>      Label2
+IL_0045: Label1
+IL_0045: ldc.i4.1
+IL_0046: Label2
+IL_0046: call       System.Void Game.Simulation.MapTilePurchaseSystem::set_status(Game.Simulation.TilePurchaseErrorFlags value)
+IL_004B: br =>      Label18
+IL_0050: Label0
+IL_0050: ldarg.0
+IL_0051: ldc.i4.1
+IL_0052: ldloca.s   1 (Unity.Entities.DynamicBuffer`1[Game.Tools.SelectionElement])
+IL_0054: call       System.Boolean Game.Simulation.MapTilePurchaseSystem::TryGetSelections(System.Boolean isReadOnly, Unity.Entities.DynamicBuffer`1& selections)
+IL_0059: brfalse => Label3
+IL_005E: ldloca.s   1 (Unity.Entities.DynamicBuffer`1[Game.Tools.SelectionElement])
+IL_0060: call       virtual System.Int32 Unity.Entities.DynamicBuffer`1<Game.Tools.SelectionElement>::get_Length()
+IL_0065: brtrue =>  Label4
+IL_006A: Label3
+IL_006A: ldarg.0
+IL_006B: ldc.i4.4
+IL_006C: call       System.Void Game.Simulation.MapTilePurchaseSystem::set_status(Game.Simulation.TilePurchaseErrorFlags value)
+IL_0071: br =>      Label19
+IL_0076: Label4
+IL_0076: ldarg.0
+IL_0077: ldc.i4.0
+IL_0078: call       System.Void Game.Simulation.MapTilePurchaseSystem::set_status(Game.Simulation.TilePurchaseErrorFlags value)
+IL_007D: ldarg.0
+IL_007E: ldflda     Game.Simulation.TypeHandle Game.Simulation.MapTilePurchaseSystem::__TypeHandle
+IL_0083: ldflda     Unity.Entities.ComponentLookup`1<Game.Prefabs.PrefabRef> Game.Simulation.TypeHandle::__Game_Prefabs_PrefabRef_RO_ComponentLookup
+IL_0088: ldarg.0
+IL_0089: call       Unity.Entities.SystemState& Unity.Entities.SystemBase::get_CheckedStateRef()
+IL_008E: call       static Unity.Entities.ComponentLookup`1<Game.Prefabs.PrefabRef> Unity.Entities.Internal.InternalCompilerInterface::GetComponentLookup(Unity.Entities.ComponentLookup`1& componentLookup, Unity.Entities.SystemState& state)
+IL_0093: stloc.2
+IL_0094: ldarg.0
+IL_0095: ldflda     Game.Simulation.TypeHandle Game.Simulation.MapTilePurchaseSystem::__TypeHandle
+IL_009A: ldflda     Unity.Entities.ComponentLookup`1<Game.Prefabs.TilePurchaseCostFactor> Game.Simulation.TypeHandle::__Game_Prefabs_TilePurchaseCostFactor_RO_ComponentLookup
+IL_009F: ldarg.0
+IL_00A0: call       Unity.Entities.SystemState& Unity.Entities.SystemBase::get_CheckedStateRef()
+IL_00A5: call       static Unity.Entities.ComponentLookup`1<Game.Prefabs.TilePurchaseCostFactor> Unity.Entities.Internal.InternalCompilerInterface::GetComponentLookup(Unity.Entities.ComponentLookup`1& componentLookup, Unity.Entities.SystemState& state)
+IL_00AA: stloc.3
+IL_00AB: ldarg.0
+IL_00AC: ldflda     Game.Simulation.TypeHandle Game.Simulation.MapTilePurchaseSystem::__TypeHandle
+IL_00B1: ldflda     Unity.Entities.ComponentLookup`1<Game.Common.Native> Game.Simulation.TypeHandle::__Game_Common_Native_RO_ComponentLookup
+IL_00B6: ldarg.0
+IL_00B7: call       Unity.Entities.SystemState& Unity.Entities.SystemBase::get_CheckedStateRef()
+IL_00BC: call       static Unity.Entities.ComponentLookup`1<Game.Common.Native> Unity.Entities.Internal.InternalCompilerInterface::GetComponentLookup(Unity.Entities.ComponentLookup`1& componentLookup, Unity.Entities.SystemState& state)
+IL_00C1: stloc.s    4 (Unity.Entities.ComponentLookup`1[Game.Common.Native])
+IL_00C3: ldarg.0
+IL_00C4: ldflda     Game.Simulation.TypeHandle Game.Simulation.MapTilePurchaseSystem::__TypeHandle
+IL_00C9: ldflda     Unity.Entities.ComponentLookup`1<Game.Areas.MapTile> Game.Simulation.TypeHandle::__Game_Areas_MapTile_RO_ComponentLookup
+IL_00CE: ldarg.0
+IL_00CF: call       Unity.Entities.SystemState& Unity.Entities.SystemBase::get_CheckedStateRef()
+IL_00D4: call       static Unity.Entities.ComponentLookup`1<Game.Areas.MapTile> Unity.Entities.Internal.InternalCompilerInterface::GetComponentLookup(Unity.Entities.ComponentLookup`1& componentLookup, Unity.Entities.SystemState& state)
+IL_00D9: stloc.s    5 (Unity.Entities.ComponentLookup`1[Game.Areas.MapTile])
+IL_00DB: ldloca.s   6 (Unity.Collections.NativeList`1[System.Single])
+IL_00DD: ldc.i4.2
+IL_00DE: call       static Unity.Collections.AllocatorHandle Unity.Collections.AllocatorHandle::op_Implicit(Unity.Collections.Allocator a)
+IL_00E3: call       System.Void Unity.Collections.NativeList`1<System.Single>::.ctor(Unity.Collections.AllocatorHandle allocator)
+IL_00E8: ldc.i4.0
+IL_00E9: stloc.s    7 (System.Int32)
+IL_00EB: ldarg.0
+IL_00EC: call       System.Int32 Game.Simulation.MapTilePurchaseSystem::CalculateOwnedTiles()
+IL_00F1: stloc.s    8 (System.Int32)
+IL_00F3: ldarg.0
+IL_00F4: ldc.i4.1
+IL_00F5: call       System.Single Game.Simulation.MapTilePurchaseSystem::CalculateOwnedTilesCost(System.Boolean includeSelection)
+IL_00FA: dup
+IL_00FB: ldarg.0
+IL_00FC: ldloc.s    8 (System.Int32)
+IL_00FE: call       System.Single Game.Simulation.MapTilePurchaseSystem::GetMapTileUpkeepCostMultiplier(System.Int32 tileCount)
+IL_0103: mul
+IL_0104: stloc.s    9 (System.Single)
+IL_0106: stloc.s    10 (System.Single)
+IL_0108: ldc.i4.0
+IL_0109: stloc.s    11 (System.Int32)
+IL_010B: br =>      Label5
+IL_0110: Label12
+IL_0110: ldloca.s   1 (Unity.Entities.DynamicBuffer`1[Game.Tools.SelectionElement])
+IL_0112: ldloc.s    11 (System.Int32)
+IL_0114: call       virtual Game.Tools.SelectionElement Unity.Entities.DynamicBuffer`1<Game.Tools.SelectionElement>::get_Item(System.Int32 index)
+IL_0119: ldfld      Unity.Entities.Entity Game.Tools.SelectionElement::m_Entity
+IL_011E: stloc.s    12 (Unity.Entities.Entity)
+IL_0120: ldloca.s   5 (Unity.Entities.ComponentLookup`1[Game.Areas.MapTile])
+IL_0122: ldloc.s    12 (Unity.Entities.Entity)
+IL_0124: call       System.Boolean Unity.Entities.ComponentLookup`1<Game.Areas.MapTile>::HasComponent(Unity.Entities.Entity entity)
+IL_0129: brfalse => Label6
+IL_012E: ldloca.s   4 (Unity.Entities.ComponentLookup`1[Game.Common.Native])
+IL_0130: ldloc.s    12 (Unity.Entities.Entity)
+IL_0132: call       System.Boolean Unity.Entities.ComponentLookup`1<Game.Common.Native>::HasComponent(Unity.Entities.Entity entity)
+IL_0137: brfalse => Label7
+IL_013C: ldloc.s    7 (System.Int32)
+IL_013E: ldc.i4.1
+IL_013F: add
+IL_0140: stloc.s    7 (System.Int32)
+IL_0142: ldarg.0
+IL_0143: call       Unity.Entities.EntityManager Unity.Entities.ComponentSystemBase::get_EntityManager()
+IL_0148: ldloc.s    12 (Unity.Entities.Entity)
+IL_014A: ldc.i4.1
+IL_014B: ldloca.s   13 (Unity.Entities.DynamicBuffer`1[Game.Areas.MapFeatureElement])
+IL_014D: call       static System.Boolean Colossal.Entities.EntitiesExtensions::TryGetBuffer(Unity.Entities.EntityManager entityManager, Unity.Entities.Entity entity, System.Boolean isReadOnly, Unity.Entities.DynamicBuffer`1& buffer)
+IL_0152: brfalse => Label8
+IL_0157: ldloca.s   2 (Unity.Entities.ComponentLookup`1[Game.Prefabs.PrefabRef])
+IL_0159: ldloc.s    12 (Unity.Entities.Entity)
+IL_015B: call       Game.Prefabs.PrefabRef Unity.Entities.ComponentLookup`1<Game.Prefabs.PrefabRef>::get_Item(Unity.Entities.Entity entity)
+IL_0160: ldfld      Unity.Entities.Entity Game.Prefabs.PrefabRef::m_Prefab
+IL_0165: stloc.s    14 (Unity.Entities.Entity)
+IL_0167: ldloca.s   3 (Unity.Entities.ComponentLookup`1[Game.Prefabs.TilePurchaseCostFactor])
+IL_0169: ldloc.s    14 (Unity.Entities.Entity)
+IL_016B: call       Game.Prefabs.TilePurchaseCostFactor Unity.Entities.ComponentLookup`1<Game.Prefabs.TilePurchaseCostFactor>::get_Item(Unity.Entities.Entity entity)
+IL_0170: ldfld      System.Single Game.Prefabs.TilePurchaseCostFactor::m_Amount
+IL_0175: stloc.s    15 (System.Single)
+IL_0177: ldarg.0
+IL_0178: call       Unity.Entities.EntityManager Unity.Entities.ComponentSystemBase::get_EntityManager()
+IL_017D: ldloc.s    14 (Unity.Entities.Entity)
+IL_017F: ldc.i4.1
+IL_0180: ldloca.s   16 (Unity.Entities.DynamicBuffer`1[Game.Prefabs.MapFeatureData])
+IL_0182: call       static System.Boolean Colossal.Entities.EntitiesExtensions::TryGetBuffer(Unity.Entities.EntityManager entityManager, Unity.Entities.Entity entity, System.Boolean isReadOnly, Unity.Entities.DynamicBuffer`1& buffer)
+IL_0187: brfalse => Label9
+IL_018C: ldc.r4     0
+IL_0191: stloc.s    17 (System.Single)
+IL_0193: ldc.i4.0
+IL_0194: stloc.s    18 (System.Int32)
+IL_0196: br =>      Label10
+IL_019B: Label11
+IL_019B: ldloca.s   13 (Unity.Entities.DynamicBuffer`1[Game.Areas.MapFeatureElement])
+IL_019D: ldloc.s    18 (System.Int32)
+IL_019F: call       virtual Game.Areas.MapFeatureElement Unity.Entities.DynamicBuffer`1<Game.Areas.MapFeatureElement>::get_Item(System.Int32 index)
+IL_01A4: ldfld      System.Single Game.Areas.MapFeatureElement::m_Amount
+IL_01A9: stloc.s    19 (System.Single)
+IL_01AB: ldarg.0
+IL_01AC: ldflda     Unity.Collections.NativeArray`1<System.Single> Game.Simulation.MapTilePurchaseSystem::m_FeatureAmounts
+IL_01B1: stloc.s    21 (Unity.Collections.NativeArray`1[System.Single]&)
+IL_01B3: ldloc.s    18 (System.Int32)
+IL_01B5: stloc.s    22 (System.Int32)
+IL_01B7: ldloc.s    21 (Unity.Collections.NativeArray`1[System.Single]&)
+IL_01B9: ldloc.s    22 (System.Int32)
+IL_01BB: ldloc.s    21 (Unity.Collections.NativeArray`1[System.Single]&)
+IL_01BD: ldloc.s    22 (System.Int32)
+IL_01BF: call       System.Single Unity.Collections.NativeArray`1<System.Single>::get_Item(System.Int32 index)
+IL_01C4: ldloc.s    19 (System.Single)
+IL_01C6: add
+IL_01C7: call       System.Void Unity.Collections.NativeArray`1<System.Single>::set_Item(System.Int32 index, System.Single value)
+IL_01CC: ldarg.0
+IL_01CD: ldloc.s    18 (System.Int32)
+IL_01CF: call       System.Double Game.Simulation.MapTilePurchaseSystem::GetBaselineModifier(System.Int32 mapFeature)
+IL_01D4: stloc.s    20 (System.Double)
+IL_01D6: ldloc.s    17 (System.Single)
+IL_01D8: ldloc.s    19 (System.Single)
+IL_01DA: conv.r8
+IL_01DB: ldloc.s    20 (System.Double)
+IL_01DD: mul
+IL_01DE: ldc.r8     10
+IL_01E7: mul
+IL_01E8: ldloca.s   16 (Unity.Entities.DynamicBuffer`1[Game.Prefabs.MapFeatureData])
+IL_01EA: ldloc.s    18 (System.Int32)
+IL_01EC: call       virtual Game.Prefabs.MapFeatureData Unity.Entities.DynamicBuffer`1<Game.Prefabs.MapFeatureData>::get_Item(System.Int32 index)
+IL_01F1: ldfld      System.Single Game.Prefabs.MapFeatureData::m_Cost
+IL_01F6: conv.r8
+IL_01F7: mul
+IL_01F8: ldloc.s    15 (System.Single)
+IL_01FA: conv.r8
+IL_01FB: mul
+IL_01FC: conv.r4
+IL_01FD: add
+IL_01FE: stloc.s    17 (System.Single)
+IL_0200: ldloc.s    10 (System.Single)
+IL_0202: ldloc.s    19 (System.Single)
+IL_0204: conv.r8
+IL_0205: ldloc.s    20 (System.Double)
+IL_0207: mul
+IL_0208: ldc.r8     10
+IL_0211: mul
+IL_0212: ldloca.s   16 (Unity.Entities.DynamicBuffer`1[Game.Prefabs.MapFeatureData])
+IL_0214: ldloc.s    18 (System.Int32)
+IL_0216: call       virtual Game.Prefabs.MapFeatureData Unity.Entities.DynamicBuffer`1<Game.Prefabs.MapFeatureData>::get_Item(System.Int32 index)
+IL_021B: ldfld      System.Single Game.Prefabs.MapFeatureData::m_Cost
+IL_0220: conv.r8
+IL_0221: mul
+IL_0222: ldloc.s    15 (System.Single)
+IL_0224: conv.r8
+IL_0225: mul
+IL_0226: conv.r4
+IL_0227: add
+IL_0228: stloc.s    10 (System.Single)
+IL_022A: ldloc.s    18 (System.Int32)
+IL_022C: ldc.i4.1
+IL_022D: add
+IL_022E: stloc.s    18 (System.Int32)
+IL_0230: Label10
+IL_0230: ldloc.s    18 (System.Int32)
+IL_0232: ldloca.s   13 (Unity.Entities.DynamicBuffer`1[Game.Areas.MapFeatureElement])
+IL_0234: call       virtual System.Int32 Unity.Entities.DynamicBuffer`1<Game.Areas.MapFeatureElement>::get_Length()
+IL_0239: blt =>     Label11
+IL_023E: ldloca.s   6 (Unity.Collections.NativeList`1[System.Single])
+IL_0240: ldloca.s   17 (System.Single)
+IL_0242: call       System.Void Unity.Collections.NativeList`1<System.Single>::Add(System.Single& value)
+IL_0247: Label6
+IL_0247: Label7
+IL_0247: Label8
+IL_0247: Label9
+IL_0247: ldloc.s    11 (System.Int32)
+IL_0249: ldc.i4.1
+IL_024A: add
+IL_024B: stloc.s    11 (System.Int32)
+IL_024D: Label5
+IL_024D: ldloc.s    11 (System.Int32)
+IL_024F: ldloca.s   1 (Unity.Entities.DynamicBuffer`1[Game.Tools.SelectionElement])
+IL_0251: call       virtual System.Int32 Unity.Entities.DynamicBuffer`1<Game.Tools.SelectionElement>::get_Length()
+IL_0256: blt =>     Label12
+IL_025B: ldloc.s    6 (Unity.Collections.NativeList`1[System.Single])
+IL_025D: call       static System.Void Unity.Collections.NativeSortExtension::Sort(Unity.Collections.NativeList`1<System.Single> list)
+IL_0262: ldc.i4.0
+IL_0263: stloc.s    23 (System.Int32)
+IL_0265: br =>      Label13
+IL_026A: Label14
+IL_026A: ldarg.0
+IL_026B: ldarg.0
+IL_026C: ldfld      System.Single Game.Simulation.MapTilePurchaseSystem::m_Cost
+IL_0271: ldloca.s   6 (Unity.Collections.NativeList`1[System.Single])
+IL_0273: ldloca.s   6 (Unity.Collections.NativeList`1[System.Single])
+IL_0275: call       virtual System.Int32 Unity.Collections.NativeList`1<System.Single>::get_Length()
+IL_027A: ldloc.s    23 (System.Int32)
+IL_027C: sub
+IL_027D: ldc.i4.1
+IL_027E: sub
+IL_027F: call       virtual System.Single Unity.Collections.NativeList`1<System.Single>::get_Item(System.Int32 index)
+IL_0284: ldloc.s    8 (System.Int32)
+IL_0286: ldloc.s    23 (System.Int32)
+IL_0288: add
+IL_0289: conv.r4
+IL_028A: mul
+IL_028B: add
+IL_028C: stfld      System.Single Game.Simulation.MapTilePurchaseSystem::m_Cost
+IL_0291: ldloc.s    23 (System.Int32)
+IL_0293: ldc.i4.1
+IL_0294: add
+IL_0295: stloc.s    23 (System.Int32)
+IL_0297: Label13
+IL_0297: ldloc.s    23 (System.Int32)
+IL_0299: ldloca.s   6 (Unity.Collections.NativeList`1[System.Single])
+IL_029B: call       virtual System.Int32 Unity.Collections.NativeList`1<System.Single>::get_Length()
+IL_02A0: blt =>     Label14
+IL_02A5: ldloca.s   6 (Unity.Collections.NativeList`1[System.Single])
+IL_02A7: call       virtual System.Void Unity.Collections.NativeList`1<System.Single>::Dispose()
+IL_02AC: ldarg.0
+IL_02AD: ldloc.s    10 (System.Single)
+IL_02AF: ldarg.0
+IL_02B0: ldloc.s    8 (System.Int32)
+IL_02B2: ldloc.s    7 (System.Int32)
+IL_02B4: add
+IL_02B5: call       System.Single Game.Simulation.MapTilePurchaseSystem::GetMapTileUpkeepCostMultiplier(System.Int32 tileCount)
+IL_02BA: mul
+IL_02BB: ldloc.s    9 (System.Single)
+IL_02BD: sub
+IL_02BE: stfld      System.Single Game.Simulation.MapTilePurchaseSystem::m_Upkeep
+IL_02C3: ldloc.s    7 (System.Int32)
+IL_02C5: ldc.i4.0
+IL_02C6: ble =>     Label15
+IL_02CB: ldloc.s    7 (System.Int32)
+IL_02CD: ldloc.0
+IL_02CE: ble =>     Label16
+IL_02D3: ldarg.0
+IL_02D4: ldarg.0
+IL_02D5: call       virtual Game.Simulation.TilePurchaseErrorFlags Game.Simulation.MapTilePurchaseSystem::get_status()
+IL_02DA: ldc.i4.s   16
+IL_02DC: or
+IL_02DD: call       System.Void Game.Simulation.MapTilePurchaseSystem::set_status(Game.Simulation.TilePurchaseErrorFlags value)
+IL_02E2: Label15
+IL_02E2: Label16
+IL_02E2: ldarg.0
+IL_02E3: call       virtual System.Int32 Game.Simulation.MapTilePurchaseSystem::get_cost()
+IL_02E8: ldarg.0
+IL_02E9: ldfld      Game.Simulation.CitySystem Game.Simulation.MapTilePurchaseSystem::m_CitySystem
+IL_02EE: callvirt   virtual System.Int32 Game.Simulation.CitySystem::get_moneyAmount()
+IL_02F3: ble =>     Label17
+IL_02F8: ldarg.0
+IL_02F9: ldarg.0
+IL_02FA: call       virtual Game.Simulation.TilePurchaseErrorFlags Game.Simulation.MapTilePurchaseSystem::get_status()
+IL_02FF: ldc.i4.8
+IL_0300: or
+IL_0301: call       System.Void Game.Simulation.MapTilePurchaseSystem::set_status(Game.Simulation.TilePurchaseErrorFlags value)
+IL_0306: // end original
+IL_0306: Label17
+IL_0306: Label18
+IL_0306: Label19
+IL_0306: ret
+DONE
+
+### Patch: static System.Void Game.Simulation.MapTilePurchaseSystem::UnlockTile(Unity.Entities.EntityManager entityManager, Unity.Entities.Entity area)
+### Replacement: static System.Void Game.Simulation.MapTilePurchaseSystem::Game.Simulation.MapTilePurchaseSystem.UnlockTile_Patch0(Unity.Entities.EntityManager entityManager, Unity.Entities.Entity area)
+IL_0000: Local var 0: Game.Common.Updated
+IL_0000: // start original
+IL_0000: ldarga.s   0
+IL_0002: ldarg.1
+IL_0003: call       System.Boolean Unity.Entities.EntityManager::HasComponent(Unity.Entities.Entity entity)
+IL_0008: brfalse => Label0
+IL_000D: ldarga.s   0
+IL_000F: ldarg.1
+IL_0010: call       System.Boolean Unity.Entities.EntityManager::RemoveComponent(Unity.Entities.Entity entity)
+IL_0015: pop
+IL_0016: ldarga.s   0
+IL_0018: ldarg.1
+IL_0019: ldloca.s   0 (Game.Common.Updated)
+IL_001B: initobj    Game.Common.Updated
+IL_0021: ldloc.0
+IL_0022: call       System.Boolean Unity.Entities.EntityManager::AddComponentData(Unity.Entities.Entity entity, Game.Common.Updated componentData)
+IL_0027: pop
+IL_0028: // end original
+IL_0028: Label0
+IL_0028: ret
+DONE
+
+### Patch: System.Int32 Game.Simulation.MapTilePurchaseSystem::CalculateOwnedTilesUpkeep()
+### Replacement: static System.Int32 Game.Simulation.MapTilePurchaseSystem::Game.Simulation.MapTilePurchaseSystem.CalculateOwnedTilesUpkeep_Patch0(Game.Simulation.MapTilePurchaseSystem this)
+IL_0000: // start original
+IL_0000: ldarg.0
+IL_0001: ldc.i4.0
+IL_0002: call       System.Single Game.Simulation.MapTilePurchaseSystem::CalculateOwnedTilesCost(System.Boolean includeSelection)
+IL_0007: ldarg.0
+IL_0008: ldarg.0
+IL_0009: call       System.Int32 Game.Simulation.MapTilePurchaseSystem::CalculateOwnedTiles()
+IL_000E: call       System.Single Game.Simulation.MapTilePurchaseSystem::GetMapTileUpkeepCostMultiplier(System.Int32 tileCount)
+IL_0013: mul
+IL_0014: call       static System.Int32 UnityEngine.Mathf::RoundToInt(System.Single f)
+IL_0019: // end original
+IL_0019: ret
+DONE
+
+### Patch: virtual System.Void Game.Tools.BulldozeToolSystem::InitializeRaycast()
+### Replacement: static System.Void Game.Tools.BulldozeToolSystem::Game.Tools.BulldozeToolSystem.InitializeRaycast_Patch0(Game.Tools.BulldozeToolSystem this)
+IL_0000: Local var 0: Game.Tools.BulldozeToolSystem/Mode
+IL_0000: // start original
+IL_0000: ldarg.0
+IL_0001: call       virtual System.Void Game.Tools.ToolBaseSystem::InitializeRaycast()
+IL_0006: ldarg.0
+IL_0007: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_000C: ldc.i4.s   10
+IL_000E: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_typeMask(Game.Common.TypeMask value)
+IL_0013: ldarg.0
+IL_0014: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_0019: ldc.i4.m1
+IL_001A: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_netLayerMask(Game.Net.Layer value)
+IL_001F: ldarg.0
+IL_0020: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_0025: dup
+IL_0026: callvirt   Game.Common.RaycastFlags Game.Tools.ToolRaycastSystem::get_raycastFlags()
+IL_002B: ldc.i4     262144
+IL_0030: or
+IL_0031: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_raycastFlags(Game.Common.RaycastFlags value)
+IL_0036: ldarg.0
+IL_0037: call       System.Boolean Game.Tools.BulldozeToolSystem::get_underground()
+IL_003C: brfalse => Label0
+IL_0041: ldarg.0
+IL_0042: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_0047: ldc.i4.4
+IL_0048: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_collisionMask(Game.Common.CollisionMask value)
+IL_004D: br =>      Label1
+IL_0052: Label0
+IL_0052: ldarg.0
+IL_0053: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_0058: ldc.i4.3
+IL_0059: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_collisionMask(Game.Common.CollisionMask value)
+IL_005E: Label1
+IL_005E: ldarg.0
+IL_005F: call       Game.Tools.Mode Game.Tools.BulldozeToolSystem::get_actualMode()
+IL_0064: stloc.0
+IL_0065: ldloc.0
+IL_0066: ldc.i4.1
+IL_0067: beq =>     Label2
+IL_006C: ldloc.0
+IL_006D: ldc.i4.2
+IL_006E: beq =>     Label3
+IL_0073: br =>      Label4
+IL_0078: Label2
+IL_0078: ldarg.0
+IL_0079: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_007E: dup
+IL_007F: callvirt   Game.Common.RaycastFlags Game.Tools.ToolRaycastSystem::get_raycastFlags()
+IL_0084: ldc.i4     288
+IL_0089: or
+IL_008A: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_raycastFlags(Game.Common.RaycastFlags value)
+IL_008F: br =>      Label5
+IL_0094: Label3
+IL_0094: ldarg.0
+IL_0095: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_009A: dup
+IL_009B: callvirt   Game.Common.RaycastFlags Game.Tools.ToolRaycastSystem::get_raycastFlags()
+IL_00A0: ldc.i4.s   32
+IL_00A2: or
+IL_00A3: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_raycastFlags(Game.Common.RaycastFlags value)
+IL_00A8: Label4
+IL_00A8: Label5
+IL_00A8: ldarg.0
+IL_00A9: ldfld      Game.Tools.ToolSystem Game.Tools.ToolBaseSystem::m_ToolSystem
+IL_00AE: callvirt   Game.GameMode Game.Tools.ToolSystem::get_actionMode()
+IL_00B3: call       static System.Boolean Game.GameModeExtensions::IsEditor(Game.GameMode gameMode)
+IL_00B8: brfalse => Label6
+IL_00BD: ldarg.0
+IL_00BE: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_00C3: dup
+IL_00C4: callvirt   Game.Common.RaycastFlags Game.Tools.ToolRaycastSystem::get_raycastFlags()
+IL_00C9: ldc.i4     33408
+IL_00CE: or
+IL_00CF: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_raycastFlags(Game.Common.RaycastFlags value)
+IL_00D4: ldarg.0
+IL_00D5: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_00DA: dup
+IL_00DB: callvirt   Game.Common.TypeMask Game.Tools.ToolRaycastSystem::get_typeMask()
+IL_00E0: ldc.i4.s   32
+IL_00E2: or
+IL_00E3: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_typeMask(Game.Common.TypeMask value)
+IL_00E8: ldarg.0
+IL_00E9: call       System.Boolean Game.Tools.BulldozeToolSystem::get_underground()
+IL_00EE: brfalse => Label7
+IL_00F3: ldarg.0
+IL_00F4: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_00F9: ldc.i4.8
+IL_00FA: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_areaTypeMask(Game.Areas.AreaTypeMask value)
+IL_00FF: br =>      Label8
+IL_0104: Label7
+IL_0104: ldarg.0
+IL_0105: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_010A: ldc.i4.s   25
+IL_010C: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_areaTypeMask(Game.Areas.AreaTypeMask value)
+IL_0111: br =>      Label9
+IL_0116: Label6
+IL_0116: ldarg.0
+IL_0117: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_011C: dup
+IL_011D: callvirt   Game.Common.RaycastFlags Game.Tools.ToolRaycastSystem::get_raycastFlags()
+IL_0122: ldc.i4     65536
+IL_0127: or
+IL_0128: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_raycastFlags(Game.Common.RaycastFlags value)
+IL_012D: ldarg.0
+IL_012E: call       System.Boolean Game.Tools.BulldozeToolSystem::get_underground()
+IL_0133: brtrue =>  Label10
+IL_0138: ldarg.0
+IL_0139: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_013E: dup
+IL_013F: callvirt   Game.Common.TypeMask Game.Tools.ToolRaycastSystem::get_typeMask()
+IL_0144: ldc.i4.s   32
+IL_0146: or
+IL_0147: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_typeMask(Game.Common.TypeMask value)
+IL_014C: ldarg.0
+IL_014D: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_0152: ldc.i4.s   17
+IL_0154: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_areaTypeMask(Game.Areas.AreaTypeMask value)
+IL_0159: Label8
+IL_0159: Label9
+IL_0159: Label10
+IL_0159: ldarg.0
+IL_015A: call       System.Boolean Game.Tools.BulldozeToolSystem::get_allowManipulation()
+IL_015F: brfalse => Label11
+IL_0164: ldarg.0
+IL_0165: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_016A: dup
+IL_016B: callvirt   Game.Common.TypeMask Game.Tools.ToolRaycastSystem::get_typeMask()
+IL_0170: ldc.i4.4
+IL_0171: or
+IL_0172: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_typeMask(Game.Common.TypeMask value)
+IL_0177: Label11
+IL_0177: ldarg.0
+IL_0178: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_017D: dup
+IL_017E: callvirt   Game.Common.RaycastFlags Game.Tools.ToolRaycastSystem::get_raycastFlags()
+IL_0183: ldc.i4     16448
+IL_0188: or
+IL_0189: callvirt   System.Void Game.Tools.ToolRaycastSystem::set_raycastFlags(Game.Common.RaycastFlags value)
+IL_018E: // end original
+IL_018E: ret
+DONE
+
+### Patch: System.Boolean Game.Tools.ToolBaseSystem::GetRaycastResult(Unity.Entities.Entity& entity, Game.Common.RaycastHit& hit)
+### Replacement: static System.Boolean Game.Tools.ToolBaseSystem::Game.Tools.ToolBaseSystem.GetRaycastResult_Patch0(Game.Tools.ToolBaseSystem this, Unity.Entities.Entity& entity, Game.Common.RaycastHit& hit)
+IL_0000: Local var 0: Game.Common.RaycastResult
+IL_0000: Local var 1: Unity.Entities.EntityManager
+IL_0000: // start original
+IL_0000: ldarg.0
+IL_0001: ldfld      Game.Tools.ToolRaycastSystem Game.Tools.ToolBaseSystem::m_ToolRaycastSystem
+IL_0006: ldloca.s   0 (Game.Common.RaycastResult)
+IL_0008: callvirt   System.Boolean Game.Tools.ToolRaycastSystem::GetRaycastResult(Game.Common.RaycastResult& result)
+IL_000D: brfalse => Label0
+IL_0012: ldarg.0
+IL_0013: call       Unity.Entities.EntityManager Unity.Entities.ComponentSystemBase::get_EntityManager()
+IL_0018: stloc.1
+IL_0019: ldloca.s   1 (Unity.Entities.EntityManager)
+IL_001B: ldloc.0
+IL_001C: ldfld      Unity.Entities.Entity Game.Common.RaycastResult::m_Owner
+IL_0021: call       System.Boolean Unity.Entities.EntityManager::HasComponent(Unity.Entities.Entity entity)
+IL_0026: brtrue =>  Label1
+IL_002B: ldarg.1
+IL_002C: ldloc.0
+IL_002D: ldfld      Unity.Entities.Entity Game.Common.RaycastResult::m_Owner
+IL_0032: stobj      Unity.Entities.Entity
+IL_0037: ldarg.2
+IL_0038: ldloc.0
+IL_0039: ldfld      Game.Common.RaycastHit Game.Common.RaycastResult::m_Hit
+IL_003E: stobj      Game.Common.RaycastHit
+IL_0043: ldc.i4.1
+IL_0044: br =>      Label2
+IL_0049: Label0
+IL_0049: Label1
+IL_0049: ldarg.1
+IL_004A: call       static Unity.Entities.Entity Unity.Entities.Entity::get_Null()
+IL_004F: stobj      Unity.Entities.Entity
+IL_0054: ldarg.2
+IL_0055: initobj    Game.Common.RaycastHit
+IL_005B: ldc.i4.0
+IL_005C: // end original
+IL_005C: Label2
+IL_005C: ret
+DONE
+

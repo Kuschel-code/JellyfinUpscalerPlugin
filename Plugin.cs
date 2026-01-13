@@ -53,7 +53,7 @@ namespace JellyfinUpscalerPlugin
             {
                 new PluginPageInfo
                 {
-                    Name = this.Name,
+                    Name = "configPage",
                     EmbeddedResourcePath = GetType().Namespace + ".Configuration.configurationpage.html"
                 },
                 new PluginPageInfo
