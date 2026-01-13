@@ -50,6 +50,8 @@
 
   <ItemGroup>
     <None Include="meta.json" CopyToOutputDirectory="Always" />
+    <None Include="Scripts\upscale-ffmpeg.sh" CopyToOutputDirectory="Always" />
+    <None Include="Scripts\upscale-ffmpeg.bat" CopyToOutputDirectory="Always" />
   </ItemGroup>
 
   <ItemGroup>
