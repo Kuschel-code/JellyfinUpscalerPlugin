@@ -26,7 +26,7 @@ An advanced, AI-powered video enhancement plugin for Jellyfin. Improve your medi
 2. Go to **Plugins** > **Repositories**.
 3. Add a new repository with the following URL:
    `https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/repository-jellyfin.json`
-4. Go to the **Catalog**, search for "AI Upscaler Plugin", and install version **1.4.4**.
+4. Go to the **Catalog**, search for "AI Upscaler Plugin", and install version **1.4.5**.
 5. Restart Jellyfin.
 
 ## ⚙️ Configuration
