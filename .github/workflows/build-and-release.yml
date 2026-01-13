@@ -80,7 +80,7 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add manifest.json repository-jellyfin.json repository-simple.json
           git diff --staged --quiet || git commit -m "chore: Update manifests for v${{ env.PLUGIN_VERSION }} [skip ci]"
-          git push
+          git push origin HEAD:main || echo "Manifest push skipped (already updated)"
           
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
