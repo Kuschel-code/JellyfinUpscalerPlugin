@@ -38,12 +38,12 @@ namespace JellyfinUpscalerPlugin
         public int CacheSizeMB { get; set; } = 5120; // 5GB default
         
         // Version tracking
-        public string PluginVersion { get; set; } = "1.4.1";
+        public string PluginVersion { get; set; } = "1.4.3";
         public DateTime LastConfigUpdate { get; set; } = DateTime.UtcNow;
 
         public PluginConfiguration()
         {
-            PluginVersion = "1.4.1";
+            PluginVersion = "1.4.3";
             LastConfigUpdate = DateTime.UtcNow;
         }
     }

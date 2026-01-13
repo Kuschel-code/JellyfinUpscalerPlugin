@@ -6,8 +6,8 @@
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <AssemblyTitle>AI Upscaler Plugin</AssemblyTitle>
-    <AssemblyVersion>1.4.2.0</AssemblyVersion>
-    <FileVersion>1.4.2.0</FileVersion>
+    <AssemblyVersion>1.4.3.0</AssemblyVersion>
+    <FileVersion>1.4.3.0</FileVersion>
     <NoWarn>CS8632</NoWarn>
     <Nullable>enable</Nullable>
   </PropertyGroup>
@@ -45,6 +45,7 @@
     <EmbeddedResource Include="Configuration\quick-menu.js" />
     <EmbeddedResource Include="Configuration\player-integration.js" />
     <EmbeddedResource Include="Configuration\sidebar-upscaler.js" />
+    <EmbeddedResource Include="Configuration\webgl-upscaler.js" />
   </ItemGroup>
 
   <ItemGroup>

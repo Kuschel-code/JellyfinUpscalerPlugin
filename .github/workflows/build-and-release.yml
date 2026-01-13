@@ -1,0 +1,109 @@
+name: Build and Release Plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+          
+      - name: Restore dependencies
+        run: dotnet restore
+        
+      - name: Build plugin
+        run: dotnet build --configuration Release --no-restore
+        
+      - name: Publish plugin
+        run: dotnet publish --configuration Release --no-build --output ./publish
+        
+      - name: Create plugin archive
+        run: |
+          cd publish
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          if [ -z "$VERSION" ]; then
+            VERSION=$(grep -oP '<AssemblyVersion>\K[^<]+' ../JellyfinUpscalerPlugin.csproj | head -1 | sed 's/\.0$//')
+          fi
+          zip -r "../JellyfinUpscalerPlugin-v${VERSION}.zip" ./*
+          cd ..
+          echo "PLUGIN_VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "ARCHIVE_NAME=JellyfinUpscalerPlugin-v${VERSION}.zip" >> $GITHUB_ENV
+          
+      - name: Calculate MD5 checksum
+        id: checksum
+        run: |
+          CHECKSUM=$(md5sum "${{ env.ARCHIVE_NAME }}" | awk '{print $1}')
+          echo "MD5_CHECKSUM=${CHECKSUM}" >> $GITHUB_ENV
+          echo "Calculated MD5: ${CHECKSUM}"
+          
+      - name: Update manifest files
+        run: |
+          # Update manifest.json
+          jq --arg version "${{ env.PLUGIN_VERSION }}" \
+             --arg checksum "${{ env.MD5_CHECKSUM }}" \
+             --arg url "https://github.com/${{ github.repository }}/releases/download/v${{ env.PLUGIN_VERSION }}/${{ env.ARCHIVE_NAME }}" \
+             '.versions[0].version = $version | .versions[0].checksum = $checksum | .versions[0].sourceUrl = $url | .versions[0].timestamp = (now | strftime("%Y-%m-%dT%H:%M:%S.000Z"))' \
+             manifest.json > manifest.tmp && mv manifest.tmp manifest.json
+             
+          # Update repository-jellyfin.json
+          jq --arg version "${{ env.PLUGIN_VERSION }}" \
+             --arg checksum "${{ env.MD5_CHECKSUM }}" \
+             --arg url "https://github.com/${{ github.repository }}/releases/download/v${{ env.PLUGIN_VERSION }}/${{ env.ARCHIVE_NAME }}" \
+             '.[0].versions[0].version = $version | .[0].versions[0].checksum = $checksum | .[0].versions[0].sourceUrl = $url | .[0].versions[0].timestamp = (now | strftime("%Y-%m-%dT%H:%M:%S.000Z"))' \
+             repository-jellyfin.json > repository-jellyfin.tmp && mv repository-jellyfin.tmp repository-jellyfin.json
+             
+          # Update repository-simple.json
+          jq --arg version "${{ env.PLUGIN_VERSION }}" \
+             --arg checksum "${{ env.MD5_CHECKSUM }}" \
+             --arg url "https://github.com/${{ github.repository }}/releases/download/v${{ env.PLUGIN_VERSION }}/${{ env.ARCHIVE_NAME }}" \
+             '.[0].versions[0].version = $version | .[0].versions[0].checksum = $checksum | .[0].versions[0].sourceUrl = $url | .[0].versions[0].timestamp = (now | strftime("%Y-%m-%dT%H:%M:%S.000Z"))' \
+             repository-simple.json > repository-simple.tmp && mv repository-simple.tmp repository-simple.json
+             
+          cat manifest.json
+          echo "---"
+          cat repository-jellyfin.json
+          
+      - name: Commit updated manifests
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add manifest.json repository-jellyfin.json repository-simple.json
+          git diff --staged --quiet || git commit -m "chore: Update manifests for v${{ env.PLUGIN_VERSION }} [skip ci]"
+          git push
+          
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ env.ARCHIVE_NAME }}
+          body: |
+            ## JellyfinUpscalerPlugin v${{ env.PLUGIN_VERSION }}
+            
+            ### 📦 Installation
+            1. Download `${{ env.ARCHIVE_NAME }}`
+            2. Extract to Jellyfin's plugin directory
+            3. Restart Jellyfin
+            
+            ### 🔐 Checksum
+            **MD5**: `${{ env.MD5_CHECKSUM }}`
+            
+            ### 📝 Manifest URLs
+            - **Jellyfin Format**: `https://raw.githubusercontent.com/${{ github.repository }}/main/repository-jellyfin.json`
+            - **Simple Format**: `https://raw.githubusercontent.com/${{ github.repository }}/main/repository-simple.json`
+            
+            ### 🚀 What's New
+            See [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/README.md) for details.
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

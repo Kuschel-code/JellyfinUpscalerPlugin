@@ -54,8 +54,24 @@
                 
                 // Add keyboard shortcuts
                 this.addKeyboardShortcuts();
+                
+                // Initialize WebGL upscaler
+                this.initWebGLUpscaler();
             } catch (error) {
                 console.error('AI Upscaler: Error integrating with player:', error);
+            }
+        },
+        
+        // Initialize WebGL client-side upscaling
+        initWebGLUpscaler: function() {
+            try {
+                const videoElement = document.querySelector('video');
+                if (videoElement && window.AIUpscalerWebGL) {
+                    window.AIUpscalerWebGL.init(videoElement);
+                    console.log('AI Upscaler: WebGL upscaler ready');
+                }
+            } catch (error) {
+                console.error('AI Upscaler: WebGL initialization failed:', error);
             }
         },
         

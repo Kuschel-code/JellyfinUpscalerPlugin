@@ -30,6 +30,8 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly ILogger<VideoProcessor> _logger;
         private readonly IMediaEncoder _mediaEncoder;
         private readonly UpscalerCore _upscalerCore;
+        private readonly UpscalerProgressHub _progressHub;
+        private readonly LibraryScanHelper _libraryScanHelper;
         
         // Processing queue for concurrent streams
         private readonly SemaphoreSlim _processingSemaphore;
@@ -48,11 +50,15 @@ namespace JellyfinUpscalerPlugin.Services
         public VideoProcessor(
             ILogger<VideoProcessor> logger,
             IMediaEncoder mediaEncoder,
-            UpscalerCore upscalerCore)
+            UpscalerCore upscalerCore,
+            UpscalerProgressHub progressHub,
+            LibraryScanHelper libraryScanHelper)
         {
             _logger = logger;
             _mediaEncoder = mediaEncoder;
             _upscalerCore = upscalerCore;
+            _progressHub = progressHub;
+            _libraryScanHelper = libraryScanHelper;
             
             // Limit concurrent processing based on hardware
             _processingSemaphore = new SemaphoreSlim(Config.MaxConcurrentStreams);
@@ -153,6 +159,14 @@ namespace JellyfinUpscalerPlugin.Services
                 
                 // 6. Update performance history
                 UpdatePerformanceHistory(job);
+                
+                await _progressHub.SendJobCompleted(job.Id, Path.GetFileName(inputPath), result.Success, result.Error);
+                
+                // 7. Trigger library scan for new upscaled file
+                if (result.Success && !string.IsNullOrEmpty(outputPath))
+                {
+                    await _libraryScanHelper.ScanUpscaledFile(inputPath, outputPath);
+                }
                 
                 _logger.LogInformation($"✅ Video processing completed: {result.Success}, Time: {job.ProcessingDuration.TotalSeconds:F1}s");
                 
@@ -518,6 +532,10 @@ namespace JellyfinUpscalerPlugin.Services
 
             _logger.LogInformation($"🚀 Processing {totalFrames} frames with max concurrency: {maxConcurrency}");
 
+            var processedFrames = 0;
+            var startTime = DateTime.Now;
+            var lastProgressUpdate = DateTime.Now;
+
             for (int i = 0; i < totalFrames; i++)
             {
                 int index = i;
@@ -535,9 +553,24 @@ namespace JellyfinUpscalerPlugin.Services
                         var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFile));
                         await File.WriteAllBytesAsync(outputFile, upscaledData, cancellationToken);
                         
-                        if (index % 100 == 0 || index == totalFrames - 1)
+                        Interlocked.Increment(ref processedFrames);
+                        
+                        var now = DateTime.Now;
+                        if ((now - lastProgressUpdate).TotalSeconds >= 2 || index == totalFrames - 1)
                         {
-                            _logger.LogInformation($"📸 Processed {index + 1}/{totalFrames} frames");
+                            var elapsed = (now - startTime).TotalSeconds;
+                            var fps = processedFrames / elapsed;
+                            
+                            await _progressHub.SendFrameProgress(
+                                Path.GetFileNameWithoutExtension(framesDir),
+                                Path.GetFileName(frameFile),
+                                processedFrames,
+                                totalFrames,
+                                fps
+                            );
+                            
+                            lastProgressUpdate = now;
+                            _logger.LogInformation($"📸 Processed {processedFrames}/{totalFrames} frames ({fps:F1} FPS)");
                         }
                     }
                     catch (Exception ex)
