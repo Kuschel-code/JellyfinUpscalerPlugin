@@ -7,12 +7,12 @@
   "category": "Video Enhancement",
   "versions": [
     {
-      "version": "1.4.4",
+      "version": "1.4.5",
       "changelog": "v1.4.4: Real-time progress hub (SignalR), auto library scanning, WebGL client-side upscaling, FFmpeg wrapper auto-configuration, pause/resume API, dependency validation, and native DLL isolation.",
       "targetAbi": "10.10.0.0",
-      "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.4/JellyfinUpscalerPlugin-v1.4.4.zip",
-      "checksum": "0ae9be7c903eae4f9609fd05c8a4413e",
-      "timestamp": "2026-01-13T19:41:28.000Z"
+      "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.5/JellyfinUpscalerPlugin-v1.4.5.zip",
+      "checksum": "4414c622d7759a398ab6b434bbc7e121",
+      "timestamp": "2026-01-13T20:45:14.000Z"
     }
   ],
   "repositoryUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin",
