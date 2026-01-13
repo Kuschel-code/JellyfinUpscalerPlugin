@@ -7,12 +7,17 @@ An advanced, AI-powered video enhancement plugin for Jellyfin. Improve your medi
 
 ## 🚀 Key Features
 
-- **Real-Time Upscaling**: Experience crystal-clear images during playback.
+- **Real-Time Upscaling**: Experience crystal-clear images during playback with WebGL client-side rendering.
 - **Hardware Acceleration**: Full support for NVIDIA (CUDA), VAAPI (Linux), QSV (Intel), and DirectML (Windows).
 - **Multiple AI Models**: Support for Real-ESRGAN, SwinIR, Waifu2x, and more.
 - **Hardware Benchmarking**: Built-in tools for detection and optimization based on server performance.
 - **Modern UI Integration**: Fully compatible with Jellyfin 10.10+ Dashboard and Player.
 - **Comparison View**: Preview AI upscaling results before applying them to your library.
+- **Real-Time Progress Hub**: SignalR-compatible progress broadcasting to Jellyfin Dashboard.
+- **Auto Library Scanning**: Automatic library refresh after successful upscaling jobs.
+- **FFmpeg Wrapper**: Auto-configuration with hardware-aware upscaling filter injection.
+- **Job Control API**: Pause, resume, and cancel processing jobs via REST API.
+- **Dependency Validation**: Platform-specific native library isolation and verification.
 
 ## 🛠️ Installation
 
@@ -21,7 +26,7 @@ An advanced, AI-powered video enhancement plugin for Jellyfin. Improve your medi
 2. Go to **Plugins** > **Repositories**.
 3. Add a new repository with the following URL:
    `https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/repository-jellyfin.json`
-4. Go to the **Catalog**, search for "AI Upscaler Plugin", and install version **1.4.1**.
+4. Go to the **Catalog**, search for "AI Upscaler Plugin", and install version **1.4.4**.
 5. Restart Jellyfin.
 
 ## ⚙️ Configuration
