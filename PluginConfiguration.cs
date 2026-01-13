@@ -43,7 +43,7 @@ namespace JellyfinUpscalerPlugin
 
         public PluginConfiguration()
         {
-            PluginVersion = "1.4.4";
+            PluginVersion = "1.4.5";
             LastConfigUpdate = DateTime.UtcNow;
         }
     }

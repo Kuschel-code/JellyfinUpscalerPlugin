@@ -4,7 +4,7 @@
             <div class="verticalSection">
                 <div class="sectionTitleContainer flex align-items-center">
                     <h2 class="sectionTitle">🎮 AI Upscaler Plugin</h2>
-                    <span class="bubble ml-1">v1.4.1 STABLE</span>
+                    <span class="bubble ml-1">v1.4.5</span>
                 </div>
                 <p class="sectionDescription">Professional AI Video Enhancement for Jellyfin</p>
             </div>
@@ -150,6 +150,51 @@
                         <input is="emby-input" type="number" id="CacheSizeMB" name="CacheSizeMB" min="128" max="1048576" />
                         <div class="fieldDescription">Maximum storage space to use for the AI cache</div>
                     </div>
+                </div>
+
+                <div class="verticalSection">
+                    <h2 class="sectionTitle">🎬 FFmpeg Live-Transcoding Wrapper</h2>
+                    <p class="sectionDescription">Inject AI upscaling filters into live FFmpeg transcoding streams</p>
+                    
+                    <div class="paperList">
+                        <div class="listItem">
+                            <div class="listItemBody two-line">
+                                <h3 class="listItemBodyText">Wrapper Status</h3>
+                                <div id="wrapper-status" class="listItemBodyText secondary">Checking...</div>
+                            </div>
+                        </div>
+                        <div class="listItem">
+                            <div class="listItemBody two-line">
+                                <h3 class="listItemBodyText">Platform</h3>
+                                <div id="wrapper-platform" class="listItemBodyText secondary">Unknown</div>
+                            </div>
+                        </div>
+                        <div class="listItem" id="wrapper-path-container" style="display:none;">
+                            <div class="listItemBody two-line">
+                                <h3 class="listItemBodyText">Wrapper Path</h3>
+                                <div id="wrapper-path" class="listItemBodyText secondary" style="word-break: break-all;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="fieldDescription" style="margin-top: 1em;">
+                        <strong>⚠️ How it works:</strong> The wrapper script intercepts FFmpeg calls from Jellyfin and injects hardware upscaling filters.
+                        After installation, you must manually update Jellyfin's FFmpeg path in Dashboard → Playback → Transcoding.
+                    </div>
+
+                    <div class="flex align-items-center justify-content-center flex-wrap-wrap" style="margin-top: 1em; gap: 0.5em;">
+                        <button is="emby-button" type="button" id="btn-install-wrapper" class="raised button-submit block">
+                            <span>Install Wrapper</span>
+                        </button>
+                        <button is="emby-button" type="button" id="btn-uninstall-wrapper" class="raised block" style="background: #d32f2f;">
+                            <span>Uninstall Wrapper</span>
+                        </button>
+                        <button is="emby-button" type="button" id="btn-regenerate-wrapper" class="raised block">
+                            <span>Regenerate Script</span>
+                        </button>
+                    </div>
+
+                    <div id="wrapper-message" class="fieldDescription" style="margin-top: 1em; padding: 1em; border-radius: 4px; display: none;"></div>
                 </div>
 
                 <div class="verticalSection">
@@ -349,6 +394,93 @@
                 });
             }
 
+            function loadWrapperStatus(page) {
+                ApiClient.getJSON(ApiClient.getUrl('api/upscaler/wrapper/status')).then(function(data) {
+                    const statusEl = page.querySelector('#wrapper-status');
+                    const platformEl = page.querySelector('#wrapper-platform');
+                    const pathEl = page.querySelector('#wrapper-path');
+                    const pathContainer = page.querySelector('#wrapper-path-container');
+                    
+                    statusEl.textContent = data.IsInstalled ? '✅ Installed & Active' : '❌ Not Installed';
+                    platformEl.textContent = data.Platform + ' (' + data.RuntimeIdentifier + ')';
+                    
+                    if (data.IsInstalled) {
+                        pathEl.textContent = data.WrapperPath;
+                        pathContainer.style.display = 'block';
+                    } else {
+                        pathContainer.style.display = 'none';
+                    }
+                }).catch(function() {
+                    page.querySelector('#wrapper-status').textContent = '⚠️ Error loading status';
+                });
+            }
+
+            function installWrapper(page) {
+                const btn = page.querySelector('#btn-install-wrapper');
+                const msgEl = page.querySelector('#wrapper-message');
+                btn.disabled = true;
+                
+                ApiClient.ajax({
+                    type: 'POST',
+                    url: ApiClient.getUrl('api/upscaler/wrapper/install')
+                }).then(function(data) {
+                    msgEl.textContent = data.Message;
+                    msgEl.style.background = 'rgba(76, 175, 80, 0.2)';
+                    msgEl.style.display = 'block';
+                    loadWrapperStatus(page);
+                    btn.disabled = false;
+                }).catch(function() {
+                    msgEl.textContent = 'Installation failed. Check server logs.';
+                    msgEl.style.background = 'rgba(244, 67, 54, 0.2)';
+                    msgEl.style.display = 'block';
+                    btn.disabled = false;
+                });
+            }
+
+            function uninstallWrapper(page) {
+                const btn = page.querySelector('#btn-uninstall-wrapper');
+                const msgEl = page.querySelector('#wrapper-message');
+                btn.disabled = true;
+                
+                ApiClient.ajax({
+                    type: 'POST',
+                    url: ApiClient.getUrl('api/upscaler/wrapper/uninstall')
+                }).then(function(data) {
+                    msgEl.textContent = data.Message;
+                    msgEl.style.background = 'rgba(255, 152, 0, 0.2)';
+                    msgEl.style.display = 'block';
+                    loadWrapperStatus(page);
+                    btn.disabled = false;
+                }).catch(function() {
+                    msgEl.textContent = 'Uninstallation failed. Check server logs.';
+                    msgEl.style.background = 'rgba(244, 67, 54, 0.2)';
+                    msgEl.style.display = 'block';
+                    btn.disabled = false;
+                });
+            }
+
+            function regenerateWrapper(page) {
+                const btn = page.querySelector('#btn-regenerate-wrapper');
+                const msgEl = page.querySelector('#wrapper-message');
+                btn.disabled = true;
+                
+                ApiClient.ajax({
+                    type: 'POST',
+                    url: ApiClient.getUrl('api/upscaler/wrapper/regenerate')
+                }).then(function(data) {
+                    msgEl.textContent = data.Message;
+                    msgEl.style.background = 'rgba(33, 150, 243, 0.2)';
+                    msgEl.style.display = 'block';
+                    loadWrapperStatus(page);
+                    btn.disabled = false;
+                }).catch(function() {
+                    msgEl.textContent = 'Regeneration failed. Check server logs.';
+                    msgEl.style.background = 'rgba(244, 67, 54, 0.2)';
+                    msgEl.style.display = 'block';
+                    btn.disabled = false;
+                });
+            }
+
             document.querySelector('#UpscalerConfigurationPage').addEventListener('pageshow', function() {
                 const page = this;
                 loadModels(page);
@@ -356,6 +488,7 @@
                 loadMediaItems(page);
                 updateHardwareStatus(page);
                 loadJavaScriptComponents();
+                loadWrapperStatus(page);
 
                 page.querySelector('#Model').addEventListener('change', function() {
                     updateScaleFactors(page, this.value);
@@ -363,6 +496,18 @@
 
                 page.querySelector('#btn-compare').addEventListener('click', function() {
                     generateComparison(page);
+                });
+
+                page.querySelector('#btn-install-wrapper').addEventListener('click', function() {
+                    installWrapper(page);
+                });
+
+                page.querySelector('#btn-uninstall-wrapper').addEventListener('click', function() {
+                    uninstallWrapper(page);
+                });
+
+                page.querySelector('#btn-regenerate-wrapper').addEventListener('click', function() {
+                    regenerateWrapper(page);
                 });
 
                 page.querySelector('#UpscalerConfigForm').addEventListener('submit', function(e) {

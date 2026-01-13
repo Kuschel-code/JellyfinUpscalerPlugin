@@ -6,8 +6,8 @@
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <AssemblyTitle>AI Upscaler Plugin</AssemblyTitle>
-    <AssemblyVersion>1.4.4.0</AssemblyVersion>
-    <FileVersion>1.4.4.0</FileVersion>
+    <AssemblyVersion>1.4.5.0</AssemblyVersion>
+    <FileVersion>1.4.5.0</FileVersion>
     <NoWarn>CS8632</NoWarn>
     <Nullable>enable</Nullable>
   </PropertyGroup>
@@ -62,5 +62,18 @@
     <Compile Remove="wiki\**" />
     <Compile Remove="assets\**" />
   </ItemGroup>
+
+  <!-- Exclude all native runtimes from being copied to output -->
+  <ItemGroup>
+    <None Remove="runtimes\**\*" />
+    <Content Remove="runtimes\**\*" />
+  </ItemGroup>
+
+  <!-- Prevent NuGet packages from copying native DLLs -->
+  <Target Name="RemoveNativeLibraries" AfterTargets="ResolvePackageAssets">
+    <ItemGroup>
+      <RuntimeTargetsCopyLocalItems Remove="@(RuntimeTargetsCopyLocalItems)" Condition="'%(RuntimeTargetsCopyLocalItems.AssetType)' == 'native'" />
+    </ItemGroup>
+  </Target>
 
 </Project>
