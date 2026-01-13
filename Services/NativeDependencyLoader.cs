@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 
@@ -57,12 +59,90 @@ namespace JellyfinUpscalerPlugin.Services
                     SetupMacOSLibraryPath(nativeDir);
                 }
 
+                // Validate critical dependencies
+                ValidateDependencies(nativeDir);
+
                 _initialized = true;
                 _logger.LogInformation("✅ Native dependency isolation initialized");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Failed to initialize native dependencies");
+            }
+        }
+
+        /// <summary>
+        /// Validate that critical native libraries are accessible
+        /// </summary>
+        private void ValidateDependencies(string nativeDir)
+        {
+            _logger.LogInformation("🔍 Validating native dependencies...");
+
+            var validationResults = new Dictionary<string, bool>();
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                validationResults["onnxruntime.dll"] = ValidateLibrary(Path.Combine(nativeDir, "onnxruntime", "onnxruntime.dll"));
+                validationResults["onnxruntime_providers_cuda.dll"] = ValidateLibrary(Path.Combine(nativeDir, "cuda", "onnxruntime_providers_cuda.dll"));
+                validationResults["opencv_world480.dll"] = ValidateLibrary(Path.Combine(nativeDir, "opencv", "opencv_world480.dll"));
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                validationResults["libonnxruntime.so"] = ValidateLibrary(Path.Combine(nativeDir, "onnxruntime", "libonnxruntime.so"));
+                validationResults["libonnxruntime_providers_cuda.so"] = ValidateLibrary(Path.Combine(nativeDir, "cuda", "libonnxruntime_providers_cuda.so"));
+                validationResults["libopencv_world.so"] = ValidateLibrary(Path.Combine(nativeDir, "opencv", "libopencv_world.so"));
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                validationResults["libonnxruntime.dylib"] = ValidateLibrary(Path.Combine(nativeDir, "onnxruntime", "libonnxruntime.dylib"));
+                validationResults["libopencv_world.dylib"] = ValidateLibrary(Path.Combine(nativeDir, "opencv", "libopencv_world.dylib"));
+            }
+
+            // Log validation results
+            var availableCount = validationResults.Count(r => r.Value);
+            var totalCount = validationResults.Count;
+
+            foreach (var result in validationResults)
+            {
+                if (result.Value)
+                {
+                    _logger.LogInformation($"  ✅ {result.Key} - Found");
+                }
+                else
+                {
+                    _logger.LogWarning($"  ⚠️ {result.Key} - Not found (will use system libraries)");
+                }
+            }
+
+            if (availableCount == 0)
+            {
+                _logger.LogWarning("⚠️ No plugin-specific native libraries found. Using system libraries if available.");
+            }
+            else
+            {
+                _logger.LogInformation($"📦 Native libraries validated: {availableCount}/{totalCount} found");
+            }
+        }
+
+        /// <summary>
+        /// Validate individual library file
+        /// </summary>
+        private bool ValidateLibrary(string path)
+        {
+            if (!File.Exists(path))
+            {
+                return false;
+            }
+
+            // Check if file is readable
+            try
+            {
+                using var fs = File.OpenRead(path);
+                return fs.Length > 0;
+            }
+            catch
+            {
+                return false;
             }
         }
 

@@ -369,6 +369,91 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
+        [HttpGet("jobs")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> GetActiveJobs()
+        {
+            try
+            {
+                var jobs = _videoProcessor.GetActiveJobs();
+                return Ok(new { success = true, jobs = jobs });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve active jobs");
+                return StatusCode(500, new { success = false, error = ex.Message });
+            }
+        }
+
+        [HttpPost("jobs/{jobId}/pause")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> PauseJob(string jobId)
+        {
+            try
+            {
+                var result = _videoProcessor.PauseJob(jobId);
+                if (result)
+                {
+                    return Ok(new { success = true, message = $"Job {jobId} paused" });
+                }
+                else
+                {
+                    return NotFound(new { success = false, message = "Job not found or cannot be paused" });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed to pause job {jobId}");
+                return StatusCode(500, new { success = false, error = ex.Message });
+            }
+        }
+
+        [HttpPost("jobs/{jobId}/resume")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> ResumeJob(string jobId)
+        {
+            try
+            {
+                var result = _videoProcessor.ResumeJob(jobId);
+                if (result)
+                {
+                    return Ok(new { success = true, message = $"Job {jobId} resumed" });
+                }
+                else
+                {
+                    return NotFound(new { success = false, message = "Job not found or cannot be resumed" });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed to resume job {jobId}");
+                return StatusCode(500, new { success = false, error = ex.Message });
+            }
+        }
+
+        [HttpPost("jobs/{jobId}/cancel")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> CancelJob(string jobId)
+        {
+            try
+            {
+                var result = _videoProcessor.CancelJob(jobId);
+                if (result)
+                {
+                    return Ok(new { success = true, message = $"Job {jobId} cancelled" });
+                }
+                else
+                {
+                    return NotFound(new { success = false, message = "Job not found or cannot be cancelled" });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed to cancel job {jobId}");
+                return StatusCode(500, new { success = false, error = ex.Message });
+            }
+        }
+
         [HttpGet("cache/stats")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetCacheStats()

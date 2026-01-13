@@ -18,12 +18,22 @@ namespace JellyfinUpscalerPlugin
         /// <param name="serverApplicationHost">Server application host</param>
         public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost serverApplicationHost)
         {
+            // Build temporary provider for initialization
+            var tempProvider = serviceCollection.BuildServiceProvider();
+            
             // Native Dependency Isolation (v1.4.3)
             var dependencyLoader = new NativeDependencyLoader(
-                serviceCollection.BuildServiceProvider().GetRequiredService<ILogger<NativeDependencyLoader>>()
+                tempProvider.GetRequiredService<ILogger<NativeDependencyLoader>>()
             );
             dependencyLoader.Initialize();
             serviceCollection.AddSingleton(dependencyLoader);
+            
+            // FFmpeg Wrapper Auto-Configuration (v1.4.4)
+            var configHelper = new JellyfinConfigHelper(
+                tempProvider.GetRequiredService<ILogger<JellyfinConfigHelper>>()
+            );
+            configHelper.SetupFFmpegWrapper();
+            serviceCollection.AddSingleton(configHelper);
             
             // Core AI Services (Phase 1)
             serviceCollection.AddSingleton<UpscalerCore>();

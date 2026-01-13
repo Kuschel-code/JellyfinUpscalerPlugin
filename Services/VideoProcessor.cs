@@ -36,6 +36,8 @@ namespace JellyfinUpscalerPlugin.Services
         // Processing queue for concurrent streams
         private readonly SemaphoreSlim _processingSemaphore;
         private readonly Dictionary<string, ProcessingJob> _activeJobs = new();
+        private readonly Dictionary<string, CancellationTokenSource> _jobCancellationTokens = new();
+        private readonly Dictionary<string, bool> _pausedJobs = new();
         
         // Performance monitoring
         private readonly Dictionary<string, VideoProcessingMetrics> _performanceHistory = new();
@@ -117,6 +119,10 @@ namespace JellyfinUpscalerPlugin.Services
             CancellationToken cancellationToken = default)
         {
             var jobId = Guid.NewGuid().ToString();
+            var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _jobCancellationTokens[jobId] = cts;
+            _pausedJobs[jobId] = false;
+            
             var job = new ProcessingJob
             {
                 Id = jobId,
@@ -189,7 +195,94 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 _processingSemaphore.Release();
                 _activeJobs.Remove(jobId);
+                _jobCancellationTokens.Remove(jobId);
+                _pausedJobs.Remove(jobId);
+                cts.Dispose();
             }
+        }
+
+        /// <summary>
+        /// Get all active processing jobs
+        /// </summary>
+        public List<object> GetActiveJobs()
+        {
+            return _activeJobs.Values.Select(job => new
+            {
+                jobId = job.Id,
+                inputPath = Path.GetFileName(job.InputPath),
+                outputPath = Path.GetFileName(job.OutputPath),
+                status = job.Status.ToString(),
+                progress = CalculateJobProgress(job),
+                startTime = job.StartTime,
+                duration = job.ProcessingDuration.TotalSeconds,
+                method = job.ProcessingMethod.ToString(),
+                isPaused = _pausedJobs.GetValueOrDefault(job.Id, false)
+            }).Cast<object>().ToList();
+        }
+
+        /// <summary>
+        /// Pause a running job
+        /// </summary>
+        public bool PauseJob(string jobId)
+        {
+            if (!_activeJobs.ContainsKey(jobId))
+            {
+                return false;
+            }
+
+            _pausedJobs[jobId] = true;
+            _logger.LogInformation($"⏸️ Job {jobId} paused");
+            return true;
+        }
+
+        /// <summary>
+        /// Resume a paused job
+        /// </summary>
+        public bool ResumeJob(string jobId)
+        {
+            if (!_activeJobs.ContainsKey(jobId))
+            {
+                return false;
+            }
+
+            _pausedJobs[jobId] = false;
+            _logger.LogInformation($"▶️ Job {jobId} resumed");
+            return true;
+        }
+
+        /// <summary>
+        /// Cancel a running job
+        /// </summary>
+        public bool CancelJob(string jobId)
+        {
+            if (!_jobCancellationTokens.TryGetValue(jobId, out var cts))
+            {
+                return false;
+            }
+
+            cts.Cancel();
+            _logger.LogInformation($"🛑 Job {jobId} cancelled");
+            return true;
+        }
+
+        /// <summary>
+        /// Calculate job progress percentage
+        /// </summary>
+        private double CalculateJobProgress(ProcessingJob job)
+        {
+            if (job.Status == ProcessingStatus.Completed)
+            {
+                return 100.0;
+            }
+
+            if (job.Status == ProcessingStatus.Processing && job.InputInfo != null)
+            {
+                var elapsed = DateTime.Now - job.StartTime;
+                var estimated = elapsed.TotalSeconds * 2; // Rough estimate
+                return Math.Min(95, (elapsed.TotalSeconds / estimated) * 100);
+            }
+
+            return 0;
         }
 
         /// <summary>
@@ -547,6 +640,13 @@ namespace JellyfinUpscalerPlugin.Services
                 {
                     try
                     {
+                        // Check for pause before processing
+                        var jobId = Path.GetFileNameWithoutExtension(framesDir);
+                        while (_pausedJobs.GetValueOrDefault(jobId, false))
+                        {
+                            await Task.Delay(500, cancellationToken);
+                        }
+                        
                         var frameData = await File.ReadAllBytesAsync(frameFile, cancellationToken);
                         var upscaledData = await _upscalerCore.UpscaleImageAsync(frameData, options.Model, options.ScaleFactor);
                         
@@ -562,7 +662,7 @@ namespace JellyfinUpscalerPlugin.Services
                             var fps = processedFrames / elapsed;
                             
                             await _progressHub.SendFrameProgress(
-                                Path.GetFileNameWithoutExtension(framesDir),
+                                jobId,
                                 Path.GetFileName(frameFile),
                                 processedFrames,
                                 totalFrames,
