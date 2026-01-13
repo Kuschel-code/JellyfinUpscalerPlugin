@@ -68,11 +68,6 @@ namespace JellyfinUpscalerPlugin
                 },
                 new PluginPageInfo
                 {
-                    Name = "configPage",
-                    EmbeddedResourcePath = GetType().Namespace + ".Configuration.configurationpage.html"
-                },
-                new PluginPageInfo
-                {
                     Name = "UPSCALERPlayerIntegration",
                     EmbeddedResourcePath = GetType().Namespace + ".Configuration.player-integration.js"
                 },
