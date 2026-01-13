@@ -32,6 +32,9 @@ namespace JellyfinUpscalerPlugin
             // Hardware Benchmark Service (v1.4.1)
             serviceCollection.AddSingleton<HardwareBenchmarkService>();
             serviceCollection.AddHostedService<HardwareBenchmarkService>(provider => provider.GetRequiredService<HardwareBenchmarkService>());
+            
+            // Transcoding Profile Manager (v1.4.2)
+            serviceCollection.AddSingleton<TranscodingProfileManager>();
         }
     }
 }

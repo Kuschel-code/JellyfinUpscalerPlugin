@@ -660,16 +660,44 @@ namespace JellyfinUpscalerPlugin.Services
             // Video filters
             var filters = new List<string>();
             
-            // Scaling filter
+            // Advanced AI Upscaling Filter Selection (v1.4.2)
             if (options.ScaleFactor > 1)
             {
+                var useAdvancedUpscaling = options.QualityLevel == "high" || options.EnableAIUpscaling;
+                
                 if (options.HardwareAcceleration == "cuda")
                 {
-                    filters.Add($"scale_cuda={options.ScaleFactor}*iw:{options.ScaleFactor}*ih");
+                    // NVIDIA RTX: Use Video Super Resolution (VSR) or CUDA scaling
+                    if (useAdvancedUpscaling && hardwareProfile.GpuName?.Contains("RTX") == true)
+                    {
+                        _logger.LogInformation("🎯 Using NVIDIA VSR (Video Super Resolution)");
+                        filters.Add($"hwupload_cuda");
+                        filters.Add($"scale_cuda={options.ScaleFactor}*iw:{options.ScaleFactor}*ih:interp_algo=lanczos");
+                        filters.Add($"unsharp_cuda=luma_amount=1.5:chroma_amount=0.5"); // AI-enhanced sharpening
+                        filters.Add($"hwdownload");
+                        filters.Add($"format=nv12");
+                    }
+                    else
+                    {
+                        filters.Add($"scale_cuda={options.ScaleFactor}*iw:{options.ScaleFactor}*ih");
+                    }
                 }
                 else if (options.HardwareAcceleration == "vaapi")
                 {
-                    filters.Add($"scale_vaapi={options.ScaleFactor}*iw:{options.ScaleFactor}*ih");
+                    // AMD/Intel: Use FSR-like upscaling with VAAPI
+                    if (useAdvancedUpscaling)
+                    {
+                        _logger.LogInformation("🎯 Using AMD FSR-style upscaling");
+                        filters.Add($"hwupload");
+                        filters.Add($"scale_vaapi=w={options.ScaleFactor}*iw:h={options.ScaleFactor}*ih");
+                        filters.Add($"sharpen_vaapi"); // FSR-like sharpening
+                        filters.Add($"hwdownload");
+                        filters.Add($"format=nv12");
+                    }
+                    else
+                    {
+                        filters.Add($"scale_vaapi={options.ScaleFactor}*iw:{options.ScaleFactor}*ih");
+                    }
                 }
                 else if (options.HardwareAcceleration == "qsv")
                 {
@@ -677,18 +705,32 @@ namespace JellyfinUpscalerPlugin.Services
                 }
                 else
                 {
-                    filters.Add($"scale={options.ScaleFactor}*iw:{options.ScaleFactor}*ih:flags=lanczos");
+                    // Software: Use Anime4K or FSR via libplacebo if available
+                    if (useAdvancedUpscaling && options.Model?.Contains("anime") == true)
+                    {
+                        _logger.LogInformation("🎯 Using Anime4K-style shader upscaling");
+                        filters.Add($"libplacebo=w={options.ScaleFactor}*iw:h={options.ScaleFactor}*ih:upscaler=ewa_lanczos:downscaler=ewa_lanczos");
+                    }
+                    else if (useAdvancedUpscaling)
+                    {
+                        _logger.LogInformation("🎯 Using FSR (FidelityFX Super Resolution)");
+                        filters.Add($"libplacebo=w={options.ScaleFactor}*iw:h={options.ScaleFactor}*ih:upscaler=ewa_lanczos");
+                    }
+                    else
+                    {
+                        filters.Add($"scale={options.ScaleFactor}*iw:{options.ScaleFactor}*ih:flags=lanczos");
+                    }
                 }
             }
             
-            // Quality filters
+            // Quality enhancement filters
             if (options.QualityLevel == "high")
             {
                 if (options.HardwareAcceleration == "vaapi")
                 {
                     filters.Add("sharpen_vaapi");
                 }
-                else
+                else if (options.HardwareAcceleration != "cuda") // CUDA already has unsharp_cuda above
                 {
                     filters.Add("unsharp=5:5:1.0:5:5:0.0");
                 }

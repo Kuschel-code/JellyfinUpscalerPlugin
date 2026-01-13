@@ -48,6 +48,7 @@ namespace JellyfinUpscalerPlugin.Models
         public bool EnableRealTimeProcessing { get; set; } = false;
         public bool PreserveAudio { get; set; } = true;
         public bool PreserveSubtitles { get; set; } = true;
+        public bool EnableAIUpscaling { get; set; } = true;
         
         public VideoProcessingOptions() { }
         
@@ -60,6 +61,7 @@ namespace JellyfinUpscalerPlugin.Models
             EnableRealTimeProcessing = other.EnableRealTimeProcessing;
             PreserveAudio = other.PreserveAudio;
             PreserveSubtitles = other.PreserveSubtitles;
+            EnableAIUpscaling = other.EnableAIUpscaling;
         }
     }
 
@@ -152,6 +154,7 @@ namespace JellyfinUpscalerPlugin.Models
     {
         public string GpuVendor { get; set; } = "";
         public string GpuModel { get; set; } = "";
+        public string GpuName { get; set; } = "";
         public string DriverVersion { get; set; } = "";
         public int VramMB { get; set; }
         public int CpuCores { get; set; }
