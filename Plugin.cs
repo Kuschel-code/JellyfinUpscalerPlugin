@@ -52,14 +52,20 @@ namespace JellyfinUpscalerPlugin
             return new[]
             {
 
+                 new PluginPageInfo
+                {
+                    Name = "Upscaler Dashboard",
+                    EmbeddedResourcePath = GetType().Namespace + ".Pages.dashboard.html",
+                    EnableInMainMenu = true,
+                    MenuSection = "server",
+                    MenuIcon = "trending_up"
+                },
+
                 new PluginPageInfo
                 {
-                    Name = "configPage",
-                    DisplayName = "AI Upscaler",
-                    EmbeddedResourcePath = GetType().Namespace + ".Configuration.configurationpage.html",
-                    EnableInMainMenu = true,   
-                    MenuIcon = "smart_toy",    
-                    MenuSection = "Server"      
+                    Name = this.Name,
+                    EmbeddedResourcePath = GetType().Namespace + ".Configuration.configPage.html",
+                    EnableInMainMenu = false
                 },
                 new PluginPageInfo
                 {
