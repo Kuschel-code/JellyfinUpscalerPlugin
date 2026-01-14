@@ -1,4 +1,4 @@
-# 🎮 Jellyfin AI Upscaler Plugin v1.4.7.1 
+# 🎮 Jellyfin AI Upscaler Plugin v1.4.8 
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.10.x+-00A4DC.svg)](https://jellyfin.org)
@@ -27,7 +27,7 @@ An advanced, AI-powered video enhancement plugin for Jellyfin. Improve your medi
 2. Go to **Plugins** > **Repositories**.
 3. Add a new repository with the following URL:
    `https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/repository-jellyfin.json`
-4. Go to the **Catalog**, search for "AI Upscaler Plugin", and install version **1.4.7.1**.
+4. Go to the **Catalog**, search for "AI Upscaler Plugin", and install the latest version.
 5. Restart Jellyfin.
 
 ## ⚙️ Configuration
@@ -40,12 +40,12 @@ After installation, you can find settings under **Dashboard > Plugins > AI Upsca
 
 ## 📖 Wiki & Support
 
-Detailed guides, hardware lists, and troubleshooting can be found in our **[GitHub Wiki](wiki/Home.md)**.
+Detailed guides, hardware lists, and troubleshooting can be found in our **[GitHub Wiki](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki)**.
 
-- [Getting Started](wiki/Quick-Start.md)
-- [Hardware Compatibility](wiki/Hardware-Compatibility.md)
-- [Performance Benchmarks](wiki/Performance-Benchmarks.md)
-- [FAQ](wiki/FAQ.md)
+- [Getting Started](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki/Quick-Start)
+- [Hardware Compatibility](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki/Hardware-Compatibility)
+- [Performance Benchmarks](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki/Performance-Benchmarks)
+- [FAQ](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki/FAQ)
 
 ## 📄 License
 
