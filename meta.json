@@ -3,10 +3,10 @@
     "name": "AI Upscaler Plugin",
     "overview": "AI-Powered Video Upscaling Plugin with Hardware Benchmarking & Optimization",
     "description": "Revolutionary AI upscaling plugin with automated hardware benchmarking, intelligent fallback system, pre-processing cache, and advanced low-end hardware support. Features comprehensive performance testing, comparison view, TV remote optimization, and sidebar integration like Playback Reporting plugin.",
-    "version": "1.4.7",
+    "version": "1.4.7.1",
     "targetAbi": "10.10.0.0",
     "framework": "net8.0",
     "owner": "Kuschel-code",
     "category": "Video Enhancement",
-    "changelog": "v1.4.7: Fixed plugin settings button not appearing in Jellyfin 10.10+ by using plugin name for configuration page. Dashboard and settings now fully accessible."
+    "changelog": "v1.4.7.1: Fixed EnableInMainMenu configuration - Settings button now appears correctly in Jellyfin plugin page."
 }

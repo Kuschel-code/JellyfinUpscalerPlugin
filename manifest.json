@@ -7,12 +7,12 @@
   "category": "Video Enhancement",
   "versions": [
     {
-      "version": "1.4.7",
-      "changelog": "v1.4.7: Fixed plugin settings button not appearing in Jellyfin 10.10+ by using plugin name for configuration page. Dashboard and settings now fully accessible.",
+      "version": "1.4.7.1",
+      "changelog": "v1.4.7.1: Fixed EnableInMainMenu configuration - Settings button now appears correctly in Jellyfin plugin page.",
       "targetAbi": "10.10.0.0",
-      "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.7/JellyfinUpscalerPlugin-v1.4.7.zip",
-      "checksum": "8fbf1f4798ba07be9b4e55ea8ade14b8",
-      "timestamp": "2026-01-14T08:34:30.000Z"
+      "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.7.1/JellyfinUpscalerPlugin-v1.4.7.1.zip",
+      "checksum": "472eb4ada32b1df82a0dee5daf89c334",
+      "timestamp": "2026-01-14T09:00:00.000Z"
     }
   ],
   "repositoryUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin",
