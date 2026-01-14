@@ -8,12 +8,12 @@
     "category": "Video Enhancement",
     "versions": [
       {
-        "version": "1.4.6",
-        "changelog": "v1.4.6: Fixed configuration page registration for Jellyfin 10.10+ compatibility. Added dedicated AI Upscaler Dashboard with hardware status, job monitoring, and quick actions in sidebar menu.",
+        "version": "1.4.7",
+        "changelog": "v1.4.7: Fixed plugin settings button not appearing in Jellyfin 10.10+ by using plugin name for configuration page. Dashboard and settings now fully accessible.",
         "targetAbi": "10.10.0.0",
-        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.6/JellyfinUpscalerPlugin-v1.4.6.zip",
-        "checksum": "66ae7e2a5b2e2e23b58ca14e577eaf3e",
-        "timestamp": "2026-01-14T07:59:33.000Z"
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.7/JellyfinUpscalerPlugin-v1.4.7.zip",
+        "checksum": "c7a67523671a2661c93f65895d8967e8",
+        "timestamp": "2026-01-14T08:22:00.000Z"
       }
     ],
     "repositoryUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin",

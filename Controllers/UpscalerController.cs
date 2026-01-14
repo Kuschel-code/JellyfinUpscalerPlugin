@@ -211,7 +211,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                     FFmpegAvailable = true,
                     OnnxRuntime = "Available",
                     Platform = Environment.OSVersion.Platform.ToString(),
-                    PluginVersion = "1.4.6"
+                    PluginVersion = "1.4.7"
                 });
             }
             catch (Exception ex)
