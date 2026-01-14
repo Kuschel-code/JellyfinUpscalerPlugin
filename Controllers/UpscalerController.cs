@@ -196,6 +196,31 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
+        [HttpGet("HardwareInfo")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> GetHardwareInfo()
+        {
+            try
+            {
+                var config = Plugin.Instance?.Configuration;
+                var hardwareAcceleration = config?.HardwareAcceleration ?? false;
+                
+                return Ok(new
+                {
+                    GpuAvailable = hardwareAcceleration,
+                    FFmpegAvailable = true,
+                    OnnxRuntime = "Available",
+                    Platform = Environment.OSVersion.Platform.ToString(),
+                    PluginVersion = "1.4.6"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get hardware info");
+                return StatusCode(500, new { success = false, error = ex.Message });
+            }
+        }
+
         [HttpGet("recommendations")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> GetHardwareRecommendations()

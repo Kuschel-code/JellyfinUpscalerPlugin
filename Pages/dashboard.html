@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>AI Upscaler Dashboard</title>
+</head>
+<body>
+    <div id="aiUpscalerDashboardPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
+        
+        <div data-role="content">
+            <div class="content-primary">
+                
+                <div class="verticalSection verticalSection-extrabottompadding">
+                    <div class="sectionTitleContainer flex align-items-center">
+                        <h2 class="sectionTitle">AI Upscaler Dashboard</h2>
+                        <span class="badge" style="margin-left: 1em; background-color: #00a4dc;">v1.4.6</span>
+                    </div>
+                    <p class="sectionDescription">Monitor upscaling jobs, system performance, and manage your AI upscaling tasks.</p>
+                </div>
+
+                <div class="verticalSection">
+                    <h2 class="sectionTitle">Quick Stats</h2>
+                    <div class="dashboardStats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1em; margin-top: 1em;">
+                        
+                        <div class="statCard" style="background: rgba(0,164,220,0.1); border: 1px solid rgba(0,164,220,0.3); border-radius: 4px; padding: 1.5em;">
+                            <div style="font-size: 0.9em; opacity: 0.8; margin-bottom: 0.5em;">Total Jobs</div>
+                            <div style="font-size: 2em; font-weight: 500;" id="totalJobs">-</div>
+                        </div>
+
+                        <div class="statCard" style="background: rgba(82,204,82,0.1); border: 1px solid rgba(82,204,82,0.3); border-radius: 4px; padding: 1.5em;">
+                            <div style="font-size: 0.9em; opacity: 0.8; margin-bottom: 0.5em;">Completed</div>
+                            <div style="font-size: 2em; font-weight: 500;" id="completedJobs">-</div>
+                        </div>
+
+                        <div class="statCard" style="background: rgba(255,152,0,0.1); border: 1px solid rgba(255,152,0,0.3); border-radius: 4px; padding: 1.5em;">
+                            <div style="font-size: 0.9em; opacity: 0.8; margin-bottom: 0.5em;">Processing</div>
+                            <div style="font-size: 2em; font-weight: 500;" id="processingJobs">-</div>
+                        </div>
+
+                        <div class="statCard" style="background: rgba(244,67,54,0.1); border: 1px solid rgba(244,67,54,0.3); border-radius: 4px; padding: 1.5em;">
+                            <div style="font-size: 0.9em; opacity: 0.8; margin-bottom: 0.5em;">Failed</div>
+                            <div style="font-size: 2em; font-weight: 500;" id="failedJobs">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="verticalSection">
+                    <h2 class="sectionTitle">Hardware Status</h2>
+                    <div id="hardwareStatus" style="margin-top: 1em;">
+                        <div style="background: rgba(255,255,255,0.05); border-radius: 4px; padding: 1em; margin-bottom: 0.5em;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="font-weight: 500;">GPU Acceleration</div>
+                                <div id="gpuStatus" style="opacity: 0.7;">Checking...</div>
+                            </div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.05); border-radius: 4px; padding: 1em; margin-bottom: 0.5em;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="font-weight: 500;">FFmpeg Available</div>
+                                <div id="ffmpegStatus" style="opacity: 0.7;">Checking...</div>
+                            </div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.05); border-radius: 4px; padding: 1em;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="font-weight: 500;">ONNX Runtime</div>
+                                <div id="onnxStatus" style="opacity: 0.7;">Checking...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="verticalSection">
+                    <h2 class="sectionTitle">Current Jobs</h2>
+                    <div id="currentJobsList" style="margin-top: 1em;">
+                        <div style="text-align: center; padding: 2em; opacity: 0.5;">
+                            <i class="md-icon" style="font-size: 3em;">trending_up</i>
+                            <p>No active jobs</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="verticalSection">
+                    <h2 class="sectionTitle">Quick Actions</h2>
+                    <div style="display: flex; gap: 1em; flex-wrap: wrap; margin-top: 1em;">
+                        <button is="emby-button" type="button" class="raised button-submit block" onclick="openPluginSettings();">
+                            <i class="md-icon">settings</i>
+                            <span>Plugin Settings</span>
+                        </button>
+                        <button is="emby-button" type="button" class="raised block" onclick="runHardwareBenchmark();">
+                            <i class="md-icon">speed</i>
+                            <span>Run Benchmark</span>
+                        </button>
+                        <button is="emby-button" type="button" class="raised block" onclick="clearCache();">
+                            <i class="md-icon">delete_sweep</i>
+                            <span>Clear Cache</span>
+                        </button>
+                        <button is="emby-button" type="button" class="raised block" onclick="refreshDashboard();">
+                            <i class="md-icon">refresh</i>
+                            <span>Refresh</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            (function() {
+                var apiClient = ApiClient;
+                var pluginId = "f87f700e-679d-43e6-9c7c-b3a410dc3f22";
+
+                function loadDashboard() {
+                    loadStats();
+                    loadHardwareStatus();
+                    loadCurrentJobs();
+                }
+
+                function loadStats() {
+                    document.getElementById('totalJobs').textContent = '0';
+                    document.getElementById('completedJobs').textContent = '0';
+                    document.getElementById('processingJobs').textContent = '0';
+                    document.getElementById('failedJobs').textContent = '0';
+                }
+
+                function loadHardwareStatus() {
+                    var baseUrl = apiClient.serverAddress();
+                    
+                    fetch(baseUrl + '/Upscaler/HardwareInfo', {
+                        headers: {
+                            'X-Emby-Token': apiClient.accessToken()
+                        }
+                    })
+                    .then(function(response) {
+                        if (response.ok) {
+                            return response.json();
+                        }
+                        throw new Error('Failed to fetch hardware info');
+                    })
+                    .then(function(data) {
+                        var gpuAvailable = data.GpuAvailable || false;
+                        var ffmpegAvailable = data.FFmpegAvailable || false;
+                        
+                        document.getElementById('gpuStatus').innerHTML = gpuAvailable 
+                            ? '<span style="color: #52cc52;">✓ Available</span>' 
+                            : '<span style="color: #f44336;">✗ Not Available</span>';
+                        
+                        document.getElementById('ffmpegStatus').innerHTML = ffmpegAvailable 
+                            ? '<span style="color: #52cc52;">✓ Available</span>' 
+                            : '<span style="color: #f44336;">✗ Not Available</span>';
+                        
+                        document.getElementById('onnxStatus').innerHTML = '<span style="color: #52cc52;">✓ Loaded</span>';
+                    })
+                    .catch(function(err) {
+                        console.error('Hardware status error:', err);
+                        document.getElementById('gpuStatus').textContent = 'Unknown';
+                        document.getElementById('ffmpegStatus').textContent = 'Unknown';
+                        document.getElementById('onnxStatus').textContent = 'Unknown';
+                    });
+                }
+
+                function loadCurrentJobs() {
+                    var jobsList = document.getElementById('currentJobsList');
+                    jobsList.innerHTML = '<div style="text-align: center; padding: 2em; opacity: 0.5;">' +
+                        '<i class="md-icon" style="font-size: 3em;">trending_up</i>' +
+                        '<p>No active jobs</p>' +
+                        '</div>';
+                }
+
+                window.openPluginSettings = function() {
+                    Dashboard.navigate('configurationpage?name=AI%20Upscaler%20Plugin');
+                };
+
+                window.runHardwareBenchmark = function() {
+                    require(['loading', 'toast'], function(loading, toast) {
+                        loading.show();
+                        var baseUrl = apiClient.serverAddress();
+                        
+                        fetch(baseUrl + '/Upscaler/Benchmark', {
+                            method: 'POST',
+                            headers: {
+                                'X-Emby-Token': apiClient.accessToken(),
+                                'Content-Type': 'application/json'
+                            }
+                        })
+                        .then(function(response) {
+                            loading.hide();
+                            if (response.ok) {
+                                toast('Hardware benchmark started successfully');
+                                return response.json();
+                            }
+                            throw new Error('Benchmark failed');
+                        })
+                        .then(function(data) {
+                            console.log('Benchmark result:', data);
+                        })
+                        .catch(function(err) {
+                            loading.hide();
+                            toast('Failed to run benchmark: ' + err.message);
+                        });
+                    });
+                };
+
+                window.clearCache = function() {
+                    require(['loading', 'toast', 'confirm'], function(loading, toast, confirm) {
+                        confirm({
+                            title: 'Clear Cache',
+                            text: 'Are you sure you want to clear the upscaler cache? This will remove all cached upscaled frames.',
+                            confirmText: 'Clear Cache',
+                            primary: 'cancel'
+                        }).then(function() {
+                            loading.show();
+                            var baseUrl = apiClient.serverAddress();
+                            
+                            fetch(baseUrl + '/Upscaler/cache/clear', {
+                                method: 'POST',
+                                headers: {
+                                    'X-Emby-Token': apiClient.accessToken()
+                                }
+                            })
+                            .then(function(response) {
+                                loading.hide();
+                                if (response.ok) {
+                                    toast('Cache cleared successfully');
+                                } else {
+                                    throw new Error('Failed to clear cache');
+                                }
+                            })
+                            .catch(function(err) {
+                                loading.hide();
+                                toast('Error: ' + err.message);
+                            });
+                        });
+                    });
+                };
+
+                window.refreshDashboard = function() {
+                    loadDashboard();
+                    require(['toast'], function(toast) {
+                        toast('Dashboard refreshed');
+                    });
+                };
+
+                loadDashboard();
+
+                var refreshInterval = setInterval(loadDashboard, 30000);
+                
+                window.addEventListener('viewbeforehide', function() {
+                    if (refreshInterval) {
+                        clearInterval(refreshInterval);
+                    }
+                });
+            })();
+        </script>
+    </div>
+</body>
+</html>

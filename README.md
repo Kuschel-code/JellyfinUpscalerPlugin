@@ -1,4 +1,4 @@
-# 🎮 Jellyfin AI Upscaler Plugin v1.4.5 
+# 🎮 Jellyfin AI Upscaler Plugin v1.4.6 
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.10.x+-00A4DC.svg)](https://jellyfin.org)
@@ -11,6 +11,7 @@ An advanced, AI-powered video enhancement plugin for Jellyfin. Improve your medi
 - **Hardware Acceleration**: Full support for NVIDIA (CUDA), VAAPI (Linux), QSV (Intel), and DirectML (Windows).
 - **Multiple AI Models**: Support for Real-ESRGAN, SwinIR, Waifu2x, and more.
 - **Hardware Benchmarking**: Built-in tools for detection and optimization based on server performance.
+- **Dedicated Dashboard**: AI Upscaler Dashboard in sidebar with hardware status, job monitoring, and quick actions.
 - **Modern UI Integration**: Fully compatible with Jellyfin 10.10+ Dashboard and Player.
 - **Comparison View**: Preview AI upscaling results before applying them to your library.
 - **Real-Time Progress Hub**: SignalR-compatible progress broadcasting to Jellyfin Dashboard.

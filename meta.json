@@ -8,5 +8,5 @@
     "framework": "net8.0",
     "owner": "Kuschel-code",
     "category": "Video Enhancement",
-    "changelog": "v1.4.6: Fixed configuration page registration for Jellyfin 10.10+ compatibility."
+    "changelog": "v1.4.6: Fixed configuration page registration for Jellyfin 10.10+ compatibility. Added dedicated AI Upscaler Dashboard with hardware status, job monitoring, and quick actions in sidebar menu."
 }

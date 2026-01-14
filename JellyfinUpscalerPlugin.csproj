@@ -41,6 +41,7 @@
 
   <!-- Embedded resources for configuration -->
   <ItemGroup>
+    <EmbeddedResource Include="Pages\dashboard.html" />
     <EmbeddedResource Include="Configuration\configurationpage.html" />
     <EmbeddedResource Include="Configuration\quick-menu.js" />
     <EmbeddedResource Include="Configuration\player-integration.js" />
