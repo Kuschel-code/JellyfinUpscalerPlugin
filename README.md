@@ -1,4 +1,5 @@
 # 🎮 Jellyfin AI Upscaler Plugin v1.4.8 
+The settings are still buggy, I'm currently working on them, so you can't install it yet. 👋
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.10.x+-00A4DC.svg)](https://jellyfin.org)
