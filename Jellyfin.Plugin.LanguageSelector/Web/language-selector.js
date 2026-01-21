@@ -10,9 +10,12 @@
 
     const FLAGS = {
         'de': { icon: 'de.svg', label: 'German Audio' },
+        'jp': { icon: 'jp.svg', label: 'Japanese Audio' },
         'jp-de': { icon: 'jp-de.svg', label: 'Japanese Audio + German Subtitles' },
         'jp-en': { icon: 'jp-en.svg', label: 'Japanese Audio + English Subtitles' },
-        'en': { icon: 'us.svg', label: 'English Audio' }
+        'jp-us': { icon: 'jp-en.svg', label: 'Japanese Audio + English Subtitles' },
+        'en': { icon: 'us.svg', label: 'English Audio' },
+        'us': { icon: 'us.svg', label: 'English Audio' }
     };
 
     class LanguageSelector {
@@ -162,10 +165,10 @@
             const button = document.createElement('button');
             button.className = 'language-flag-button';
             button.setAttribute('data-audio-index', option.audioStreamIndex);
-            button.setAttribute('data-subtitle-index', option.subtitleStreamIndex || -1);
-            button.setAttribute('title', option.description || this.getFlagLabel(option.flagType));
+            button.setAttribute('data-subtitle-index', option.subtitleStreamIndex !== undefined && option.subtitleStreamIndex !== null ? option.subtitleStreamIndex : -1);
+            button.setAttribute('title', option.displayName || this.getFlagLabel(option.flagIcon));
 
-            const flagConfig = FLAGS[option.flagType] || FLAGS['de'];
+            const flagConfig = FLAGS[option.flagIcon] || FLAGS['de'];
             
             const img = document.createElement('img');
             img.src = `${CONFIG.flagIconsPath}${flagConfig.icon}`;
@@ -183,8 +186,8 @@
             return button;
         }
 
-        getFlagLabel(flagType) {
-            return FLAGS[flagType]?.label || 'Play';
+        getFlagLabel(flagIcon) {
+            return FLAGS[flagIcon]?.label || 'Play';
         }
 
         async handleFlagClick(option) {
