@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Language Selector Configuration</title>
+</head>
+<body>
+    <div data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button">
+        <div data-role="content">
+            <div class="content-primary">
+                <form class="languageSelectorConfigurationForm">
+                    <div class="verticalSection">
+                        <h2>Language Selector Plugin</h2>
+                        <p>This plugin adds one-click language selection buttons to episode detail pages.</p>
+                        
+                        <h3>Features:</h3>
+                        <ul>
+                            <li>Automatic detection of available audio and subtitle tracks</li>
+                            <li>Flag buttons for quick language selection</li>
+                            <li>AniWorld-inspired UI design</li>
+                            <li>One-click playback with pre-selected audio/subtitle tracks</li>
+                        </ul>
+                        
+                        <h3>Usage:</h3>
+                        <p>Navigate to any episode detail page. If multiple language options are detected, flag buttons will appear below the play button.</p>
+                        
+                        <h3>Supported Combinations:</h3>
+                        <ul>
+                            <li><strong>German Flag:</strong> German audio, no subtitles</li>
+                            <li><strong>JP/DE Flag:</strong> Japanese audio + German subtitles</li>
+                            <li><strong>JP/EN Flag:</strong> Japanese audio + English subtitles</li>
+                            <li><strong>US Flag:</strong> English audio, no subtitles</li>
+                        </ul>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <link rel="stylesheet" href="/web/configurationpage?name=LanguageSelector/language-selector.css">
+    <script src="/web/configurationpage?name=LanguageSelector/language-selector.js"></script>
+</body>
+</html>

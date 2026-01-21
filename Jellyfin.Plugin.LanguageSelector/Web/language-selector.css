@@ -1,0 +1,105 @@
+.language-selector-container {
+    margin: 1em 0;
+    padding: 0;
+}
+
+.language-selector-buttons {
+    display: flex;
+    gap: 0.5em;
+    flex-wrap: wrap;
+    align-items: center;
+    background: linear-gradient(135deg, #1a4d7a 0%, #2563a8 100%);
+    padding: 0.75em 1em;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.language-flag-button {
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    padding: 0.5em 0.75em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 60px;
+    min-height: 50px;
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+}
+
+.language-flag-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.language-flag-button:hover::before {
+    left: 100%;
+}
+
+.language-flag-button:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.6);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.language-flag-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.language-flag-button.active {
+    background: rgba(255, 255, 255, 0.3);
+    border: 3px solid #000000;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+}
+
+.flag-icon {
+    width: 40px;
+    height: auto;
+    display: block;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+@media (max-width: 768px) {
+    .language-selector-buttons {
+        padding: 0.5em 0.75em;
+        gap: 0.4em;
+    }
+
+    .language-flag-button {
+        min-width: 50px;
+        min-height: 42px;
+        padding: 0.4em 0.6em;
+    }
+
+    .flag-icon {
+        width: 32px;
+    }
+}
+
+@media (max-width: 480px) {
+    .language-selector-buttons {
+        justify-content: center;
+    }
+
+    .language-flag-button {
+        min-width: 45px;
+        min-height: 38px;
+    }
+
+    .flag-icon {
+        width: 28px;
+    }
+}

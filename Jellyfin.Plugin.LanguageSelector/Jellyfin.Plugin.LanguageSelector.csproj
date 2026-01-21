@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Web\**\*" />
+    <EmbeddedResource Include="Configuration\*.html" />
   </ItemGroup>
 
 </Project>

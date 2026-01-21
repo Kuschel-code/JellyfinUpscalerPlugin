@@ -26,12 +26,49 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 
     public IEnumerable<PluginPageInfo> GetPages()
     {
+        var ns = GetType().Namespace;
+        
         return new[]
         {
             new PluginPageInfo
             {
                 Name = Name,
-                EmbeddedResourcePath = GetType().Namespace + ".Configuration.config.html"
+                EmbeddedResourcePath = ns + ".Configuration.config.html"
+            },
+            new PluginPageInfo
+            {
+                Name = "LanguageSelector/language-selector.js",
+                EmbeddedResourcePath = ns + ".Web.language-selector.js"
+            },
+            new PluginPageInfo
+            {
+                Name = "LanguageSelector/language-selector.css",
+                EmbeddedResourcePath = ns + ".Web.language-selector.css"
+            },
+            new PluginPageInfo
+            {
+                Name = "LanguageSelector/flags/de.svg",
+                EmbeddedResourcePath = ns + ".Web.flags.de.svg"
+            },
+            new PluginPageInfo
+            {
+                Name = "LanguageSelector/flags/us.svg",
+                EmbeddedResourcePath = ns + ".Web.flags.us.svg"
+            },
+            new PluginPageInfo
+            {
+                Name = "LanguageSelector/flags/jp.svg",
+                EmbeddedResourcePath = ns + ".Web.flags.jp.svg"
+            },
+            new PluginPageInfo
+            {
+                Name = "LanguageSelector/flags/jp-de.svg",
+                EmbeddedResourcePath = ns + ".Web.flags.jp-de.svg"
+            },
+            new PluginPageInfo
+            {
+                Name = "LanguageSelector/flags/jp-en.svg",
+                EmbeddedResourcePath = ns + ".Web.flags.jp-en.svg"
             }
         };
     }
