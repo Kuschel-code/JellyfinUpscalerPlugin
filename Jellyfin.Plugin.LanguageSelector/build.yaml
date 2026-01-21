@@ -1,0 +1,12 @@
+---
+guid: "d4c4a3e2-9b7a-4f5c-8e1d-2a3b4c5d6e7f"
+name: "Language Selector"
+description: "One-click language selection for anime and media playback"
+overview: "Select audio and subtitle tracks with a single click using flag icons, similar to AniWorld's interface"
+category: "General"
+owner: "Kuscheltier"
+artifacts:
+  - "Jellyfin.Plugin.LanguageSelector.dll"
+build_type: "dotnet"
+dotnet_configuration: "Release"
+dotnet_framework: "net8.0"

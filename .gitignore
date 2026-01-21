@@ -1,0 +1,32 @@
+## Build results
+bin/
+obj/
+*.dll
+*.pdb
+*.user
+*.suo
+*.cache
+
+## Visual Studio
+.vs/
+*.csproj.user
+
+## Rider
+.idea/
+
+## Build artifacts
+artifacts/
+dist/
+*.nupkg
+*.snupkg
+
+## OS
+Thumbs.db
+.DS_Store
+
+## Logs
+*.log
+
+## Temporary files
+*.tmp
+*.temp
