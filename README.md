@@ -49,26 +49,44 @@ You get this:
 
 ### Installation
 
-#### Option 1: Install Pre-Built DLL (Recommended)
+#### Option 1: Plugin Repository (Recommended) ⭐
 
-1. **Download** the latest release DLL from the [Releases](../../releases) page
-2. **Locate** your Jellyfin plugin directory:
+The easiest way to install - no manual downloads needed!
+
+1. **Open** Jellyfin Admin Dashboard
+2. Go to **Plugins** → **Repositories**
+3. Click **+** (Add Repository)
+4. Enter:
+   - **Repository Name**: `Language Selector Repository`
+   - **Repository URL**: `https://raw.githubusercontent.com/Kuschel-code/jellyfin-plugin-languageselector/main/manifest.json`
+5. Click **Save**
+6. Go to **Plugins** → **Catalog**
+7. Find **"Language Selector"** and click **Install**
+8. **Restart** Jellyfin server
+9. Done! 🎉
+
+#### Option 2: Manual DLL Installation
+
+1. **Download** the latest release ZIP from the [Releases](../../releases) page
+2. **Extract** the DLL from the ZIP file
+3. **Locate** your Jellyfin plugin directory:
    - Windows: `%AppData%\Jellyfin\Server\plugins\`
    - Linux: `/var/lib/jellyfin/plugins/`
    - Docker: `/config/plugins/` (inside container)
-3. **Create** a subfolder: `LanguageSelector`
-4. **Copy** the DLL into the folder:
+4. **Create** a subfolder: `LanguageSelector`
+5. **Copy** the DLL into the folder:
    ```
    %AppData%\Jellyfin\Server\plugins\LanguageSelector\Jellyfin.Plugin.LanguageSelector.dll
    ```
-5. **Restart** Jellyfin server
-6. **Verify** in Dashboard → Plugins
+6. **Restart** Jellyfin server
+7. **Verify** in Dashboard → Plugins
 
-#### Option 2: Build From Source
+#### Option 3: Build From Source
 
 ```bash
 # Clone or download this repository
-cd jellyfin-plugin-ba45
+git clone https://github.com/Kuschel-code/jellyfin-plugin-languageselector.git
+cd jellyfin-plugin-languageselector
 
 # Build the plugin
 dotnet build Jellyfin.Plugin.LanguageSelector\Jellyfin.Plugin.LanguageSelector.csproj --configuration Release
@@ -76,10 +94,10 @@ dotnet build Jellyfin.Plugin.LanguageSelector\Jellyfin.Plugin.LanguageSelector.c
 # The DLL will be at:
 # Jellyfin.Plugin.LanguageSelector\bin\Release\net8.0\Jellyfin.Plugin.LanguageSelector.dll
 
-# Copy to Jellyfin plugins directory (see Option 1 for paths)
+# Copy to Jellyfin plugins directory (see Option 2 for paths)
 ```
 
-**📚 For detailed installation steps, see [QUICK_INSTALL.md](QUICK_INSTALL.md)**
+**📚 For detailed installation steps, see [INSTALLATION.md](INSTALLATION.md)**
 
 ---
 
@@ -183,8 +201,8 @@ GET /Items/{itemId}/LanguageOptions
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/jellyfin-plugin-language-selector.git
-cd jellyfin-plugin-language-selector
+git clone https://github.com/Kuschel-code/jellyfin-plugin-languageselector.git
+cd jellyfin-plugin-languageselector
 
 # Restore dependencies
 dotnet restore Jellyfin.Plugin.LanguageSelector
@@ -354,9 +372,11 @@ This project is provided as-is for use with Jellyfin. See [Jellyfin's licensing]
 
 ## 📚 Additional Documentation
 
-- [**QUICK_INSTALL.md**](QUICK_INSTALL.md) - Step-by-step installation guide
+- [**INSTALLATION.md**](INSTALLATION.md) - Complete installation guide with troubleshooting
+- [**RELEASE_GUIDE.md**](RELEASE_GUIDE.md) - How to create a GitHub release (for developers)
 - [**TESTING_GUIDE.md**](TESTING_GUIDE.md) - Comprehensive testing procedures
 - [**BUG_FIXES.md**](BUG_FIXES.md) - Known bugs and fixes applied
+- [**QUICK_INSTALL.md**](QUICK_INSTALL.md) - Quick start guide
 
 ---
 
