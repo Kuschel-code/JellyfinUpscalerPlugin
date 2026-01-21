@@ -72,7 +72,8 @@ Do not make assumptions on important decisions — get clarification first.
 
 ---
 
-### [ ] Step: Implement API Controller
+### [x] Step: Implement API Controller
+<!-- chat-id: 645680bf-e112-4c9f-a91d-12da3531c9fa -->
 
 **Goal**: Create REST API endpoint to expose language options to frontend
 
@@ -86,7 +87,7 @@ Do not make assumptions on important decisions — get clarification first.
 - Handle edge cases (no audio/subtitle tracks, single language, etc.)
 
 **Verification**:
-- [ ] Plugin builds and deploys to Jellyfin server
+- [x] Plugin builds and deploys to Jellyfin server
 - [ ] Plugin appears in Jellyfin Admin Dashboard
 - [ ] API endpoint accessible via curl/Postman
 - [ ] Correct JSON response for test media files with multiple audio/subtitle tracks
