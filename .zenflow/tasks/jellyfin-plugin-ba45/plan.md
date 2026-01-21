@@ -236,9 +236,18 @@ Erstell Auf meinem Github ein Neues Repository aber erstmal auf privat und dann 
 - [x] Added remote origin to local git repository
 - [x] Pushed `jellyfin-plugin-ba45` branch to GitHub
 - [x] Pushed `main` branch to GitHub
+- [x] Created `manifest.json` for Jellyfin plugin repository
+- [x] Created `RELEASE_GUIDE.md` with step-by-step release instructions
+- [x] Created `INSTALLATION.md` with user-friendly installation guide
+- [x] All files committed and pushed to GitHub
 
 **Repository Details**:
 - **URL**: https://github.com/Kuschel-code/jellyfin-plugin-languageselector
 - **Visibility**: Private
 - **Branches**: main, jellyfin-plugin-ba45
 - **All plugin files successfully uploaded**
+
+**Next Steps for Easy Installation**:
+1. Create GitHub Release (see RELEASE_GUIDE.md)
+2. Set repository to PUBLIC (or at least the manifest.json)
+3. Users can then add the plugin repository URL in Jellyfin and install with one click
