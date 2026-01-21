@@ -247,6 +247,11 @@ Erstell Auf meinem Github ein Neues Repository aber erstmal auf privat und dann 
 - **Branches**: main, jellyfin-plugin-ba45
 - **All plugin files successfully uploaded**
 
+**Files Updated**:
+- [x] README.md updated with plugin repository installation as Option 1 (recommended)
+- [x] Added links to INSTALLATION.md and RELEASE_GUIDE.md in documentation section
+- [x] Updated git clone URLs to correct repository
+
 **Next Steps for Easy Installation**:
 1. Create GitHub Release (see RELEASE_GUIDE.md)
 2. Set repository to PUBLIC (or at least the manifest.json)
