@@ -1,56 +1,56 @@
-# Installation - So installierst du das Plugin
+# Installation Guide
 
-## 🎯 Die einfache Methode (Plugin-Repository)
+## 🎯 Easy Method (Plugin Repository) - Recommended
 
-So können Benutzer dein Plugin mit nur wenigen Klicks installieren:
+Users can install the plugin with just a few clicks:
 
-### Schritt 1: Repository in Jellyfin hinzufügen
+### Step 1: Add Repository to Jellyfin
 
-1. Öffne **Jellyfin Admin Dashboard**
-2. Gehe zu **Plugins** → **Repositories**
-3. Klicke auf **+** (Add Repository)
-4. Gib folgende Daten ein:
+1. Open **Jellyfin Admin Dashboard**
+2. Go to **Plugins** → **Repositories**
+3. Click **+** (Add Repository)
+4. Enter the following:
    - **Repository Name**: `Language Selector Repository`
    - **Repository URL**: `https://raw.githubusercontent.com/Kuschel-code/jellyfin-plugin-languageselector/main/manifest.json`
-5. Klicke **Save**
+5. Click **Save**
 
-### Schritt 2: Plugin installieren
+### Step 2: Install Plugin
 
-1. Gehe zu **Plugins** → **Catalog**
-2. Suche nach **"Language Selector"**
-3. Klicke **Install**
-4. **Jellyfin Server neustarten**
+1. Go to **Plugins** → **Catalog**
+2. Search for **"Language Selector"**
+3. Click **Install**
+4. **Restart Jellyfin Server**
 
-### Schritt 3: Nutzen!
+### Step 3: Use It!
 
-1. Öffne eine Anime-Episode mit mehreren Audio/Untertitel-Spuren
-2. Du siehst jetzt die Flaggen-Buttons 🎌🇩🇪🇯🇵
-3. Klicke auf eine Flagge → Video startet sofort mit der gewählten Sprache!
+1. Open an anime episode with multiple audio/subtitle tracks
+2. You'll see the flag buttons 🎌🇩🇪🇯🇵
+3. Click a flag → video starts immediately with your selected language!
 
 ---
 
-## ⚙️ Manuelle Installation (Fallback)
+## ⚙️ Manual Installation (Fallback)
 
-Falls die Repository-Methode nicht funktioniert:
+If the repository method doesn't work:
 
-### Schritt 1: Download
+### Step 1: Download
 
-1. Gehe zu [GitHub Releases](https://github.com/Kuschel-code/jellyfin-plugin-languageselector/releases)
-2. Lade `jellyfin-plugin-languageselector_1.0.0.0.zip` herunter
-3. Entpacke die ZIP-Datei → du erhältst `Jellyfin.Plugin.LanguageSelector.dll`
+1. Go to [GitHub Releases](https://github.com/Kuschel-code/jellyfin-plugin-languageselector/releases)
+2. Download `jellyfin-plugin-languageselector_1.0.1.0.zip`
+3. Extract the ZIP file → you'll get `Jellyfin.Plugin.LanguageSelector.dll`
 
-### Schritt 2: Installation
+### Step 2: Installation
 
-1. Finde dein Jellyfin-Datenverzeichnis:
-   - **Windows**: `C:\ProgramData\Jellyfin\Server\` oder `%APPDATA%\Jellyfin\Server\`
-   - **Linux**: `/var/lib/jellyfin/` oder `~/.local/share/jellyfin/`
+1. Find your Jellyfin data directory:
+   - **Windows**: `C:\ProgramData\Jellyfin\Server\` or `%APPDATA%\Jellyfin\Server\`
+   - **Linux**: `/var/lib/jellyfin/` or `~/.local/share/jellyfin/`
    - **Docker**: `/config/`
 
-2. Navigiere zu `<jellyfin-data-dir>/plugins/`
-3. Erstelle einen Ordner namens `LanguageSelector`
-4. Kopiere `Jellyfin.Plugin.LanguageSelector.dll` in diesen Ordner
+2. Navigate to `<jellyfin-data-dir>/plugins/`
+3. Create a folder named `LanguageSelector`
+4. Copy `Jellyfin.Plugin.LanguageSelector.dll` into this folder
 
-   Finale Struktur:
+   Final structure:
    ```
    <jellyfin-data-dir>/
    └── plugins/
@@ -58,90 +58,90 @@ Falls die Repository-Methode nicht funktioniert:
            └── Jellyfin.Plugin.LanguageSelector.dll
    ```
 
-5. **Jellyfin Server neustarten**
+5. **Restart Jellyfin Server**
 
-### Schritt 3: Verifizierung
+### Step 3: Verification
 
-1. Öffne **Admin Dashboard** → **Plugins**
-2. Du solltest **"Language Selector"** in der Liste sehen
+1. Open **Admin Dashboard** → **Plugins**
+2. You should see **"Language Selector"** in the list
 3. Status: **Active** ✅
 
 ---
 
-## 🚀 Erste Schritte
+## 🚀 Getting Started
 
-### Plugin konfigurieren (optional)
+### Configure Plugin (Optional)
 
-1. Gehe zu **Plugins** → **Language Selector**
-2. Aktiviere **"Auto Detect Languages"** (Standard: An)
-3. Wähle bevorzugte Sprachen: `ger`, `jpn`, `eng`
+1. Go to **Plugins** → **Language Selector**
+2. Enable **"Auto Detect Languages"** (Default: On)
+3. Select preferred languages: `ger`, `jpn`, `eng`
 4. **Save**
 
-### Plugin testen
+### Test Plugin
 
-1. Öffne eine Episode mit mehreren Sprachen (z.B. Anime mit GerDub + GerSub + EngSub)
-2. Du siehst die Flaggen-Leiste unter dem Episoden-Titel
-3. Teste jede Flagge:
-   - 🇩🇪 **DE**: Deutsches Audio, keine Untertitel
-   - 🎌🇩🇪 **JP-DE**: Japanisches Audio, deutsche Untertitel
-   - 🎌🇺🇸 **JP-EN**: Japanisches Audio, englische Untertitel
+1. Open an episode with multiple languages (e.g., Anime with GerDub + GerSub + EngSub)
+2. You'll see the flag bar below the episode title
+3. Test each flag:
+   - 🇩🇪 **DE**: German audio, no subtitles
+   - 🎌🇩🇪 **JP-DE**: Japanese audio, German subtitles
+   - 🎌🇺🇸 **JP-EN**: Japanese audio, English subtitles
 
 ---
 
 ## ❓ Troubleshooting
 
-### Plugin erscheint nicht im Katalog
+### Plugin Doesn't Appear in Catalog
 
-**Ursache**: Repository-URL ist falsch oder GitHub ist nicht erreichbar
+**Cause**: Repository URL is incorrect or GitHub is unreachable
 
-**Lösung**:
-1. Prüfe die URL: `https://raw.githubusercontent.com/Kuschel-code/jellyfin-plugin-languageselector/main/manifest.json`
-2. Öffne die URL im Browser → sollte JSON anzeigen
-3. Falls 404-Fehler: Warte einige Minuten (GitHub-Cache)
-4. Stelle sicher, dass das Repository **PUBLIC** ist (zumindest für die `manifest.json`)
+**Solution**:
+1. Check the URL: `https://raw.githubusercontent.com/Kuschel-code/jellyfin-plugin-languageselector/main/manifest.json`
+2. Open the URL in browser → should display JSON
+3. If 404 error: Wait a few minutes (GitHub cache)
+4. Ensure the repository is **PUBLIC** (at least for `manifest.json`)
 
-### Flaggen werden nicht angezeigt
+### Flags Not Showing
 
-**Ursache**: JavaScript wurde nicht geladen oder keine passenden Spuren gefunden
+**Cause**: JavaScript not loaded or no matching tracks found
 
-**Lösung**:
-1. Öffne Browser-Konsole (F12)
-2. Suche nach Fehlermeldungen
-3. Prüfe, ob die Datei mehrere Audio/Subtitle-Tracks hat:
-   - Jellyfin Dashboard → **Libraries** → Episode auswählen → **Media Info**
-   - Sollte mindestens 1 Audio-Track mit Sprache (ger/jpn/eng) haben
+**Solution**:
+1. Open browser console (F12)
+2. Look for error messages
+3. Check if the file has multiple audio/subtitle tracks:
+   - Jellyfin Dashboard → **Libraries** → Select episode → **Media Info**
+   - Should have at least 1 audio track with language (ger/jpn/eng)
 
-### Playback startet nicht
+### Playback Doesn't Start
 
-**Ursache**: Jellyfin PlaybackManager nicht gefunden
+**Cause**: Jellyfin PlaybackManager not found
 
-**Lösung**:
-1. Aktualisiere Jellyfin auf mindestens Version **10.10.0**
-2. Verwende einen kompatiblen Client (Web-Browser, keine native App)
-3. Prüfe Browser-Konsole für JavaScript-Fehler
+**Solution**:
+1. Update Jellyfin to at least version **10.10.0**
+2. Use a compatible client (web browser, not native app)
+3. Check browser console for JavaScript errors
 
-### Checksum-Fehler beim Download
+### Checksum Error During Download
 
-**Ursache**: Die `manifest.json` hat einen falschen MD5-Hash
+**Cause**: The `manifest.json` has an incorrect MD5 hash
 
-**Lösung**:
-1. Lade das Plugin manuell herunter (siehe "Manuelle Installation")
-2. Oder: Melde das Problem auf GitHub Issues
-
----
-
-## 📚 Weitere Dokumentation
-
-- [README.md](README.md) - Projekt-Übersicht und Features
-- [RELEASE_GUIDE.md](RELEASE_GUIDE.md) - Für Entwickler: Wie man ein Release erstellt
-- [TESTING_GUIDE.md](TESTING_GUIDE.md) - Testing-Strategie
-- [BUG_FIXES.md](BUG_FIXES.md) - Bekannte Bugs und Fixes
+**Solution**:
+1. Download the plugin manually (see "Manual Installation")
+2. Or: Report the issue on GitHub Issues
 
 ---
 
-## 💡 Tipp für Anime-Fans
+## 📚 Additional Documentation
 
-Organisiere deine Bibliothek so:
+- [README.md](README.md) - Project overview and features
+- [RELEASE_GUIDE.md](RELEASE_GUIDE.md) - For developers: How to create a release
+- [TESTING_GUIDE.md](TESTING_GUIDE.md) - Testing strategy
+- [BUG_FIXES.md](BUG_FIXES.md) - Known bugs and fixes
+
+---
+
+## 💡 Tip for Anime Fans
+
+Organize your library like this:
 
 ```
 /Anime
@@ -151,6 +151,6 @@ Organisiere deine Bibliothek so:
       S01E02.mkv (Audio: ger, jpn | Subs: ger, eng)
 ```
 
-Das Plugin erkennt automatisch die Spuren und zeigt die passenden Flaggen!
+The plugin automatically detects tracks and displays the appropriate flags!
 
-Viel Spaß! 🎉
+Enjoy! 🎉
