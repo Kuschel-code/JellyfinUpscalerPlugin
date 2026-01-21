@@ -65,6 +65,25 @@
     box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
 }
 
+.language-flag-button:disabled {
+    cursor: wait !important;
+    opacity: 0.6 !important;
+    pointer-events: none;
+}
+
+.language-flag-button:disabled .flag-icon {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
 .flag-icon {
     width: 40px;
     height: auto;

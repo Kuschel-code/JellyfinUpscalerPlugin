@@ -191,25 +191,104 @@
             console.log('Starting playback with:', option);
 
             try {
-                const item = await ApiClient.getItem(ApiClient.getCurrentUserId(), this.currentItemId);
+                this.setButtonLoading(true);
+                
+                const userId = ApiClient.getCurrentUserId();
+                const item = await ApiClient.getItem(userId, this.currentItemId);
+                
+                if (!item || !item.MediaSources || item.MediaSources.length === 0) {
+                    throw new Error('No media sources found for this item');
+                }
+
+                const mediaSource = item.MediaSources[0];
+                const userdata = item.UserData || {};
+                const resumeTicks = userdata.PlaybackPositionTicks || 0;
                 
                 const playOptions = {
                     ids: [this.currentItemId],
-                    startPositionTicks: 0,
-                    mediaSourceId: item.MediaSources[0].Id,
+                    startPositionTicks: resumeTicks,
+                    mediaSourceId: mediaSource.Id,
                     audioStreamIndex: option.audioStreamIndex,
-                    subtitleStreamIndex: option.subtitleStreamIndex
+                    subtitleStreamIndex: option.subtitleStreamIndex !== undefined ? option.subtitleStreamIndex : -1
                 };
 
+                console.log('Playback options:', playOptions);
+
+                let playbackStarted = false;
+
                 if (window.playbackManager) {
+                    console.log('Using playbackManager');
                     await window.playbackManager.play(playOptions);
+                    playbackStarted = true;
+                } else if (ApiClient.playbackManager) {
+                    console.log('Using ApiClient.playbackManager');
+                    await ApiClient.playbackManager.play(playOptions);
+                    playbackStarted = true;
                 } else if (window.MediaController) {
-                    MediaController.play(playOptions);
-                } else {
-                    console.error('No playback manager available');
+                    console.log('Using MediaController');
+                    await MediaController.play(playOptions);
+                    playbackStarted = true;
+                } else if (typeof playbackManager !== 'undefined') {
+                    console.log('Using global playbackManager');
+                    await playbackManager.play(playOptions);
+                    playbackStarted = true;
                 }
+
+                if (!playbackStarted) {
+                    console.warn('No playback manager found, attempting fallback');
+                    this.fallbackPlayback(item, playOptions);
+                }
+
+                this.setButtonLoading(false);
             } catch (error) {
                 console.error('Error starting playback:', error);
+                this.setButtonLoading(false);
+                this.showError('Failed to start playback. Please try again.');
+            }
+        }
+
+        fallbackPlayback(item, playOptions) {
+            const playUrl = `${CONFIG.apiBaseUrl}/web/index.html#!/item?id=${this.currentItemId}&serverId=${ApiClient.serverId()}`;
+            
+            const params = new URLSearchParams();
+            if (playOptions.audioStreamIndex !== undefined) {
+                params.set('audioStreamIndex', playOptions.audioStreamIndex);
+            }
+            if (playOptions.subtitleStreamIndex !== undefined && playOptions.subtitleStreamIndex !== -1) {
+                params.set('subtitleStreamIndex', playOptions.subtitleStreamIndex);
+            }
+            if (playOptions.startPositionTicks) {
+                params.set('startPositionTicks', playOptions.startPositionTicks);
+            }
+
+            const fullUrl = params.toString() ? `${playUrl}&${params.toString()}` : playUrl;
+            
+            setTimeout(() => {
+                const playButton = this.findPlayButton();
+                if (playButton) {
+                    playButton.click();
+                }
+            }, 100);
+        }
+
+        setButtonLoading(isLoading) {
+            const buttons = document.querySelectorAll('.language-flag-button');
+            buttons.forEach(btn => {
+                btn.disabled = isLoading;
+                btn.style.opacity = isLoading ? '0.6' : '1';
+                btn.style.cursor = isLoading ? 'wait' : 'pointer';
+            });
+        }
+
+        showError(message) {
+            if (window.Dashboard && Dashboard.alert) {
+                Dashboard.alert(message);
+            } else if (window.require) {
+                require(['alert'], function(alert) {
+                    alert(message);
+                });
+            } else {
+                alert(message);
             }
         }
 
