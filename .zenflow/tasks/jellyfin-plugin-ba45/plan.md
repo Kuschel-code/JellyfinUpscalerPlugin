@@ -18,47 +18,182 @@ Do not make assumptions on important decisions — get clarification first.
 
 ## Workflow Steps
 
-### [ ] Step: Technical Specification
+### [x] Step: Technical Specification
 
-Assess the task's difficulty, as underestimating it leads to poor outcomes.
-- easy: Straightforward implementation, trivial bug fix or feature
-- medium: Moderate complexity, some edge cases or caveats to consider
-- hard: Complex logic, many caveats, architectural considerations, or high-risk changes
-
-Create a technical specification for the task that is appropriate for the complexity level:
-- Review the existing codebase architecture and identify reusable components.
-- Define the implementation approach based on established patterns in the project.
-- Identify all source code files that will be created or modified.
-- Define any necessary data model, API, or interface changes.
-- Describe verification steps using the project's test and lint commands.
-
-Save the output to `{@artifacts_path}/spec.md` with:
-- Technical context (language, dependencies)
-- Implementation approach
-- Source code structure changes
-- Data model / API / interface changes
-- Verification approach
-
-If the task is complex enough, create a detailed implementation plan based on `{@artifacts_path}/spec.md`:
-- Break down the work into concrete tasks (incrementable, testable milestones)
-- Each task should reference relevant contracts and include verification steps
-- Replace the Implementation step below with the planned tasks
-
-Rule of thumb for step size: each step should represent a coherent unit of work (e.g., implement a component, add an API endpoint, write tests for a module). Avoid steps that are too granular (single function).
-
-Save to `{@artifacts_path}/plan.md`. If the feature is trivial and doesn't warrant this breakdown, keep the Implementation step below as is.
+**Completed**: Technical specification created at `.zenflow/tasks/jellyfin-plugin-ba45/spec.md`  
+**Complexity**: HARD  
+**Estimated Time**: 16-23 hours
 
 ---
 
-### [ ] Step: Implementation
+### [ ] Step: Setup Development Environment
 
-Implement the task according to the technical specification and general engineering best practices.
+**Goal**: Prepare development environment for Jellyfin plugin development
 
-1. Break the task into steps where possible.
-2. Implement the required changes in the codebase.
-3. Add and run relevant tests and linters.
-4. Perform basic manual verification if applicable.
-5. After completion, write a report to `{@artifacts_path}/report.md` describing:
-   - What was implemented
-   - How the solution was tested
-   - The biggest issues or challenges encountered
+**Tasks**:
+- Clone/download Jellyfin plugin template from GitHub
+- Install .NET SDK 6.0+ (if not already installed)
+- Setup project structure and dependencies
+- Configure build tools and test basic compilation
+- Create `.gitignore` for C#/Jellyfin projects
+
+**Verification**:
+- [ ] `dotnet --version` shows .NET 6.0 or higher
+- [ ] Project builds successfully with `dotnet build`
+- [ ] No compilation errors
+
+---
+
+### [ ] Step: Implement Backend Core Services
+
+**Goal**: Create C# plugin foundation with media stream analysis capabilities
+
+**Files to Create**:
+- `Jellyfin.Plugin.LanguageSelector/Jellyfin.Plugin.LanguageSelector.csproj`
+- `Jellyfin.Plugin.LanguageSelector/Plugin.cs`
+- `Jellyfin.Plugin.LanguageSelector/Configuration/PluginConfiguration.cs`
+- `Jellyfin.Plugin.LanguageSelector/Models/LanguageOption.cs`
+- `Jellyfin.Plugin.LanguageSelector/Models/MediaStreamInfo.cs`
+- `Jellyfin.Plugin.LanguageSelector/Services/MediaStreamAnalyzer.cs`
+- `Jellyfin.Plugin.LanguageSelector/Services/LanguageDetector.cs`
+
+**Key Functionality**:
+- Implement `MediaStreamAnalyzer` to extract audio/subtitle tracks from media files
+- Implement `LanguageDetector` to map language codes (ger/deu/jpn/eng) to flag icons
+- Create data models for language options
+- Setup plugin configuration and metadata
+
+**Verification**:
+- [ ] Project builds without errors
+- [ ] Services can be instantiated and basic methods work
+- [ ] Language detection correctly maps ISO codes (test with unit tests if time permits)
+
+---
+
+### [ ] Step: Implement API Controller
+
+**Goal**: Create REST API endpoint to expose language options to frontend
+
+**Files to Create**:
+- `Jellyfin.Plugin.LanguageSelector/Api/LanguageOptionsController.cs`
+
+**Key Functionality**:
+- Implement `GET /Items/{itemId}/LanguageOptions` endpoint
+- Integrate with `MediaStreamAnalyzer` and `LanguageDetector`
+- Return JSON response with available language combinations
+- Handle edge cases (no audio/subtitle tracks, single language, etc.)
+
+**Verification**:
+- [ ] Plugin builds and deploys to Jellyfin server
+- [ ] Plugin appears in Jellyfin Admin Dashboard
+- [ ] API endpoint accessible via curl/Postman
+- [ ] Correct JSON response for test media files with multiple audio/subtitle tracks
+
+**Test Command**:
+```bash
+curl http://localhost:8096/Items/{itemId}/LanguageOptions
+```
+
+---
+
+### [ ] Step: Implement Frontend UI Component
+
+**Goal**: Create JavaScript component to render flag buttons and handle playback
+
+**Files to Create**:
+- `Jellyfin.Plugin.LanguageSelector/Web/language-selector.js`
+- `Jellyfin.Plugin.LanguageSelector/Web/language-selector.css`
+- `Jellyfin.Plugin.LanguageSelector/Web/flags/` (flag icon SVGs: de.svg, jp.svg, us.svg, jp-de.svg, jp-us.svg)
+
+**Key Functionality**:
+- Detect when user navigates to episode detail page
+- Fetch language options from API endpoint
+- Render flag buttons with AniWorld-inspired design
+- Attach click handlers to start playback with specific audio/subtitle tracks
+- Implement DOM injection logic with mutation observer for robustness
+
+**Verification**:
+- [ ] JavaScript loads in browser console without errors
+- [ ] Flag buttons appear on episode detail page
+- [ ] CSS styling matches AniWorld reference (blue bar, rounded corners, hover effects)
+- [ ] Clicking flag logs correct audio/subtitle indices (test in console first)
+
+---
+
+### [ ] Step: Integrate Playback Control
+
+**Goal**: Connect flag buttons to Jellyfin's playback API for one-click playback
+
+**Key Functionality**:
+- Integrate with Jellyfin's `PlaybackManager` API
+- Implement `startPlaybackWithTracks()` method
+- Pass `audioStreamIndex` and `subtitleStreamIndex` to playback API
+- Handle playback errors and edge cases
+
+**Verification**:
+- [ ] Clicking German flag starts playback with German audio, no subtitles
+- [ ] Clicking JP/DE flag starts playback with Japanese audio + German subtitles
+- [ ] Clicking JP/EN flag starts playback with Japanese audio + English subtitles
+- [ ] No manual track selection needed after clicking flag
+- [ ] Playback starts immediately without delays
+
+**Test Files Needed**:
+- Anime episode with multiple audio/subtitle tracks (ger, jpn, eng combinations)
+
+---
+
+### [ ] Step: End-to-End Testing & Bug Fixes
+
+**Goal**: Test complete workflow and fix any issues
+
+**Testing Checklist**:
+- [ ] Test with anime episodes (primary use case)
+- [ ] Test with regular movies/shows (general compatibility)
+- [ ] Test with edge cases:
+  - Files with only one audio track
+  - Files with no subtitles
+  - Files with >3 language combinations
+  - Files with forced subtitles
+- [ ] Test on Chrome and Firefox browsers
+- [ ] Test UI responsiveness (mobile/tablet if applicable)
+- [ ] Verify progress tracking and "watched" status work correctly
+
+**Bug Fixes**:
+- Address any issues found during testing
+- Refine UI/UX based on user experience
+- Optimize performance if needed
+
+---
+
+### [ ] Step: Documentation & Packaging
+
+**Goal**: Prepare plugin for distribution and document installation/usage
+
+**Tasks**:
+- Create `README.md` with:
+  - Plugin description and features
+  - Installation instructions (manual & repository)
+  - Build instructions for developers
+  - Usage guide with screenshots
+  - Troubleshooting section
+- Create `build.yaml` for JPRM (Jellyfin Plugin Repository Manager)
+- Test build and packaging process
+- Create GitHub release with pre-built DLL
+
+**Verification**:
+- [ ] Plugin can be built with standard `dotnet build` command
+- [ ] Installation instructions are clear and accurate
+- [ ] Plugin works after fresh installation on clean Jellyfin instance
+
+---
+
+### [ ] Step: Final Report
+
+**Goal**: Document implementation and outcomes
+
+**Tasks**:
+- Write report to `.zenflow/tasks/jellyfin-plugin-ba45/report.md`
+- Document what was implemented
+- Describe testing approach and results
+- Note any challenges encountered and how they were resolved
+- List any known limitations or future improvements
