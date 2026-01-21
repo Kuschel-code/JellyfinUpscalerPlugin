@@ -50,11 +50,213 @@
             const itemId = this.getItemIdFromUrl();
             
             if (!itemId || itemId === this.currentItemId) {
+                this.checkEpisodeList();
                 return;
             }
 
             this.currentItemId = itemId;
-            this.waitForPlayButton();
+            this.checkItemType();
+        }
+
+        async checkItemType() {
+            if (!this.currentItemId) return;
+
+            try {
+                const response = await fetch(
+                    `${CONFIG.apiBaseUrl}/Users/${ApiClient.getCurrentUserId()}/Items/${this.currentItemId}`,
+                    {
+                        headers: {
+                            'X-Emby-Token': ApiClient.accessToken()
+                        }
+                    }
+                );
+
+                if (!response.ok) return;
+
+                const item = await response.json();
+                
+                if (item.Type === 'Episode') {
+                    this.waitForPlayButton();
+                } else if (item.Type === 'Series' || item.Type === 'Season') {
+                    this.showSeriesLanguages(item);
+                }
+            } catch (error) {
+                console.error('Error checking item type:', error);
+                this.waitForPlayButton();
+            }
+        }
+
+        async showSeriesLanguages(item) {
+            try {
+                const seriesId = item.Type === 'Series' ? item.Id : item.SeriesId;
+                const response = await fetch(
+                    `${CONFIG.apiBaseUrl}/Shows/${seriesId}/Episodes?userId=${ApiClient.getCurrentUserId()}&fields=MediaStreams`,
+                    {
+                        headers: {
+                            'X-Emby-Token': ApiClient.accessToken()
+                        }
+                    }
+                );
+
+                if (!response.ok) return;
+
+                const data = await response.json();
+                const languages = this.collectLanguagesFromEpisodes(data.Items || []);
+                
+                if (languages.length > 0) {
+                    this.renderSeriesLanguageInfo(languages);
+                }
+            } catch (error) {
+                console.error('Error fetching series languages:', error);
+            }
+        }
+
+        collectLanguagesFromEpisodes(episodes) {
+            const languageSet = new Set();
+            
+            episodes.forEach(episode => {
+                if (!episode.MediaStreams) return;
+                
+                const audioStreams = episode.MediaStreams.filter(s => s.Type === 'Audio');
+                const subtitleStreams = episode.MediaStreams.filter(s => s.Type === 'Subtitle');
+                
+                audioStreams.forEach(audio => {
+                    const audioLang = this.normalizeLanguage(audio.Language);
+                    if (audioLang && FLAGS[audioLang]) {
+                        languageSet.add(audioLang);
+                    }
+                    
+                    subtitleStreams.forEach(sub => {
+                        const subLang = this.normalizeLanguage(sub.Language);
+                        if (subLang) {
+                            const combined = `${audioLang}-${subLang}`;
+                            if (FLAGS[combined]) {
+                                languageSet.add(combined);
+                            }
+                        }
+                    });
+                });
+            });
+            
+            return Array.from(languageSet);
+        }
+
+        normalizeLanguage(lang) {
+            if (!lang) return null;
+            const map = {
+                'ger': 'de', 'deu': 'de', 'de': 'de',
+                'jpn': 'jp', 'ja': 'jp', 'jp': 'jp',
+                'eng': 'us', 'en': 'us', 'us': 'us'
+            };
+            return map[lang.toLowerCase()] || null;
+        }
+
+        renderSeriesLanguageInfo(languages) {
+            const existingInfo = document.querySelector('.series-language-info');
+            if (existingInfo) {
+                existingInfo.remove();
+            }
+
+            const detailLogo = document.querySelector('.detailLogo');
+            if (!detailLogo) return;
+
+            const container = document.createElement('div');
+            container.className = 'series-language-info';
+            container.style.cssText = 'margin-top: 1.5em; padding: 1em; background: rgba(0,0,0,0.3); border-radius: 8px;';
+
+            const title = document.createElement('div');
+            title.textContent = 'Available Languages:';
+            title.style.cssText = 'font-size: 1.1em; margin-bottom: 0.5em; color: #fff;';
+            container.appendChild(title);
+
+            const flagGroup = document.createElement('div');
+            flagGroup.style.cssText = 'display: flex; gap: 0.5em; flex-wrap: wrap;';
+
+            languages.forEach(langCode => {
+                const flagConfig = FLAGS[langCode];
+                if (!flagConfig) return;
+
+                const flagItem = document.createElement('div');
+                flagItem.className = 'language-info-flag';
+                flagItem.style.cssText = 'display: flex; align-items: center; gap: 0.5em; padding: 0.5em 1em; background: rgba(255,255,255,0.1); border-radius: 6px;';
+
+                const img = document.createElement('img');
+                img.src = `${CONFIG.flagIconsPath}${flagConfig.icon}`;
+                img.alt = flagConfig.label;
+                img.style.cssText = 'width: 32px; height: 24px; border-radius: 4px;';
+
+                const label = document.createElement('span');
+                label.textContent = flagConfig.label;
+                label.style.cssText = 'color: #fff; font-size: 0.9em;';
+
+                flagItem.appendChild(img);
+                flagItem.appendChild(label);
+                flagGroup.appendChild(flagItem);
+            });
+
+            container.appendChild(flagGroup);
+            detailLogo.parentElement.insertBefore(container, detailLogo.nextSibling);
+        }
+
+        async checkEpisodeList() {
+            const episodeCards = document.querySelectorAll('.listItem[data-type="Episode"]');
+            if (episodeCards.length === 0) return;
+
+            episodeCards.forEach(async (card) => {
+                if (card.querySelector('.episode-language-indicator')) return;
+
+                const itemId = card.getAttribute('data-id');
+                if (!itemId) return;
+
+                try {
+                    const response = await fetch(
+                        `${CONFIG.apiBaseUrl}/Users/${ApiClient.getCurrentUserId()}/Items/${itemId}?fields=MediaStreams`,
+                        {
+                            headers: {
+                                'X-Emby-Token': ApiClient.accessToken()
+                            }
+                        }
+                    );
+
+                    if (!response.ok) return;
+
+                    const episode = await response.json();
+                    const languages = this.collectLanguagesFromEpisodes([episode]);
+
+                    if (languages.length > 0) {
+                        this.addEpisodeLanguageIndicator(card, languages);
+                    }
+                } catch (error) {
+                    console.error('Error fetching episode languages:', error);
+                }
+            });
+        }
+
+        addEpisodeLanguageIndicator(card, languages) {
+            const existingIndicator = card.querySelector('.episode-language-indicator');
+            if (existingIndicator) return;
+
+            const cardContent = card.querySelector('.listItemBody');
+            if (!cardContent) return;
+
+            const indicator = document.createElement('div');
+            indicator.className = 'episode-language-indicator';
+            indicator.style.cssText = 'display: flex; gap: 0.3em; margin-top: 0.3em;';
+
+            languages.forEach(langCode => {
+                const flagConfig = FLAGS[langCode];
+                if (!flagConfig) return;
+
+                const img = document.createElement('img');
+                img.src = `${CONFIG.flagIconsPath}${flagConfig.icon}`;
+                img.alt = flagConfig.label;
+                img.title = flagConfig.label;
+                img.style.cssText = 'width: 24px; height: 18px; border-radius: 3px; opacity: 0.8;';
+
+                indicator.appendChild(img);
+            });
+
+            cardContent.appendChild(indicator);
         }
 
         getItemIdFromUrl() {
