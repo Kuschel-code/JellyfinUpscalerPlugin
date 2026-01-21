@@ -224,3 +224,9 @@ curl http://localhost:8096/Items/{itemId}/LanguageOptions
 - Testing strategy and results documented
 - Known limitations and future enhancements listed
 - Plugin ready for user testing and deployment
+
+### [ ] Step: 1
+<!-- chat-id: 4c95d663-27af-4b47-9f7a-921c30a457ff -->
+<!-- agent: zen-cli-default -->
+
+Erstell Auf meinem Github ein Neues Repository aber erstmal auf privat und dann füg da alles hinzu
