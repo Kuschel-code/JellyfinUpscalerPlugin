@@ -8,12 +8,12 @@
   "category": "Video Enhancement",
   "versions": [
     {
-      "version": "1.4.8",
+      "version": "1.4.8.1",
       "changelog": "v1.4.8: Updated for Jellyfin 10.11.6 (.NET 9.0). Fixed video processing FPS issues and improved thread safety. FFmpeg wrapper now supports dynamic paths and filter injection.",
       "targetAbi": "10.11.0.0",
-      "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.8/JellyfinUpscalerPlugin-v1.4.8.zip",
-      "checksum": "bbe24e8f3f6fab1c80103e18e3a5272b",
-      "timestamp": "2026-01-22T10:00:00.000Z"
+      "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.8.1/JellyfinUpscalerPlugin-v1.4.8.1.zip",
+      "checksum": "371bc2b94b1080b13bced3ae436e870c",
+      "timestamp": "2026-01-22T11:00:48.000Z"
     },
     {
       "version": "1.4.7.1",
