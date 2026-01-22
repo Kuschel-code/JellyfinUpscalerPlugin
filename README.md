@@ -1,5 +1,4 @@
-# 🎮 Jellyfin AI Upscaler Plugin v1.4.8 
-
+# 🎮 Jellyfin AI Upscaler Plugin v1.4.9.1
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -27,7 +26,7 @@ An advanced, AI-powered video enhancement plugin for Jellyfin. Improve your medi
 1. Open your Jellyfin Dashboard.
 2. Go to **Plugins** > **Repositories**.
 3. Add a new repository with the following URL:
-   `https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9/JellyfinUpscalerPlugin-v1.4.9.zip`
+   `https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9.1/JellyfinUpscalerPlugin-v1.4.9.1.zip`
 4. Go to the **Catalog**, search for "AI Upscaler Plugin", and install the latest version.
 5. Restart Jellyfin.
 
