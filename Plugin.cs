@@ -8,7 +8,7 @@ using MediaBrowser.Model.Serialization;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// AI Upscaler Plugin for Jellyfin v1.4.8 - Stable Update with Modern UI & Sync
+    /// AI Upscaler Plugin for Jellyfin v1.4.9.1 - Stable Update with Modern UI & Sync
     /// </summary>
     public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     {
@@ -56,16 +56,17 @@ namespace JellyfinUpscalerPlugin
                 new PluginPageInfo
                 {
                     Name = this.Name,
-                    EmbeddedResourcePath = GetType().Namespace + ".Configuration.configurationpage.html"
+                    EmbeddedResourcePath = GetType().Namespace + ".Configuration.configurationpage.html",
+                    EnableInMainMenu = true, // Ensure it appears in sidebar as well
+                    DisplayName = "AI Upscaler Settings"
                 },
                 new PluginPageInfo
                 {
-                    Name = "AI Upscaler Dashboard",
+                    Name = "upscaler-dashboard",
                     EmbeddedResourcePath = GetType().Namespace + ".Pages.dashboard.html",
                     EnableInMainMenu = true,
-                    MenuSection = "server",
                     MenuIcon = "trending_up",
-                    DisplayName = "AI Upscaler"
+                    DisplayName = "AI Upscaler Dashboard"
                 },
                 new PluginPageInfo
                 {
