@@ -1,4 +1,4 @@
-<div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="require,loading,dialogHelper,formHelper,emby-checkbox,emby-select,emby-input">
+<div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage">
     <div data-role="content">
         <div class="content-primary">
             <div class="verticalSection">
@@ -12,7 +12,7 @@
             <form id="UpscalerConfigForm">
                 <div class="verticalSection">
                     <h2 class="sectionTitle">⚙️ Basic Settings</h2>
-                    
+
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label>
                             <input type="checkbox" is="emby-checkbox" id="EnablePlugin" name="EnablePlugin" />
@@ -59,10 +59,11 @@
 
                 <div class="verticalSection">
                     <h2 class="sectionTitle">🔧 Hardware Settings</h2>
-                    
+
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label>
-                            <input type="checkbox" is="emby-checkbox" id="HardwareAcceleration" name="HardwareAcceleration" />
+                            <input type="checkbox" is="emby-checkbox" id="HardwareAcceleration"
+                                name="HardwareAcceleration" />
                             <span>Enable Hardware Acceleration</span>
                         </label>
                         <div class="fieldDescription">Use GPU for faster processing when available</div>
@@ -70,7 +71,8 @@
 
                     <div class="inputContainer">
                         <label class="inputLabel" for="MaxVRAMUsage">Max VRAM Usage (MB):</label>
-                        <input is="emby-input" type="number" id="MaxVRAMUsage" name="MaxVRAMUsage" min="512" max="32768" />
+                        <input is="emby-input" type="number" id="MaxVRAMUsage" name="MaxVRAMUsage" min="512"
+                            max="32768" />
                         <div class="fieldDescription">Maximum VRAM to use for upscaling</div>
                     </div>
 
@@ -83,7 +85,7 @@
 
                 <div class="verticalSection">
                     <h2 class="sectionTitle">🎮 Player Integration</h2>
-                    
+
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label>
                             <input type="checkbox" is="emby-checkbox" id="Notifications" name="Notifications" />
@@ -110,10 +112,11 @@
 
                 <div class="verticalSection">
                     <h2 class="sectionTitle">🛠️ Advanced Features</h2>
-                    
+
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label>
-                            <input type="checkbox" is="emby-checkbox" id="EnableComparisonView" name="EnableComparisonView" />
+                            <input type="checkbox" is="emby-checkbox" id="EnableComparisonView"
+                                name="EnableComparisonView" />
                             <span>Enable Comparison View</span>
                         </label>
                         <div class="fieldDescription">Show side-by-side comparison tools in the dashboard</div>
@@ -121,7 +124,8 @@
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label>
-                            <input type="checkbox" is="emby-checkbox" id="EnablePerformanceMetrics" name="EnablePerformanceMetrics" />
+                            <input type="checkbox" is="emby-checkbox" id="EnablePerformanceMetrics"
+                                name="EnablePerformanceMetrics" />
                             <span>Enable Performance Metrics</span>
                         </label>
                         <div class="fieldDescription">Collect and display processing performance data</div>
@@ -130,10 +134,11 @@
 
                 <div class="verticalSection">
                     <h2 class="sectionTitle">💾 Cache Settings</h2>
-                    
+
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label>
-                            <input type="checkbox" is="emby-checkbox" id="EnablePreProcessingCache" name="EnablePreProcessingCache" />
+                            <input type="checkbox" is="emby-checkbox" id="EnablePreProcessingCache"
+                                name="EnablePreProcessingCache" />
                             <span>Enable Pre-Processing Cache</span>
                         </label>
                         <div class="fieldDescription">Cache upscaled frames to improve repeat playback performance</div>
@@ -141,13 +146,15 @@
 
                     <div class="inputContainer">
                         <label class="inputLabel" for="MaxCacheAgeDays">Max Cache Age (Days):</label>
-                        <input is="emby-input" type="number" id="MaxCacheAgeDays" name="MaxCacheAgeDays" min="1" max="365" />
+                        <input is="emby-input" type="number" id="MaxCacheAgeDays" name="MaxCacheAgeDays" min="1"
+                            max="365" />
                         <div class="fieldDescription">Automatically remove cached items older than this</div>
                     </div>
 
                     <div class="inputContainer">
                         <label class="inputLabel" for="CacheSizeMB">Cache Size Limit (MB):</label>
-                        <input is="emby-input" type="number" id="CacheSizeMB" name="CacheSizeMB" min="128" max="1048576" />
+                        <input is="emby-input" type="number" id="CacheSizeMB" name="CacheSizeMB" min="128"
+                            max="1048576" />
                         <div class="fieldDescription">Maximum storage space to use for the AI cache</div>
                     </div>
                 </div>
@@ -155,7 +162,7 @@
                 <div class="verticalSection">
                     <h2 class="sectionTitle">🎬 FFmpeg Live-Transcoding Wrapper</h2>
                     <p class="sectionDescription">Inject AI upscaling filters into live FFmpeg transcoding streams</p>
-                    
+
                     <div class="paperList">
                         <div class="listItem">
                             <div class="listItemBody two-line">
@@ -172,21 +179,27 @@
                         <div class="listItem" id="wrapper-path-container" style="display:none;">
                             <div class="listItemBody two-line">
                                 <h3 class="listItemBodyText">Wrapper Path</h3>
-                                <div id="wrapper-path" class="listItemBodyText secondary" style="word-break: break-all;"></div>
+                                <div id="wrapper-path" class="listItemBodyText secondary"
+                                    style="word-break: break-all;"></div>
                             </div>
                         </div>
                     </div>
 
                     <div class="fieldDescription" style="margin-top: 1em;">
-                        <strong>⚠️ How it works:</strong> The wrapper script intercepts FFmpeg calls from Jellyfin and injects hardware upscaling filters.
-                        After installation, you must manually update Jellyfin's FFmpeg path in Dashboard → Playback → Transcoding.
+                        <strong>⚠️ How it works:</strong> The wrapper script intercepts FFmpeg calls from Jellyfin and
+                        injects hardware upscaling filters.
+                        After installation, you must manually update Jellyfin's FFmpeg path in Dashboard → Playback →
+                        Transcoding.
                     </div>
 
-                    <div class="flex align-items-center justify-content-center flex-wrap-wrap" style="margin-top: 1em; gap: 0.5em;">
-                        <button is="emby-button" type="button" id="btn-install-wrapper" class="raised button-submit block">
+                    <div class="flex align-items-center justify-content-center flex-wrap-wrap"
+                        style="margin-top: 1em; gap: 0.5em;">
+                        <button is="emby-button" type="button" id="btn-install-wrapper"
+                            class="raised button-submit block">
                             <span>Install Wrapper</span>
                         </button>
-                        <button is="emby-button" type="button" id="btn-uninstall-wrapper" class="raised block" style="background: #d32f2f;">
+                        <button is="emby-button" type="button" id="btn-uninstall-wrapper" class="raised block"
+                            style="background: #d32f2f;">
                             <span>Uninstall Wrapper</span>
                         </button>
                         <button is="emby-button" type="button" id="btn-regenerate-wrapper" class="raised block">
@@ -194,12 +207,14 @@
                         </button>
                     </div>
 
-                    <div id="wrapper-message" class="fieldDescription" style="margin-top: 1em; padding: 1em; border-radius: 4px; display: none;"></div>
+                    <div id="wrapper-message" class="fieldDescription"
+                        style="margin-top: 1em; padding: 1em; border-radius: 4px; display: none;"></div>
                 </div>
 
                 <div class="verticalSection">
                     <h2 class="sectionTitle">📊 Live Hardware Status</h2>
-                    <div id="hardwareStatusContainer" class="flex align-items-center justify-content-center flex-wrap-wrap">
+                    <div id="hardwareStatusContainer"
+                        class="flex align-items-center justify-content-center flex-wrap-wrap">
                         <div class="card p-1 m-0-5 flex-grow-1" style="background: rgba(0, 164, 220, 0.1);">
                             <h3 style="color: #00a4dc; margin: 0;">CPU</h3>
                             <p id="cpu-status-text">Detecting...</p>
@@ -224,7 +239,7 @@
                             </button>
                         </div>
                     </div>
-                    
+
                     <div id="comparison-result" class="hide mt-1">
                         <div class="flex align-items-center justify-content-center flex-wrap-wrap">
                             <div class="p-0-5 flex-grow-1" style="max-width: 50%;">
@@ -233,7 +248,8 @@
                             </div>
                             <div class="p-0-5 flex-grow-1" style="max-width: 50%;">
                                 <h4 style="text-align: center;">AI Upscaled (x<span id="display-scale"></span>)</h4>
-                                <img id="img-upscaled" style="width: 100%; border-radius: 4px; border: 2px solid #00a4dc;" />
+                                <img id="img-upscaled"
+                                    style="width: 100%; border-radius: 4px; border: 2px solid #00a4dc;" />
                             </div>
                         </div>
                     </div>
@@ -249,14 +265,14 @@
     </div>
 
     <script type="text/javascript">
-        (function() {
+        (function () {
             'use strict';
 
             const pluginId = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
 
             function loadConfig(page) {
                 Dashboard.showLoading();
-                ApiClient.getPluginConfiguration(pluginId).then(function(config) {
+                ApiClient.getPluginConfiguration(pluginId).then(function (config) {
                     page.querySelector('#EnablePlugin').checked = config.EnablePlugin;
                     page.querySelector('#PlayerButton').checked = config.PlayerButton;
                     page.querySelector('#Model').value = config.Model || 'realesrgan';
@@ -268,26 +284,26 @@
                     page.querySelector('#Notifications').checked = config.Notifications;
                     page.querySelector('#AutoRetryButton').checked = config.AutoRetryButton;
                     page.querySelector('#ButtonPosition').value = config.ButtonPosition || 'right';
-                    
+
                     // Advanced & Features
                     page.querySelector('#EnableComparisonView').checked = config.EnableComparisonView;
                     page.querySelector('#EnablePerformanceMetrics').checked = config.EnablePerformanceMetrics;
-                    
+
                     // Cache
                     page.querySelector('#EnablePreProcessingCache').checked = config.EnablePreProcessingCache;
                     page.querySelector('#MaxCacheAgeDays').value = config.MaxCacheAgeDays || 30;
                     page.querySelector('#CacheSizeMB').value = config.CacheSizeMB || 5120;
-                    
+
                     Dashboard.hideLoading();
                 });
             }
 
             function loadModels(page) {
-                ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/models')).then(function(models) {
+                return ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/models')).then(function (models) {
                     window.upscalerModels = models;
                     const select = page.querySelector('#Model');
                     select.innerHTML = models.map(m => `<option value="${m.id}">${m.name} - ${m.description}</option>`).join('');
-                    
+
                     // Trigger initial scale update
                     updateScaleFactors(page, select.value);
                 });
@@ -300,9 +316,9 @@
 
                 const scaleSelect = page.querySelector('#ScaleFactor');
                 const currentValue = scaleSelect.value;
-                
+
                 scaleSelect.innerHTML = model.scale.map(s => `<option value="${s}">${s}x Upscaling</option>`).join('');
-                
+
                 // Restore value if still valid, otherwise use first available
                 if (model.scale.includes(parseInt(currentValue))) {
                     scaleSelect.value = currentValue;
@@ -341,10 +357,10 @@
                     SortBy: "DateCreated",
                     SortOrder: "Descending",
                     ImageTypes: "Primary"
-                }).then(function(result) {
+                }).then(function (result) {
                     const select = page.querySelector('#comparison-item');
                     if (result.Items && result.Items.length > 0) {
-                        select.innerHTML = result.Items.map(item => 
+                        select.innerHTML = result.Items.map(item =>
                             `<option value="${item.Id}">${item.Name} ${item.ProductionYear ? '(' + item.ProductionYear + ')' : ''}</option>`
                         ).join('');
                     } else {
@@ -354,7 +370,7 @@
             }
 
             function updateHardwareStatus(page) {
-                ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/recommendations')).then(function(data) {
+                ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/recommendations')).then(function (data) {
                     if (data && data.hardwareInfo) {
                         page.querySelector('#cpu-status-text').textContent = data.hardwareInfo.detectedCPU;
                         page.querySelector('#gpu-status-text').textContent = data.hardwareInfo.detectedGPU;
@@ -379,7 +395,7 @@
                     scale: scale
                 });
 
-                ApiClient.getJSON(url).then(function(data) {
+                ApiClient.getJSON(url).then(function (data) {
                     if (data && data.upscaledBase64) {
                         page.querySelector('#img-original').src = data.originalBase64;
                         page.querySelector('#img-upscaled').src = data.upscaledBase64;
@@ -387,7 +403,7 @@
                     }
                     btn.disabled = false;
                     btn.textContent = '✨ Generate Preview';
-                }).catch(function() {
+                }).catch(function () {
                     btn.disabled = false;
                     btn.textContent = '✨ Generate Preview';
                     Dashboard.alert('Comparison failed. Check logs.');
@@ -395,22 +411,22 @@
             }
 
             function loadWrapperStatus(page) {
-                ApiClient.getJSON(ApiClient.getUrl('api/upscaler/wrapper/status')).then(function(data) {
+                ApiClient.getJSON(ApiClient.getUrl('api/upscaler/wrapper/status')).then(function (data) {
                     const statusEl = page.querySelector('#wrapper-status');
                     const platformEl = page.querySelector('#wrapper-platform');
                     const pathEl = page.querySelector('#wrapper-path');
                     const pathContainer = page.querySelector('#wrapper-path-container');
-                    
+
                     statusEl.textContent = data.IsInstalled ? '✅ Installed & Active' : '❌ Not Installed';
                     platformEl.textContent = data.Platform + ' (' + data.RuntimeIdentifier + ')';
-                    
+
                     if (data.IsInstalled) {
                         pathEl.textContent = data.WrapperPath;
                         pathContainer.style.display = 'block';
                     } else {
                         pathContainer.style.display = 'none';
                     }
-                }).catch(function() {
+                }).catch(function () {
                     page.querySelector('#wrapper-status').textContent = '⚠️ Error loading status';
                 });
             }
@@ -419,17 +435,17 @@
                 const btn = page.querySelector('#btn-install-wrapper');
                 const msgEl = page.querySelector('#wrapper-message');
                 btn.disabled = true;
-                
+
                 ApiClient.ajax({
                     type: 'POST',
                     url: ApiClient.getUrl('api/upscaler/wrapper/install')
-                }).then(function(data) {
+                }).then(function (data) {
                     msgEl.textContent = data.Message;
                     msgEl.style.background = 'rgba(76, 175, 80, 0.2)';
                     msgEl.style.display = 'block';
                     loadWrapperStatus(page);
                     btn.disabled = false;
-                }).catch(function() {
+                }).catch(function () {
                     msgEl.textContent = 'Installation failed. Check server logs.';
                     msgEl.style.background = 'rgba(244, 67, 54, 0.2)';
                     msgEl.style.display = 'block';
@@ -441,17 +457,17 @@
                 const btn = page.querySelector('#btn-uninstall-wrapper');
                 const msgEl = page.querySelector('#wrapper-message');
                 btn.disabled = true;
-                
+
                 ApiClient.ajax({
                     type: 'POST',
                     url: ApiClient.getUrl('api/upscaler/wrapper/uninstall')
-                }).then(function(data) {
+                }).then(function (data) {
                     msgEl.textContent = data.Message;
                     msgEl.style.background = 'rgba(255, 152, 0, 0.2)';
                     msgEl.style.display = 'block';
                     loadWrapperStatus(page);
                     btn.disabled = false;
-                }).catch(function() {
+                }).catch(function () {
                     msgEl.textContent = 'Uninstallation failed. Check server logs.';
                     msgEl.style.background = 'rgba(244, 67, 54, 0.2)';
                     msgEl.style.display = 'block';
@@ -463,17 +479,17 @@
                 const btn = page.querySelector('#btn-regenerate-wrapper');
                 const msgEl = page.querySelector('#wrapper-message');
                 btn.disabled = true;
-                
+
                 ApiClient.ajax({
                     type: 'POST',
                     url: ApiClient.getUrl('api/upscaler/wrapper/regenerate')
-                }).then(function(data) {
+                }).then(function (data) {
                     msgEl.textContent = data.Message;
                     msgEl.style.background = 'rgba(33, 150, 243, 0.2)';
                     msgEl.style.display = 'block';
                     loadWrapperStatus(page);
                     btn.disabled = false;
-                }).catch(function() {
+                }).catch(function () {
                     msgEl.textContent = 'Regeneration failed. Check server logs.';
                     msgEl.style.background = 'rgba(244, 67, 54, 0.2)';
                     msgEl.style.display = 'block';
@@ -481,36 +497,53 @@
                 });
             }
 
-            document.querySelector('#UpscalerConfigurationPage').addEventListener('pageshow', function() {
-                const page = this;
-                loadModels(page);
-                loadConfig(page);
+            function onPageShow(page) {
+                // Chain loading to avoid race conditions
+                loadModels(page).then(() => {
+                    loadConfig(page);
+                });
+
                 loadMediaItems(page);
                 updateHardwareStatus(page);
                 loadJavaScriptComponents();
                 loadWrapperStatus(page);
+            }
 
-                page.querySelector('#Model').addEventListener('change', function() {
+            const pageId = '#UpscalerConfigurationPage';
+
+            // Support both old pageshow and new viewshow events
+            document.querySelector(pageId).addEventListener('pageshow', function () {
+                onPageShow(this);
+            });
+
+            document.querySelector(pageId).addEventListener('viewshow', function () {
+                onPageShow(this);
+            });
+
+            document.querySelector(pageId).addEventListener('pageinit', function () {
+                const page = this;
+
+                page.querySelector('#Model').addEventListener('change', function () {
                     updateScaleFactors(page, this.value);
                 });
 
-                page.querySelector('#btn-compare').addEventListener('click', function() {
+                page.querySelector('#btn-compare').addEventListener('click', function () {
                     generateComparison(page);
                 });
 
-                page.querySelector('#btn-install-wrapper').addEventListener('click', function() {
+                page.querySelector('#btn-install-wrapper').addEventListener('click', function () {
                     installWrapper(page);
                 });
 
-                page.querySelector('#btn-uninstall-wrapper').addEventListener('click', function() {
+                page.querySelector('#btn-uninstall-wrapper').addEventListener('click', function () {
                     uninstallWrapper(page);
                 });
 
-                page.querySelector('#btn-regenerate-wrapper').addEventListener('click', function() {
+                page.querySelector('#btn-regenerate-wrapper').addEventListener('click', function () {
                     regenerateWrapper(page);
                 });
 
-                page.querySelector('#UpscalerConfigForm').addEventListener('submit', function(e) {
+                page.querySelector('#UpscalerConfigForm').addEventListener('submit', function (e) {
                     e.preventDefault();
                     Dashboard.showLoading();
 
@@ -533,7 +566,7 @@
                         CacheSizeMB: parseInt(page.querySelector('#CacheSizeMB').value)
                     };
 
-                    ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
+                    ApiClient.updatePluginConfiguration(pluginId, config).then(function () {
                         Dashboard.hideLoading();
                         Dashboard.processPluginConfigurationUpdateResult();
                     });

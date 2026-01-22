@@ -3,6 +3,7 @@
     "guid": "f87f700e-679d-43e6-9c7c-b3a410dc3f22",
     "name": "AI Upscaler Plugin",
     "description": "AI-powered video upscaling plugin with automated hardware benchmarking, intelligent fallback system, pre-processing cache, and advanced low-end hardware support. Features comprehensive performance testing, comparison view, TV remote optimization, and sidebar integration.",
+    "imageUrl": "https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/logo.png",
     "overview": "Revolutionary AI upscaling plugin with automated hardware benchmarking, intelligent fallback system, pre-processing cache, and advanced low-end hardware support. Features comprehensive performance testing, comparison view, TV remote optimization, and sidebar integration like Playback Reporting plugin.",
     "owner": "Kuschel-code",
     "category": "Video Enhancement",
