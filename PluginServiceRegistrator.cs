@@ -13,19 +13,19 @@ namespace JellyfinUpscalerPlugin
     {
         public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost applicationHost)
         {
-            // Core Services
+            // Core Logic Services
             serviceCollection.AddSingleton<UpscalerCore>();
             serviceCollection.AddSingleton<VideoProcessor>();
             serviceCollection.AddSingleton<CacheManager>();
+            serviceCollection.AddSingleton<ModelManager>();
             serviceCollection.AddSingleton<UpscalerProgressHub>();
             serviceCollection.AddSingleton<LibraryScanHelper>();
-            serviceCollection.AddSingleton<ModelManager>();
 
-            // Hosted Services (Background Tasks)
+            // Background / Hosted Services
             serviceCollection.AddHostedService<UpscalerService>();
             serviceCollection.AddHostedService<HardwareBenchmarkService>();
 
-            // Platform Detection
+            // Platform & Interop
             serviceCollection.AddSingleton<IPlatformDetectionService, PlatformDetectionService>();
             serviceCollection.AddSingleton<INativeLibraryLoader, NativeLibraryLoader>();
             serviceCollection.AddSingleton<IFFmpegWrapperService, FFmpegWrapperService>();
