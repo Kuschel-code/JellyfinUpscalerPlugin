@@ -2,11 +2,20 @@
     'use strict';
 
     const CONFIG = {
-        apiBaseUrl: ApiClient ? ApiClient._serverAddress : '',
+        apiBaseUrl: (typeof ApiClient !== 'undefined' && ApiClient) ? ApiClient._serverAddress : '',
         flagIconsPath: '/web/configurationpage?name=LanguageSelector/flags/',
         checkInterval: 500,
-        maxChecks: 20
+        maxChecks: 20,
+        observerThrottleMs: 300
     };
+
+    function checkApiClient() {
+        if (typeof ApiClient === 'undefined' || !ApiClient) {
+            console.error('ApiClient not available');
+            return false;
+        }
+        return true;
+    }
 
     const FLAGS = {
         'de': { icon: 'de.svg', label: 'German Audio' },
@@ -21,10 +30,13 @@
             this.currentItemId = null;
             this.languageOptions = [];
             this.observer = null;
+            this.throttleTimer = null;
+            this.isOnListPage = false;
             this.init();
         }
 
         init() {
+            if (!checkApiClient()) return;
             this.setupPageObserver();
             this.checkCurrentPage();
         }
@@ -35,7 +47,12 @@
             }
 
             this.observer = new MutationObserver(() => {
-                this.checkCurrentPage();
+                if (this.throttleTimer) return;
+                
+                this.throttleTimer = setTimeout(() => {
+                    this.checkCurrentPage();
+                    this.throttleTimer = null;
+                }, CONFIG.observerThrottleMs);
             });
 
             this.observer.observe(document.body, {
@@ -45,19 +62,29 @@
         }
 
         checkCurrentPage() {
+            if (!checkApiClient()) return;
+            
             const itemId = this.getItemIdFromUrl();
             
-            if (!itemId || itemId === this.currentItemId) {
-                this.checkEpisodeList();
+            if (!itemId) {
+                if (!this.isOnListPage) {
+                    this.isOnListPage = true;
+                    this.checkEpisodeList();
+                }
                 return;
             }
 
+            if (itemId === this.currentItemId) {
+                return;
+            }
+
+            this.isOnListPage = false;
             this.currentItemId = itemId;
             this.checkItemType();
         }
 
         async checkItemType() {
-            if (!this.currentItemId) return;
+            if (!this.currentItemId || !checkApiClient()) return;
 
             try {
                 const response = await fetch(
@@ -80,13 +107,20 @@
                 }
             } catch (error) {
                 console.error('Error checking item type:', error);
-                this.waitForPlayButton();
             }
         }
 
         async showSeriesLanguages(item) {
             try {
                 const seriesId = item.Type === 'Series' ? item.Id : item.SeriesId;
+                
+                if (!seriesId) {
+                    console.warn('No series ID found for item:', item);
+                    return;
+                }
+
+                if (!checkApiClient()) return;
+                
                 const response = await fetch(
                     `${CONFIG.apiBaseUrl}/Shows/${seriesId}/Episodes?userId=${ApiClient.getCurrentUserId()}&fields=MediaStreams`,
                     {
@@ -197,6 +231,8 @@
         }
 
         async checkEpisodeList() {
+            if (!checkApiClient()) return;
+            
             const episodeCards = document.querySelectorAll('.listItem[data-type="Episode"]');
             if (episodeCards.length === 0) return;
 
@@ -298,7 +334,7 @@
         }
 
         async fetchLanguageOptions() {
-            if (!this.currentItemId) return;
+            if (!this.currentItemId || !checkApiClient()) return;
 
             try {
                 const response = await fetch(
@@ -395,6 +431,11 @@
         async handleFlagClick(option) {
             console.log('Starting playback with:', option);
 
+            if (!checkApiClient()) {
+                this.showError('API not available');
+                return;
+            }
+
             try {
                 this.setButtonLoading(true);
                 
@@ -453,9 +494,12 @@
         }
 
         fallbackPlayback(item, playOptions) {
-            const playUrl = `${CONFIG.apiBaseUrl}/web/index.html#!/item?id=${this.currentItemId}&serverId=${ApiClient.serverId()}`;
+            if (!checkApiClient()) return;
             
             const params = new URLSearchParams();
+            params.set('id', this.currentItemId);
+            params.set('serverId', ApiClient.serverId());
+            
             if (playOptions.audioStreamIndex !== undefined) {
                 params.set('audioStreamIndex', playOptions.audioStreamIndex);
             }
@@ -466,14 +510,8 @@
                 params.set('startPositionTicks', playOptions.startPositionTicks);
             }
 
-            const fullUrl = params.toString() ? `${playUrl}&${params.toString()}` : playUrl;
-            
-            setTimeout(() => {
-                const playButton = this.findPlayButton();
-                if (playButton) {
-                    playButton.click();
-                }
-            }, 100);
+            const fullUrl = `${CONFIG.apiBaseUrl}/web/index.html#!/item?${params.toString()}`;
+            window.location.href = fullUrl;
         }
 
         setButtonLoading(isLoading) {
@@ -486,8 +524,8 @@
         }
 
         showError(message) {
-            if (window.Dashboard && Dashboard.alert) {
-                Dashboard.alert(message);
+            if (window.Dashboard && window.Dashboard.alert) {
+                window.Dashboard.alert(message);
             } else if (window.require) {
                 require(['alert'], function(alert) {
                     alert(message);
@@ -500,6 +538,11 @@
         destroy() {
             if (this.observer) {
                 this.observer.disconnect();
+                this.observer = null;
+            }
+            if (this.throttleTimer) {
+                clearTimeout(this.throttleTimer);
+                this.throttleTimer = null;
             }
         }
     }
