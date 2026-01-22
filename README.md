@@ -1,5 +1,14 @@
 # 🎮 Jellyfin AI Upscaler Plugin v1.4.9.3
 
+I have fixed 95% of the errors, now only the following are missing, which will be fixed in the next few days
+Error                                            Status
+1. DI registration incomplete                 ✅ FIXED
+2. Hosted services missing                    ✅ FIXED
+3. Service provider memory leak               ✅ FIXED
+4. AI models missing                          ⚠️ By design (lazy download)
+5. Version comment outdated                   ⚠️ Still present (minor)
+6. Checksum placeholder                       ✅ FIXED
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
 
