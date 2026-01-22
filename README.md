@@ -8,6 +8,8 @@ Error                                            Status
 4. AI models missing                          ⚠️ By design (lazy download)
 5. Version comment outdated                   ⚠️ Still present (minor)
 6. Checksum placeholder                       ✅ FIXED
+7. NotSupported                               ⚠️
+8. Settings                                   ⚠️
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
