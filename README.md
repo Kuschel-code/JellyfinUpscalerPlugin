@@ -20,6 +20,22 @@ An advanced, AI-powered video enhancement plugin for Jellyfin. Improve your medi
 - **Job Control API**: Pause, resume, and cancel processing jobs via REST API.
 - **Dependency Validation**: Platform-specific native library isolation and verification.
 
+## 📋 Recent Updates (v1.4.8 - v1.4.9.1)
+
+### v1.4.9.1 (Latest)
+- **Settings & UI Access**: Fixed an issue where the settings page was inaccessible. The "AI Upscaler Dashboard" and "AI Upscaler Settings" now properly appear in the sidebar.
+- **Improved Compatibility**: Broadened page registration to ensure better compatibility with various Jellyfin Web clients.
+
+### v1.4.9
+- **Plugin Branding**: Fixed the missing plugin logo in newer Jellyfin servers by embedding `thumb.png` correctly.
+- **Repository Integrity**: Resolved initial release checksum mismatches.
+
+### v1.4.8
+- **Core Engine Upgrade**: Updated for **Jellyfin 10.11.6** and **.NET 9.0**.
+- **Dynamic FFmpeg Support**: Rewritten wrapper to support dynamic paths and proper filter injection.
+- **Video Processing Fix**: Resolved a critical bug where videos were limited to 30fps; now respects source framerate.
+- **Stability**: Enhanced thread safety with `ConcurrentDictionary` to prevent crashes under load.
+
 ## 🛠️ Installation
 
 ### Repository Method (Recommended)
