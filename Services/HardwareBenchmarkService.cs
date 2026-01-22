@@ -9,6 +9,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using MediaBrowser.Common.Configuration;
 using JellyfinUpscalerPlugin.Models;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
 
 namespace JellyfinUpscalerPlugin.Services
 {
@@ -178,8 +180,8 @@ namespace JellyfinUpscalerPlugin.Services
                     
                     var sw = Stopwatch.StartNew();
                     
-                    // Simulate AI upscaling benchmark (in real implementation, this would run actual AI models)
-                    var performance = await SimulateModelBenchmark(model);
+                    // Run actual AI upscaling benchmark
+                    var performance = await RunActualModelBenchmark(model);
                     
                     sw.Stop();
                     
@@ -203,68 +205,59 @@ namespace JellyfinUpscalerPlugin.Services
             return modelPerformance;
         }
 
-        private async Task<ModelPerformance> SimulateModelBenchmark(string model)
+        private async Task<ModelPerformance> RunActualModelBenchmark(string model)
         {
-            // REALISTIC ESTIMATE: Heuristic-based performance calculation based on detected HardwareProfile
             var performance = new ModelPerformance { ModelName = model };
-            var hardware = await _upscalerCore.DetectHardwareAsync();
             
-            // Base complexity (relative GFLOPS required)
-            var modelComplexity = model switch
+            try
             {
-                "fsrcnn-light" => 1.0,
-                "fsrcnn" => 2.5,
-                "srcnn" => 4.0,
-                "waifu2x" => 12.0,
-                "esrgan" => 25.0,
-                "realesrgan" => 35.0,
-                _ => 10.0
-            };
-            
-            // Performance capability calculation
-            double hardwarePower = 1.0;
-            
-            if (hardware.SupportsCUDA)
-            {
-                // NVIDIA GPUs are powerhouses for ONNX
-                hardwarePower = hardware.VramMB > 4000 ? 50.0 : 25.0;
-                if (hardware.GpuModel?.Contains("RTX 40") == true) hardwarePower *= 2.0;
-                if (hardware.GpuModel?.Contains("RTX 30") == true) hardwarePower *= 1.5;
+                // Create a small test image (HD 720p equivalent for speed, or smaller)
+                // For benchmarking, we use a 640x360 image to be faster but still representative
+                int width = 640;
+                int height = 360;
+                var testImage = CreateTestImage(width, height);
+                
+                var sw = Stopwatch.StartNew();
+                
+                // Run actual inference
+                await _upscalerCore.UpscaleImageAsync(testImage, model, 2);
+                
+                sw.Stop();
+                
+                performance.ProcessingTimeMs = (int)sw.ElapsedMilliseconds;
+                
+                // Calculate FPS
+                performance.AverageFPS = 1000.0 / Math.Max(performance.ProcessingTimeMs, 1.0);
+                
+                // Estimate CPU/GPU usage (still heuristic as we can't easily measure per-process GPU usage in C# standard libs)
+                // In a real scenario, you'd use PerformanceCounter or NVML here.
+                var hardware = await _upscalerCore.DetectHardwareAsync();
+                performance.AverageCPUUsage = hardware.SupportsCUDA ? 10 : 80;
+                performance.AverageGPUUsage = hardware.SupportsCUDA ? 70 : 0;
+                
+                // Quality baseline (static for now as we don't have reference images to compare PSNR against)
+                performance.QualityScore = model.Contains("gan") ? 9.0 : 7.0; 
             }
-            else if (hardware.SupportsDirectML)
+            catch (Exception ex)
             {
-                // DirectML is slightly slower but still good
-                hardwarePower = hardware.VramMB > 2000 ? 15.0 : 8.0;
+                _logger.LogWarning(ex, $"Benchmark failed for {model}");
+                performance.ProcessingTimeMs = -1;
+                performance.AverageFPS = 0;
             }
-            else
-            {
-                // CPU fallback - strictly based on core count and architecture
-                hardwarePower = hardware.CpuCores * 0.5;
-                if (RuntimeInformation.ProcessArchitecture == Architecture.Arm64) hardwarePower *= 1.2;
-            }
-
-            // Processing time in ms for a 1080p frame (approximate)
-            var baseMsPerFrame = (modelComplexity * 500.0) / hardwarePower;
-            
-            performance.ProcessingTimeMs = (int)baseMsPerFrame;
-            performance.AverageFPS = 1000.0 / Math.Max(baseMsPerFrame, 1.0);
-            
-            // Quality score (subjective PSNR/VMAF estimation)
-            performance.QualityScore = model switch
-            {
-                "realesrgan" => 9.5,
-                "esrgan" => 8.8,
-                "swinir" => 9.2,
-                "waifu2x" => 8.5,
-                "fsrcnn" => 6.5,
-                "fsrcnn-light" => 5.2,
-                _ => 6.0
-            };
-            
-            performance.AverageCPUUsage = hardware.SupportsCUDA ? 15 : 85;
-            performance.AverageGPUUsage = hardware.SupportsCUDA || hardware.SupportsDirectML ? 75 : 0;
             
             return performance;
+        }
+
+        private byte[] CreateTestImage(int width, int height)
+        {
+            using var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgb24>(width, height);
+            
+            // Fill with some pattern to ensure the model has something to process
+            image.Mutate(x => x.BackgroundColor(SixLabors.ImageSharp.Color.Gray));
+            
+            using var ms = new MemoryStream();
+            image.SaveAsJpeg(ms);
+            return ms.ToArray();
         }
 
         private double GetHardwareMultiplier()

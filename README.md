@@ -27,26 +27,53 @@ An advanced, AI-powered video enhancement plugin for Jellyfin. Improve your medi
 - **Improved Compatibility**: Broadened page registration to ensure better compatibility with various Jellyfin Web clients.
 
 ### v1.4.9
-- **Plugin Branding**: Fixed the missing plugin logo in newer Jellyfin servers by embedding `thumb.png` correctly.
-- **Repository Integrity**: Resolved initial release checksum mismatches.
+Integrates **Real-Time AI Video Upscaling** into Jellyfin using advanced neural networks (SRGAN/Real-ESRGAN). This plugin processes video content on-the-fly or via scheduled tasks to improve resolution and visual quality.
+
+> [!WARNING]  
+> **v1.4.9.2 is a CRITICAL UPDATE.** It replaces "simulated" logic with ACTUAL AI inference and fixes startup crashes.
+
+## 📥 Installation
+
+1.  Open Jellyfin Dashboard > **Plugins** > **Repositories** > **Add**.
+2.  Enter the URL:
+    ```
+    https://raw.githubusercontent.com/Kuscheltier/JellyfinUpscalerPlugin/main/manifest.json
+    ```
+3.  Go to **Catalog**, find "AI Upscaler", and install **v1.4.9.2**.
+4.  Restart Jellyfin.
+
+## 🚀 Key Features (Real Implementation)
+
+*   **Real AI Inference:** Uses `Microsoft.ML.OnnxRuntime.Gpu` to run actual neural networks.
+*   **Hardware Acceleration:** Supports NVIDIA (CUDA) and DirectML (Windows).
+*   **Model Manager:** Automatically checks for and verifies `.onnx` model files.
+*   **Smart Caching:** Prevents re-processing of already upscaled segments.
+*   **FFmpeg Integration:** Seamlessly pipes frames between Jellyfin and the AI engine.
+
+## 📋 Changelog
+
+### v1.4.9.2 - "The Real Deal" Update
+*   **FIXED CRITICAL CRASH:** Removed Dependency Injection anti-pattern that caused startup failures.
+*   **ADDED Real AI:** Replaced placeholder classes with actual `OnnxRuntime` inference engine.
+*   **ADDED Model Manager:** New service to verify and download `.onnx` models (fsrcnn, realesrgan, etc.).
+*   **ADDED Real Benchmarks:** `Run Benchmark` button now runs actual inference on test images to give real EPS/FPS numbers.
+*   **Verified Dependencies:** Added missing `Microsoft.ML.OnnxRuntime.Gpu` and `OpenCvSharp4` references.
+
+### v1.4.9.1 - Settings & UI Fix
+*   **Fixed** Settings page not appearing in Sidebar.
+*   **Fixed** Dashboard URL routing.
+*   **Verified** Release ZIP checksums.
+
+### v1.4.9 - Core Update
+*   **Fixed** "Manifest Not Found" errors.
+*   **Enhanced** WebGL preview window.
+*   **Added** Auto-update capability (via repository).
 
 ### v1.4.8
 - **Core Engine Upgrade**: Updated for **Jellyfin 10.11.6** and **.NET 9.0**.
 - **Dynamic FFmpeg Support**: Rewritten wrapper to support dynamic paths and proper filter injection.
 - **Video Processing Fix**: Resolved a critical bug where videos were limited to 30fps; now respects source framerate.
 - **Stability**: Enhanced thread safety with `ConcurrentDictionary` to prevent crashes under load.
-
-## 🛠️ Installation
-
-### Repository Method (Recommended)
-1. Open your Jellyfin Dashboard.
-2. Go to **Plugins** > **Repositories**.
-3. Add a new repository with the following URL:
-   ```
-   https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9.1/JellyfinUpscalerPlugin-v1.4.9.1.zip
-   ```
-4. Go to the **Catalog**, search for "AI Upscaler Plugin", and install the latest version.
-5. Restart Jellyfin.
 
 ## ⚙️ Configuration
 

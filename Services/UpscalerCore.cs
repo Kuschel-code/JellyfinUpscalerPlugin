@@ -44,16 +44,20 @@ namespace JellyfinUpscalerPlugin.Services
         
         private PluginConfiguration Config => Plugin.Instance?.Configuration ?? new PluginConfiguration();
         
+        private readonly ModelManager _modelManager;
+        
         public UpscalerCore(
             ILogger<UpscalerCore> logger,
             IMediaEncoder mediaEncoder,
             IFileSystem fileSystem,
-            IApplicationPaths appPaths)
+            IApplicationPaths appPaths,
+            ModelManager modelManager)
         {
             _logger = logger;
             _mediaEncoder = mediaEncoder;
             _fileSystem = fileSystem;
             _appPaths = appPaths;
+            _modelManager = modelManager;
             
             InitializeAIModels();
         }
@@ -121,62 +125,45 @@ namespace JellyfinUpscalerPlugin.Services
         }
 
         /// <summary>
-        /// Load available AI models from models directory
+        /// Load available AI models using ModelManager
         /// </summary>
         private void LoadAvailableModels()
         {
-            var modelsPath = Path.Combine(_appPaths.DataPath, "plugins", "configurations", "JellyfinUpscalerPlugin", "models");
+            // Define core models we want to ensure are available
+            var coreModels = new[] { "fsrcnn-light", "fsrcnn", "esrgan", "realesrgan", "waifu2x" };
             
-            if (!Directory.Exists(modelsPath))
+            _ = Task.Run(async () =>
             {
-                Directory.CreateDirectory(modelsPath);
-                _logger.LogInformation($"📁 Created models directory: {modelsPath}");
-                return;
-            }
+                foreach (var modelName in coreModels)
+                {
+                    try
+                    {
+                        var modelPath = await _modelManager.GetModelPathAsync(modelName);
+                        
+                        if (modelPath != null && File.Exists(modelPath))
+                        {
+                            var session = new InferenceSession(modelPath, _sessionOptions["default"]);
+                            lock (_modelSessions)
+                            {
+                                _modelSessions[modelName] = session;
+                            }
+                            _logger.LogInformation($"📦 Loaded AI model: {modelName}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, $"⚠️ Failed to load model: {modelName}");
+                    }
+                }
 
-            var modelFiles = Directory.GetFiles(modelsPath, "*.onnx");
-            
-            foreach (var modelFile in modelFiles)
-            {
-                try
+                if (_modelSessions.Count == 0)
                 {
-                    var modelName = Path.GetFileNameWithoutExtension(modelFile);
-                    var session = new InferenceSession(modelFile, _sessionOptions["default"]);
-                    _modelSessions[modelName] = session;
-                    
-                    _logger.LogInformation($"📦 Loaded AI model: {modelName}");
+                    _logger.LogWarning("⚠️ No valid ONNX models loaded. Upscaling will fallback to standard algorithms.");
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, $"⚠️ Failed to load model: {Path.GetFileName(modelFile)}");
-                }
-            }
-            
-            // If no models found, create placeholder entries
-            if (_modelSessions.Count == 0)
-            {
-                _logger.LogWarning("⚠️ No ONNX models found. Please add AI models to the models directory.");
-                CreatePlaceholderModels();
-            }
+            });
         }
 
-        /// <summary>
-        /// Create placeholder model entries for development
-        /// </summary>
-        private void CreatePlaceholderModels()
-        {
-            var placeholderModels = new[] 
-            {
-                "realesrgan", "esrgan", "waifu2x", "srcnn", "fsrcnn", "edsr", "swinir", "hat"
-            };
-            
-            foreach (var model in placeholderModels)
-            {
-                // Create placeholder session (will be replaced with actual models)
-                _modelSessions[model] = null;
-                _logger.LogDebug($"📝 Created placeholder for model: {model}");
-            }
-        }
+
 
         /// <summary>
         /// Real hardware detection and optimization
