@@ -13,7 +13,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Jellyfin.Controller" Version="10.11.6" />
+    <PackageReference Include="Jellyfin.Controller" Version="10.11.6" >
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    
+    <PackageReference Include="Jellyfin.Model" Version="10.11.6" >
+    <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
     <!-- Microsoft.Extensions and System.Text.Json provided transitively by Jellyfin.Controller -->
     
     <!-- AI & Machine Learning Libraries -->
