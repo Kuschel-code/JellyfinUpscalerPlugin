@@ -34,13 +34,14 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly LibraryScanHelper _libraryScanHelper;
         
         // Processing queue for concurrent streams
+        // Processing queue for concurrent streams
         private readonly SemaphoreSlim _processingSemaphore;
-        private readonly Dictionary<string, ProcessingJob> _activeJobs = new();
-        private readonly Dictionary<string, CancellationTokenSource> _jobCancellationTokens = new();
-        private readonly Dictionary<string, bool> _pausedJobs = new();
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, ProcessingJob> _activeJobs = new();
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, CancellationTokenSource> _jobCancellationTokens = new();
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> _pausedJobs = new();
         
         // Performance monitoring
-        private readonly Dictionary<string, VideoProcessingMetrics> _performanceHistory = new();
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, VideoProcessingMetrics> _performanceHistory = new();
         private readonly Timer? _statisticsTimer;
         
         // FFmpeg configuration
@@ -194,9 +195,9 @@ namespace JellyfinUpscalerPlugin.Services
             finally
             {
                 _processingSemaphore.Release();
-                _activeJobs.Remove(jobId);
-                _jobCancellationTokens.Remove(jobId);
-                _pausedJobs.Remove(jobId);
+                _activeJobs.TryRemove(jobId, out _);
+                _jobCancellationTokens.TryRemove(jobId, out _);
+                _pausedJobs.TryRemove(jobId, out _);
                 cts.Dispose();
             }
         }
@@ -498,7 +499,8 @@ namespace JellyfinUpscalerPlugin.Services
                     var framesDir = Path.Combine(tempDir, "frames");
                     Directory.CreateDirectory(framesDir);
                     
-                    await ExtractFramesAsync(inputPath, framesDir, cancellationToken);
+                    var framesFps = job.InputInfo?.FrameRate ?? 30.0;
+                    await ExtractFramesAsync(inputPath, framesDir, framesFps, cancellationToken);
                     
                     // 2. Process frames with AI
                     var processedDir = Path.Combine(tempDir, "processed");
@@ -507,7 +509,7 @@ namespace JellyfinUpscalerPlugin.Services
                     await ProcessFramesAsync(framesDir, processedDir, job.OptimizedOptions, cancellationToken);
                     
                     // 3. Reconstruct video
-                    await ReconstructVideoAsync(processedDir, inputPath, outputPath, job.OptimizedOptions, cancellationToken);
+                    await ReconstructVideoAsync(processedDir, inputPath, outputPath, job.OptimizedOptions, framesFps, cancellationToken);
                     
                     return new VideoProcessingResult
                     {
@@ -583,9 +585,11 @@ namespace JellyfinUpscalerPlugin.Services
         /// <summary>
         /// Extract frames from video
         /// </summary>
-        private async Task ExtractFramesAsync(string inputPath, string framesDir, CancellationToken cancellationToken)
+        private async Task ExtractFramesAsync(string inputPath, string framesDir, double frameRate, CancellationToken cancellationToken)
         {
-            var args = $"-i \"{inputPath}\" -vf fps=30 \"{framesDir}/frame_%06d.png\"";
+            // Use provided frame rate or default to 30 if invalid
+            var effectiveFps = frameRate > 0 ? frameRate : 30;
+            var args = $"-i \"{inputPath}\" -vf fps={effectiveFps} \"{framesDir}/frame_%06d.png\"";
             
             var result = await Cli.Wrap(_ffmpegPath)
                 .WithArguments(args)
@@ -695,10 +699,12 @@ namespace JellyfinUpscalerPlugin.Services
             string originalPath,
             string outputPath,
             VideoProcessingOptions options,
+            double frameRate,
             CancellationToken cancellationToken)
         {
             var tempAudioPath = Path.Combine(Path.GetTempPath(), $"temp_audio_{Guid.NewGuid()}.aac");
             var hasAudio = false;
+            var effectiveFps = frameRate > 0 ? frameRate : 30.0;
             
             try
             {
@@ -726,11 +732,11 @@ namespace JellyfinUpscalerPlugin.Services
             string reconstructArgs;
             if (hasAudio && File.Exists(tempAudioPath))
             {
-                reconstructArgs = $"-framerate 30 -i \"{processedDir}/frame_%06d.png\" -i \"{tempAudioPath}\" -c:v libx264 -c:a copy -pix_fmt yuv420p -y \"{outputPath}\"";
+                reconstructArgs = $"-framerate {effectiveFps} -i \"{processedDir}/frame_%06d.png\" -i \"{tempAudioPath}\" -c:v libx264 -c:a copy -pix_fmt yuv420p -y \"{outputPath}\"";
             }
             else
             {
-                reconstructArgs = $"-framerate 30 -i \"{processedDir}/frame_%06d.png\" -c:v libx264 -pix_fmt yuv420p -y \"{outputPath}\"";
+                reconstructArgs = $"-framerate {effectiveFps} -i \"{processedDir}/frame_%06d.png\" -c:v libx264 -pix_fmt yuv420p -y \"{outputPath}\"";
             }
             
             var result = await Cli.Wrap(_ffmpegPath)
@@ -954,7 +960,7 @@ namespace JellyfinUpscalerPlugin.Services
             if (_performanceHistory.Count > 100)
             {
                 var oldestKey = _performanceHistory.Keys.OrderBy(k => _performanceHistory[k].Timestamp).First();
-                _performanceHistory.Remove(oldestKey);
+                _performanceHistory.TryRemove(oldestKey, out _);
             }
         }
 
