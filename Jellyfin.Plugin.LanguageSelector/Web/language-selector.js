@@ -12,9 +12,7 @@
         'de': { icon: 'de.svg', label: 'German Audio' },
         'jp': { icon: 'jp.svg', label: 'Japanese Audio' },
         'jp-de': { icon: 'jp-de.svg', label: 'Japanese Audio + German Subtitles' },
-        'jp-en': { icon: 'jp-en.svg', label: 'Japanese Audio + English Subtitles' },
         'jp-us': { icon: 'jp-en.svg', label: 'Japanese Audio + English Subtitles' },
-        'en': { icon: 'us.svg', label: 'English Audio' },
         'us': { icon: 'us.svg', label: 'English Audio' }
     };
 
@@ -202,7 +200,7 @@
             const episodeCards = document.querySelectorAll('.listItem[data-type="Episode"]');
             if (episodeCards.length === 0) return;
 
-            episodeCards.forEach(async (card) => {
+            const promises = Array.from(episodeCards).map(async (card) => {
                 if (card.querySelector('.episode-language-indicator')) return;
 
                 const itemId = card.getAttribute('data-id');
@@ -230,6 +228,8 @@
                     console.error('Error fetching episode languages:', error);
                 }
             });
+
+            await Promise.allSettled(promises);
         }
 
         addEpisodeLanguageIndicator(card, languages) {

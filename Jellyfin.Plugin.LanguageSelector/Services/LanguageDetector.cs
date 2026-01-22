@@ -46,9 +46,9 @@ public class LanguageDetector
         var audioLang = NormalizeLanguageCode(audioLanguage);
         var subLang = NormalizeLanguageCode(subtitleLanguage);
         
-        if (audioLang == "de" && string.IsNullOrEmpty(subtitleLanguage))
+        if (string.IsNullOrEmpty(subtitleLanguage))
         {
-            return "de";
+            return audioLang;
         }
         
         if (audioLang == "jp" && subLang == "de")
@@ -61,12 +61,7 @@ public class LanguageDetector
             return "jp-us";
         }
         
-        if (!string.IsNullOrEmpty(subtitleLanguage))
-        {
-            return $"{audioLang}-{subLang}";
-        }
-        
-        return audioLang;
+        return $"{audioLang}-{subLang}";
     }
     
     public string GetDisplayName(string? audioLanguage, string? subtitleLanguage)
