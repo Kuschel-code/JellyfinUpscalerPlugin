@@ -43,6 +43,8 @@ namespace JellyfinUpscalerPlugin
         /// </summary>
         public static Plugin? Instance { get; private set; }
 
+
+
         /// <summary>
         /// Gets the plugin web pages for configuration.
         /// </summary>

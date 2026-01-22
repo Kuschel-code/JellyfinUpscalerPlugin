@@ -2,18 +2,18 @@
   "guid": "f87f700e-679d-43e6-9c7c-b3a410dc3f22",
   "name": "AI Upscaler Plugin",
   "description": "AI-powered video upscaling plugin with automated hardware benchmarking, intelligent fallback system, pre-processing cache, and advanced low-end hardware support. Features comprehensive performance testing, comparison view, TV remote optimization, and sidebar integration.",
-  "imageUrl": "https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/logo.png",
+  "imageUrl": "https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/thumb.png",
   "overview": "Revolutionary AI upscaling plugin with automated hardware benchmarking, intelligent fallback system, pre-processing cache, and advanced low-end hardware support. Features comprehensive performance testing, comparison view, TV remote optimization, and sidebar integration like Playback Reporting plugin.",
   "owner": "Kuschel-code",
   "category": "Video Enhancement",
   "versions": [
     {
-      "version": "1.4.8.1",
-      "changelog": "v1.4.8: Updated for Jellyfin 10.11.6 (.NET 9.0). Fixed video processing FPS issues and improved thread safety. FFmpeg wrapper now supports dynamic paths and filter injection.",
+      "version": "1.4.9",
+      "changelog": "v1.4.9: Fix plugin image missing in newer servers (embedded thumb.png). Fixed settings button link and updated sidebar integration.",
       "targetAbi": "10.11.0.0",
-      "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.8.1/JellyfinUpscalerPlugin-v1.4.8.1.zip",
-      "checksum": "371bc2b94b1080b13bced3ae436e870c",
-      "timestamp": "2026-01-22T11:00:48.000Z"
+      "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9/JellyfinUpscalerPlugin-v1.4.9.zip",
+      "checksum": "B2BE8A124033BDC66CA0F3D6E35EDC1E",
+      "timestamp": "2026-01-22T12:00:00.000Z"
     },
     {
       "version": "1.4.7.1",
