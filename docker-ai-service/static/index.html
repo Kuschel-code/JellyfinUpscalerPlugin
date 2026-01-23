@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Upscaler Service</title>
+    <style>
+        :root {
+            --bg-primary: #0f0f1a;
+            --bg-secondary: #1a1a2e;
+            --bg-card: #16213e;
+            --accent: #7c3aed;
+            --accent-light: #a78bfa;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent-light) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-top: 1rem;
+        }
+
+        .status-badge.online {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .status-badge.offline {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--error);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-badge.online .status-dot {
+            background: var(--success);
+        }
+
+        .status-badge.offline .status-dot {
+            background: var(--error);
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Grid Layout */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(124, 58, 237, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+        }
+
+        .card-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        /* Info Grid */
+        .info-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: 0.5rem;
+        }
+
+        .info-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .info-value {
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .info-value.success {
+            color: var(--success);
+        }
+
+        .info-value.warning {
+            color: var(--warning);
+        }
+
+        .info-value.error {
+            color: var(--error);
+        }
+
+        /* Models List */
+        .model-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .model-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+        }
+
+        .model-info {
+            flex: 1;
+        }
+
+        .model-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .model-desc {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .model-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-downloaded {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .badge-loaded {
+            background: rgba(124, 58, 237, 0.2);
+            color: var(--accent-light);
+        }
+
+        .badge-pending {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            border: none;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        /* Test Section */
+        .test-section {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 0.75rem;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent);
+            background: rgba(124, 58, 237, 0.05);
+        }
+
+        .upload-area.dragover {
+            border-color: var(--accent);
+            background: rgba(124, 58, 237, 0.1);
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .preview-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .preview-box {
+            aspect-ratio: 16/9;
+            background: var(--bg-secondary);
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .preview-box img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .preview-label {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Loading */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            z-index: 1000;
+        }
+
+        .toast {
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .toast.success {
+            background: rgba(16, 185, 129, 0.9);
+        }
+
+        .toast.error {
+            background: rgba(239, 68, 68, 0.9);
+        }
+
+        .toast.info {
+            background: rgba(124, 58, 237, 0.9);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.75rem;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .preview-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🚀 AI Upscaler Service</h1>
+            <p>Neural network image upscaling for Jellyfin</p>
+            <div id="statusBadge" class="status-badge online">
+                <span class="status-dot"></span>
+                <span id="statusText">Checking...</span>
+            </div>
+        </header>
+
+        <div class="grid">
+            <!-- Service Info -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">📊</div>
+                    <h2 class="card-title">Service Status</h2>
+                </div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Current Model</span>
+                        <span id="currentModel" class="info-value">None</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">GPU Available</span>
+                        <span id="gpuStatus" class="info-value">Checking...</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Providers</span>
+                        <span id="providers" class="info-value">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Active Requests</span>
+                        <span id="activeRequests" class="info-value">0 / 4</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Models -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">🧠</div>
+                    <h2 class="card-title">AI Models</h2>
+                </div>
+                <div id="modelList" class="model-list">
+                    <div class="info-item">Loading models...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Upscaling -->
+        <div class="test-section">
+            <div class="card-header">
+                <div class="card-icon">🖼️</div>
+                <h2 class="card-title">Test Upscaling</h2>
+            </div>
+
+            <div id="uploadArea" class="upload-area">
+                <div class="upload-icon">📤</div>
+                <p>Drop an image here or click to upload</p>
+                <input type="file" id="fileInput" accept="image/*" style="display: none;">
+            </div>
+
+            <div class="btn-group" style="justify-content: center;">
+                <button id="upscaleBtn" class="btn btn-primary" disabled>
+                    <span>⚡ Upscale Image</span>
+                </button>
+            </div>
+
+            <div class="preview-container" style="display: none;" id="previewContainer">
+                <div>
+                    <div class="preview-box" id="originalPreview"></div>
+                    <p class="preview-label">Original</p>
+                </div>
+                <div>
+                    <div class="preview-box" id="upscaledPreview"></div>
+                    <p class="preview-label">Upscaled</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script>
+        // State
+        let selectedFile = null;
+        let currentModelLoaded = null;
+
+        // API calls
+        async function fetchStatus() {
+            try {
+                const res = await fetch('/status');
+                const data = await res.json();
+                updateStatusUI(data);
+            } catch (e) {
+                showToast('Failed to fetch status', 'error');
+            }
+        }
+
+        async function fetchModels() {
+            try {
+                const res = await fetch('/models');
+                const data = await res.json();
+                updateModelsUI(data.models);
+            } catch (e) {
+                showToast('Failed to fetch models', 'error');
+            }
+        }
+
+        async function downloadModel(modelName) {
+            showToast(`Downloading ${modelName}...`, 'info');
+            try {
+                const formData = new FormData();
+                formData.append('model_name', modelName);
+                const res = await fetch('/models/download', { method: 'POST', body: formData });
+                if (res.ok) {
+                    showToast(`Model ${modelName} downloaded!`, 'success');
+                    fetchModels();
+                } else {
+                    throw new Error('Download failed');
+                }
+            } catch (e) {
+                showToast(`Failed to download ${modelName}`, 'error');
+            }
+        }
+
+        async function loadModel(modelName) {
+            showToast(`Loading ${modelName}...`, 'info');
+            try {
+                const formData = new FormData();
+                formData.append('model_name', modelName);
+                formData.append('use_gpu', 'true');
+                const res = await fetch('/models/load', { method: 'POST', body: formData });
+                if (res.ok) {
+                    showToast(`Model ${modelName} loaded!`, 'success');
+                    fetchStatus();
+                    fetchModels();
+                } else {
+                    throw new Error('Load failed');
+                }
+            } catch (e) {
+                showToast(`Failed to load ${modelName}`, 'error');
+            }
+        }
+
+        async function upscaleImage() {
+            if (!selectedFile) return;
+
+            const btn = document.getElementById('upscaleBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Processing...';
+
+            try {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                formData.append('scale', '2');
+
+                const res = await fetch('/upscale', { method: 'POST', body: formData });
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    document.getElementById('upscaledPreview').innerHTML = `<img src="${url}" alt="Upscaled">`;
+                    showToast('Upscaling complete!', 'success');
+                } else {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Upscaling failed');
+                }
+            } catch (e) {
+                showToast(e.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>⚡ Upscale Image</span>';
+            }
+        }
+
+        // UI Updates
+        function updateStatusUI(data) {
+            const badge = document.getElementById('statusBadge');
+            const statusText = document.getElementById('statusText');
+
+            badge.className = 'status-badge online';
+            statusText.textContent = 'Running';
+
+            document.getElementById('currentModel').textContent = data.current_model || 'None';
+            document.getElementById('currentModel').className = 'info-value ' + (data.current_model ? 'success' : '');
+
+            const hasGpu = data.available_providers.some(p => p.includes('CUDA') || p.includes('Tensorrt'));
+            document.getElementById('gpuStatus').textContent = hasGpu ? '✅ Yes' : '❌ No';
+            document.getElementById('gpuStatus').className = 'info-value ' + (hasGpu ? 'success' : 'warning');
+
+            const shortProviders = data.available_providers
+                .map(p => p.replace('ExecutionProvider', ''))
+                .slice(0, 3)
+                .join(', ');
+            document.getElementById('providers').textContent = shortProviders;
+
+            document.getElementById('activeRequests').textContent =
+                `${data.processing_count} / ${data.max_concurrent}`;
+
+            currentModelLoaded = data.current_model;
+            updateUpscaleButton();
+        }
+
+        function updateModelsUI(models) {
+            const container = document.getElementById('modelList');
+            container.innerHTML = models.map(m => `
+                <div class="model-item">
+                    <div class="model-info">
+                        <div class="model-name">${m.name}</div>
+                        <div class="model-desc">${m.description}</div>
+                    </div>
+                    <div class="model-status">
+                        ${m.loaded ? '<span class="badge badge-loaded">Loaded</span>' : ''}
+                        ${m.downloaded && !m.loaded ? '<span class="badge badge-downloaded">Ready</span>' : ''}
+                        ${!m.downloaded ? '<span class="badge badge-pending">Not Downloaded</span>' : ''}
+                    </div>
+                    <div class="btn-group">
+                        ${!m.downloaded ? `<button class="btn btn-secondary" onclick="downloadModel('${m.id}')">Download</button>` : ''}
+                        ${m.downloaded && !m.loaded ? `<button class="btn btn-primary" onclick="loadModel('${m.id}')">Load</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateUpscaleButton() {
+            const btn = document.getElementById('upscaleBtn');
+            btn.disabled = !selectedFile || !currentModelLoaded;
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        // File handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) return;
+            selectedFile = file;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('originalPreview').innerHTML = `<img src="${e.target.result}" alt="Original">`;
+                document.getElementById('upscaledPreview').innerHTML = '<span style="color: var(--text-secondary)">Click Upscale</span>';
+                document.getElementById('previewContainer').style.display = 'grid';
+            };
+            reader.readAsDataURL(file);
+            updateUpscaleButton();
+        }
+
+        document.getElementById('upscaleBtn').addEventListener('click', upscaleImage);
+
+        // Initialize
+        fetchStatus();
+        fetchModels();
+        setInterval(fetchStatus, 10000);
+    </script>
+</body>
+
+</html>

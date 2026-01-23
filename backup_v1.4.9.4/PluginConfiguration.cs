@@ -5,7 +5,7 @@ using MediaBrowser.Model.Plugins;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// Plugin Configuration - v1.4.9.5 (Docker-based AI Service)
+    /// Plugin Configuration - v1.4.9.4
     /// </summary>
     public class PluginConfiguration : BasePluginConfiguration
     {
@@ -37,17 +37,16 @@ namespace JellyfinUpscalerPlugin
         public int MaxCacheAgeDays { get; set; } = 30;
         public int CacheSizeMB { get; set; } = 5120; // 5GB default
         
-        // AI Service Configuration (Docker)
-        public string AiServiceUrl { get; set; } = "http://localhost:5000";
+        // Model Configuration
         public string ModelDownloadUrl { get; set; } = "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/models-v1.0";
         
         // Version tracking
-        public string PluginVersion { get; set; } = "1.4.9.5";
+        public string PluginVersion { get; set; } = "1.4.9.4";
         public DateTime LastConfigUpdate { get; set; } = DateTime.UtcNow;
 
         public PluginConfiguration()
         {
-            PluginVersion = "1.4.9.5";
+            PluginVersion = "1.4.9.4";
             LastConfigUpdate = DateTime.UtcNow;
         }
     }

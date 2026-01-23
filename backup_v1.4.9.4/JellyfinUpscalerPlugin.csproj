@@ -6,23 +6,35 @@
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <AssemblyTitle>AI Upscaler Plugin</AssemblyTitle>
-    <AssemblyVersion>1.4.9.5</AssemblyVersion>
-    <FileVersion>1.4.9.5</FileVersion>
+    <AssemblyVersion>1.4.9.4</AssemblyVersion>
+    <FileVersion>1.4.9.4</FileVersion>
     <NoWarn>CS8632</NoWarn>
     <Nullable>enable</Nullable>
-    <!-- AI processing now handled by external Docker service - minimal dependencies -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Jellyfin.Controller" Version="10.11.6" PrivateAssets="all" />
     <!-- Microsoft.Extensions and System.Text.Json provided transitively by Jellyfin.Controller -->
     
-    <!-- FFmpeg Integration (for frame extraction/encoding only) -->
+    <!-- AI & Machine Learning Libraries -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.16.3" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.Gpu" Version="1.16.3" />
+    <PackageReference Include="OpenCvSharp4" Version="4.8.0.20230708" />
+    <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.8.0.20230708" />
+    
+    <!-- FFmpeg Integration -->
     <PackageReference Include="FFMpegCore" Version="5.1.0" />
     <PackageReference Include="CliWrap" Version="3.6.4" />
     
-    <!-- Image Processing (lightweight, no native dependencies) -->
+    <!-- Image Processing -->
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
+    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.4" />
+    
+    <!-- Performance -->
+    <PackageReference Include="System.Memory" Version="4.5.5" />
+    <PackageReference Include="System.Numerics.Vectors" Version="4.5.0" />
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
   </ItemGroup>
 
   <!-- Embedded resources for configuration -->
@@ -47,11 +59,8 @@
     <Compile Remove="bin\**" />
     <Compile Remove="obj\**" />
     <Compile Remove="publish\**" />
-    <Compile Remove="publish_*\**" />
-    <Compile Remove="backup*\**" />
     <Compile Remove="wiki\**" />
     <Compile Remove="assets\**" />
-    <Compile Remove="docker-ai-service\**" />
   </ItemGroup>
 
 </Project>

@@ -1,9 +1,7 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
-using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -12,158 +10,132 @@ using MediaBrowser.Common.Configuration;
 namespace JellyfinUpscalerPlugin.Services
 {
     /// <summary>
-    /// Manages AI models, including verification and downloading.
-    /// Implements IDisposable to properly clean up HttpClient resources.
+    /// Model Manager - v1.4.9.5 Docker-based implementation
+    /// Delegates model management to the external Docker AI service.
     /// </summary>
     public class ModelManager : IDisposable
     {
         private readonly ILogger<ModelManager> _logger;
         private readonly IApplicationPaths _appPaths;
-        private readonly HttpClient _httpClient;
+        private readonly HttpUpscalerService? _httpUpscaler;
         private bool _disposed;
-        
-        // Default model download URL - can be overridden in plugin configuration
-        private const string DefaultModelBaseUrl = "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/models-v1.0/";
-        
-        private readonly string _modelsPath;
-        private readonly ConcurrentDictionary<string, bool> _modelAvailability = new();
 
-        public ModelManager(ILogger<ModelManager> logger, IApplicationPaths appPaths)
+        /// <summary>
+        /// Available model configurations.
+        /// </summary>
+        public static readonly Dictionary<string, ModelInfo> AvailableModels = new()
+        {
+            ["realesrgan-x2"] = new ModelInfo 
+            { 
+                Name = "Real-ESRGAN x2", 
+                Scale = 2, 
+                Description = "High-quality 2x upscaling for real-world images"
+            },
+            ["realesrgan-x4"] = new ModelInfo 
+            { 
+                Name = "Real-ESRGAN x4", 
+                Scale = 4, 
+                Description = "High-quality 4x upscaling for real-world images"
+            },
+            ["fsrcnn-x2"] = new ModelInfo 
+            { 
+                Name = "FSRCNN x2 (Fast)", 
+                Scale = 2, 
+                Description = "Fast 2x upscaling, lower quality but faster"
+            }
+        };
+
+        private PluginConfiguration Config => Plugin.Instance?.Configuration ?? new PluginConfiguration();
+
+        public ModelManager(
+            ILogger<ModelManager> logger,
+            IApplicationPaths appPaths)
         {
             _logger = logger;
             _appPaths = appPaths;
-            _httpClient = new HttpClient();
-            _httpClient.Timeout = TimeSpan.FromMinutes(10); // Allow long downloads
-
-            _modelsPath = Path.Combine(_appPaths.PluginConfigurationsPath, "JellyfinUpscaler", "models");
-            if (!Directory.Exists(_modelsPath))
-            {
-                Directory.CreateDirectory(_modelsPath);
-            }
+            
+            _logger.LogInformation("ModelManager v1.4.9.5 initialized - Docker-based model management");
         }
 
         /// <summary>
-        /// Gets the configured model base URL from plugin settings, or uses the default.
+        /// Get list of available models.
         /// </summary>
-        private string GetModelBaseUrl()
+        public IReadOnlyDictionary<string, ModelInfo> GetAvailableModels()
         {
+            return AvailableModels;
+        }
+
+        /// <summary>
+        /// Request model download from the AI service.
+        /// </summary>
+        public async Task<bool> DownloadModelAsync(string modelName, HttpUpscalerService httpUpscaler, CancellationToken cancellationToken = default)
+        {
+            if (!AvailableModels.ContainsKey(modelName))
+            {
+                _logger.LogWarning("Unknown model requested: {Model}", modelName);
+                return false;
+            }
+
             try
             {
-                var config = Plugin.Instance?.Configuration;
-                if (config != null && !string.IsNullOrWhiteSpace(config.ModelDownloadUrl))
-                {
-                    return config.ModelDownloadUrl.TrimEnd('/') + "/";
-                }
+                _logger.LogInformation("Requesting model download: {Model}", modelName);
+                return await httpUpscaler.DownloadModelAsync(modelName, cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Could not read model URL from config, using default.");
-            }
-            return DefaultModelBaseUrl;
-        }
-
-        public string GetModelsPath()
-        {
-            return _modelsPath;
-        }
-
-        public async Task<string?> GetModelPathAsync(string modelName, CancellationToken cancellationToken = default)
-        {
-            var fileName = $"{modelName}.onnx";
-            var filePath = Path.Combine(_modelsPath, fileName);
-
-            if (File.Exists(filePath))
-            {
-                return filePath;
-            }
-
-            // If not found, attempt download
-            _logger.LogInformation("Model {ModelName} not found locally. Attempting download...", modelName);
-            var downloaded = await DownloadModelAsync(modelName, filePath, cancellationToken);
-            
-            return downloaded ? filePath : null;
-        }
-
-        public Task<bool> IsModelAvailableAsync(string modelName)
-        {
-             var filePath = Path.Combine(_modelsPath, $"{modelName}.onnx");
-             return Task.FromResult(File.Exists(filePath));
-        }
-
-        public async Task<bool> DownloadModelAsync(string modelName, string destinationPath, CancellationToken cancellationToken)
-        {
-            try
-            {
-                var baseUrl = GetModelBaseUrl();
-                var url = $"{baseUrl}{modelName}.onnx";
-                _logger.LogInformation("Downloading model {ModelName} from {Url}...", modelName, url);
-
-                // Ensure directory exists
-                var dir = Path.GetDirectoryName(destinationPath);
-                if (dir != null && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
-
-                using (var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
-                {
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        _logger.LogError("Failed to download model {ModelName}. Status: {StatusCode}", modelName, response.StatusCode);
-                        return false;
-                    }
-
-                    using (var stream = await response.Content.ReadAsStreamAsync(cancellationToken))
-                    using (var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                    {
-                        await stream.CopyToAsync(fileStream, cancellationToken);
-                    }
-                }
-
-                _logger.LogInformation("Successfully downloaded model {ModelName} to {DestinationPath}", modelName, destinationPath);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to download model {ModelName}", modelName);
-                // Clean up partial file
-                if (File.Exists(destinationPath))
-                {
-                    try { File.Delete(destinationPath); } catch { }
-                }
+                _logger.LogError(ex, "Failed to download model {Model}", modelName);
                 return false;
             }
         }
-        
-        public IEnumerable<string> GetAvailableModels()
+
+        /// <summary>
+        /// Request model load in the AI service.
+        /// </summary>
+        public async Task<bool> LoadModelAsync(string modelName, HttpUpscalerService httpUpscaler, bool useGpu = true, CancellationToken cancellationToken = default)
         {
-            if (Directory.Exists(_modelsPath))
+            if (!AvailableModels.ContainsKey(modelName))
             {
-                var files = Directory.GetFiles(_modelsPath, "*.onnx");
-                foreach (var file in files)
-                {
-                    yield return Path.GetFileNameWithoutExtension(file);
-                }
+                _logger.LogWarning("Unknown model requested: {Model}", modelName);
+                return false;
+            }
+
+            try
+            {
+                _logger.LogInformation("Requesting model load: {Model}, GPU: {UseGpu}", modelName, useGpu);
+                return await httpUpscaler.LoadModelAsync(modelName, useGpu, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load model {Model}", modelName);
+                return false;
             }
         }
 
         /// <summary>
-        /// Disposes the HttpClient to prevent memory leaks.
+        /// Get the models directory path.
         /// </summary>
-        public void Dispose()
+        public string GetModelsPath()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
+            return Path.Combine(_appPaths.PluginsPath, "AI Upscaler Plugin", "models");
         }
 
-        protected virtual void Dispose(bool disposing)
+        public void Dispose()
         {
             if (!_disposed)
             {
-                if (disposing)
-                {
-                    _httpClient?.Dispose();
-                }
                 _disposed = true;
             }
+            GC.SuppressFinalize(this);
         }
     }
-}
 
+    /// <summary>
+    /// Model information.
+    /// </summary>
+    public class ModelInfo
+    {
+        public string Name { get; set; } = string.Empty;
+        public int Scale { get; set; } = 2;
+        public string Description { get; set; } = string.Empty;
+    }
+}

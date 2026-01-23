@@ -20,9 +20,6 @@ namespace JellyfinUpscalerPlugin
             serviceCollection.AddSingleton<ModelManager>();
             serviceCollection.AddSingleton<UpscalerProgressHub>();
             serviceCollection.AddSingleton<LibraryScanHelper>();
-            
-            // HTTP-based AI Service (Docker)
-            serviceCollection.AddSingleton<HttpUpscalerService>();
 
             // Background / Hosted Services
             serviceCollection.AddHostedService<UpscalerService>();

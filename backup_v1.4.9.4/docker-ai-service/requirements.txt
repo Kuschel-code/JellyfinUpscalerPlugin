@@ -1,0 +1,17 @@
+# FastAPI and Server
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+aiofiles==23.2.1
+
+# AI/ML
+onnxruntime-gpu==1.18.0
+numpy>=1.24.0,<2.0.0
+
+# Image Processing
+opencv-python-headless==4.9.0.80
+Pillow>=10.0.0
+
+# Utilities
+pydantic>=2.0.0
+httpx>=0.26.0

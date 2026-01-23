@@ -1,0 +1,39 @@
+name: Build and Release STABLE
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build
+      run: dotnet build --no-restore -c Release
+      
+    - name: Publish
+      run: dotnet publish -c Release -o ./publish
+      
+    - name: Package Plugin
+      run: |
+        cd publish
+        zip -r ../JellyfinUpscalerPlugin-v1.4.1.zip ./*
+        
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: JellyfinUpscalerPlugin-v1.4.1
+        path: ./JellyfinUpscalerPlugin-v1.4.1.zip

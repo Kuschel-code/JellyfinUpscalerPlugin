@@ -1,0 +1,45 @@
+# Build artifacts
+bin/
+obj/
+publish/
+dist/
+release-*/
+*.dll
+*.pdb
+*.exe
+
+# Plugin packages
+*.zip
+*.rar
+*.7z
+*.nupkg
+
+# IDE files
+.vs/
+.vscode/
+*.swp
+*.lnk
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+benchmarks/
+models/*.onnx
+
+# Jellyfin specific
+data/
+plugins/
+cache/
+
+# Backup directories
+.backups/
+.archive/
+JellyfinUpscalerPlugin-Backup*/
+JellyfinUpscalerPlugin_Backup_*/
+JellyfinUpscalerPlugin-v*/
