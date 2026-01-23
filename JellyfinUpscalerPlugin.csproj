@@ -10,6 +10,7 @@
     <FileVersion>1.4.9.4</FileVersion>
     <NoWarn>CS8632</NoWarn>
     <Nullable>enable</Nullable>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
@@ -62,17 +63,5 @@
     <Compile Remove="assets\**" />
   </ItemGroup>
 
-  <!-- Exclude all native runtimes from being copied to output -->
-  <ItemGroup>
-    <None Remove="runtimes\**\*" />
-    <Content Remove="runtimes\**\*" />
-  </ItemGroup>
-
-  <!-- Prevent NuGet packages from copying native DLLs -->
-  <Target Name="RemoveNativeLibraries" AfterTargets="ResolvePackageAssets">
-    <ItemGroup>
-      <RuntimeTargetsCopyLocalItems Remove="@(RuntimeTargetsCopyLocalItems)" Condition="'%(RuntimeTargetsCopyLocalItems.AssetType)' == 'native'" />
-    </ItemGroup>
-  </Target>
-
 </Project>
+
