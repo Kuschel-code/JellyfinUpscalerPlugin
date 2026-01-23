@@ -26,6 +26,7 @@ namespace JellyfinUpscalerPlugin.Controllers
     /// AI Upscaler API Controller
     /// </summary>
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class UpscalerController : ControllerBase
     {
@@ -314,7 +315,15 @@ namespace JellyfinUpscalerPlugin.Controllers
                     return BadRequest(new { success = false, error = "Output path required" });
                 }
 
-                var outputDir = Path.GetDirectoryName(request.OutputPath);
+                // Security: Validate paths to prevent path traversal attacks
+                var fullOutputPath = Path.GetFullPath(request.OutputPath);
+                var jellyfinDataPath = Path.GetFullPath(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
+                if (fullOutputPath.Contains("..") || request.OutputPath.Contains(".."))
+                {
+                    return BadRequest(new { success = false, error = "Invalid output path - path traversal not allowed" });
+                }
+
+                var outputDir = Path.GetDirectoryName(fullOutputPath);
                 if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
                 {
                     Directory.CreateDirectory(outputDir);
@@ -529,12 +538,26 @@ namespace JellyfinUpscalerPlugin.Controllers
         [HttpPost("upscale/image")]
         [Consumes("application/octet-stream")]
         [Produces("application/octet-stream")]
+        [RequestSizeLimit(52428800)] // 50MB max
         public async Task<ActionResult> UpscaleImage([FromQuery] string model = "realesrgan", [FromQuery] int scale = 2)
         {
             try
             {
+                // Security: Limit upload size to prevent DOS attacks
+                const long maxSizeBytes = 50 * 1024 * 1024; // 50MB
+                if (Request.ContentLength > maxSizeBytes)
+                {
+                    return BadRequest(new { error = "Image too large. Maximum size is 50MB." });
+                }
+
                 using var memoryStream = new MemoryStream();
                 await Request.Body.CopyToAsync(memoryStream);
+                
+                if (memoryStream.Length > maxSizeBytes)
+                {
+                    return BadRequest(new { error = "Image too large. Maximum size is 50MB." });
+                }
+                
                 var inputImage = memoryStream.ToArray();
                 var upscaledImage = await _upscalerCore.UpscaleImageAsync(inputImage, model, scale);
                 return File(upscaledImage, "image/jpeg");

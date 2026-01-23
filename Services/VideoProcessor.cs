@@ -990,6 +990,18 @@ namespace JellyfinUpscalerPlugin.Services
         {
             _processingSemaphore?.Dispose();
             _statisticsTimer?.Dispose();
+            
+            // Dispose all job cancellation tokens to prevent memory leaks
+            foreach (var kvp in _jobCancellationTokens)
+            {
+                try
+                {
+                    kvp.Value?.Cancel();
+                    kvp.Value?.Dispose();
+                }
+                catch { /* Ignore disposal errors */ }
+            }
+            _jobCancellationTokens.Clear();
         }
     }
 }
