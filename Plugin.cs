@@ -8,8 +8,8 @@ using MediaBrowser.Model.Serialization;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// AI Upscaler Plugin for Jellyfin v1.4.9.3 - Stable Update with Modern UI & Sync
-    /// v1.4.9.3 - Service Registration Fixes & Settings Polish
+    /// AI Upscaler Plugin for Jellyfin v1.4.9.4 - Final Release
+    /// v1.4.9.4 - Settings Fix (PR #31), Cross-Platform Support
     /// </summary>
     public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     {

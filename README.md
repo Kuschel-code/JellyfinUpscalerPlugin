@@ -1,4 +1,4 @@
-# 🎮 Jellyfin AI Upscaler Plugin v1.4.9.3
+# 🎮 Jellyfin AI Upscaler Plugin v1.4.9.4
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -20,9 +20,15 @@ An advanced, AI-powered video enhancement plugin for Jellyfin. Improve your medi
 - **Job Control API**: Pause, resume, and cancel processing jobs via REST API.
 - **Dependency Validation**: Platform-specific native library isolation and verification.
 
-## 📋 Recent Updates (v1.4.8 - v1.4.9.3)
+## 📋 Recent Updates (v1.4.9.x)
 
-### v1.4.9.3 (Latest)
+### v1.4.9.4 (Latest - Final Release)
+- **Settings Page Fix (PR #31):** Added `ExcludeAssets` to Jellyfin.Controller package reference - settings page now visible.
+- **Cross-Platform:** Verified compatibility with Windows, macOS, and Linux.
+- **Complete DI Registration:** All services properly registered.
+- **Version Consistency:** All version strings synchronized.
+
+### v1.4.9.3
 - **Completeness:** Verified all services are registered in `PluginServiceRegistrator.cs`.
 - **Settings Version Fix:** Corrected `PluginConfiguration.cs` to display consistent version.
 
@@ -31,20 +37,17 @@ An advanced, AI-powered video enhancement plugin for Jellyfin. Improve your medi
 - **Real AI:** Replaced placeholder upscaling with actual ONNX Runtime inference.
 - **Model Manager:** New service to verify and download `.onnx` models.
 
-### v1.4.9.1
-- **Settings & UI Access**: Fixed an issue where the settings page was inaccessible. The "AI Upscaler Dashboard" and "AI Upscaler Settings" now properly appear in the sidebar.
-
 > [!IMPORTANT]  
-> **v1.4.9.3** is the latest stable release with all critical fixes and complete service registration.
+> **v1.4.9.4** is the final stable release with all critical fixes.
 
 ## 📥 Installation
 
 1.  Open Jellyfin Dashboard > **Plugins** > **Repositories** > **Add**.
 2.  Enter the URL:
     ```
-    https://raw.githubusercontent.com/Kuscheltier/JellyfinUpscalerPlugin/main/manifest.json
+    https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/manifest.json
     ```
-3.  Go to **Catalog**, find "AI Upscaler", and install **v1.4.9.3**.
+3.  Go to **Catalog**, find "AI Upscaler", and install **v1.4.9.4**.
 4.  Restart Jellyfin.
 
 ## 🚀 Key Features (Real Implementation)

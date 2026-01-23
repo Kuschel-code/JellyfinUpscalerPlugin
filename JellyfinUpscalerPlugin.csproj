@@ -6,14 +6,14 @@
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <AssemblyTitle>AI Upscaler Plugin</AssemblyTitle>
-    <AssemblyVersion>1.4.9.3</AssemblyVersion>
-    <FileVersion>1.4.9.3</FileVersion>
+    <AssemblyVersion>1.4.9.4</AssemblyVersion>
+    <FileVersion>1.4.9.4</FileVersion>
     <NoWarn>CS8632</NoWarn>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Jellyfin.Controller" Version="10.11.6" />
+    <PackageReference Include="Jellyfin.Controller" Version="10.11.6" PrivateAssets="all" />
     <!-- Microsoft.Extensions and System.Text.Json provided transitively by Jellyfin.Controller -->
     
     <!-- AI & Machine Learning Libraries -->
