@@ -4,12 +4,33 @@
             <div class="verticalSection">
                 <div class="sectionTitleContainer flex align-items-center">
                     <h2 class="sectionTitle">🎮 AI Upscaler Plugin</h2>
-                    <span class="bubble ml-1">v1.4.9.4</span>
+                    <span class="bubble ml-1">v1.4.9.5</span>
+                    <span class="bubble ml-1" style="background: #f59e0b;">TEST</span>
                 </div>
-                <p class="sectionDescription">Professional AI Video Enhancement for Jellyfin</p>
+                <p class="sectionDescription">Professional AI Video Enhancement for Jellyfin - Docker Microservice
+                    Architecture</p>
             </div>
 
             <form id="UpscalerConfigForm">
+                <!-- Docker AI Service Section -->
+                <div class="verticalSection"
+                    style="background: linear-gradient(135deg, #1e3a5f 0%, #0f1f3a 100%); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <h2 class="sectionTitle" style="color: #7dd3fc;">🐳 Docker AI Service</h2>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="AiServiceUrl">AI Service URL:</label>
+                        <input is="emby-input" type="text" id="AiServiceUrl" name="AiServiceUrl"
+                            placeholder="http://localhost:5000" />
+                        <div class="fieldDescription" style="color: #94a3b8;">URL zum Docker AI Container (Standard:
+                            http://localhost:5000)</div>
+                    </div>
+
+                    <div id="serviceStatus"
+                        style="margin-top: 0.5rem; padding: 0.5rem; border-radius: 4px; background: rgba(0,0,0,0.3);">
+                        <span id="serviceStatusText">Prüfe Verbindung...</span>
+                    </div>
+                </div>
+
                 <div class="verticalSection">
                     <h2 class="sectionTitle">⚙️ Basic Settings</h2>
 

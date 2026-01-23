@@ -1,105 +1,168 @@
-# 🎮 Jellyfin AI Upscaler Plugin v1.4.9.4
+# 🎮 Jellyfin AI Upscaler Plugin v1.4.9.5
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
 
-An advanced, AI-powered video enhancement plugin for Jellyfin. Improve your media in real-time or via pre-processing using state-of-the-art neural networks.
+> [!CAUTION]
+> **🧪 TEST PHASE - v1.4.9.5**
+> 
+> Diese Version befindet sich in der Testphase! AI-Upscaling funktioniert über einen separaten Docker Container.
+> Bitte melde Bugs im [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues).
 
-## 🚀 Key Features
+---
 
-- **Real-Time Upscaling**: Experience crystal-clear images during playback with WebGL client-side rendering.
-- **Hardware Acceleration**: Full support for NVIDIA (CUDA), VAAPI (Linux), QSV (Intel), and DirectML (Windows).
-- **Multiple AI Models**: Support for Real-ESRGAN, SwinIR, Waifu2x, and more.
-- **Hardware Benchmarking**: Built-in tools for detection and optimization based on server performance.
-- **Dedicated Dashboard**: AI Upscaler Dashboard in sidebar with hardware status, job monitoring, and quick actions.
-- **Modern UI Integration**: Fully compatible with Jellyfin 10.10+ Dashboard and Player.
-- **Comparison View**: Preview AI upscaling results before applying them to your library.
-- **Real-Time Progress Hub**: SignalR-compatible progress broadcasting to Jellyfin Dashboard.
-- **Auto Library Scanning**: Automatic library refresh after successful upscaling jobs.
-- **FFmpeg Wrapper**: Auto-configuration with hardware-aware upscaling filter injection.
-- **Job Control API**: Pause, resume, and cancel processing jobs via REST API.
-- **Dependency Validation**: Platform-specific native library isolation and verification.
+## 🐳 Neue Architektur: Docker AI Service
 
-## 📋 Recent Updates (v1.4.9.x)
+### Das Problem mit v1.4.9.4
 
-### v1.4.9.4 (Latest - Final Release)
-- **Settings Page Fix (PR #31):** Added `ExcludeAssets` to Jellyfin.Controller package reference - settings page now visible.
-- **Cross-Platform:** Verified compatibility with Windows, macOS, and Linux.
-- **Complete DI Registration:** All services properly registered.
-- **Version Consistency:** All version strings synchronized.
+Jellyfin's Plugin-System versucht **ALLE** `.dll` Dateien als .NET Assemblies zu laden. Native C++ Libraries (ONNX Runtime, CUDA, OpenCV) verursachten:
 
-### v1.4.9.3
-- **Completeness:** Verified all services are registered in `PluginServiceRegistrator.cs`.
-- **Settings Version Fix:** Corrected `PluginConfiguration.cs` to display consistent version.
+```
+System.BadImageFormatException: Bad IL format
+Failed to load assembly "onnxruntime_providers_shared.dll"
+```
 
-### v1.4.9.2
-- **CRITICAL FIX:** Removed DI anti-pattern causing startup crashes.
-- **Real AI:** Replaced placeholder upscaling with actual ONNX Runtime inference.
-- **Model Manager:** New service to verify and download `.onnx` models.
+**Resultat:** Plugin wurde deaktiviert, keine AI-Upscaling möglich.
 
-> [!IMPORTANT]  
-> **v1.4.9.4** is the final stable release with all critical fixes.
+### Die Lösung: Microservice Architektur
 
-## 📥 Installation
+```
+┌──────────────────────────────────────────┐
+│  Jellyfin Server                         │
+│  ┌────────────────────────────────────┐  │
+│  │  AI Upscaler Plugin v1.4.9.5       │  │
+│  │  ✅ Nur 759 KB (statt 417 MB!)     │  │
+│  │  ✅ Keine nativen DLLs             │  │
+│  │  ✅ Sendet Frames via HTTP         │  │
+│  └──────────────┬─────────────────────┘  │
+└─────────────────┼────────────────────────┘
+                  │ HTTP POST /upscale
+                  ▼
+┌──────────────────────────────────────────┐
+│  AI Upscaler Docker Container            │
+│  ┌────────────────────────────────────┐  │
+│  │  Python + FastAPI + ONNX Runtime   │  │
+│  │  ✅ CUDA / TensorRT / DirectML     │  │
+│  │  ✅ Real-ESRGAN, FSRCNN Models     │  │
+│  │  ✅ Web UI für Model Management    │  │
+│  └────────────────────────────────────┘  │
+└──────────────────────────────────────────┘
+```
 
-1.  Open Jellyfin Dashboard > **Plugins** > **Repositories** > **Add**.
-2.  Enter the URL:
-    ```
-    https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/manifest.json
-    ```
-3.  Go to **Catalog**, find "AI Upscaler", and install **v1.4.9.4**.
-4.  Restart Jellyfin.
+### Vorteile
 
-## 🚀 Key Features (Real Implementation)
+| Feature | Alt (v1.4.9.4) | Neu (v1.4.9.5) |
+|---------|---------------|----------------|
+| **ZIP Größe** | 417 MB | 759 KB |
+| **Native DLLs** | Im Plugin → Crashes | Im Docker → Isoliert |
+| **GPU Support** | Probleme mit Jellyfin | Voller CUDA/TensorRT |
+| **Updates** | Neues Plugin bauen | Docker Image pullen |
 
-*   **Real AI Inference:** Uses `Microsoft.ML.OnnxRuntime.Gpu` to run actual neural networks.
-*   **Hardware Acceleration:** Supports NVIDIA (CUDA) and DirectML (Windows).
-*   **Model Manager:** Automatically checks for and verifies `.onnx` model files.
-*   **Smart Caching:** Prevents re-processing of already upscaled segments.
-*   **FFmpeg Integration:** Seamlessly pipes frames between Jellyfin and the AI engine.
+---
+
+## 📥 Installation (2 Schritte)
+
+### Schritt 1: Docker AI Service starten
+
+```bash
+# Clone oder download docker-ai-service Ordner
+cd docker-ai-service
+docker-compose up -d --build
+```
+
+Öffne http://localhost:5000 um die Web UI zu sehen.
+
+### Schritt 2: Jellyfin Plugin installieren
+
+1. Öffne Jellyfin Dashboard → **Plugins** → **Repositories** → **Add**
+2. URL eingeben:
+   ```
+   https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/manifest.json
+   ```
+3. Gehe zu **Catalog**, finde "AI Upscaler", installiere **v1.4.9.5**
+4. Jellyfin neustarten
+5. In Plugin Settings: **AI Service URL** auf `http://localhost:5000` setzen
+
+---
+
+## 🚀 Features
+
+- **Real-Time Upscaling**: WebGL client-side rendering für Live-Preview
+- **Hardware Acceleration**: NVIDIA (CUDA), TensorRT, DirectML, CPU Fallback
+- **AI Models**: Real-ESRGAN, FSRCNN, SwinIR (via Docker)
+- **Hardware Benchmarking**: Automatische Erkennung der optimalen Einstellungen
+- **Dashboard**: AI Upscaler Dashboard im Sidebar mit Job-Monitoring
+- **Comparison View**: Vorher/Nachher Vergleich vor dem Processing
+- **FFmpeg Integration**: Automatische Filter-Injection
+- **Job Control API**: Pause, Resume, Cancel via REST API
+
+---
+
+## ⚙️ Konfiguration
+
+Nach der Installation findest du die Einstellungen unter **Dashboard → Plugins → AI Upscaler Plugin**.
+
+| Setting | Beschreibung |
+|---------|-------------|
+| **AI Service URL** | URL zum Docker Container (z.B. `http://nas:5000`) |
+| **Enable Plugin** | Globaler Schalter |
+| **Scaling Factor** | 2x oder 4x |
+| **Quality Level** | low / medium / high |
+| **Hardware Acceleration** | Auto-detect oder manuell |
+
+---
 
 ## 📋 Changelog
 
-### v1.4.9.2 - "The Real Deal" Update
-*   **FIXED CRITICAL CRASH:** Removed Dependency Injection anti-pattern that caused startup failures.
-*   **ADDED Real AI:** Replaced placeholder classes with actual `OnnxRuntime` inference engine.
-*   **ADDED Model Manager:** New service to verify and download `.onnx` models (fsrcnn, realesrgan, etc.).
-*   **ADDED Real Benchmarks:** `Run Benchmark` button now runs actual inference on test images to give real EPS/FPS numbers.
-*   **Verified Dependencies:** Added missing `Microsoft.ML.OnnxRuntime.Gpu` and `OpenCvSharp4` references.
+### v1.4.9.5 (TEST PHASE)
+- **🐳 Docker Microservice Architecture**: AI Processing in separatem Container
+- **📦 759 KB statt 417 MB**: Keine nativen DLLs mehr im Plugin
+- **🔧 Neuer HttpUpscalerService**: HTTP-basierte Kommunikation mit Docker
+- **🌐 Web UI**: Model Management unter http://localhost:5000
+- **✅ Kein BadImageFormatException mehr**: Jellyfin lädt nur .NET DLLs
 
-### v1.4.9.1 - Settings & UI Fix
-*   **Fixed** Settings page not appearing in Sidebar.
-*   **Fixed** Dashboard URL routing.
-*   **Verified** Release ZIP checksums.
+### v1.4.9.4
+- Settings Page Fix
+- Cross-Platform Support
+- Complete DI Registration
 
-### v1.4.9 - Core Update
-*   **Fixed** "Manifest Not Found" errors.
-*   **Enhanced** WebGL preview window.
-*   **Added** Auto-update capability (via repository).
+### v1.4.9.3
+- Verified Service Registration
+- Settings Version Fix
 
-### v1.4.8
-- **Core Engine Upgrade**: Updated for **Jellyfin 10.11.6** and **.NET 9.0**.
-- **Dynamic FFmpeg Support**: Rewritten wrapper to support dynamic paths and proper filter injection.
-- **Video Processing Fix**: Resolved a critical bug where videos were limited to 30fps; now respects source framerate.
-- **Stability**: Enhanced thread safety with `ConcurrentDictionary` to prevent crashes under load.
+---
 
-## ⚙️ Configuration
+## 🔧 Troubleshooting
 
-After installation, you can find settings under **Dashboard > Plugins > AI Upscaler Plugin**.
+### Plugin startet nicht
+```bash
+# Docker Container prüfen
+docker ps --filter name=jellyfin-ai-upscaler
 
-- **Enable Plugin**: Global switch for the upscaler.
-- **Scaling Factor**: Choose between 2x, 4x, or custom scaling.
-- **Hardware Detection**: The plugin automatically detects available GPUs and suggests optimal settings.
+# Logs anschauen
+docker logs jellyfin-ai-upscaler
+```
+
+### Upscaling funktioniert nicht
+1. Prüfe ob Docker läuft: `curl http://localhost:5000/health`
+2. Prüfe Plugin Settings: AI Service URL korrekt?
+3. Prüfe ob Model geladen: http://localhost:5000 → Web UI
+
+### GPU wird nicht erkannt
+```bash
+# NVIDIA Runtime prüfen
+docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi
+```
+
+---
 
 ## 📖 Wiki & Support
 
-Detailed guides, hardware lists, and troubleshooting can be found in our **[GitHub Wiki](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki)**.
+- [GitHub Wiki](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki)
+- [Issues / Bug Reports](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 
-- [Getting Started](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki/Quick-Start)
-- [Hardware Compatibility](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki/Hardware-Compatibility)
-- [Performance Benchmarks](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki/Performance-Benchmarks)
-- [FAQ](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki/FAQ)
+---
 
-## 📄 License
+## 📜 License
 
-This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
+MIT License - See [LICENSE](LICENSE) for details.

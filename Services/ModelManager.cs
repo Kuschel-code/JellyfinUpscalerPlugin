@@ -17,7 +17,6 @@ namespace JellyfinUpscalerPlugin.Services
     {
         private readonly ILogger<ModelManager> _logger;
         private readonly IApplicationPaths _appPaths;
-        private readonly HttpUpscalerService? _httpUpscaler;
         private bool _disposed;
 
         /// <summary>
