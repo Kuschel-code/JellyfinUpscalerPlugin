@@ -13,17 +13,17 @@ namespace JellyfinUpscalerPlugin.Services
 {
     /// <summary>
     /// Manages AI models, including verification and downloading.
+    /// Implements IDisposable to properly clean up HttpClient resources.
     /// </summary>
-    public class ModelManager
+    public class ModelManager : IDisposable
     {
         private readonly ILogger<ModelManager> _logger;
         private readonly IApplicationPaths _appPaths;
         private readonly HttpClient _httpClient;
+        private bool _disposed;
         
-        // Base URL for model downloads (Placeholder - needs a real repo or release URL)
-        // Using a reliable source or a placeholder that the user can configure/override is best.
-        // For now, I will use a placeholder URL that would need to be updated with the actual hosting location.
-        private const string ModelBaseUrl = "https://github.com/Kuscheltier/JellyfinUpscalerPlugin/releases/download/models-v1.0/"; 
+        // Default model download URL - can be overridden in plugin configuration
+        private const string DefaultModelBaseUrl = "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/models-v1.0/";
         
         private readonly string _modelsPath;
         private readonly ConcurrentDictionary<string, bool> _modelAvailability = new();
@@ -42,6 +42,26 @@ namespace JellyfinUpscalerPlugin.Services
             }
         }
 
+        /// <summary>
+        /// Gets the configured model base URL from plugin settings, or uses the default.
+        /// </summary>
+        private string GetModelBaseUrl()
+        {
+            try
+            {
+                var config = Plugin.Instance?.Configuration;
+                if (config != null && !string.IsNullOrWhiteSpace(config.ModelDownloadUrl))
+                {
+                    return config.ModelDownloadUrl.TrimEnd('/') + "/";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not read model URL from config, using default.");
+            }
+            return DefaultModelBaseUrl;
+        }
+
         public string GetModelsPath()
         {
             return _modelsPath;
@@ -58,24 +78,25 @@ namespace JellyfinUpscalerPlugin.Services
             }
 
             // If not found, attempt download
-            _logger.LogInformation($"Model {modelName} not found locally. Attempting download...");
+            _logger.LogInformation("Model {ModelName} not found locally. Attempting download...", modelName);
             var downloaded = await DownloadModelAsync(modelName, filePath, cancellationToken);
             
             return downloaded ? filePath : null;
         }
 
-        public async Task<bool> IsModelAvailableAsync(string modelName)
+        public Task<bool> IsModelAvailableAsync(string modelName)
         {
              var filePath = Path.Combine(_modelsPath, $"{modelName}.onnx");
-             return File.Exists(filePath);
+             return Task.FromResult(File.Exists(filePath));
         }
 
         public async Task<bool> DownloadModelAsync(string modelName, string destinationPath, CancellationToken cancellationToken)
         {
             try
             {
-                var url = $"{ModelBaseUrl}{modelName}.onnx";
-                _logger.LogInformation($"Downloading model {modelName} from {url}...");
+                var baseUrl = GetModelBaseUrl();
+                var url = $"{baseUrl}{modelName}.onnx";
+                _logger.LogInformation("Downloading model {ModelName} from {Url}...", modelName, url);
 
                 // Ensure directory exists
                 var dir = Path.GetDirectoryName(destinationPath);
@@ -85,7 +106,7 @@ namespace JellyfinUpscalerPlugin.Services
                 {
                     if (!response.IsSuccessStatusCode)
                     {
-                        _logger.LogError($"Failed to download model {modelName}. Status: {response.StatusCode}");
+                        _logger.LogError("Failed to download model {ModelName}. Status: {StatusCode}", modelName, response.StatusCode);
                         return false;
                     }
 
@@ -96,12 +117,12 @@ namespace JellyfinUpscalerPlugin.Services
                     }
                 }
 
-                _logger.LogInformation($"Successfully downloaded model {modelName} to {destinationPath}");
+                _logger.LogInformation("Successfully downloaded model {ModelName} to {DestinationPath}", modelName, destinationPath);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex,($"Failed to download model {modelName}"));
+                _logger.LogError(ex, "Failed to download model {ModelName}", modelName);
                 // Clean up partial file
                 if (File.Exists(destinationPath))
                 {
@@ -122,5 +143,27 @@ namespace JellyfinUpscalerPlugin.Services
                 }
             }
         }
+
+        /// <summary>
+        /// Disposes the HttpClient to prevent memory leaks.
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    _httpClient?.Dispose();
+                }
+                _disposed = true;
+            }
+        }
     }
 }
+
