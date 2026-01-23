@@ -1,53 +1,45 @@
-{
-  "guid": "f87f700e-679d-43e6-9c7c-b3a410dc3f22",
-  "name": "AI Upscaler Plugin",
-  "description": "AI-powered video upscaling plugin with automated hardware benchmarking, intelligent fallback system, pre-processing cache, and advanced low-end hardware support. Features comprehensive performance testing, comparison view, TV remote optimization, and sidebar integration.",
-  "imageUrl": "https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/thumb.png",
-  "overview": "Revolutionary AI upscaling plugin with automated hardware benchmarking, intelligent fallback system, pre-processing cache, and advanced low-end hardware support. Features comprehensive performance testing, comparison view, TV remote optimization, and sidebar integration like Playback Reporting plugin.",
-  "owner": "Kuschel-code",
-  "category": "Video Enhancement",
-  "versions": [
-    {
-      "version": "1.4.9.5",
-      "changelog": "v1.4.9.5: Docker Microservice Architecture - Eliminates native DLL conflicts. AI processing via external Docker container.",
-      "targetAbi": "10.11.6.0",
-      "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9.5/JellyfinUpscalerPlugin-v1.4.9.5.zip",
-      "checksum": "DAF3CB4AC3AC0BCCC8EDA4B6C0EBCD67",
-      "timestamp": "2026-01-23T18:30:00.000Z"
-    },
-    {
-      "version": "1.4.9.4",
-      "changelog": "v1.4.9.4: Final Release - Settings Page Fix, Cross-Platform Support, Complete DI Registration.",
-      "targetAbi": "10.11.6.0",
-      "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9.4/JellyfinUpscalerPlugin-v1.4.9.4.zip",
-      "checksum": "14595BAFE7AB2D9BBF89F450823D9B7B",
-      "timestamp": "2026-01-23T14:00:00.000Z"
-    },
-    {
-      "version": "1.4.9.3",
-      "changelog": "v1.4.9.3: Verified Service Registration and Settings Polish.",
-      "targetAbi": "10.11.6.0",
-      "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9.3/JellyfinUpscalerPlugin-v1.4.9.3.zip",
-      "checksum": "366344F460F2F9C8E3DBE7B011AC0E4F",
-      "timestamp": "2026-01-22T13:45:00.000Z"
-    },
-    {
-      "version": "1.4.9.2",
-      "changelog": "v1.4.9.2: Critical Update. Implemented Real AI Upscaling with ONNX Runtime, Fixed Dependency Injection crashes, Added Model Manager, and Hardware Benchmarking.",
-      "targetAbi": "10.11.6.0",
-      "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9.2/JellyfinUpscalerPlugin-v1.4.9.2.zip",
-      "checksum": "9A8D0F32A1A97F9944FF087F83546381",
-      "timestamp": "2026-01-22T13:30:00.000Z"
-    },
-    {
-      "version": "1.4.9.1",
-      "changelog": "v1.4.9.1: Fixed sidebar integration and settings access. Dashboard now appears correctly in sidebar with working settings link.",
-      "targetAbi": "10.11.0.0",
-      "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9.1/JellyfinUpscalerPlugin-v1.4.9.1.zip",
-      "checksum": "AEDCD9218979979DAC702475154A073E",
-      "timestamp": "2026-01-22T13:00:00.000Z"
-    }
-  ],
-  "repositoryUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin",
-  "repositoryName": "Kuschel-code/JellyfinUpscalerPlugin"
-}
+[
+  {
+    "guid": "f87f700e-679d-43e6-9c7c-b3a410dc3f22",
+    "name": "AI Upscaler Plugin",
+    "description": "AI-powered video upscaling plugin with Docker microservice architecture. Features automated hardware benchmarking, intelligent fallback system, pre-processing cache, and sidebar integration.",
+    "imageUrl": "https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/thumb.png",
+    "overview": "Revolutionary AI upscaling plugin with Docker-based AI processing. Eliminates native DLL conflicts. Features comparison view, TV remote optimization, and sidebar integration.",
+    "owner": "Kuschel-code",
+    "category": "Video Enhancement",
+    "versions": [
+      {
+        "version": "1.4.9.5",
+        "changelog": "v1.4.9.5: Docker Microservice Architecture - Eliminates native DLL conflicts. AI processing via external Docker container.",
+        "targetAbi": "10.11.6.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9.5/JellyfinUpscalerPlugin-v1.4.9.5.zip",
+        "checksum": "DAF3CB4AC3AC0BCCC8EDA4B6C0EBCD67",
+        "timestamp": "2026-01-23T18:30:00.000Z"
+      },
+      {
+        "version": "1.4.9.4",
+        "changelog": "v1.4.9.4: Final Release - Settings Page Fix, Cross-Platform Support, Complete DI Registration.",
+        "targetAbi": "10.11.6.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9.4/JellyfinUpscalerPlugin-v1.4.9.4.zip",
+        "checksum": "14595BAFE7AB2D9BBF89F450823D9B7B",
+        "timestamp": "2026-01-23T14:00:00.000Z"
+      },
+      {
+        "version": "1.4.9.3",
+        "changelog": "v1.4.9.3: Verified Service Registration and Settings Polish.",
+        "targetAbi": "10.11.6.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9.3/JellyfinUpscalerPlugin-v1.4.9.3.zip",
+        "checksum": "366344F460F2F9C8E3DBE7B011AC0E4F",
+        "timestamp": "2026-01-22T13:45:00.000Z"
+      },
+      {
+        "version": "1.4.9.2",
+        "changelog": "v1.4.9.2: Critical Update. Implemented Real AI Upscaling with ONNX Runtime, Fixed Dependency Injection crashes, Added Model Manager, and Hardware Benchmarking.",
+        "targetAbi": "10.11.6.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9.2/JellyfinUpscalerPlugin-v1.4.9.2.zip",
+        "checksum": "9A8D0F32A1A97F9944FF087F83546381",
+        "timestamp": "2026-01-22T13:30:00.000Z"
+      }
+    ]
+  }
+]
