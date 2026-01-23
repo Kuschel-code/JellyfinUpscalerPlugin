@@ -20,15 +20,16 @@ namespace JellyfinUpscalerPlugin.Services
         private bool _disposed;
 
         /// <summary>
-        /// Available model configurations.
+        /// Available model configurations - matches Docker AI service.
         /// </summary>
         public static readonly Dictionary<string, ModelInfo> AvailableModels = new()
         {
-            ["realesrgan-x2"] = new ModelInfo 
+            // === General Purpose ===
+            ["realesrgan-x4plus"] = new ModelInfo 
             { 
-                Name = "Real-ESRGAN x2", 
-                Scale = 2, 
-                Description = "High-quality 2x upscaling for real-world images"
+                Name = "Real-ESRGAN x4+ (Best Quality)", 
+                Scale = 4, 
+                Description = "Best quality 4x upscaling for photos and real-world images"
             },
             ["realesrgan-x4"] = new ModelInfo 
             { 
@@ -36,11 +37,59 @@ namespace JellyfinUpscalerPlugin.Services
                 Scale = 4, 
                 Description = "High-quality 4x upscaling for real-world images"
             },
+            ["realesrgan-x2"] = new ModelInfo 
+            { 
+                Name = "Real-ESRGAN x2", 
+                Scale = 2, 
+                Description = "High-quality 2x upscaling for real-world images"
+            },
+            
+            // === Anime/Cartoon ===
+            ["realesrgan-anime"] = new ModelInfo 
+            { 
+                Name = "Real-ESRGAN Anime x4", 
+                Scale = 4, 
+                Description = "Optimized for anime and cartoon content"
+            },
+            ["waifu2x-anime"] = new ModelInfo 
+            { 
+                Name = "Waifu2x Anime x2", 
+                Scale = 2, 
+                Description = "Classic anime upscaler, good for illustrations"
+            },
+            
+            // === Fast Models ===
             ["fsrcnn-x2"] = new ModelInfo 
             { 
                 Name = "FSRCNN x2 (Fast)", 
                 Scale = 2, 
-                Description = "Fast 2x upscaling, lower quality but faster"
+                Description = "Very fast 2x upscaling, good for real-time"
+            },
+            ["fsrcnn-x4"] = new ModelInfo 
+            { 
+                Name = "FSRCNN x4 (Fast)", 
+                Scale = 4, 
+                Description = "Fast 4x upscaling, lower quality but quick"
+            },
+            ["espcn-x2"] = new ModelInfo 
+            { 
+                Name = "ESPCN x2 (Fastest)", 
+                Scale = 2, 
+                Description = "Fastest model, minimal quality improvement"
+            },
+            
+            // === Quality Models ===
+            ["bsrgan-x4"] = new ModelInfo 
+            { 
+                Name = "BSRGAN x4 (Degraded Images)", 
+                Scale = 4, 
+                Description = "Best for old, compressed, or degraded images"
+            },
+            ["swinir-x4"] = new ModelInfo 
+            { 
+                Name = "SwinIR x4 (Transformer)", 
+                Scale = 4, 
+                Description = "Transformer-based model, high quality but slow"
             }
         };
 

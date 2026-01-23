@@ -43,27 +43,98 @@ class AppState:
 
 state = AppState()
 
-# Available models with download URLs
+# Available models with download URLs from public sources
+# These are pre-converted ONNX models from various super-resolution projects
 AVAILABLE_MODELS = {
+    # === Real-ESRGAN Models (General Purpose) ===
+    "realesrgan-x4plus": {
+        "name": "Real-ESRGAN x4+ (Best Quality)",
+        "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth",
+        "scale": 4,
+        "description": "Best quality 4x upscaling for photos and real-world images",
+        "type": "pth",  # Needs conversion - placeholder
+        "category": "general"
+    },
+    "realesrgan-x4": {
+        "name": "Real-ESRGAN x4",
+        "url": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/models-v1.0/realesrgan-x4.onnx",
+        "scale": 4,
+        "description": "High-quality 4x upscaling for real-world images",
+        "type": "onnx",
+        "category": "general"
+    },
     "realesrgan-x2": {
         "name": "Real-ESRGAN x2",
         "url": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/models-v1.0/realesrgan-x2.onnx",
         "scale": 2,
-        "description": "High-quality 2x upscaling for real-world images"
+        "description": "High-quality 2x upscaling for real-world images",
+        "type": "onnx",
+        "category": "general"
     },
-    "realesrgan-x4": {
-        "name": "Real-ESRGAN x4", 
-        "url": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/models-v1.0/realesrgan-x4.onnx",
+    
+    # === Anime/Cartoon Models ===
+    "realesrgan-anime": {
+        "name": "Real-ESRGAN Anime x4",
+        "url": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/models-v1.0/realesrgan-anime-x4.onnx",
         "scale": 4,
-        "description": "High-quality 4x upscaling for real-world images"
+        "description": "Optimized for anime and cartoon content",
+        "type": "onnx",
+        "category": "anime"
     },
+    "waifu2x-anime": {
+        "name": "Waifu2x Anime x2",
+        "url": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/models-v1.0/waifu2x-anime-x2.onnx",
+        "scale": 2,
+        "description": "Classic anime upscaler, good for illustrations",
+        "type": "onnx",
+        "category": "anime"
+    },
+    
+    # === Fast Models (Low VRAM / CPU) ===
     "fsrcnn-x2": {
         "name": "FSRCNN x2 (Fast)",
         "url": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/models-v1.0/fsrcnn-x2.onnx",
         "scale": 2,
-        "description": "Fast 2x upscaling, lower quality but faster"
+        "description": "Very fast 2x upscaling, good for real-time",
+        "type": "onnx",
+        "category": "fast"
+    },
+    "fsrcnn-x4": {
+        "name": "FSRCNN x4 (Fast)",
+        "url": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/models-v1.0/fsrcnn-x4.onnx",
+        "scale": 4,
+        "description": "Fast 4x upscaling, lower quality but quick",
+        "type": "onnx",
+        "category": "fast"
+    },
+    "espcn-x2": {
+        "name": "ESPCN x2 (Fastest)",
+        "url": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/models-v1.0/espcn-x2.onnx",
+        "scale": 2,
+        "description": "Fastest model, minimal quality improvement",
+        "type": "onnx",
+        "category": "fast"
+    },
+    
+    # === Quality Models (More VRAM needed) ===
+    "bsrgan-x4": {
+        "name": "BSRGAN x4 (Degraded Images)",
+        "url": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/models-v1.0/bsrgan-x4.onnx",
+        "scale": 4,
+        "description": "Best for old, compressed, or degraded images",
+        "type": "onnx",
+        "category": "quality"
+    },
+    "swinir-x4": {
+        "name": "SwinIR x4 (Transformer)",
+        "url": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/models-v1.0/swinir-x4.onnx",
+        "scale": 4,
+        "description": "Transformer-based model, high quality but slow",
+        "type": "onnx",
+        "category": "quality"
     }
 }
+
 
 
 @asynccontextmanager
