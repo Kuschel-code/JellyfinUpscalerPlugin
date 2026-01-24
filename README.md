@@ -1,19 +1,21 @@
-# 🎮 Jellyfin AI Upscaler Plugin v1.4.9.5
+# 🎮 Jellyfin AI Upscaler Plugin v1.5.0.0
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
 
 > [!CAUTION]
-> **🧪 TEST PHASE - v1.4.9.5**
+> **🧪 TEST PHASE - v1.5.0.0**
 > 
-> This version is in testing! AI upscaling works via a separate Docker container.
-> Please report bugs in [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues).
+> This is an **EXPERIMENTAL** version with the new Docker AI microservice architecture!
+> AI upscaling now runs in a separate Docker container instead of directly in Jellyfin.
+> 
+> **Please report bugs:** [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 
 ---
 
 ## 🐳 New Architecture: Docker AI Service
 
-### The Problem with v1.4.9.4
+### Why Docker? (Problem with v1.4.9.x)
 
 Jellyfin's plugin system tries to load **ALL** `.dll` files as .NET assemblies. Native C++ libraries (ONNX Runtime, CUDA, OpenCV) caused:
 
@@ -30,8 +32,8 @@ Failed to load assembly "onnxruntime_providers_shared.dll"
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.4.9.5       │  │
-│  │  ✅ Only 759 KB (instead of 417 MB)│  │
+│  │  AI Upscaler Plugin v1.5.0.0       │  │
+│  │  ✅ Only ~1.6 MB (instead of 417MB)│  │
 │  │  ✅ No native DLLs                 │  │
 │  │  ✅ Sends frames via HTTP          │  │
 │  └──────────────┬─────────────────────┘  │
@@ -41,9 +43,9 @@ Failed to load assembly "onnxruntime_providers_shared.dll"
 ┌──────────────────────────────────────────┐
 │  AI Upscaler Docker Container            │
 │  ┌────────────────────────────────────┐  │
-│  │  Python + FastAPI + ONNX Runtime   │  │
-│  │  ✅ CUDA / TensorRT / DirectML     │  │
-│  │  ✅ Real-ESRGAN, FSRCNN Models     │  │
+│  │  Python + FastAPI + OpenCV DNN     │  │
+│  │  ✅ CUDA / GPU Acceleration        │  │
+│  │  ✅ FSRCNN, ESPCN, LapSRN, EDSR    │  │
 │  │  ✅ Web UI for Model Management    │  │
 │  └────────────────────────────────────┘  │
 └──────────────────────────────────────────┘
@@ -51,11 +53,11 @@ Failed to load assembly "onnxruntime_providers_shared.dll"
 
 ### Benefits
 
-| Feature | Old (v1.4.9.4) | New (v1.4.9.5) |
-|---------|---------------|----------------|
-| **ZIP Size** | 417 MB | 759 KB |
+| Feature | Old (v1.4.9.x) | New (v1.5.0.0) |
+|---------|----------------|----------------|
+| **ZIP Size** | 417 MB | ~1.6 MB |
 | **Native DLLs** | In plugin → Crashes | In Docker → Isolated |
-| **GPU Support** | Issues with Jellyfin | Full CUDA/TensorRT |
+| **GPU Support** | Issues with Jellyfin | Full CUDA support |
 | **Updates** | Rebuild plugin | Pull Docker image |
 
 ---
@@ -64,13 +66,21 @@ Failed to load assembly "onnxruntime_providers_shared.dll"
 
 ### Step 1: Start Docker AI Service
 
+**Option A - Docker Hub (easiest):**
 ```bash
-# Clone or download docker-ai-service folder
+docker run -d --name jellyfin-ai-upscaler \
+  -p 5000:5000 \
+  -v ai-models:/app/models \
+  kuscheltier/jellyfin-ai-upscaler:latest
+```
+
+**Option B - Build locally:**
+```bash
 cd docker-ai-service
 docker-compose up -d --build
 ```
 
-Open http://localhost:5000 to see the Web UI.
+Open http://YOUR_SERVER_IP:5000 to see the Web UI.
 
 ### Step 2: Install Jellyfin Plugin
 
@@ -79,22 +89,20 @@ Open http://localhost:5000 to see the Web UI.
    ```
    https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/manifest.json
    ```
-3. Go to **Catalog**, find "AI Upscaler", install **v1.4.9.5**
+3. Go to **Catalog**, find "AI Upscaler", install **v1.5.0.0**
 4. Restart Jellyfin
-5. In Plugin Settings: Set **AI Service URL** to `http://localhost:5000`
+5. In Plugin Settings: Set **AI Service URL** to `http://YOUR_SERVER_IP:5000`
 
 ---
 
 ## 🚀 Features
 
-- **Real-Time Upscaling**: WebGL client-side rendering for live preview
-- **Hardware Acceleration**: NVIDIA (CUDA), TensorRT, DirectML, CPU fallback
-- **AI Models**: Real-ESRGAN, FSRCNN, SwinIR (via Docker)
-- **Hardware Benchmarking**: Automatic detection of optimal settings
-- **Dashboard**: AI Upscaler Dashboard in sidebar with job monitoring
-- **Comparison View**: Before/after comparison before processing
+- **Docker Microservice**: AI runs isolated in a container (no DLL conflicts!)
+- **Multiple AI Models**: FSRCNN, ESPCN, LapSRN, EDSR (2x, 3x, 4x upscaling)
+- **Web UI**: Manage models at http://YOUR_SERVER_IP:5000
+- **Hardware Detection**: Automatic GPU/CPU detection
+- **Dashboard**: Job monitoring in Jellyfin sidebar
 - **FFmpeg Integration**: Automatic filter injection
-- **Job Control API**: Pause, Resume, Cancel via REST API
 
 ---
 
@@ -106,33 +114,34 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 |---------|-------------|
 | **AI Service URL** | URL to Docker container (e.g., `http://nas:5000`) |
 | **Enable Plugin** | Global switch |
-| **Scaling Factor** | 2x or 4x |
+| **Scaling Factor** | 2x, 3x, or 4x |
 | **Quality Level** | low / medium / high |
-| **Hardware Acceleration** | Auto-detect or manual |
 
 ---
 
 ## 📋 Changelog
 
-### v1.4.9.5 (TEST PHASE)
+### v1.5.0.0 (TEST PHASE)
 - **🐳 Docker Microservice Architecture**: AI processing in separate container
-- **📦 759 KB instead of 417 MB**: No more native DLLs in plugin
-- **🔧 New HttpUpscalerService**: HTTP-based communication with Docker
+- **📦 ~1.6 MB instead of 417 MB**: No more native DLLs in plugin
+- **🔧 OpenCV DNN Models**: FSRCNN, ESPCN, LapSRN, EDSR from public sources
 - **🌐 Web UI**: Model management at http://localhost:5000
-- **✅ No more BadImageFormatException**: Jellyfin only loads .NET DLLs
+- **✅ Fixed version format**: 4-part version for Jellyfin compatibility
 
 ### v1.4.9.4
 - Settings Page Fix
 - Cross-Platform Support
 - Complete DI Registration
 
-### v1.4.9.3
-- Verified Service Registration
-- Settings Version Fix
-
 ---
 
 ## 🔧 Troubleshooting
+
+### Plugin shows "Not Supported"
+1. Make sure you uninstalled old versions (1.4.9.x)
+2. Delete old plugin folder from Jellyfin plugins directory
+3. Restart Jellyfin
+4. Install v1.5.0.0 fresh from repository
 
 ### Plugin won't start
 ```bash
@@ -144,22 +153,16 @@ docker logs jellyfin-ai-upscaler
 ```
 
 ### Upscaling not working
-1. Check if Docker is running: `curl http://localhost:5000/health`
+1. Check if Docker is running: `curl http://YOUR_IP:5000/status`
 2. Check Plugin Settings: AI Service URL correct?
-3. Check if model is loaded: http://localhost:5000 → Web UI
-
-### GPU not detected
-```bash
-# Check NVIDIA runtime
-docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi
-```
+3. Check if model is loaded: http://YOUR_IP:5000 → Web UI
 
 ---
 
-## 📖 Wiki & Support
+## 📖 Support
 
+- [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 - [GitHub Wiki](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki)
-- [Issues / Bug Reports](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 
 ---
 
