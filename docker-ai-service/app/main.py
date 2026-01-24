@@ -1,7 +1,7 @@
 """
 AI Upscaler Service - FastAPI Application
-Jellyfin AI Upscaler Plugin - Microservice Component v1.1
-Supports OpenCV DNN (.pb) and ONNX Runtime models
+Jellyfin AI Upscaler Plugin - Microservice Component v1.2
+Supports OpenCV DNN (.pb), ONNX Runtime, and Real-ESRGAN models
 """
 
 import os
@@ -48,10 +48,13 @@ class AppState:
     cv_model_name: Optional[str] = None
     cv_model_scale: int = 2
     
-    # ONNX model (optional)
+    # ONNX model
     onnx_session = None
+    onnx_model_name: Optional[str] = None
+    onnx_model_scale: int = 4
     
     current_model: Optional[str] = None
+    current_model_type: str = "opencv"  # "opencv" or "onnx"
     providers: list = []
     use_gpu: bool = True
     processing_count: int = 0
@@ -64,7 +67,43 @@ state = AppState()
 
 # Available models with download URLs from PUBLIC sources
 AVAILABLE_MODELS = {
-    # === Fast Models (Recommended for CPU/Low VRAM) ===
+    # ============================================================
+    # === REAL-ESRGAN Models (Best Quality - Anime & Photo) ===
+    # ============================================================
+    "realesrgan-x4plus": {
+        "name": "Real-ESRGAN x4+ (Best Quality)",
+        "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth",
+        "onnx_url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-x4plus.onnx",
+        "scale": 4,
+        "description": "Best quality 4x for real-world photos. Sharp details, noise removal.",
+        "type": "onnx",
+        "category": "realesrgan",
+        "model_type": "realesrgan"
+    },
+    "realesrgan-x4plus-anime": {
+        "name": "Real-ESRGAN x4+ Anime (Best for Anime)",
+        "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth",
+        "onnx_url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-x4plus-anime.onnx",
+        "scale": 4,
+        "description": "Optimized for anime/illustrations. Crisp lines, vibrant colors.",
+        "type": "onnx",
+        "category": "realesrgan",
+        "model_type": "realesrgan"
+    },
+    "realesrnet-x4plus": {
+        "name": "RealESRNet x4+ (Faster)",
+        "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRNet_x4plus.pth",
+        "onnx_url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrnet-x4plus.onnx",
+        "scale": 4,
+        "description": "Faster variant of Real-ESRGAN, good for batch processing.",
+        "type": "onnx",
+        "category": "realesrgan",
+        "model_type": "realesrgan"
+    },
+    
+    # ============================================================
+    # === Fast Models (Recommended for Real-Time / CPU) ===
+    # ============================================================
     "fsrcnn-x2": {
         "name": "FSRCNN x2 (Fast)",
         "url": "https://raw.githubusercontent.com/Saafke/FSRCNN_Tensorflow/master/models/FSRCNN_x2.pb",
@@ -120,7 +159,9 @@ AVAILABLE_MODELS = {
         "model_type": "espcn"
     },
     
+    # ============================================================
     # === Quality Models - LapSRN ===
+    # ============================================================
     "lapsrn-x2": {
         "name": "LapSRN x2 (Quality)",
         "url": "https://raw.githubusercontent.com/fannymonori/TF-LapSRN/master/export/LapSRN_x2.pb",
@@ -149,30 +190,32 @@ AVAILABLE_MODELS = {
         "model_type": "lapsrn"
     },
     
-    # === EDSR Models (Best Quality, Slow) ===
+    # ============================================================
+    # === EDSR Models (High Quality, Slow) ===
+    # ============================================================
     "edsr-x2": {
-        "name": "EDSR x2 (Best Quality)",
+        "name": "EDSR x2 (High Quality)",
         "url": "https://github.com/Saafke/EDSR_Tensorflow/raw/master/models/EDSR_x2.pb",
         "scale": 2,
-        "description": "Best quality 2x, requires more VRAM",
+        "description": "High quality 2x, requires more compute",
         "type": "pb",
         "category": "quality",
         "model_type": "edsr"
     },
     "edsr-x3": {
-        "name": "EDSR x3 (Best Quality)",
+        "name": "EDSR x3 (High Quality)",
         "url": "https://github.com/Saafke/EDSR_Tensorflow/raw/master/models/EDSR_x3.pb",
         "scale": 3,
-        "description": "Best quality 3x",
+        "description": "High quality 3x",
         "type": "pb",
         "category": "quality",
         "model_type": "edsr"
     },
     "edsr-x4": {
-        "name": "EDSR x4 (Best Quality)",
+        "name": "EDSR x4 (High Quality)",
         "url": "https://github.com/Saafke/EDSR_Tensorflow/raw/master/models/EDSR_x4.pb",
         "scale": 4,
-        "description": "Best quality 4x, slowest",
+        "description": "High quality 4x, slowest OpenCV model",
         "type": "pb",
         "category": "quality",
         "model_type": "edsr"
@@ -183,24 +226,26 @@ AVAILABLE_MODELS = {
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application startup and shutdown."""
-    logger.info("Starting AI Upscaler Service v1.1...")
+    logger.info("Starting AI Upscaler Service v1.2 (Real-ESRGAN Edition)...")
     
     # Create directories
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     
-    # Detect available providers
+    # Detect available ONNX providers
     if ONNX_AVAILABLE:
         state.providers = ort.get_available_providers()
+        logger.info(f"ONNX Runtime Providers: {state.providers}")
     else:
         state.providers = ["OpenCV-DNN"]
+        logger.warning("ONNX Runtime not available. Install with: pip install onnxruntime-gpu")
     
     state.use_gpu = os.getenv("USE_GPU", "true").lower() == "true"
     state.max_concurrent = int(os.getenv("MAX_CONCURRENT_REQUESTS", "4"))
     
-    logger.info(f"Available Providers: {state.providers}")
     logger.info(f"GPU Enabled: {state.use_gpu}")
     logger.info(f"ONNX Runtime Available: {ONNX_AVAILABLE}")
+    logger.info(f"Available Models: {len(AVAILABLE_MODELS)} (including Real-ESRGAN)")
     
     # Load default model if specified
     default_model = os.getenv("DEFAULT_MODEL")
@@ -214,8 +259,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="AI Upscaler Service",
-    description="Neural network image upscaling service for Jellyfin",
-    version="1.1.0",
+    description="Neural network image upscaling service for Jellyfin (Real-ESRGAN Edition)",
+    version="1.2.0",
     lifespan=lifespan
 )
 
@@ -243,19 +288,8 @@ def get_model_path(model_name: str) -> Path:
     return MODELS_DIR / f"{model_name}.{ext}"
 
 
-async def load_model(model_name: str) -> bool:
-    """Load a model (OpenCV DNN or ONNX) into memory."""
-    if model_name not in AVAILABLE_MODELS:
-        logger.error(f"Unknown model: {model_name}")
-        return False
-    
-    model_info = AVAILABLE_MODELS[model_name]
-    model_path = get_model_path(model_name)
-    
-    if not model_path.exists():
-        logger.error(f"Model not found: {model_path}")
-        return False
-    
+async def load_opencv_model(model_name: str, model_info: dict, model_path: Path) -> bool:
+    """Load an OpenCV DNN Super Resolution model."""
     try:
         model_type = model_info.get("model_type", "fsrcnn")
         scale = model_info.get("scale", 2)
@@ -280,13 +314,76 @@ async def load_model(model_name: str) -> bool:
         state.cv_model_name = model_name
         state.cv_model_scale = scale
         state.current_model = model_name
+        state.current_model_type = "opencv"
+        state.onnx_session = None
         
-        logger.info(f"Model {model_name} loaded successfully (scale={scale})")
+        logger.info(f"OpenCV model {model_name} loaded successfully (scale={scale})")
         return True
         
     except Exception as e:
-        logger.error(f"Failed to load model {model_name}: {e}")
+        logger.error(f"Failed to load OpenCV model {model_name}: {e}")
         return False
+
+
+async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -> bool:
+    """Load an ONNX model (Real-ESRGAN)."""
+    if not ONNX_AVAILABLE:
+        logger.error("ONNX Runtime not available. Cannot load ONNX models.")
+        return False
+    
+    try:
+        scale = model_info.get("scale", 4)
+        
+        # Set up ONNX Runtime session options
+        sess_options = ort.SessionOptions()
+        sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        
+        # Choose providers based on GPU setting
+        if state.use_gpu:
+            providers = ['CUDAExecutionProvider', 'CPUExecutionProvider']
+        else:
+            providers = ['CPUExecutionProvider']
+        
+        # Create session
+        session = ort.InferenceSession(str(model_path), sess_options, providers=providers)
+        
+        state.onnx_session = session
+        state.onnx_model_name = model_name
+        state.onnx_model_scale = scale
+        state.current_model = model_name
+        state.current_model_type = "onnx"
+        state.cv_model = None
+        
+        # Log actual providers being used
+        actual_providers = session.get_providers()
+        logger.info(f"ONNX model {model_name} loaded with providers: {actual_providers}")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to load ONNX model {model_name}: {e}")
+        return False
+
+
+async def load_model(model_name: str) -> bool:
+    """Load a model (OpenCV DNN or ONNX) into memory."""
+    if model_name not in AVAILABLE_MODELS:
+        logger.error(f"Unknown model: {model_name}")
+        return False
+    
+    model_info = AVAILABLE_MODELS[model_name]
+    model_path = get_model_path(model_name)
+    
+    if not model_path.exists():
+        logger.error(f"Model not found: {model_path}")
+        return False
+    
+    model_type = model_info.get("type", "pb")
+    
+    if model_type == "onnx":
+        return await load_onnx_model(model_name, model_info, model_path)
+    else:
+        return await load_opencv_model(model_name, model_info, model_path)
 
 
 async def download_model(model_name: str) -> bool:
@@ -303,10 +400,13 @@ async def download_model(model_name: str) -> bool:
         return True
     
     try:
-        logger.info(f"Downloading model {model_name} from {model_info['url']}")
+        # Use onnx_url for ONNX models if available
+        download_url = model_info.get("onnx_url", model_info.get("url"))
         
-        async with httpx.AsyncClient(timeout=300.0) as client:
-            response = await client.get(model_info["url"], follow_redirects=True)
+        logger.info(f"Downloading model {model_name} from {download_url}")
+        
+        async with httpx.AsyncClient(timeout=600.0) as client:
+            response = await client.get(download_url, follow_redirects=True)
             response.raise_for_status()
             
             with open(model_path, "wb") as f:
@@ -323,10 +423,10 @@ async def download_model(model_name: str) -> bool:
         return False
 
 
-def upscale_image(image_bytes: bytes) -> bytes:
-    """Upscale an image using the loaded model."""
+def upscale_with_opencv(image_bytes: bytes) -> bytes:
+    """Upscale an image using the loaded OpenCV model."""
     if state.cv_model is None:
-        raise ValueError("No model loaded")
+        raise ValueError("No OpenCV model loaded")
     
     # Decode image
     nparr = np.frombuffer(image_bytes, np.uint8)
@@ -343,32 +443,88 @@ def upscale_image(image_bytes: bytes) -> bytes:
     return buffer.tobytes()
 
 
+def upscale_with_onnx(image_bytes: bytes) -> bytes:
+    """Upscale an image using the loaded ONNX model (Real-ESRGAN)."""
+    if state.onnx_session is None:
+        raise ValueError("No ONNX model loaded")
+    
+    # Decode image
+    nparr = np.frombuffer(image_bytes, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    
+    if img is None:
+        raise ValueError("Failed to decode image")
+    
+    # Convert BGR to RGB
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    
+    # Normalize to [0, 1] and transpose to NCHW format
+    img = img.astype(np.float32) / 255.0
+    img = np.transpose(img, (2, 0, 1))  # HWC to CHW
+    img = np.expand_dims(img, axis=0)    # Add batch dimension
+    
+    # Run inference
+    input_name = state.onnx_session.get_inputs()[0].name
+    output_name = state.onnx_session.get_outputs()[0].name
+    result = state.onnx_session.run([output_name], {input_name: img})[0]
+    
+    # Post-process: remove batch, transpose back to HWC
+    result = np.squeeze(result, axis=0)
+    result = np.transpose(result, (1, 2, 0))  # CHW to HWC
+    
+    # Clip and convert back to uint8
+    result = np.clip(result * 255.0, 0, 255).astype(np.uint8)
+    
+    # Convert RGB back to BGR for OpenCV encoding
+    result = cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
+    
+    # Encode as PNG
+    _, buffer = cv2.imencode('.png', result)
+    return buffer.tobytes()
+
+
+def upscale_image(image_bytes: bytes) -> bytes:
+    """Upscale an image using the appropriate loaded model."""
+    if state.current_model_type == "onnx":
+        return upscale_with_onnx(image_bytes)
+    else:
+        return upscale_with_opencv(image_bytes)
+
+
 def run_benchmark(test_size: int = 256) -> dict:
     """Run a quick benchmark on the loaded model."""
-    if state.cv_model is None:
+    if state.current_model is None:
         return {"error": "No model loaded"}
     
     # Create test image
     test_img = np.random.randint(0, 255, (test_size, test_size, 3), dtype=np.uint8)
+    _, test_bytes = cv2.imencode('.png', test_img)
+    test_bytes = test_bytes.tobytes()
     
     # Warmup
-    _ = state.cv_model.upsample(test_img)
+    try:
+        _ = upscale_image(test_bytes)
+    except Exception as e:
+        return {"error": f"Warmup failed: {e}"}
     
     # Benchmark
     times = []
     for _ in range(5):
         start = time.time()
-        _ = state.cv_model.upsample(test_img)
+        _ = upscale_image(test_bytes)
         times.append(time.time() - start)
     
     avg_time = sum(times) / len(times)
     fps = 1.0 / avg_time if avg_time > 0 else 0
     
+    scale = state.onnx_model_scale if state.current_model_type == "onnx" else state.cv_model_scale
+    
     result = {
         "model": state.current_model,
-        "scale": state.cv_model_scale,
+        "model_type": state.current_model_type,
+        "scale": scale,
         "input_size": f"{test_size}x{test_size}",
-        "output_size": f"{test_size * state.cv_model_scale}x{test_size * state.cv_model_scale}",
+        "output_size": f"{test_size * scale}x{test_size * scale}",
         "avg_time_ms": round(avg_time * 1000, 2),
         "fps": round(fps, 2),
         "using_gpu": state.use_gpu
@@ -398,16 +554,25 @@ async def health():
 @app.get("/status")
 async def status():
     """Get service status."""
+    scale = None
+    if state.current_model_type == "onnx":
+        scale = state.onnx_model_scale
+    elif state.cv_model:
+        scale = state.cv_model_scale
+    
     return {
         "status": "running",
+        "version": "1.2.0",
         "current_model": state.current_model,
+        "model_type": state.current_model_type,
         "available_providers": state.providers,
         "using_gpu": state.use_gpu,
         "loaded_models": [state.current_model] if state.current_model else [],
         "processing_count": state.processing_count,
         "max_concurrent": state.max_concurrent,
         "onnx_available": ONNX_AVAILABLE,
-        "model_scale": state.cv_model_scale if state.cv_model else None
+        "model_scale": scale,
+        "realesrgan_available": ONNX_AVAILABLE
     }
 
 
@@ -423,10 +588,11 @@ async def list_models():
             "description": info["description"],
             "scale": info["scale"],
             "category": info.get("category", "general"),
+            "type": info.get("type", "pb"),
             "downloaded": model_path.exists(),
             "loaded": state.current_model == model_id
         })
-    return {"models": models}
+    return {"models": models, "total": len(models)}
 
 
 @app.post("/models/download")
@@ -439,7 +605,10 @@ async def download_model_endpoint(model_name: str = Form(...)):
     if not success:
         raise HTTPException(status_code=500, detail="Failed to download model")
     
-    return {"status": "success", "model": model_name}
+    model_path = get_model_path(model_name)
+    size_mb = model_path.stat().st_size / 1024 / 1024 if model_path.exists() else 0
+    
+    return {"status": "success", "model": model_name, "size_mb": round(size_mb, 2)}
 
 
 @app.post("/models/load")
@@ -456,7 +625,12 @@ async def load_model_endpoint(model_name: str = Form(...), use_gpu: bool = Form(
     if not success:
         raise HTTPException(status_code=500, detail="Failed to load model")
     
-    return {"status": "success", "model": model_name, "using_gpu": use_gpu}
+    return {
+        "status": "success", 
+        "model": model_name, 
+        "model_type": state.current_model_type,
+        "using_gpu": use_gpu
+    }
 
 
 @app.post("/upscale")
@@ -465,7 +639,7 @@ async def upscale_endpoint(
     scale: int = Form(2)
 ):
     """Upscale an image."""
-    if state.cv_model is None:
+    if state.current_model is None:
         raise HTTPException(status_code=400, detail="No model loaded. Please load a model first.")
     
     if state.processing_count >= state.max_concurrent:
@@ -495,7 +669,7 @@ async def upscale_endpoint(
 @app.get("/benchmark")
 async def benchmark_endpoint():
     """Run a benchmark on the current model."""
-    if state.cv_model is None:
+    if state.current_model is None:
         raise HTTPException(status_code=400, detail="No model loaded")
     
     loop = asyncio.get_event_loop()

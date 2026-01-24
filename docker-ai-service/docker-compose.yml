@@ -1,47 +1,51 @@
-# AI Upscaler Service Docker Compose
-# Jellyfin AI Upscaler Plugin - Microservice Architecture
+version: "3.9"
 
 services:
+  # GPU Version (NVIDIA CUDA) - Default
   ai-upscaler:
-    build: .
-    image: jellyfin-ai-upscaler:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: jellyfin-ai-upscaler
-    restart: unless-stopped
     ports:
       - "5000:5000"
     volumes:
-      - ./models:/app/models
-      - ./cache:/app/cache
+      - ai-models:/app/models
+      - ai-cache:/app/cache
     environment:
-      - LOG_LEVEL=INFO
-      - MAX_CONCURRENT_REQUESTS=4
-      - DEFAULT_SCALE=2
       - USE_GPU=true
-    # GPU Support (NVIDIA)
+      - MAX_CONCURRENT_REQUESTS=4
+      - DEFAULT_MODEL=realesrgan-x4plus-anime
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+    # GPU support (requires nvidia-docker)
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-
-  # Optional: CPU-only version (no GPU required)
-  # ai-upscaler-cpu:
-  #   build: .
-  #   image: jellyfin-ai-upscaler:cpu
-  #   container_name: jellyfin-ai-upscaler-cpu
-  #   restart: unless-stopped
+              count: 1
+              capabilities: [ gpu ]
+  # CPU Version - Uncomment below and comment above for CPU-only
+  # ai-upscaler:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.cpu
+  #   container_name: jellyfin-ai-upscaler
   #   ports:
-  #     - "5001:5000"
+  #     - "5000:5000"
   #   volumes:
-  #     - ./models:/app/models
-  #     - ./cache:/app/cache
+  #     - ai-models:/app/models
+  #     - ai-cache:/app/cache
   #   environment:
   #     - USE_GPU=false
+  #     - MAX_CONCURRENT_REQUESTS=2
+  #     - DEFAULT_MODEL=fsrcnn-x2
+  #     - LOG_LEVEL=INFO
+  #   restart: unless-stopped
+
+volumes:
+  ai-models:
+    name: jellyfin-ai-models
+  ai-cache:
+    name: jellyfin-ai-cache
