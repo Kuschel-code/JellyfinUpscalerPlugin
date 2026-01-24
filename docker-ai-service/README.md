@@ -1,149 +1,162 @@
-# 🚀 AI Upscaler Service
+# Jellyfin AI Upscaler - Docker Service
 
-A standalone AI upscaling microservice for the Jellyfin AI Upscaler Plugin.
+🚀 **AI-powered video upscaling service for Jellyfin** with Real-ESRGAN support.
 
-## Why a Separate Service?
+[![Docker Pulls](https://img.shields.io/docker/pulls/kuscheltier/jellyfin-ai-upscaler)](https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler)
+[![Docker Image Size](https://img.shields.io/docker/image-size/kuscheltier/jellyfin-ai-upscaler/latest)](https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler)
 
-Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Native C++ libraries (ONNX Runtime, CUDA, OpenCV) cause `BadImageFormatException`. This microservice architecture solves that problem by running AI processing in an isolated container.
+## 🌟 Features
 
-## Architecture
+- **Real-ESRGAN** - Best quality upscaling (x4 photos & anime)
+- **FSRCNN/ESPCN** - Fast real-time upscaling (CPU friendly)
+- **LapSRN/EDSR** - High quality upscaling
+- **NVIDIA GPU Support** - CUDA acceleration
+- **Web UI** - Model management at port 5000
+- **REST API** - `/upscale`, `/models`, `/benchmark`
 
-```
-┌─────────────────────────────────────────┐
-│  Jellyfin Server (Port 8096)            │
-│  ┌───────────────────────────────────┐  │
-│  │  AI Upscaler Plugin (.NET)        │  │
-│  │  • Extracts frames via FFmpeg     │  │
-│  │  • Sends images via HTTP POST     │  │
-│  │  • No native DLLs needed          │  │
-│  └─────────────┬─────────────────────┘  │
-└────────────────┼────────────────────────┘
-                 │ HTTP POST /upscale
-                 ▼
-┌─────────────────────────────────────────┐
-│  AI Upscaler Service (Port 5000)        │
-│  ┌───────────────────────────────────┐  │
-│  │  Python 3.11 + FastAPI            │  │
-│  │  • ONNX Runtime 1.18 (GPU/CPU)    │  │
-│  │  • OpenCV for image processing    │  │
-│  │  • CUDA / TensorRT / DirectML     │  │
-│  └───────────────────────────────────┘  │
-└─────────────────────────────────────────┘
-```
+## 📦 Available Models
 
-## Quick Start
+| Model | Type | Best For |
+|-------|------|----------|
+| `realesrgan-x4plus-anime` | ONNX | Anime/Cartoons ⭐ |
+| `realesrgan-x4plus` | ONNX | Real photos |
+| `realesrnet-x4plus` | ONNX | Fast processing |
+| `fsrcnn-x2/x3/x4` | OpenCV | Real-time |
+| `espcn-x2/x3/x4` | OpenCV | Fastest |
+| `edsr-x2/x3/x4` | OpenCV | High quality |
 
-### 1. Build and Run
+---
+
+## 🚀 Quick Start
+
+### GPU Version (Recommended for Real-ESRGAN)
+
+**Requires:** NVIDIA GPU + [nvidia-container-toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
 
 ```bash
-# Navigate to this directory
-cd docker-ai-service
-
-# Build and start (with GPU)
-docker-compose up -d --build
-
-# Or without GPU
-docker-compose up -d --build ai-upscaler-cpu
+docker run -d \
+  --name jellyfin-ai-upscaler \
+  --gpus all \
+  -p 5000:5000 \
+  -v ai-models:/app/models \
+  -e USE_GPU=true \
+  -e DEFAULT_MODEL=realesrgan-x4plus-anime \
+  kuscheltier/jellyfin-ai-upscaler:1.1.1
 ```
 
-### 2. Access Web UI
+### CPU Version
 
-Open http://localhost:5000 in your browser.
+```bash
+docker run -d \
+  --name jellyfin-ai-upscaler \
+  -p 5000:5000 \
+  -v ai-models:/app/models \
+  -e USE_GPU=false \
+  -e DEFAULT_MODEL=fsrcnn-x2 \
+  kuscheltier/jellyfin-ai-upscaler:1.1.1
+```
 
-### 3. Download and Load a Model
+### Docker Compose (GPU)
 
-1. In the Web UI, click **Download** next to a model
-2. Once downloaded, click **Load**
-3. The service is now ready to upscale images
+```yaml
+version: "3.9"
+services:
+  ai-upscaler:
+    image: kuscheltier/jellyfin-ai-upscaler:1.1.1
+    container_name: jellyfin-ai-upscaler
+    ports:
+      - "5000:5000"
+    volumes:
+      - ai-models:/app/models
+    environment:
+      - USE_GPU=true
+      - DEFAULT_MODEL=realesrgan-x4plus-anime
+      - MAX_CONCURRENT_REQUESTS=4
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
-### 4. Configure Jellyfin Plugin
+volumes:
+  ai-models:
+```
 
-In the Jellyfin plugin settings:
-- **AI Service URL**: `http://localhost:5000` (or your server IP)
-- **Enable AI Upscaling**: ✓
+---
 
-## API Endpoints
+## 🖥️ GPU Setup (NVIDIA)
+
+### 1. Install NVIDIA Container Toolkit
+
+**Ubuntu/Debian:**
+```bash
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+  sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+  sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+sudo apt-get update
+sudo apt-get install -y nvidia-container-toolkit
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo systemctl restart docker
+```
+
+### 2. Verify GPU Access
+
+```bash
+docker run --rm --gpus all nvidia/cuda:12.2-base nvidia-smi
+```
+
+### 3. Start Container with GPU
+
+```bash
+docker run -d --gpus all -p 5000:5000 kuscheltier/jellyfin-ai-upscaler:1.1.1
+```
+
+---
+
+## 🔧 Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `USE_GPU` | `true` | Enable/disable GPU acceleration |
+| `DEFAULT_MODEL` | - | Auto-load model on startup |
+| `MAX_CONCURRENT_REQUESTS` | `4` | Max parallel upscaling jobs |
+| `LOG_LEVEL` | `INFO` | Logging verbosity |
+
+---
+
+## 🌐 API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/` | GET | Web UI |
+| `/status` | GET | Service status |
 | `/health` | GET | Health check |
-| `/status` | GET | Service status (model, GPU, etc.) |
 | `/models` | GET | List available models |
 | `/models/download` | POST | Download a model |
-| `/models/load` | POST | Load a model into memory |
+| `/models/load` | POST | Load model into memory |
 | `/upscale` | POST | Upscale an image |
+| `/benchmark` | GET | Run benchmark |
 
-### Example: Upscale an Image
+---
 
-```bash
-curl -X POST http://localhost:5000/upscale \
-  -F "file=@input.jpg" \
-  -F "scale=2" \
-  -o output.png
-```
+## 📱 TrueNAS SCALE
 
-## Configuration
+See [TRUENAS_INSTALL.md](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docker-ai-service/TRUENAS_INSTALL.md) for installation guide.
 
-### Environment Variables
+---
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `USE_GPU` | `true` | Enable GPU acceleration |
-| `MAX_CONCURRENT_REQUESTS` | `4` | Max parallel upscale requests |
-| `DEFAULT_MODEL` | - | Auto-load this model on startup |
-| `LOG_LEVEL` | `INFO` | Logging verbosity |
+## 🔗 Links
 
-### Docker Volumes
+- **GitHub:** https://github.com/Kuschel-code/JellyfinUpscalerPlugin
+- **Jellyfin Plugin:** Install via repository manifest
+- **Issues:** https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues
 
-| Path | Purpose |
-|------|---------|
-| `./models:/app/models` | Persistent model storage |
-| `./cache:/app/cache` | Download cache |
+---
 
-## GPU Support
+## 📜 License
 
-### NVIDIA (CUDA)
-
-The `docker-compose.yml` includes NVIDIA GPU configuration:
-
-```yaml
-deploy:
-  resources:
-    reservations:
-      devices:
-        - driver: nvidia
-          count: all
-          capabilities: [gpu]
-```
-
-**Requirements:**
-- NVIDIA GPU with CUDA support
-- nvidia-docker2 installed
-- NVIDIA Container Toolkit
-
-### AMD / Intel (DirectML)
-
-For Windows with AMD/Intel GPUs, ONNX Runtime automatically uses DirectML.
-
-## Troubleshooting
-
-### Service won't start
-```bash
-docker-compose logs ai-upscaler
-```
-
-### GPU not detected
-```bash
-# Check if NVIDIA runtime is available
-docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi
-```
-
-### Model download fails
-- Check your internet connection
-- Verify the model URL is accessible
-- Check disk space in the models volume
-
-## License
-
-MIT License - See main plugin repository for details.
+MIT License
