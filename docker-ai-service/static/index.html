@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Upscaler Service</title>
+    <title>AI Upscaler Service v1.1.2</title>
     <style>
         :root {
             --bg-primary: #0f0f1a;
@@ -35,25 +35,25 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: 1.5rem;
         }
 
         /* Header */
         .header {
             text-align: center;
-            margin-bottom: 3rem;
-            padding: 2rem;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
             background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
             border-radius: 1rem;
             border: 1px solid var(--border);
         }
 
         .header h1 {
-            font-size: 2.5rem;
+            font-size: 2rem;
             font-weight: 700;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.25rem;
             background: linear-gradient(135deg, var(--accent-light) 0%, var(--accent) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -62,7 +62,15 @@
 
         .header p {
             color: var(--text-secondary);
-            font-size: 1.1rem;
+            font-size: 1rem;
+        }
+
+        .header-badges {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+            flex-wrap: wrap;
         }
 
         /* Status Badge */
@@ -70,11 +78,10 @@
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            padding: 0.5rem 1rem;
+            padding: 0.4rem 0.8rem;
             border-radius: 2rem;
             font-weight: 600;
-            font-size: 0.875rem;
-            margin-top: 1rem;
+            font-size: 0.8rem;
         }
 
         .status-badge.online {
@@ -85,6 +92,11 @@
         .status-badge.offline {
             background: rgba(239, 68, 68, 0.2);
             color: var(--error);
+        }
+
+        .status-badge.warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
         }
 
         .status-dot {
@@ -117,9 +129,13 @@
         /* Grid Layout */
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .grid-3 {
+            grid-template-columns: repeat(3, 1fr);
         }
 
         /* Cards */
@@ -127,7 +143,7 @@
             background: var(--bg-card);
             border-radius: 1rem;
             border: 1px solid var(--border);
-            padding: 1.5rem;
+            padding: 1.25rem;
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
@@ -140,50 +156,49 @@
             display: flex;
             align-items: center;
             gap: 0.75rem;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
             border-bottom: 1px solid var(--border);
         }
 
         .card-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 0.75rem;
+            width: 36px;
+            height: 36px;
+            border-radius: 0.5rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.25rem;
+            font-size: 1.1rem;
             background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
         }
 
         .card-title {
-            font-size: 1.125rem;
+            font-size: 1rem;
             font-weight: 600;
         }
 
         /* Info Grid */
         .info-grid {
             display: grid;
-            gap: 1rem;
+            gap: 0.5rem;
         }
 
         .info-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0.75rem;
+            padding: 0.5rem 0.75rem;
             background: var(--bg-secondary);
             border-radius: 0.5rem;
+            font-size: 0.85rem;
         }
 
         .info-label {
             color: var(--text-secondary);
-            font-size: 0.875rem;
         }
 
         .info-value {
             font-weight: 600;
-            font-size: 0.875rem;
         }
 
         .info-value.success {
@@ -198,47 +213,89 @@
             color: var(--error);
         }
 
+        /* Hardware Card */
+        .hw-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .hw-icon {
+            font-size: 1.5rem;
+        }
+
+        .hw-details {
+            flex: 1;
+        }
+
+        .hw-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .hw-sub {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+        }
+
         /* Models List */
         .model-list {
             display: flex;
             flex-direction: column;
-            gap: 0.75rem;
+            gap: 0.5rem;
+            max-height: 400px;
+            overflow-y: auto;
         }
 
         .model-item {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 1rem;
+            padding: 0.75rem;
             background: var(--bg-secondary);
-            border-radius: 0.75rem;
+            border-radius: 0.5rem;
             border: 1px solid var(--border);
+        }
+
+        .model-item.unavailable {
+            opacity: 0.6;
         }
 
         .model-info {
             flex: 1;
+            min-width: 0;
         }
 
         .model-name {
             font-weight: 600;
-            margin-bottom: 0.25rem;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .model-desc {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .model-status {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.4rem;
         }
 
         .badge {
-            padding: 0.25rem 0.75rem;
+            padding: 0.2rem 0.5rem;
             border-radius: 1rem;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
         }
 
@@ -257,18 +314,23 @@
             color: var(--warning);
         }
 
+        .badge-unavailable {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--error);
+        }
+
         /* Buttons */
         .btn {
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
+            padding: 0.4rem 0.75rem;
+            border-radius: 0.4rem;
             border: none;
             font-weight: 600;
-            font-size: 0.875rem;
+            font-size: 0.75rem;
             cursor: pointer;
             transition: all 0.2s;
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.3rem;
         }
 
         .btn-primary {
@@ -298,7 +360,7 @@
 
         .btn-group {
             display: flex;
-            gap: 0.5rem;
+            gap: 0.3rem;
         }
 
         /* Test Section */
@@ -306,13 +368,13 @@
             background: var(--bg-card);
             border-radius: 1rem;
             border: 1px solid var(--border);
-            padding: 1.5rem;
+            padding: 1.25rem;
         }
 
         .upload-area {
             border: 2px dashed var(--border);
             border-radius: 0.75rem;
-            padding: 2rem;
+            padding: 1.5rem;
             text-align: center;
             margin-bottom: 1rem;
             transition: all 0.2s;
@@ -324,13 +386,8 @@
             background: rgba(124, 58, 237, 0.05);
         }
 
-        .upload-area.dragover {
-            border-color: var(--accent);
-            background: rgba(124, 58, 237, 0.1);
-        }
-
         .upload-icon {
-            font-size: 2.5rem;
+            font-size: 2rem;
             margin-bottom: 0.5rem;
         }
 
@@ -360,15 +417,15 @@
         .preview-label {
             text-align: center;
             color: var(--text-secondary);
-            font-size: 0.875rem;
+            font-size: 0.8rem;
             margin-top: 0.5rem;
         }
 
         /* Loading */
         .loading {
             display: inline-block;
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
             border: 2px solid transparent;
             border-top-color: currentColor;
             border-radius: 50%;
@@ -384,22 +441,23 @@
         /* Toast Notifications */
         .toast-container {
             position: fixed;
-            bottom: 2rem;
-            right: 2rem;
+            bottom: 1.5rem;
+            right: 1.5rem;
             display: flex;
             flex-direction: column;
-            gap: 0.75rem;
+            gap: 0.5rem;
             z-index: 1000;
         }
 
         .toast {
-            padding: 1rem 1.5rem;
-            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
             font-weight: 500;
+            font-size: 0.85rem;
             animation: slideIn 0.3s ease;
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.5rem;
         }
 
         .toast.success {
@@ -433,7 +491,7 @@
             }
 
             .header h1 {
-                font-size: 1.75rem;
+                font-size: 1.5rem;
             }
 
             .grid {
@@ -441,6 +499,10 @@
             }
 
             .preview-container {
+                grid-template-columns: 1fr;
+            }
+
+            .grid-3 {
                 grid-template-columns: 1fr;
             }
         }
@@ -452,14 +514,24 @@
         <header class="header">
             <h1>🚀 AI Upscaler Service</h1>
             <p>Neural network image upscaling for Jellyfin</p>
-            <div id="statusBadge" class="status-badge online">
-                <span class="status-dot"></span>
-                <span id="statusText">Checking...</span>
+            <div class="header-badges">
+                <div id="statusBadge" class="status-badge online">
+                    <span class="status-dot"></span>
+                    <span id="statusText">Checking...</span>
+                </div>
+                <div id="pluginBadge" class="status-badge warning">
+                    <span>🔌</span>
+                    <span id="pluginText">No Plugin</span>
+                </div>
+                <div id="versionBadge" class="status-badge online"
+                    style="background: rgba(124, 58, 237, 0.2); color: var(--accent-light);">
+                    <span id="versionText">v1.1.2</span>
+                </div>
             </div>
         </header>
 
-        <div class="grid">
-            <!-- Service Info -->
+        <div class="grid grid-3">
+            <!-- Service Status -->
             <div class="card">
                 <div class="card-header">
                     <div class="card-icon">📊</div>
@@ -471,20 +543,68 @@
                         <span id="currentModel" class="info-value">None</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">GPU Available</span>
-                        <span id="gpuStatus" class="info-value">Checking...</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Providers</span>
-                        <span id="providers" class="info-value">-</span>
-                    </div>
-                    <div class="info-item">
                         <span class="info-label">Active Requests</span>
                         <span id="activeRequests" class="info-value">0 / 4</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">CUDA Available</span>
+                        <span id="cudaStatus" class="info-value">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">ONNX Runtime</span>
+                        <span id="onnxStatus" class="info-value">-</span>
                     </div>
                 </div>
             </div>
 
+            <!-- GPU Info -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">🎮</div>
+                    <h2 class="card-title">GPU</h2>
+                </div>
+                <div class="hw-item">
+                    <span class="hw-icon">🖥️</span>
+                    <div class="hw-details">
+                        <div id="gpuName" class="hw-name">Detecting...</div>
+                        <div id="gpuMemory" class="hw-sub">Memory: -</div>
+                    </div>
+                </div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">CUDA</span>
+                        <span id="gpuCuda" class="info-value">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">TensorRT</span>
+                        <span id="gpuTensorrt" class="info-value">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CPU Info -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">💻</div>
+                    <h2 class="card-title">CPU</h2>
+                </div>
+                <div class="hw-item">
+                    <span class="hw-icon">⚙️</span>
+                    <div class="hw-details">
+                        <div id="cpuName" class="hw-name">Detecting...</div>
+                        <div id="cpuCores" class="hw-sub">Cores: -</div>
+                    </div>
+                </div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Providers</span>
+                        <span id="providers" class="info-value">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
             <!-- Models -->
             <div class="card">
                 <div class="card-header">
@@ -495,35 +615,38 @@
                     <div class="info-item">Loading models...</div>
                 </div>
             </div>
-        </div>
 
-        <!-- Test Upscaling -->
-        <div class="test-section">
-            <div class="card-header">
-                <div class="card-icon">🖼️</div>
-                <h2 class="card-title">Test Upscaling</h2>
-            </div>
-
-            <div id="uploadArea" class="upload-area">
-                <div class="upload-icon">📤</div>
-                <p>Drop an image here or click to upload</p>
-                <input type="file" id="fileInput" accept="image/*" style="display: none;">
-            </div>
-
-            <div class="btn-group" style="justify-content: center;">
-                <button id="upscaleBtn" class="btn btn-primary" disabled>
-                    <span>⚡ Upscale Image</span>
-                </button>
-            </div>
-
-            <div class="preview-container" style="display: none;" id="previewContainer">
-                <div>
-                    <div class="preview-box" id="originalPreview"></div>
-                    <p class="preview-label">Original</p>
+            <!-- Test Upscaling -->
+            <div class="test-section">
+                <div class="card-header">
+                    <div class="card-icon">🖼️</div>
+                    <h2 class="card-title">Test Upscaling</h2>
                 </div>
-                <div>
-                    <div class="preview-box" id="upscaledPreview"></div>
-                    <p class="preview-label">Upscaled</p>
+
+                <div id="uploadArea" class="upload-area">
+                    <div class="upload-icon">📤</div>
+                    <p>Drop an image here or click to upload</p>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                </div>
+
+                <div class="btn-group" style="justify-content: center;">
+                    <button id="upscaleBtn" class="btn btn-primary" disabled>
+                        <span>⚡ Upscale Image</span>
+                    </button>
+                    <button id="benchmarkBtn" class="btn btn-secondary">
+                        <span>📈 Benchmark</span>
+                    </button>
+                </div>
+
+                <div class="preview-container" style="display: none;" id="previewContainer">
+                    <div>
+                        <div class="preview-box" id="originalPreview"></div>
+                        <p class="preview-label">Original</p>
+                    </div>
+                    <div>
+                        <div class="preview-box" id="upscaledPreview"></div>
+                        <p class="preview-label">Upscaled</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -543,7 +666,18 @@
                 const data = await res.json();
                 updateStatusUI(data);
             } catch (e) {
-                showToast('Failed to fetch status', 'error');
+                document.getElementById('statusBadge').className = 'status-badge offline';
+                document.getElementById('statusText').textContent = 'Offline';
+            }
+        }
+
+        async function fetchHardware() {
+            try {
+                const res = await fetch('/hardware');
+                const data = await res.json();
+                updateHardwareUI(data);
+            } catch (e) {
+                console.error('Failed to fetch hardware info');
             }
         }
 
@@ -557,6 +691,16 @@
             }
         }
 
+        async function fetchConnections() {
+            try {
+                const res = await fetch('/connections');
+                const data = await res.json();
+                updateConnectionsUI(data);
+            } catch (e) {
+                console.error('Failed to fetch connections');
+            }
+        }
+
         async function downloadModel(modelName) {
             showToast(`Downloading ${modelName}...`, 'info');
             try {
@@ -567,10 +711,11 @@
                     showToast(`Model ${modelName} downloaded!`, 'success');
                     fetchModels();
                 } else {
-                    throw new Error('Download failed');
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Download failed');
                 }
             } catch (e) {
-                showToast(`Failed to download ${modelName}`, 'error');
+                showToast(e.message, 'error');
             }
         }
 
@@ -586,10 +731,33 @@
                     fetchStatus();
                     fetchModels();
                 } else {
-                    throw new Error('Load failed');
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Load failed');
                 }
             } catch (e) {
-                showToast(`Failed to load ${modelName}`, 'error');
+                showToast(e.message, 'error');
+            }
+        }
+
+        async function runBenchmark() {
+            const btn = document.getElementById('benchmarkBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Running...';
+
+            try {
+                const res = await fetch('/benchmark');
+                if (res.ok) {
+                    const data = await res.json();
+                    showToast(`Benchmark: ${data.fps} FPS (${data.avg_time_ms}ms)`, 'success');
+                } else {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Benchmark failed');
+                }
+            } catch (e) {
+                showToast(e.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>📈 Benchmark</span>';
             }
         }
 
@@ -634,27 +802,59 @@
             document.getElementById('currentModel').textContent = data.current_model || 'None';
             document.getElementById('currentModel').className = 'info-value ' + (data.current_model ? 'success' : '');
 
-            const hasGpu = data.available_providers.some(p => p.includes('CUDA') || p.includes('Tensorrt'));
-            document.getElementById('gpuStatus').textContent = hasGpu ? '✅ Yes' : '❌ No';
-            document.getElementById('gpuStatus').className = 'info-value ' + (hasGpu ? 'success' : 'warning');
-
-            const shortProviders = data.available_providers
-                .map(p => p.replace('ExecutionProvider', ''))
-                .slice(0, 3)
-                .join(', ');
-            document.getElementById('providers').textContent = shortProviders;
-
             document.getElementById('activeRequests').textContent =
                 `${data.processing_count} / ${data.max_concurrent}`;
+
+            document.getElementById('cudaStatus').textContent = data.cuda_available ? '✅ Yes' : '❌ No';
+            document.getElementById('cudaStatus').className = 'info-value ' + (data.cuda_available ? 'success' : 'warning');
+
+            document.getElementById('onnxStatus').textContent = data.onnx_available ? '✅ Yes' : '❌ No';
+            document.getElementById('onnxStatus').className = 'info-value ' + (data.onnx_available ? 'success' : 'warning');
+
+            document.getElementById('versionText').textContent = `v${data.version}`;
 
             currentModelLoaded = data.current_model;
             updateUpscaleButton();
         }
 
+        function updateHardwareUI(data) {
+            // GPU
+            document.getElementById('gpuName').textContent = data.gpu.name;
+            document.getElementById('gpuMemory').textContent = `Memory: ${data.gpu.memory}`;
+            document.getElementById('gpuCuda').textContent = data.gpu.cuda_available ? '✅ Active' : '❌ Off';
+            document.getElementById('gpuCuda').className = 'info-value ' + (data.gpu.cuda_available ? 'success' : 'warning');
+            document.getElementById('gpuTensorrt').textContent = data.gpu.tensorrt_available ? '✅ Active' : '❌ Off';
+            document.getElementById('gpuTensorrt').className = 'info-value ' + (data.gpu.tensorrt_available ? 'success' : 'warning');
+
+            // CPU
+            document.getElementById('cpuName').textContent = data.cpu.name || 'Unknown';
+            document.getElementById('cpuCores').textContent = `Cores: ${data.cpu.cores}`;
+
+            // Providers
+            const shortProviders = data.providers
+                .map(p => p.replace('ExecutionProvider', ''))
+                .slice(0, 3)
+                .join(', ');
+            document.getElementById('providers').textContent = shortProviders;
+        }
+
+        function updateConnectionsUI(data) {
+            const badge = document.getElementById('pluginBadge');
+            const text = document.getElementById('pluginText');
+
+            if (data.total > 0) {
+                badge.className = 'status-badge online';
+                text.textContent = `${data.total} Plugin(s)`;
+            } else {
+                badge.className = 'status-badge warning';
+                text.textContent = 'No Plugin';
+            }
+        }
+
         function updateModelsUI(models) {
             const container = document.getElementById('modelList');
             container.innerHTML = models.map(m => `
-                <div class="model-item">
+                <div class="model-item ${!m.available ? 'unavailable' : ''}">
                     <div class="model-info">
                         <div class="model-name">${m.name}</div>
                         <div class="model-desc">${m.description}</div>
@@ -662,10 +862,11 @@
                     <div class="model-status">
                         ${m.loaded ? '<span class="badge badge-loaded">Loaded</span>' : ''}
                         ${m.downloaded && !m.loaded ? '<span class="badge badge-downloaded">Ready</span>' : ''}
-                        ${!m.downloaded ? '<span class="badge badge-pending">Not Downloaded</span>' : ''}
+                        ${!m.downloaded && m.available ? '<span class="badge badge-pending">Not Downloaded</span>' : ''}
+                        ${!m.available ? '<span class="badge badge-unavailable">Coming Soon</span>' : ''}
                     </div>
                     <div class="btn-group">
-                        ${!m.downloaded ? `<button class="btn btn-secondary" onclick="downloadModel('${m.id}')">Download</button>` : ''}
+                        ${!m.downloaded && m.available ? `<button class="btn btn-secondary" onclick="downloadModel('${m.id}')">Download</button>` : ''}
                         ${m.downloaded && !m.loaded ? `<button class="btn btn-primary" onclick="loadModel('${m.id}')">Load</button>` : ''}
                     </div>
                 </div>
@@ -693,12 +894,14 @@
         uploadArea.addEventListener('click', () => fileInput.click());
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
-            uploadArea.classList.add('dragover');
+            uploadArea.style.borderColor = 'var(--accent)';
         });
-        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = 'var(--border)';
+        });
         uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
-            uploadArea.classList.remove('dragover');
+            uploadArea.style.borderColor = 'var(--border)';
             handleFile(e.dataTransfer.files[0]);
         });
         fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
@@ -718,11 +921,15 @@
         }
 
         document.getElementById('upscaleBtn').addEventListener('click', upscaleImage);
+        document.getElementById('benchmarkBtn').addEventListener('click', runBenchmark);
 
         // Initialize
         fetchStatus();
+        fetchHardware();
         fetchModels();
+        fetchConnections();
         setInterval(fetchStatus, 10000);
+        setInterval(fetchConnections, 30000);
     </script>
 </body>
 
