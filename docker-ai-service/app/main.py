@@ -566,7 +566,7 @@ def run_benchmark(test_size: int = 256) -> dict:
     avg_time = sum(times) / len(times)
     fps = 1.0 / avg_time if avg_time > 0 else 0
     
-    scale = state.cv_model_scale
+    scale = state.onnx_model_scale if state.current_model_type == "onnx" else state.cv_model_scale
     
     result = {
         "model": state.current_model,
@@ -603,7 +603,7 @@ async def health():
 @app.get("/status")
 async def status():
     """Get service status."""
-    scale = state.cv_model_scale if state.cv_model else None
+    scale = state.onnx_model_scale if state.current_model_type == "onnx" else (state.cv_model_scale if state.cv_model else None)
     
     # Check if CUDA is active
     has_cuda = any("CUDA" in p for p in state.providers)
@@ -785,7 +785,7 @@ async def upscale_endpoint(
 @app.get("/benchmark")
 async def benchmark_endpoint():
     """Run a benchmark on the current model."""
-    if state.cv_model is None:
+    if state.cv_model is None and state.onnx_session is None:
         raise HTTPException(status_code=400, detail="No model loaded")
     
     loop = asyncio.get_event_loop()
