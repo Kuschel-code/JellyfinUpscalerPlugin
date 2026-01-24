@@ -86,35 +86,25 @@ AVAILABLE_MODELS = {
     # === REAL-ESRGAN Models (Best Quality - Anime & Photo) ===
     # Note: These require ONNX Runtime. Models from community repos.
     # ============================================================
-    "realesrgan-x4plus": {
-        "name": "Real-ESRGAN x4+ (Best Quality)",
-        "url": "https://huggingface.co/ai-forever/Real-ESRGAN/resolve/main/RealESRGAN_x4.pth",
+    "realesrgan-x4": {
+        "name": "Real-ESRGAN x4 (Best Quality)",
+        "url": "https://huggingface.co/AXERA-TECH/Real-ESRGAN/resolve/main/onnx/realesrgan-x4.onnx",
         "scale": 4,
-        "description": "⚠️ Requires conversion - Use OpenCV models for now",
-        "type": "pth",
+        "description": "Best quality 4x for photos & anime (67MB ONNX)",
+        "type": "onnx",
         "category": "realesrgan",
         "model_type": "realesrgan",
-        "available": False
+        "available": True
     },
-    "realesrgan-x4plus-anime": {
-        "name": "Real-ESRGAN x4+ Anime",
-        "url": "https://huggingface.co/ai-forever/Real-ESRGAN/resolve/main/RealESRGAN_x4.pth",
+    "realesrgan-x4-256": {
+        "name": "Real-ESRGAN x4 (256px optimized)",
+        "url": "https://huggingface.co/AXERA-TECH/Real-ESRGAN/resolve/main/onnx/realesrgan-x4-256.onnx",
         "scale": 4,
-        "description": "⚠️ Coming soon - Use EDSR for quality upscaling",
-        "type": "pth",
+        "description": "Optimized for 256px tiles, better for low VRAM",
+        "type": "onnx",
         "category": "realesrgan",
         "model_type": "realesrgan",
-        "available": False
-    },
-    "realesrnet-x4plus": {
-        "name": "RealESRNet x4+ (Faster)",
-        "url": "https://huggingface.co/ai-forever/Real-ESRGAN/resolve/main/RealESRGAN_x4.pth",
-        "scale": 4,
-        "description": "⚠️ Coming soon - Use LapSRN for fast quality",
-        "type": "pth",
-        "category": "realesrgan",
-        "model_type": "realesrgan",
-        "available": False
+        "available": True
     },
     
     # ============================================================
@@ -408,8 +398,50 @@ async def load_model(model_name: str) -> bool:
     
     if model_type == "pb":
         return await load_opencv_model(model_name, model_info, model_path)
+    elif model_type == "onnx":
+        return await load_onnx_model(model_name, model_info, model_path)
     else:
         logger.error(f"Model type {model_type} not yet supported")
+        return False
+
+
+async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -> bool:
+    """Load an ONNX model (Real-ESRGAN) into memory."""
+    if not ONNX_AVAILABLE:
+        logger.error("ONNX Runtime not available. Cannot load ONNX models.")
+        return False
+    
+    try:
+        scale = model_info.get("scale", 4)
+        
+        # Set up ONNX Runtime session options
+        sess_options = ort.SessionOptions()
+        sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        
+        # Choose providers based on GPU setting
+        if state.use_gpu:
+            providers = ['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider']
+        else:
+            providers = ['CPUExecutionProvider']
+        
+        # Create session
+        session = ort.InferenceSession(str(model_path), sess_options, providers=providers)
+        
+        state.onnx_session = session
+        state.onnx_model_name = model_name
+        state.onnx_model_scale = scale
+        state.current_model = model_name
+        state.current_model_type = "onnx"
+        state.cv_model = None
+        
+        # Log actual providers being used
+        actual_providers = session.get_providers()
+        logger.info(f"ONNX model {model_name} loaded with providers: {actual_providers}")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to load ONNX model {model_name}: {e}")
         return False
 
 
@@ -455,8 +487,8 @@ async def download_model(model_name: str) -> bool:
 
 
 def upscale_image(image_bytes: bytes) -> bytes:
-    """Upscale an image using the loaded model."""
-    if state.cv_model is None:
+    """Upscale an image using the loaded model (OpenCV or ONNX)."""
+    if state.current_model is None:
         raise ValueError("No model loaded")
     
     # Decode image
@@ -466,12 +498,46 @@ def upscale_image(image_bytes: bytes) -> bytes:
     if img is None:
         raise ValueError("Failed to decode image")
     
-    # Upscale using OpenCV DNN Super Resolution
-    result = state.cv_model.upsample(img)
+    if state.current_model_type == "opencv" and state.cv_model is not None:
+        # Upscale using OpenCV DNN Super Resolution
+        result = state.cv_model.upsample(img)
+    elif state.current_model_type == "onnx" and state.onnx_session is not None:
+        # Upscale using ONNX Runtime (Real-ESRGAN)
+        result = upscale_with_onnx(img)
+    else:
+        raise ValueError("No model loaded")
     
     # Encode as PNG
     _, buffer = cv2.imencode('.png', result)
     return buffer.tobytes()
+
+
+def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
+    """Upscale an image using the loaded ONNX model (Real-ESRGAN)."""
+    # Convert BGR to RGB
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    
+    # Normalize to [0, 1] and transpose to NCHW format
+    img_normalized = img_rgb.astype(np.float32) / 255.0
+    img_nchw = np.transpose(img_normalized, (2, 0, 1))  # HWC to CHW
+    img_batch = np.expand_dims(img_nchw, axis=0)  # Add batch dimension
+    
+    # Run inference
+    input_name = state.onnx_session.get_inputs()[0].name
+    output_name = state.onnx_session.get_outputs()[0].name
+    result = state.onnx_session.run([output_name], {input_name: img_batch})[0]
+    
+    # Post-process: remove batch, transpose back to HWC
+    result = np.squeeze(result, axis=0)
+    result = np.transpose(result, (1, 2, 0))  # CHW to HWC
+    
+    # Clip and convert back to uint8
+    result = np.clip(result * 255.0, 0, 255).astype(np.uint8)
+    
+    # Convert RGB back to BGR for OpenCV encoding
+    result = cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
+    
+    return result
 
 
 def run_benchmark(test_size: int = 256) -> dict:
