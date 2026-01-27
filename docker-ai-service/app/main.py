@@ -545,6 +545,12 @@ def run_benchmark(test_size: int = 256) -> dict:
     if state.current_model is None:
         return {"error": "No model loaded"}
     
+    # Adjust test_size for models that require specific input dimensions
+    # Real-ESRGAN x4 models effectively work on tiles, but for benchmarking we keep it small and standard.
+    # 64x64 input -> 256x256 output (x4)
+    if state.current_model_type == "onnx" and "realesrgan" in state.current_model:
+        test_size = 64
+
     # Create test image
     test_img = np.random.randint(0, 255, (test_size, test_size, 3), dtype=np.uint8)
     _, test_bytes = cv2.imencode('.png', test_img)

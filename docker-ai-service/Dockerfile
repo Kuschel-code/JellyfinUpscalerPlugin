@@ -23,6 +23,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     libxrender1 \
     curl \
+    libnvinfer8 \
+    libnvinfer-plugin8 \
+    libnvparsers8 \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean \
     && ln -s /usr/bin/python3 /usr/bin/python

@@ -746,12 +746,15 @@
 
             try {
                 const res = await fetch('/benchmark');
-                if (res.ok) {
-                    const data = await res.json();
-                    showToast(`Benchmark: ${data.fps} FPS (${data.avg_time_ms}ms)`, 'success');
+                const data = await res.json();
+
+                if (res.ok && !data.error) {
+                    const fps = data.fps !== undefined ? data.fps : 'N/A';
+                    const time = data.avg_time_ms !== undefined ? data.avg_time_ms : 'N/A';
+                    showToast(`Benchmark: ${fps} FPS (${time}ms)`, 'success');
+                    updateStatus();
                 } else {
-                    const err = await res.json();
-                    throw new Error(err.detail || 'Benchmark failed');
+                    throw new Error(data.detail || data.error || 'Benchmark failed');
                 }
             } catch (e) {
                 showToast(e.message, 'error');

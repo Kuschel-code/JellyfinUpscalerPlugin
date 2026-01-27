@@ -1,37 +1,26 @@
-# Jellyfin AI Upscaler - Docker Service
+# Jellyfin AI Upscaler 🚀
 
-🚀 **AI-powered video upscaling service for Jellyfin** with Real-ESRGAN support.
+**AI-powered video/image upscaling service for Jellyfin** using neural networks like Real-ESRGAN, FSRCNN, EDSR, and more.
 
 [![Docker Pulls](https://img.shields.io/docker/pulls/kuscheltier/jellyfin-ai-upscaler)](https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler)
 [![Docker Image Size](https://img.shields.io/docker/image-size/kuscheltier/jellyfin-ai-upscaler/latest)](https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler)
-
-## 🌟 Features
-
-- **Real-ESRGAN** - Best quality upscaling (x4 photos & anime)
-- **FSRCNN/ESPCN** - Fast real-time upscaling (CPU friendly)
-- **LapSRN/EDSR** - High quality upscaling
-- **NVIDIA GPU Support** - CUDA acceleration
-- **Web UI** - Model management at port 5000
-- **REST API** - `/upscale`, `/models`, `/benchmark`
-
-## 📦 Available Models
-
-| Model | Type | Best For |
-|-------|------|----------|
-| `realesrgan-x4plus-anime` | ONNX | Anime/Cartoons ⭐ |
-| `realesrgan-x4plus` | ONNX | Real photos |
-| `realesrnet-x4plus` | ONNX | Fast processing |
-| `fsrcnn-x2/x3/x4` | OpenCV | Real-time |
-| `espcn-x2/x3/x4` | OpenCV | Fastest |
-| `edsr-x2/x3/x4` | OpenCV | High quality |
+[![GitHub](https://img.shields.io/github/stars/Kuschel-code/JellyfinUpscalerPlugin?style=social)](https://github.com/Kuschel-code/JellyfinUpscalerPlugin)
 
 ---
 
-## 🚀 Quick Start
+## 🌟 Features
 
-### GPU Version (Recommended for Real-ESRGAN)
+- **14 AI Models** - Real-ESRGAN, FSRCNN, ESPCN, LapSRN, EDSR
+- **NVIDIA GPU Support** - CUDA 12.2 + cuDNN acceleration
+- **Web UI Dashboard** - Model management at port 5000
+- **REST API** - Easy integration with `/upscale`, `/models`, `/benchmark`
+- **Multi-scale** - 2x, 3x, 4x, 8x upscaling options
 
-**Requires:** NVIDIA GPU + [nvidia-container-toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+---
+
+## ⚡ Quick Start
+
+### With GPU (NVIDIA)
 
 ```bash
 docker run -d \
@@ -39,12 +28,10 @@ docker run -d \
   --gpus all \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  -e USE_GPU=true \
-  -e DEFAULT_MODEL=realesrgan-x4plus-anime \
-  kuscheltier/jellyfin-ai-upscaler:1.1.1
+  kuscheltier/jellyfin-ai-upscaler:latest
 ```
 
-### CPU Version
+### Without GPU (CPU only)
 
 ```bash
 docker run -d \
@@ -52,26 +39,65 @@ docker run -d \
   -p 5000:5000 \
   -v ai-models:/app/models \
   -e USE_GPU=false \
-  -e DEFAULT_MODEL=fsrcnn-x2 \
-  kuscheltier/jellyfin-ai-upscaler:1.1.1
+  kuscheltier/jellyfin-ai-upscaler:latest
 ```
 
-### Docker Compose (GPU)
+**📱 Open:** http://localhost:5000
+
+---
+
+## 📦 Available Models
+
+| Model | Type | Scale | Speed | Quality |
+|-------|------|-------|-------|---------|
+| **Real-ESRGAN x4** | ONNX | 4x | ⭐ | ⭐⭐⭐⭐⭐ |
+| **Real-ESRGAN x4-256** | ONNX | 4x | ⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **EDSR x2/x3/x4** | OpenCV | 2-4x | ⭐⭐ | ⭐⭐⭐⭐ |
+| **LapSRN x2/x4/x8** | OpenCV | 2-8x | ⭐⭐⭐ | ⭐⭐⭐ |
+| **FSRCNN x2/x3/x4** | OpenCV | 2-4x | ⭐⭐⭐⭐ | ⭐⭐ |
+| **ESPCN x2/x3/x4** | OpenCV | 2-4x | ⭐⭐⭐⭐⭐ | ⭐⭐ |
+
+---
+
+## 🔧 Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `USE_GPU` | `true` | Enable GPU acceleration |
+| `DEFAULT_MODEL` | - | Auto-load model on startup |
+| `MAX_CONCURRENT_REQUESTS` | `4` | Max parallel jobs |
+| `LOG_LEVEL` | `INFO` | Logging verbosity |
+
+---
+
+## 🌐 API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Web Dashboard |
+| `/health` | GET | Health check |
+| `/status` | GET | Service status + GPU info |
+| `/hardware` | GET | GPU/CPU hardware info |
+| `/models` | GET | List all models |
+| `/models/download` | POST | Download a model |
+| `/models/load` | POST | Load model into VRAM |
+| `/upscale` | POST | Upscale an image |
+| `/benchmark` | GET | Performance test |
+
+---
+
+## 🐳 Docker Compose
 
 ```yaml
 version: "3.9"
 services:
   ai-upscaler:
-    image: kuscheltier/jellyfin-ai-upscaler:1.1.1
+    image: kuscheltier/jellyfin-ai-upscaler:latest
     container_name: jellyfin-ai-upscaler
     ports:
       - "5000:5000"
     volumes:
       - ai-models:/app/models
-    environment:
-      - USE_GPU=true
-      - DEFAULT_MODEL=realesrgan-x4plus-anime
-      - MAX_CONCURRENT_REQUESTS=4
     restart: unless-stopped
     deploy:
       resources:
@@ -89,74 +115,27 @@ volumes:
 
 ## 🖥️ GPU Setup (NVIDIA)
 
-### 1. Install NVIDIA Container Toolkit
-
-**Ubuntu/Debian:**
-```bash
-curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
-curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
-  sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
-  sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
-sudo apt-get update
-sudo apt-get install -y nvidia-container-toolkit
-sudo nvidia-ctk runtime configure --runtime=docker
-sudo systemctl restart docker
-```
-
-### 2. Verify GPU Access
+**Requirements:** NVIDIA Driver + [nvidia-container-toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
 
 ```bash
+# Verify GPU access
 docker run --rm --gpus all nvidia/cuda:12.2-base nvidia-smi
 ```
 
-### 3. Start Container with GPU
+---
 
-```bash
-docker run -d --gpus all -p 5000:5000 kuscheltier/jellyfin-ai-upscaler:1.1.1
-```
+## 📱 Part of Jellyfin Upscaler Plugin
+
+This Docker service works with the **Jellyfin AI Upscaler Plugin** for automatic video transcoding with AI upscaling.
+
+🔗 **GitHub:** https://github.com/Kuschel-code/JellyfinUpscalerPlugin
 
 ---
 
-## 🔧 Environment Variables
+## 📄 License
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `USE_GPU` | `true` | Enable/disable GPU acceleration |
-| `DEFAULT_MODEL` | - | Auto-load model on startup |
-| `MAX_CONCURRENT_REQUESTS` | `4` | Max parallel upscaling jobs |
-| `LOG_LEVEL` | `INFO` | Logging verbosity |
+MIT License - Free for personal and commercial use.
 
 ---
 
-## 🌐 API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | Web UI |
-| `/status` | GET | Service status |
-| `/health` | GET | Health check |
-| `/models` | GET | List available models |
-| `/models/download` | POST | Download a model |
-| `/models/load` | POST | Load model into memory |
-| `/upscale` | POST | Upscale an image |
-| `/benchmark` | GET | Run benchmark |
-
----
-
-## 📱 TrueNAS SCALE
-
-See [TRUENAS_INSTALL.md](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docker-ai-service/TRUENAS_INSTALL.md) for installation guide.
-
----
-
-## 🔗 Links
-
-- **GitHub:** https://github.com/Kuschel-code/JellyfinUpscalerPlugin
-- **Jellyfin Plugin:** Install via repository manifest
-- **Issues:** https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues
-
----
-
-## 📜 License
-
-MIT License
+**Made with ❤️ for the Jellyfin community**
