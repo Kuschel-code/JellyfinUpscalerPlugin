@@ -13,7 +13,7 @@ ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 WORKDIR /app
 
-# Install Python and system dependencies for OpenCV
+# Install Python and system dependencies for OpenCV + FULL TensorRT
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
@@ -23,9 +23,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     libxrender1 \
     curl \
+    # TensorRT Runtime Libraries (for ONNX Runtime TensorRT EP)
     libnvinfer8 \
     libnvinfer-plugin8 \
     libnvparsers8 \
+    libnvonnxparsers8 \
+    libnvinfer-bin \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean \
     && ln -s /usr/bin/python3 /usr/bin/python
