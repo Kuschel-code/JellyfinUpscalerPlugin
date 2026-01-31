@@ -44,7 +44,7 @@ CACHE_DIR = Path("/app/cache")
 STATIC_DIR = Path("/app/static")
 
 # Version
-VERSION = "1.1.4"
+VERSION = "1.1.5"
 
 # Global state
 class AppState:
