@@ -1,13 +1,17 @@
-# 🎮 Jellyfin AI Upscaler Plugin v1.5.0.0
+# 🎮 Jellyfin AI Upscaler Plugin v1.5.0.1
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
+[![Docker Hub](https://img.shields.io/docker/pulls/kuscheltier/jellyfin-ai-upscaler?logo=docker&label=Docker%20Hub)](https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler)
+[![Docker Image](https://img.shields.io/docker/v/kuscheltier/jellyfin-ai-upscaler?logo=docker&label=Latest)](https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler)
 
 > [!CAUTION]
-> **🧪 TEST PHASE - v1.5.0.0**
+> **🧪 TEST PHASE - v1.5.0.1**
 > 
 > This is an **EXPERIMENTAL** version with the new Docker AI microservice architecture!
 > AI upscaling now runs in a separate Docker container instead of directly in Jellyfin.
+> 
+> **🐳 Docker Image:** [kuscheltier/jellyfin-ai-upscaler](https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler)
 > 
 > **Please report bugs:** [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 
