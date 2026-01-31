@@ -121,6 +121,11 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 ## 📋 Changelog
 
+### v1.5.0.1 (Hotfix)
+- **🔧 Fixed #34**: Plugin initialization error (HardwareBenchmarkService DI)
+- **🔧 Fixed #33**: Checksum mismatch during installation
+- **🔷 Added #32**: Intel GPU/iGPU support via OpenVINO (Dockerfile.intel)
+
 ### v1.5.0.0 (TEST PHASE)
 - **🐳 Docker Microservice Architecture**: AI processing in separate container
 - **📦 ~1.6 MB instead of 417 MB**: No more native DLLs in plugin
