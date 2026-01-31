@@ -44,7 +44,7 @@ CACHE_DIR = Path("/app/cache")
 STATIC_DIR = Path("/app/static")
 
 # Version
-VERSION = "1.1.2"
+VERSION = "1.1.4"
 
 # Global state
 class AppState:
@@ -418,9 +418,15 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
         sess_options = ort.SessionOptions()
         sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         
-        # Choose providers based on GPU setting
+        # Choose providers based on GPU setting and available hardware
+        # Priority: TensorRT (NVIDIA) > CUDA (NVIDIA) > OpenVINO (Intel) > CPU
         if state.use_gpu:
-            providers = ['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider']
+            providers = [
+                'TensorrtExecutionProvider',   # NVIDIA TensorRT (fastest)
+                'CUDAExecutionProvider',        # NVIDIA CUDA
+                'OpenVINOExecutionProvider',    # Intel GPU/iGPU (OpenVINO)
+                'CPUExecutionProvider'          # Fallback
+            ]
         else:
             providers = ['CPUExecutionProvider']
         

@@ -1,0 +1,55 @@
+# Intel GPU (OpenVINO) Dockerfile for AI Upscaler Service
+# Use this for Intel integrated GPUs (iGPU) or Intel Arc discrete GPUs
+# Requires: Docker with --device=/dev/dri for GPU access
+
+FROM openvino/ubuntu22_runtime:2024.0.0
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
+ENV USE_GPU=true
+ENV OPENVINO_DEVICE=GPU
+
+USER root
+
+WORKDIR /app
+
+# Install Python and system dependencies for OpenCV
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-pip \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copy requirements first for better caching
+COPY requirements-intel.txt ./requirements.txt
+
+# Install Python dependencies (Intel/OpenVINO version)
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY app/ ./app/
+COPY static/ ./static/
+
+# Create directories for models and cache
+RUN mkdir -p /app/models /app/cache && \
+    chown -R openvino:openvino /app
+
+# Switch back to non-root user
+USER openvino
+
+# Expose port
+EXPOSE 5000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:5000/health || exit 1
+
+# Run the application
+CMD ["python3", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000"]

@@ -124,6 +124,30 @@ docker run --rm --gpus all nvidia/cuda:12.2-base nvidia-smi
 
 ---
 
+## 🔷 Intel GPU Setup (OpenVINO)
+
+**NEW in v1.1.4:** Support for Intel iGPU and Arc discrete GPUs via OpenVINO!
+
+### Quick Start (Intel GPU)
+
+```bash
+# Build Intel version
+docker build -f Dockerfile.intel -t jellyfin-ai-upscaler:intel .
+
+# Run with Intel GPU access
+docker run -d \
+  --name jellyfin-ai-upscaler-intel \
+  --device=/dev/dri \
+  -p 5000:5000 \
+  -v ai-models:/app/models \
+  jellyfin-ai-upscaler:intel
+```
+
+**Requirements:**
+- Intel iGPU (6th gen+) or Intel Arc GPU
+- Linux host with `/dev/dri` device access
+- Intel GPU drivers installed on host
+
 ## 📱 Part of Jellyfin Upscaler Plugin
 
 This Docker service works with the **Jellyfin AI Upscaler Plugin** for automatic video transcoding with AI upscaling.

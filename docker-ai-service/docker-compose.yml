@@ -49,3 +49,28 @@ volumes:
     name: jellyfin-ai-models
   ai-cache:
     name: jellyfin-ai-cache
+
+# ============================================================
+# INTEL GPU VERSION (OpenVINO) - For Intel iGPU / Arc GPUs
+# ============================================================
+# Uncomment below to use Intel GPU acceleration:
+#
+#   ai-upscaler-intel:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile.intel
+#     container_name: jellyfin-ai-upscaler-intel
+#     ports:
+#       - "5000:5000"
+#     volumes:
+#       - ai-models:/app/models
+#       - ai-cache:/app/cache
+#     devices:
+#       - /dev/dri:/dev/dri  # Required for Intel GPU access
+#     environment:
+#       - USE_GPU=true
+#       - OPENVINO_DEVICE=GPU
+#       - MAX_CONCURRENT_REQUESTS=4
+#       - DEFAULT_MODEL=realesrgan-x4
+#       - LOG_LEVEL=INFO
+#     restart: unless-stopped
