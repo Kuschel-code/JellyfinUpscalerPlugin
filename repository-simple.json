@@ -12,8 +12,8 @@
         "changelog": "v1.5.0.1: Hotfix - Fixed DI error (#34), Checksum fix (#33), Intel GPU/OpenVINO support (#32)",
         "targetAbi": "10.11.6.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.0.1/JellyfinUpscalerPlugin-v1.5.0.1.zip",
-        "checksum": "09A64241ED099371446D14C26CF6DE9D",
-        "timestamp": "2026-01-31T19:30:00.000Z"
+        "checksum": "3560b89cfb82dae6469e9234205a9f45",
+        "timestamp": "2026-01-31T19:15:15.000Z"
       },
       {
         "version": "1.5.0.0",
