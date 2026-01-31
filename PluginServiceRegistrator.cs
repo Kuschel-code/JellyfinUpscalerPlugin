@@ -25,8 +25,10 @@ namespace JellyfinUpscalerPlugin
             serviceCollection.AddSingleton<HttpUpscalerService>();
 
             // Background / Hosted Services
+            // Register HardwareBenchmarkService as Singleton FIRST so it can be injected into controllers
+            serviceCollection.AddSingleton<HardwareBenchmarkService>();
             serviceCollection.AddHostedService<UpscalerService>();
-            serviceCollection.AddHostedService<HardwareBenchmarkService>();
+            serviceCollection.AddHostedService(sp => sp.GetRequiredService<HardwareBenchmarkService>());
 
             // Platform & Interop
             serviceCollection.AddSingleton<IPlatformDetectionService, PlatformDetectionService>();
