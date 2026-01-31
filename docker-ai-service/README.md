@@ -148,6 +148,30 @@ docker run -d \
 - Linux host with `/dev/dri` device access
 - Intel GPU drivers installed on host
 
+---
+
+## 🔄 Automatic Updates (Watchtower)
+
+Keep your AI Upscaler container automatically updated when a new version is pushed to Docker Hub:
+
+```bash
+# Run Watchtower to monitor and update containers
+docker run -d \
+  --name watchtower \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  containrrr/watchtower \
+  --cleanup \
+  --interval 21600 \
+  jellyfin-ai-upscaler
+```
+
+**What it does:**
+- Checks Docker Hub every 6 hours for new images
+- Automatically pulls and restarts the container with the new version
+- Cleans up old images to save disk space
+
+**Via docker-compose:** See the Watchtower section in `docker-compose.yml`.
+
 ## 📱 Part of Jellyfin Upscaler Plugin
 
 This Docker service works with the **Jellyfin AI Upscaler Plugin** for automatic video transcoding with AI upscaling.

@@ -2,10 +2,13 @@ version: "3.9"
 
 services:
   # GPU Version (NVIDIA CUDA) - Default
+  # Uses Docker Hub image for easy auto-updates with Watchtower
   ai-upscaler:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: kuscheltier/jellyfin-ai-upscaler:latest
+    # Alternative: Build locally (uncomment below, comment image above)
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
     container_name: jellyfin-ai-upscaler
     ports:
       - "5000:5000"
@@ -49,6 +52,30 @@ volumes:
     name: jellyfin-ai-models
   ai-cache:
     name: jellyfin-ai-cache
+
+# ============================================================
+# WATCHTOWER - AUTOMATIC DOCKER UPDATES
+# ============================================================
+# Watchtower monitors your containers and automatically updates them
+# when a new image is available on Docker Hub.
+#
+# Uncomment below to enable automatic updates:
+#
+#   watchtower:
+#     image: containrrr/watchtower:latest
+#     container_name: watchtower
+#     volumes:
+#       - /var/run/docker.sock:/var/run/docker.sock
+#     environment:
+#       # Check for updates every 6 hours (21600 seconds)
+#       - WATCHTOWER_POLL_INTERVAL=21600
+#       # Only update containers with the "com.centurylinklabs.watchtower.enable=true" label
+#       - WATCHTOWER_LABEL_ENABLE=false
+#       # Clean up old images after update
+#       - WATCHTOWER_CLEANUP=true
+#       # Notify on updates (optional - configure notifications)
+#       # - WATCHTOWER_NOTIFICATIONS=email
+#     restart: unless-stopped
 
 # ============================================================
 # INTEL GPU VERSION (OpenVINO) - For Intel iGPU / Arc GPUs
