@@ -42,7 +42,7 @@ namespace JellyfinUpscalerPlugin
         public string ModelDownloadUrl { get; set; } = "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/models-v1.0";
         
         // Version tracking
-        public string PluginVersion { get; set; } = "1.5.0.1";
+        public string PluginVersion { get; set; } = "1.5.0.2";
         public DateTime LastConfigUpdate { get; set; } = DateTime.UtcNow;
 
         public PluginConfiguration()

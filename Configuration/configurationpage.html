@@ -294,6 +294,9 @@
             function loadConfig(page) {
                 Dashboard.showLoading();
                 ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                    // AI Service URL (Docker)
+                    page.querySelector('#AiServiceUrl').value = config.AiServiceUrl || 'http://localhost:5000';
+
                     page.querySelector('#EnablePlugin').checked = config.EnablePlugin;
                     page.querySelector('#PlayerButton').checked = config.PlayerButton;
                     page.querySelector('#Model').value = config.Model || 'realesrgan';
@@ -569,6 +572,9 @@
                     Dashboard.showLoading();
 
                     const config = {
+                        // AI Service URL (Docker) - CRITICAL for plugin-container connection
+                        AiServiceUrl: page.querySelector('#AiServiceUrl').value || 'http://localhost:5000',
+
                         EnablePlugin: page.querySelector('#EnablePlugin').checked,
                         PlayerButton: page.querySelector('#PlayerButton').checked,
                         Model: page.querySelector('#Model').value,
