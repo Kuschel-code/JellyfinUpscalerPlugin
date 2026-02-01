@@ -1,0 +1,33 @@
+# Default values for Jellyfin AI Upscaler
+# TrueNAS SCALE App Configuration
+
+image:
+  repository: kuscheltier/jellyfin-ai-upscaler
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 5000
+
+persistence:
+  models:
+    enabled: true
+    hostPath: "/mnt/pool/apps/jellyfin-ai-upscaler/models"
+    size: "10Gi"
+
+config:
+  useGpu: true
+  maxConcurrent: 4
+  defaultModel: ""
+
+nvidia:
+  enabled: true
+  gpuCount: 1
+
+resources:
+  limits:
+    cpu: "4"
+    memory: "8Gi"
+  requests:
+    cpu: "1"
+    memory: "2Gi"

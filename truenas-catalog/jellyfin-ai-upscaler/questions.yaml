@@ -1,0 +1,110 @@
+groups:
+  - name: "Container Images"
+    description: "Configure container image settings"
+  - name: "Networking"
+    description: "Configure network settings"
+  - name: "Storage"
+    description: "Configure storage for models"
+  - name: "GPU Configuration"
+    description: "Configure NVIDIA GPU passthrough"
+  - name: "Application Configuration"
+    description: "Configure AI Upscaler settings"
+
+questions:
+  # Container Image
+  - variable: image.tag
+    label: "Image Tag"
+    description: "Docker image version tag"
+    group: "Container Images"
+    schema:
+      type: string
+      default: "latest"
+      enum:
+        - value: "latest"
+          description: "Latest stable version"
+        - value: "1.1.5"
+          description: "Version 1.1.5 (TensorRT)"
+        - value: "cpu"
+          description: "CPU-only version"
+        - value: "intel"
+          description: "Intel OpenVINO version"
+
+  # Network Configuration
+  - variable: service.port
+    label: "Web UI Port"
+    description: "Port for the web dashboard and API"
+    group: "Networking"
+    schema:
+      type: int
+      default: 5000
+      min: 1024
+      max: 65535
+      required: true
+
+  # Storage Configuration
+  - variable: persistence.models.hostPath
+    label: "Models Storage Path"
+    description: "Host path for AI model storage"
+    group: "Storage"
+    schema:
+      type: hostpath
+      required: true
+      default: "/mnt/pool/apps/jellyfin-ai-upscaler/models"
+
+  # GPU Configuration
+  - variable: nvidia.enabled
+    label: "Enable NVIDIA GPU"
+    description: "Pass through NVIDIA GPU for acceleration"
+    group: "GPU Configuration"
+    schema:
+      type: boolean
+      default: true
+
+  - variable: nvidia.gpuCount
+    label: "GPU Count"
+    description: "Number of GPUs to allocate"
+    group: "GPU Configuration"
+    schema:
+      type: int
+      default: 1
+      min: 1
+      max: 8
+      show_if: [["nvidia.enabled", "=", true]]
+
+  # Application Configuration
+  - variable: config.useGpu
+    label: "Use GPU Acceleration"
+    description: "Enable GPU acceleration for AI inference"
+    group: "Application Configuration"
+    schema:
+      type: boolean
+      default: true
+
+  - variable: config.maxConcurrent
+    label: "Max Concurrent Requests"
+    description: "Maximum parallel upscaling requests"
+    group: "Application Configuration"
+    schema:
+      type: int
+      default: 4
+      min: 1
+      max: 16
+
+  - variable: config.defaultModel
+    label: "Default Model"
+    description: "Model to auto-load on startup (leave empty for none)"
+    group: "Application Configuration"
+    schema:
+      type: string
+      default: ""
+      enum:
+        - value: ""
+          description: "None (load manually)"
+        - value: "fsrcnn-x2"
+          description: "FSRCNN x2 (Fast)"
+        - value: "fsrcnn-x3"
+          description: "FSRCNN x3 (Fast)"
+        - value: "realesrgan-x4"
+          description: "Real-ESRGAN x4 (Best Quality)"
+        - value: "realesrgan-x4-256"
+          description: "Real-ESRGAN x4 256px (Low VRAM)"

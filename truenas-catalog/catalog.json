@@ -1,0 +1,15 @@
+{
+    "name": "Kuschel Apps",
+    "description": "Custom TrueNAS SCALE applications by Kuschel-code",
+    "maintainers": [
+        {
+            "name": "Kuschel-code",
+            "email": "github@kuschel-code"
+        }
+    ],
+    "location": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin",
+    "branch": "main",
+    "preferred_trains": [
+        "stable"
+    ]
+}

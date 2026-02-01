@@ -1,0 +1,22 @@
+services:
+  jellyfin-ai-upscaler:
+    image: kuscheltier/jellyfin-ai-upscaler:{{ .Values.image.tag | default "latest" }}
+    container_name: jellyfin-ai-upscaler
+    restart: unless-stopped
+    ports:
+      - "{{ .Values.service.port }}:5000"
+    volumes:
+      - "{{ .Values.persistence.models.hostPath }}:/app/models"
+    environment:
+      - USE_GPU={{ .Values.config.useGpu | default "true" }}
+      - MAX_CONCURRENT_REQUESTS={{ .Values.config.maxConcurrent | default "4" }}
+      - DEFAULT_MODEL={{ .Values.config.defaultModel | default "" }}
+    {{- if .Values.nvidia.enabled }}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: {{ .Values.nvidia.gpuCount | default 1 }}
+              capabilities: [gpu]
+    {{- end }}
