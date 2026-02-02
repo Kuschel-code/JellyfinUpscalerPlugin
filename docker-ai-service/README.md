@@ -11,7 +11,10 @@
 ## 🌟 Features
 
 - **14 AI Models** - Real-ESRGAN, FSRCNN, ESPCN, LapSRN, EDSR
-- **NVIDIA GPU Support** - CUDA 12.2 + cuDNN acceleration
+- **NVIDIA GPU Support** - CUDA 12.2 + TensorRT acceleration
+- **AMD GPU Support** - ROCm 6.0 acceleration (RX 6000/7000, MI series)
+- **Intel GPU Support** - OpenVINO acceleration (Arc, iGPU)
+- **Apple Silicon Support** - Native ARM64 + CoreML (M1/M2/M3/M4)
 - **Web UI Dashboard** - Model management at port 5000
 - **REST API** - Easy integration with `/upscale`, `/models`, `/benchmark`
 - **Multi-scale** - 2x, 3x, 4x, 8x upscaling options
@@ -20,7 +23,7 @@
 
 ## ⚡ Quick Start
 
-### With GPU (NVIDIA)
+### 🟢 NVIDIA GPU
 
 ```bash
 docker run -d \
@@ -31,7 +34,45 @@ docker run -d \
   kuscheltier/jellyfin-ai-upscaler:latest
 ```
 
-### Without GPU (CPU only)
+### 🔴 AMD GPU (ROCm)
+
+```bash
+docker run -d \
+  --name jellyfin-ai-upscaler \
+  --device=/dev/kfd --device=/dev/dri \
+  --group-add video \
+  -p 5000:5000 \
+  -v ai-models:/app/models \
+  kuscheltier/jellyfin-ai-upscaler:amd
+```
+
+### 🔵 Intel GPU (OpenVINO)
+
+```bash
+docker run -d \
+  --name jellyfin-ai-upscaler \
+  --device=/dev/dri \
+  -p 5000:5000 \
+  -v ai-models:/app/models \
+  kuscheltier/jellyfin-ai-upscaler:intel
+```
+
+### 🍎 Apple Silicon (macOS)
+
+```bash
+# Docker (ARM64 optimized, CPU-mode)
+docker run -d \
+  --name jellyfin-ai-upscaler \
+  -p 5000:5000 \
+  -v ai-models:/app/models \
+  kuscheltier/jellyfin-ai-upscaler:apple
+
+# Native (recommended for best performance with CoreML)
+pip install -r requirements-apple.txt
+python -m uvicorn app.main:app --host 0.0.0.0 --port 5000
+```
+
+### 💻 CPU Only (Any Platform)
 
 ```bash
 docker run -d \
@@ -39,7 +80,7 @@ docker run -d \
   -p 5000:5000 \
   -v ai-models:/app/models \
   -e USE_GPU=false \
-  kuscheltier/jellyfin-ai-upscaler:latest
+  kuscheltier/jellyfin-ai-upscaler:cpu
 ```
 
 **📱 Open:** http://localhost:5000

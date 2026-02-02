@@ -258,7 +258,9 @@ def detect_hardware():
     except:
         pass
     
-    # Detect GPU using nvidia-smi
+    gpu_detected = False
+    
+    # Try NVIDIA GPU first (nvidia-smi)
     try:
         result = subprocess.run(
             ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
@@ -271,9 +273,81 @@ def detect_hardware():
                 state.gpu_memory = f"{int(parts[1].strip())} MB"
             else:
                 state.gpu_name = result.stdout.strip()
+            gpu_detected = True
+            logger.info(f"Detected NVIDIA GPU: {state.gpu_name}")
     except Exception as e:
-        logger.warning(f"Could not detect GPU: {e}")
-        state.gpu_name = "No NVIDIA GPU detected"
+        logger.debug(f"NVIDIA GPU not detected: {e}")
+    
+    # Try AMD GPU (rocm-smi)
+    if not gpu_detected:
+        try:
+            result = subprocess.run(
+                ["rocm-smi", "--showproductname"],
+                capture_output=True, text=True, timeout=5
+            )
+            if result.returncode == 0 and "GPU" in result.stdout:
+                # Parse AMD GPU name from rocm-smi output
+                for line in result.stdout.split("\n"):
+                    if "Card series" in line or "GPU" in line:
+                        state.gpu_name = line.split(":")[-1].strip() if ":" in line else "AMD GPU"
+                        break
+                else:
+                    state.gpu_name = "AMD ROCm GPU"
+                
+                # Try to get VRAM
+                try:
+                    mem_result = subprocess.run(
+                        ["rocm-smi", "--showmeminfo", "vram"],
+                        capture_output=True, text=True, timeout=5
+                    )
+                    if mem_result.returncode == 0:
+                        for line in mem_result.stdout.split("\n"):
+                            if "Total" in line:
+                                # Extract memory size
+                                parts = line.split()
+                                for i, p in enumerate(parts):
+                                    if p.isdigit():
+                                        state.gpu_memory = f"{int(p)} MB"
+                                        break
+                except:
+                    state.gpu_memory = "Unknown"
+                
+                gpu_detected = True
+                logger.info(f"Detected AMD GPU: {state.gpu_name}")
+        except Exception as e:
+            logger.debug(f"AMD GPU not detected: {e}")
+    
+    # Try Apple Silicon (macOS)
+    if not gpu_detected and platform.system() == "Darwin":
+        try:
+            # Check for Apple Silicon
+            result = subprocess.run(
+                ["sysctl", "-n", "machdep.cpu.brand_string"],
+                capture_output=True, text=True, timeout=5
+            )
+            if result.returncode == 0:
+                cpu_brand = result.stdout.strip()
+                if "Apple" in cpu_brand:
+                    state.gpu_name = f"Apple Silicon ({cpu_brand})"
+                    # Apple Silicon has unified memory
+                    try:
+                        mem_result = subprocess.run(
+                            ["sysctl", "-n", "hw.memsize"],
+                            capture_output=True, text=True, timeout=5
+                        )
+                        if mem_result.returncode == 0:
+                            mem_bytes = int(mem_result.stdout.strip())
+                            state.gpu_memory = f"{mem_bytes // (1024**3)} GB (Unified)"
+                    except:
+                        state.gpu_memory = "Unified Memory"
+                    gpu_detected = True
+                    logger.info(f"Detected Apple Silicon: {state.gpu_name}")
+        except Exception as e:
+            logger.debug(f"Apple Silicon not detected: {e}")
+    
+    # No GPU detected
+    if not gpu_detected:
+        state.gpu_name = "No GPU detected (CPU-only mode)"
         state.gpu_memory = "N/A"
 
 

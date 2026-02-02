@@ -1,0 +1,17 @@
+# AMD ROCm specific requirements
+# For AMD GPUs (RX 6000/7000 series, MI series)
+
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+opencv-python>=4.8.0
+opencv-contrib-python>=4.8.0
+numpy>=1.24.0
+Pillow>=10.0.0
+aiohttp>=3.9.0
+aiofiles>=23.2.0
+python-multipart>=0.0.6
+httpx>=0.25.0
+psutil>=5.9.0
+
+# Note: onnxruntime-rocm is installed separately in Dockerfile
+# because it requires specific ROCm version matching

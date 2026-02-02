@@ -1,0 +1,57 @@
+# ============================================
+# AI Upscaler Service - AMD GPU (ROCm) Version
+# ============================================
+# Build: docker build -f Dockerfile.amd -t kuscheltier/jellyfin-ai-upscaler:amd .
+# Run: docker run --device=/dev/kfd --device=/dev/dri --group-add video -p 5000:5000 kuscheltier/jellyfin-ai-upscaler:amd
+
+FROM rocm/pytorch:rocm6.0_ubuntu22.04_py3.10_pytorch_2.1.2
+
+LABEL maintainer="Kuschel-code"
+LABEL description="AI Upscaler Service with AMD ROCm GPU Acceleration"
+LABEL version="1.1.5"
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV USE_GPU=true
+ENV HSA_OVERRIDE_GFX_VERSION=11.0.0
+
+# Install system dependencies for OpenCV
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    curl \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements first for layer caching
+COPY requirements-amd.txt requirements.txt
+
+# Install Python dependencies with ROCm ONNX Runtime
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir onnxruntime-rocm
+
+# Copy application code
+COPY app/ ./app/
+COPY static/ ./static/
+
+# Create directories for models and cache
+RUN mkdir -p /app/models /app/cache
+
+# Expose port
+EXPOSE 5000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:5000/health || exit 1
+
+# Run the application
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000"]
