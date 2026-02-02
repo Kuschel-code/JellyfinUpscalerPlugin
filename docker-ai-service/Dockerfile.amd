@@ -4,7 +4,7 @@
 # Build: docker build -f Dockerfile.amd -t kuscheltier/jellyfin-ai-upscaler:amd .
 # Run: docker run --device=/dev/kfd --device=/dev/dri --group-add video -p 5000:5000 kuscheltier/jellyfin-ai-upscaler:amd
 
-FROM rocm/pytorch:rocm6.0_ubuntu22.04_py3.10_pytorch_2.1.2
+FROM rocm/pytorch:latest
 
 LABEL maintainer="Kuschel-code"
 LABEL description="AI Upscaler Service with AMD ROCm GPU Acceleration"
@@ -15,17 +15,17 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV USE_GPU=true
 ENV HSA_OVERRIDE_GFX_VERSION=11.0.0
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Install system dependencies for OpenCV
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
-    libxrender-dev \
+    libxrender1 \
     libgomp1 \
     curl \
-    wget \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
