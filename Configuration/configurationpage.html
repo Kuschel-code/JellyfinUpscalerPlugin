@@ -4,7 +4,7 @@
             <div class="verticalSection">
                 <div class="sectionTitleContainer flex align-items-center">
                     <h2 class="sectionTitle">🎮 AI Upscaler Plugin</h2>
-                    <span class="bubble ml-1">v1.5.0.4</span>
+                    <span class="bubble ml-1">v1.5.0.5</span>
                 </div>
                 <p class="sectionDescription">Professional AI Video Enhancement for Jellyfin - Docker Microservice
                     Architecture</p>
@@ -296,8 +296,25 @@
             const pluginId = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
             let initialized = false;
 
+            // Helper functions for Jellyfin API compatibility
+            function showLoading() {
+                if (typeof Dashboard.showLoadingMsg === 'function') {
+                    Dashboard.showLoadingMsg();
+                } else if (typeof Dashboard.showLoading === 'function') {
+                    Dashboard.showLoading();
+                }
+            }
+
+            function hideLoading() {
+                if (typeof Dashboard.hideLoadingMsg === 'function') {
+                    Dashboard.hideLoadingMsg();
+                } else if (typeof Dashboard.hideLoading === 'function') {
+                    Dashboard.hideLoading();
+                }
+            }
+
             function loadConfig(page) {
-                Dashboard.showLoadingMsg();
+                showLoading();
                 ApiClient.getPluginConfiguration(pluginId).then(function (config) {
                     console.log('AI Upscaler: Config loaded', config);
 
@@ -361,13 +378,23 @@
 
                     select.innerHTML = html;
 
-                    // Trigger the scale factor update for the first model
-                    if (models.length > 0) {
+                    // Set selected model if exists
+                    if (selectedModelId && models.some(m => (m.Id || m.id) === selectedModelId)) {
+                        select.value = selectedModelId;
+                    } else if (models.length > 0) {
+                        // If no selectedModelId or it's invalid, select the first one
+                        select.value = models[0].Id || models[0].id;
+                    }
+
+                    // Trigger the scale factor update for the selected model
+                    if (select.value) {
                         updateScaleFactors(page, select.value);
                     }
+                    hideLoading();
                 }).catch(function (err) {
                     console.error('Failed to load models:', err);
                     page.querySelector('#Model').innerHTML = '<option value="">Error loading models</option>';
+                    hideLoading();
                 });
             }
 
@@ -648,7 +675,7 @@
             // ===== CRITICAL: Save Configuration Handler =====
             function saveConfiguration(page) {
                 console.log('AI Upscaler: Saving configuration...');
-                Dashboard.showLoadingMsg();
+                showLoading();
 
                 const config = {
                     // AI Service URL (Docker) - CRITICAL for plugin-container connection
@@ -676,11 +703,15 @@
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function () {
                     console.log('AI Upscaler: Configuration saved successfully');
-                    Dashboard.hideLoadingMsg();
+                    hideLoading();
                     Dashboard.processPluginConfigurationUpdateResult();
+                    // Show success toast
+                    require(['toast'], function (toast) {
+                        toast('✅ Settings saved successfully!');
+                    });
                 }).catch(function (err) {
                     console.error('AI Upscaler: Failed to save configuration', err);
-                    Dashboard.hideLoadingMsg();
+                    hideLoading();
                     Dashboard.alert('Failed to save configuration: ' + (err.message || 'Unknown error'));
                 });
             }
