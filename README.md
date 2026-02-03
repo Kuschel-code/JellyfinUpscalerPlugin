@@ -1,4 +1,4 @@
-# 🎮 Jellyfin AI Upscaler Plugin v1.5.0.2
+# 🎮 Jellyfin AI Upscaler Plugin v1.5.0.3
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -7,7 +7,7 @@
 [![Project Website](https://img.shields.io/badge/Website-Visit-blueviolet)](https://jellyfin-upscale-ai.base44.app)
 
 > [!CAUTION]
-> **🧪 TEST PHASE - v1.5.0.2**
+> **🧪 TEST PHASE - v1.5.0.3**
 > 
 > This is an **EXPERIMENTAL** version with the new Docker AI microservice architecture!
 > AI upscaling now runs in a separate Docker container instead of directly in Jellyfin.
