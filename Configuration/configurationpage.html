@@ -4,7 +4,7 @@
             <div class="verticalSection">
                 <div class="sectionTitleContainer flex align-items-center">
                     <h2 class="sectionTitle">🎮 AI Upscaler Plugin</h2>
-                    <span class="bubble ml-1">v1.5.0.3</span>
+                    <span class="bubble ml-1">v1.5.0.4</span>
                 </div>
                 <p class="sectionDescription">Professional AI Video Enhancement for Jellyfin - Docker Microservice
                     Architecture</p>
@@ -20,13 +20,18 @@
                         <label class="inputLabel" for="AiServiceUrl">AI Service URL:</label>
                         <input is="emby-input" type="text" id="AiServiceUrl" name="AiServiceUrl"
                             placeholder="http://localhost:5000" />
-                        <div class="fieldDescription" style="color: #94a3b8;">URL zum Docker AI Container (Standard:
+                        <div class="fieldDescription" style="color: #94a3b8;">URL to Docker AI Container (Default:
                             http://localhost:5000)</div>
                     </div>
 
-                    <div id="serviceStatus"
-                        style="margin-top: 0.5rem; padding: 0.5rem; border-radius: 4px; background: rgba(0,0,0,0.3);">
-                        <span id="serviceStatusText">Prüfe Verbindung...</span>
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
+                        <button is="emby-button" type="button" id="btn-test-connection" class="raised">
+                            <span>🔗 Test Connection</span>
+                        </button>
+                        <div id="serviceStatus"
+                            style="flex: 1; padding: 0.5rem; border-radius: 4px; background: rgba(0,0,0,0.3);">
+                            <span id="serviceStatusText">Click 'Test Connection' to verify</span>
+                        </div>
                     </div>
                 </div>
 
@@ -528,6 +533,37 @@
                 });
             }
 
+            // ===== TEST CONNECTION HANDLER =====
+            function testConnection(page) {
+                const btn = page.querySelector('#btn-test-connection');
+                const statusEl = page.querySelector('#serviceStatusText');
+                const statusContainer = page.querySelector('#serviceStatus');
+                const url = page.querySelector('#AiServiceUrl').value || 'http://localhost:5000';
+
+                btn.disabled = true;
+                statusEl.textContent = 'Testing connection...';
+                statusContainer.style.background = 'rgba(255, 193, 7, 0.2)';
+
+                fetch(url + '/health', {
+                    method: 'GET',
+                    mode: 'cors'
+                }).then(function (response) {
+                    btn.disabled = false;
+                    if (response.ok) {
+                        statusEl.innerHTML = '✅ Connected successfully!';
+                        statusContainer.style.background = 'rgba(76, 175, 80, 0.2)';
+                    } else {
+                        statusEl.innerHTML = '❌ Connection failed (HTTP ' + response.status + ')';
+                        statusContainer.style.background = 'rgba(244, 67, 54, 0.2)';
+                    }
+                }).catch(function (err) {
+                    btn.disabled = false;
+                    statusEl.innerHTML = '❌ Connection refused - Is the Docker container running?';
+                    statusContainer.style.background = 'rgba(244, 67, 54, 0.2)';
+                    console.error('AI Upscaler: Connection test failed', err);
+                });
+            }
+
             // ===== CRITICAL: Save Configuration Handler =====
             function saveConfiguration(page) {
                 console.log('AI Upscaler: Saving configuration...');
@@ -561,6 +597,10 @@
                     console.log('AI Upscaler: Configuration saved successfully');
                     Dashboard.hideLoading();
                     Dashboard.processPluginConfigurationUpdateResult();
+                    // Show success toast
+                    require(['toast'], function (toast) {
+                        toast('✅ Settings saved successfully!');
+                    });
                 }).catch(function (err) {
                     console.error('AI Upscaler: Failed to save configuration', err);
                     Dashboard.hideLoading();
@@ -596,6 +636,14 @@
                 if (modelSelect) {
                     modelSelect.addEventListener('change', function () {
                         updateScaleFactors(page, this.value);
+                    });
+                }
+
+                // Test Connection button
+                const btnTestConnection = page.querySelector('#btn-test-connection');
+                if (btnTestConnection) {
+                    btnTestConnection.addEventListener('click', function () {
+                        testConnection(page);
                     });
                 }
 
