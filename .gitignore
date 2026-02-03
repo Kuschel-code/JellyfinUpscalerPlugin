@@ -43,3 +43,5 @@ cache/
 JellyfinUpscalerPlugin-Backup*/
 JellyfinUpscalerPlugin_Backup_*/
 JellyfinUpscalerPlugin-v*/
+apps/
+apps-fork/

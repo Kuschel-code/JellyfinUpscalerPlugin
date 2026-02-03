@@ -4,8 +4,7 @@
             <div class="verticalSection">
                 <div class="sectionTitleContainer flex align-items-center">
                     <h2 class="sectionTitle">🎮 AI Upscaler Plugin</h2>
-                    <span class="bubble ml-1">v1.4.9.5</span>
-                    <span class="bubble ml-1" style="background: #f59e0b;">TEST</span>
+                    <span class="bubble ml-1">v1.5.0.3</span>
                 </div>
                 <p class="sectionDescription">Professional AI Video Enhancement for Jellyfin - Docker Microservice
                     Architecture</p>
@@ -290,10 +289,13 @@
             'use strict';
 
             const pluginId = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
+            let initialized = false;
 
             function loadConfig(page) {
                 Dashboard.showLoading();
                 ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                    console.log('AI Upscaler: Config loaded', config);
+
                     // AI Service URL (Docker)
                     page.querySelector('#AiServiceUrl').value = config.AiServiceUrl || 'http://localhost:5000';
 
@@ -319,6 +321,9 @@
                     page.querySelector('#CacheSizeMB').value = config.CacheSizeMB || 5120;
 
                     Dashboard.hideLoading();
+                }).catch(function (err) {
+                    console.error('AI Upscaler: Failed to load config', err);
+                    Dashboard.hideLoading();
                 });
             }
 
@@ -330,6 +335,8 @@
 
                     // Trigger initial scale update
                     updateScaleFactors(page, select.value);
+                }).catch(function (err) {
+                    console.error('AI Upscaler: Failed to load models', err);
                 });
             }
 
@@ -521,9 +528,118 @@
                 });
             }
 
+            // ===== CRITICAL: Save Configuration Handler =====
+            function saveConfiguration(page) {
+                console.log('AI Upscaler: Saving configuration...');
+                Dashboard.showLoading();
+
+                const config = {
+                    // AI Service URL (Docker) - CRITICAL for plugin-container connection
+                    AiServiceUrl: page.querySelector('#AiServiceUrl').value || 'http://localhost:5000',
+
+                    EnablePlugin: page.querySelector('#EnablePlugin').checked,
+                    PlayerButton: page.querySelector('#PlayerButton').checked,
+                    Model: page.querySelector('#Model').value,
+                    ScaleFactor: parseInt(page.querySelector('#ScaleFactor').value) || 2,
+                    QualityLevel: page.querySelector('#QualityLevel').value,
+                    HardwareAcceleration: page.querySelector('#HardwareAcceleration').checked,
+                    MaxVRAMUsage: parseInt(page.querySelector('#MaxVRAMUsage').value) || 2048,
+                    CpuThreads: parseInt(page.querySelector('#CpuThreads').value) || 4,
+                    Notifications: page.querySelector('#Notifications').checked,
+                    AutoRetryButton: page.querySelector('#AutoRetryButton').checked,
+                    ButtonPosition: page.querySelector('#ButtonPosition').value,
+                    EnableComparisonView: page.querySelector('#EnableComparisonView').checked,
+                    EnablePerformanceMetrics: page.querySelector('#EnablePerformanceMetrics').checked,
+                    EnablePreProcessingCache: page.querySelector('#EnablePreProcessingCache').checked,
+                    MaxCacheAgeDays: parseInt(page.querySelector('#MaxCacheAgeDays').value) || 30,
+                    CacheSizeMB: parseInt(page.querySelector('#CacheSizeMB').value) || 5120
+                };
+
+                console.log('AI Upscaler: Config to save:', config);
+
+                ApiClient.updatePluginConfiguration(pluginId, config).then(function () {
+                    console.log('AI Upscaler: Configuration saved successfully');
+                    Dashboard.hideLoading();
+                    Dashboard.processPluginConfigurationUpdateResult();
+                }).catch(function (err) {
+                    console.error('AI Upscaler: Failed to save configuration', err);
+                    Dashboard.hideLoading();
+                    Dashboard.alert('Failed to save configuration: ' + (err.message || 'Unknown error'));
+                });
+            }
+
+            function initializePage(page) {
+                if (initialized) {
+                    console.log('AI Upscaler: Page already initialized, skipping');
+                    return;
+                }
+                initialized = true;
+                console.log('AI Upscaler: Initializing configuration page');
+
+                // ===== FORM SUBMIT HANDLER =====
+                const form = page.querySelector('#UpscalerConfigForm');
+                if (form && !form.dataset.handlerAttached) {
+                    form.dataset.handlerAttached = 'true';
+
+                    form.addEventListener('submit', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('AI Upscaler: Form submit triggered');
+                        saveConfiguration(document.querySelector('#UpscalerConfigurationPage'));
+                        return false;
+                    });
+                    console.log('AI Upscaler: Form submit handler attached');
+                }
+
+                // Model change handler
+                const modelSelect = page.querySelector('#Model');
+                if (modelSelect) {
+                    modelSelect.addEventListener('change', function () {
+                        updateScaleFactors(page, this.value);
+                    });
+                }
+
+                // Compare button
+                const btnCompare = page.querySelector('#btn-compare');
+                if (btnCompare) {
+                    btnCompare.addEventListener('click', function () {
+                        generateComparison(page);
+                    });
+                }
+
+                // Wrapper buttons
+                const btnInstall = page.querySelector('#btn-install-wrapper');
+                if (btnInstall) {
+                    btnInstall.addEventListener('click', function () {
+                        installWrapper(page);
+                    });
+                }
+
+                const btnUninstall = page.querySelector('#btn-uninstall-wrapper');
+                if (btnUninstall) {
+                    btnUninstall.addEventListener('click', function () {
+                        uninstallWrapper(page);
+                    });
+                }
+
+                const btnRegenerate = page.querySelector('#btn-regenerate-wrapper');
+                if (btnRegenerate) {
+                    btnRegenerate.addEventListener('click', function () {
+                        regenerateWrapper(page);
+                    });
+                }
+            }
+
             function onPageShow(page) {
+                console.log('AI Upscaler: Page show event');
+
+                // Initialize immediately
+                initializePage(page);
+
                 // Chain loading to avoid race conditions
                 loadModels(page).then(() => {
+                    loadConfig(page);
+                }).catch(() => {
                     loadConfig(page);
                 });
 
@@ -533,74 +649,38 @@
                 loadWrapperStatus(page);
             }
 
+            // ===== EVENT BINDING =====
             const pageId = '#UpscalerConfigurationPage';
+            const pageElement = document.querySelector(pageId);
 
-            // Support both old pageshow and new viewshow events
-            document.querySelector(pageId).addEventListener('pageshow', function () {
-                onPageShow(this);
-            });
+            if (pageElement) {
+                // Immediate initialization if page is already visible
+                console.log('AI Upscaler: Page element found, binding events');
 
-            document.querySelector(pageId).addEventListener('viewshow', function () {
-                onPageShow(this);
-            });
-
-            document.querySelector(pageId).addEventListener('pageinit', function () {
-                const page = this;
-
-                page.querySelector('#Model').addEventListener('change', function () {
-                    updateScaleFactors(page, this.value);
+                // Try multiple event types for compatibility
+                pageElement.addEventListener('pageshow', function () {
+                    console.log('AI Upscaler: pageshow event');
+                    onPageShow(this);
                 });
 
-                page.querySelector('#btn-compare').addEventListener('click', function () {
-                    generateComparison(page);
+                pageElement.addEventListener('viewshow', function () {
+                    console.log('AI Upscaler: viewshow event');
+                    onPageShow(this);
                 });
 
-                page.querySelector('#btn-install-wrapper').addEventListener('click', function () {
-                    installWrapper(page);
+                pageElement.addEventListener('pageinit', function () {
+                    console.log('AI Upscaler: pageinit event');
+                    initializePage(this);
                 });
 
-                page.querySelector('#btn-uninstall-wrapper').addEventListener('click', function () {
-                    uninstallWrapper(page);
-                });
-
-                page.querySelector('#btn-regenerate-wrapper').addEventListener('click', function () {
-                    regenerateWrapper(page);
-                });
-
-                page.querySelector('#UpscalerConfigForm').addEventListener('submit', function (e) {
-                    e.preventDefault();
-                    Dashboard.showLoading();
-
-                    const config = {
-                        // AI Service URL (Docker) - CRITICAL for plugin-container connection
-                        AiServiceUrl: page.querySelector('#AiServiceUrl').value || 'http://localhost:5000',
-
-                        EnablePlugin: page.querySelector('#EnablePlugin').checked,
-                        PlayerButton: page.querySelector('#PlayerButton').checked,
-                        Model: page.querySelector('#Model').value,
-                        ScaleFactor: parseInt(page.querySelector('#ScaleFactor').value),
-                        QualityLevel: page.querySelector('#QualityLevel').value,
-                        HardwareAcceleration: page.querySelector('#HardwareAcceleration').checked,
-                        MaxVRAMUsage: parseInt(page.querySelector('#MaxVRAMUsage').value),
-                        CpuThreads: parseInt(page.querySelector('#CpuThreads').value),
-                        Notifications: page.querySelector('#Notifications').checked,
-                        AutoRetryButton: page.querySelector('#AutoRetryButton').checked,
-                        ButtonPosition: page.querySelector('#ButtonPosition').value,
-                        EnableComparisonView: page.querySelector('#EnableComparisonView').checked,
-                        EnablePerformanceMetrics: page.querySelector('#EnablePerformanceMetrics').checked,
-                        EnablePreProcessingCache: page.querySelector('#EnablePreProcessingCache').checked,
-                        MaxCacheAgeDays: parseInt(page.querySelector('#MaxCacheAgeDays').value),
-                        CacheSizeMB: parseInt(page.querySelector('#CacheSizeMB').value)
-                    };
-
-                    ApiClient.updatePluginConfiguration(pluginId, config).then(function () {
-                        Dashboard.hideLoading();
-                        Dashboard.processPluginConfigurationUpdateResult();
-                    });
-
-                    return false;
-                });
-            });
+                // Fallback: Initialize immediately if events don't fire
+                setTimeout(function () {
+                    if (!initialized) {
+                        console.log('AI Upscaler: Fallback initialization');
+                        onPageShow(pageElement);
+                    }
+                }, 500);
+            }
         })();
     </script>
 </div>

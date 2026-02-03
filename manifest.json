@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.5.0.3",
+        "changelog": "v1.5.0.3: Fixed Save Configuration button not working (Discussion #38). Added robust event initialization with fallback mechanisms and debug logging.",
+        "targetAbi": "10.11.6.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.0.3/JellyfinUpscalerPlugin-v1.5.0.3.zip",
+        "checksum": "E57094241BC8164D78C72B19D49132EC",
+        "timestamp": "2026-02-03T11:00:00.000Z"
+      },
+      {
         "version": "1.5.0.2",
         "changelog": "v1.5.0.2: Fixed settings not saving (#36) - AiServiceUrl now persists correctly",
         "targetAbi": "10.11.6.0",
