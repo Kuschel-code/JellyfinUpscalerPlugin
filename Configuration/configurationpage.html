@@ -378,23 +378,13 @@
 
                     select.innerHTML = html;
 
-                    // Set selected model if exists
-                    if (selectedModelId && models.some(m => (m.Id || m.id) === selectedModelId)) {
-                        select.value = selectedModelId;
-                    } else if (models.length > 0) {
-                        // If no selectedModelId or it's invalid, select the first one
-                        select.value = models[0].Id || models[0].id;
-                    }
-
-                    // Trigger the scale factor update for the selected model
-                    if (select.value) {
+                    // Trigger the scale factor update for the first model
+                    if (models.length > 0) {
                         updateScaleFactors(page, select.value);
                     }
-                    hideLoading();
                 }).catch(function (err) {
                     console.error('Failed to load models:', err);
                     page.querySelector('#Model').innerHTML = '<option value="">Error loading models</option>';
-                    hideLoading();
                 });
             }
 
