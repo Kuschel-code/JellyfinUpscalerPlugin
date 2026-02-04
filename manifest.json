@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.5.0.7",
+        "changelog": "v1.5.0.7: Fixed 'require is not defined' error when saving settings. Improved UI feedback.",
+        "targetAbi": "10.11.6.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.0.7/JellyfinUpscalerPlugin-v1.5.0.7.zip",
+        "checksum": "e04abcccd99ed898920588f4cfe4013e",
+        "timestamp": "2026-02-04T01:30:00.000Z"
+      },
+      {
         "version": "1.5.0.6",
         "changelog": "v1.5.0.6: Fixed IP/URL configuration ignoring changes until restart. Now uses dynamic URL resolution on every request.",
         "targetAbi": "10.11.6.0",
