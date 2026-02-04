@@ -9,12 +9,12 @@
     "category": "Video Enhancement",
     "versions": [
       {
-        "version": "1.5.0.6",
+        "version": "1.5.0.7",
         "changelog": "v1.5.0.2: Fixed settings not saving (#36) - AiServiceUrl now persists correctly",
         "targetAbi": "10.11.6.0",
-        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.0.6/JellyfinUpscalerPlugin-v1.5.0.6.zip",
-        "checksum": "05e2e5b4da299e11f57eff3393447900",
-        "timestamp": "2026-02-04T00:19:06.000Z"
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.0.7/JellyfinUpscalerPlugin-v1.5.0.7.zip",
+        "checksum": "4e5c636ed673c532397975c76bb719c2",
+        "timestamp": "2026-02-04T00:30:00.000Z"
       },
       {
         "version": "1.5.0.1",
