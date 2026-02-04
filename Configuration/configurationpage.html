@@ -4,7 +4,7 @@
             <div class="verticalSection">
                 <div class="sectionTitleContainer flex align-items-center">
                     <h2 class="sectionTitle">🎮 AI Upscaler Plugin</h2>
-                    <span class="bubble ml-1">v1.5.0.7</span>
+                    <span class="bubble ml-1">v1.5.0.8</span>
                 </div>
                 <p class="sectionDescription">Professional AI Video Enhancement for Jellyfin - Docker Microservice
                     Architecture</p>
@@ -704,7 +704,8 @@
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function () {
                     console.log('AI Upscaler: Configuration saved successfully');
                     hideLoading();
-                    Dashboard.processPluginConfigurationUpdateResult();
+                    // Dashboard.processPluginConfigurationUpdateResult();
+                    Dashboard.alert('Settings saved successfully!');
                 }).catch(function (err) {
                     console.error('AI Upscaler: Failed to save configuration', err);
                     hideLoading();
