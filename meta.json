@@ -3,10 +3,10 @@
     "name": "AI Upscaler Plugin",
     "overview": "AI-Powered Video Upscaling Plugin with Docker Microservice Architecture",
     "description": "Revolutionary AI upscaling plugin with Docker-based AI processing. Eliminates native DLL conflicts. Features automated hardware benchmarking, intelligent fallback system, pre-processing cache, and sidebar integration.",
-    "version": "1.5.0.5",
+    "version": "1.5.0.6",
     "targetAbi": "10.11.6.0",
     "framework": "net9.0",
     "owner": "Kuschel-code",
     "category": "Video Enhancement",
-    "changelog": "v1.5.0.5: Compatibility fix for loading spinner (Jellyfin <10.9), Merged PR #40 (Comprehensive Dashboard Fixes including Hardware Status & Connection Check)."
+    "changelog": "v1.5.0.6: Fixed IP/URL configuration ignoring changes until restart. Now uses dynamic URL resolution on every request."
 }

@@ -17,24 +17,25 @@ namespace JellyfinUpscalerPlugin.Services
     {
         private readonly HttpClient _httpClient;
         private readonly ILogger<HttpUpscalerService> _logger;
-        private readonly string _serviceUrl;
         private bool _disposed;
 
         public HttpUpscalerService(ILogger<HttpUpscalerService> logger)
         {
             _logger = logger;
             
-            // Get service URL from plugin configuration or use default
-            var config = Plugin.Instance?.Configuration;
-            _serviceUrl = config?.AiServiceUrl ?? "http://localhost:5000";
-            
             _httpClient = new HttpClient
             {
-                BaseAddress = new Uri(_serviceUrl),
                 Timeout = TimeSpan.FromMinutes(5) // Long timeout for upscaling
             };
             
-            _logger.LogInformation("HttpUpscalerService initialized with URL: {Url}", _serviceUrl);
+            _logger.LogInformation("HttpUpscalerService initialized");
+        }
+
+        private string GetServiceUrl()
+        {
+            var config = Plugin.Instance?.Configuration;
+            var url = config?.AiServiceUrl ?? "http://localhost:5000";
+            return url.TrimEnd('/');
         }
 
         /// <summary>
@@ -42,19 +43,20 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         public async Task<bool> IsServiceAvailableAsync(CancellationToken cancellationToken = default)
         {
+            var baseUrl = GetServiceUrl();
             try
             {
-                var response = await _httpClient.GetAsync("/health", cancellationToken);
+                var response = await _httpClient.GetAsync($"{baseUrl}/health", cancellationToken);
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync(cancellationToken);
-                    _logger.LogDebug("AI Service health check: {Response}", content);
+                    _logger.LogDebug("AI Service health check [at {Url}]: {Response}", baseUrl, content);
                     return true;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "AI Service health check failed");
+                _logger.LogWarning("AI Service health check failed at {Url}: {Message}", baseUrl, ex.Message);
             }
             return false;
         }
@@ -64,9 +66,10 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         public async Task<ServiceStatus?> GetServiceStatusAsync(CancellationToken cancellationToken = default)
         {
+            var baseUrl = GetServiceUrl();
             try
             {
-                var response = await _httpClient.GetAsync("/status", cancellationToken);
+                var response = await _httpClient.GetAsync($"{baseUrl}/status", cancellationToken);
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -78,7 +81,7 @@ namespace JellyfinUpscalerPlugin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to get AI service status");
+                _logger.LogError(ex, "Failed to get AI service status from {Url}", baseUrl);
             }
             return null;
         }
@@ -86,10 +89,6 @@ namespace JellyfinUpscalerPlugin.Services
         /// <summary>
         /// Upscale an image using the AI service.
         /// </summary>
-        /// <param name="imageData">Raw image bytes (PNG, JPEG, etc.)</param>
-        /// <param name="scale">Upscaling factor (2 or 4)</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Upscaled image bytes or null on failure</returns>
         public async Task<byte[]?> UpscaleImageAsync(byte[] imageData, int scale = 2, CancellationToken cancellationToken = default)
         {
             if (imageData == null || imageData.Length == 0)
@@ -97,6 +96,8 @@ namespace JellyfinUpscalerPlugin.Services
                 _logger.LogWarning("UpscaleImageAsync called with empty image data");
                 return null;
             }
+
+            var baseUrl = GetServiceUrl();
 
             try
             {
@@ -110,10 +111,10 @@ namespace JellyfinUpscalerPlugin.Services
                 // Add scale parameter
                 content.Add(new StringContent(scale.ToString()), "scale");
 
-                _logger.LogDebug("Sending image ({Size} bytes) to AI service for {Scale}x upscaling", 
-                    imageData.Length, scale);
+                _logger.LogDebug("Sending image ({Size} bytes) to AI service at {Url} for {Scale}x upscaling", 
+                    imageData.Length, baseUrl, scale);
 
-                var response = await _httpClient.PostAsync("/upscale", content, cancellationToken);
+                var response = await _httpClient.PostAsync($"{baseUrl}/upscale", content, cancellationToken);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -134,7 +135,7 @@ namespace JellyfinUpscalerPlugin.Services
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "HTTP error communicating with AI service");
+                _logger.LogError(ex, "HTTP error communicating with AI service at {Url}", baseUrl);
             }
             catch (Exception ex)
             {
@@ -149,17 +150,18 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         public async Task<bool> DownloadModelAsync(string modelName, CancellationToken cancellationToken = default)
         {
+            var baseUrl = GetServiceUrl();
             try
             {
                 using var content = new MultipartFormDataContent();
                 content.Add(new StringContent(modelName), "model_name");
 
-                var response = await _httpClient.PostAsync("/models/download", content, cancellationToken);
+                var response = await _httpClient.PostAsync($"{baseUrl}/models/download", content, cancellationToken);
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to download model {Model}", modelName);
+                _logger.LogError(ex, "Failed to download model {Model} from {Url}", modelName, baseUrl);
                 return false;
             }
         }
@@ -169,18 +171,19 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         public async Task<bool> LoadModelAsync(string modelName, bool useGpu = true, CancellationToken cancellationToken = default)
         {
+            var baseUrl = GetServiceUrl();
             try
             {
                 using var content = new MultipartFormDataContent();
                 content.Add(new StringContent(modelName), "model_name");
                 content.Add(new StringContent(useGpu.ToString().ToLower()), "use_gpu");
 
-                var response = await _httpClient.PostAsync("/models/load", content, cancellationToken);
+                var response = await _httpClient.PostAsync($"{baseUrl}/models/load", content, cancellationToken);
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load model {Model}", modelName);
+                _logger.LogError(ex, "Failed to load model {Model} on {Url}", modelName, baseUrl);
                 return false;
             }
         }
