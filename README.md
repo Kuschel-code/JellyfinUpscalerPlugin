@@ -1,4 +1,4 @@
-# 🎮 Jellyfin AI Upscaler Plugin v1.5.0.2
+# 🎮 Jellyfin AI Upscaler Plugin v1.5.1.0
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -7,13 +7,17 @@
 [![Project Website](https://img.shields.io/badge/Website-Visit-blueviolet)](https://jellyfin-upscale-ai.base44.app)
 
 > [!CAUTION]
-> **🧪 TEST PHASE - v1.5.0.2**
-> 
-> This is an **EXPERIMENTAL** version with the new Docker AI microservice architecture!
-> AI upscaling now runs in a separate Docker container instead of directly in Jellyfin.
-> 
-> **🐳 Docker Image:** [kuscheltier/jellyfin-ai-upscaler](https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler)
-> 
+> **🧪 TEST PHASE - v1.5.1.0 (Remote Transcoding Edition)**
+>
+> This is an **EXPERIMENTAL** release introducing **Remote Transcoding via SSH**!
+> It allows Jellyfin to offload FFmpeg processing to a remote Docker container (or local one) via SSH, enabling true hardware acceleration on NVIDIA, Intel, and Apple Silicon.
+>
+> **🐳 Docker Images:**
+> *   `kuscheltier/jellyfin-ai-upscaler:1.5.1` (NVIDIA CUDA)
+> *   `kuscheltier/jellyfin-ai-upscaler:1.5.1-cpu` (CPU Only)
+> *   `kuscheltier/jellyfin-ai-upscaler:1.5.1-apple` (MacOS Apple Silicon)
+> *   `kuscheltier/jellyfin-ai-upscaler:1.5.1-intel` (Intel Arc/iGPU)
+>
 > **Please report bugs:** [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 
 ---
@@ -125,6 +129,33 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 ---
 
 ## 📋 Changelog
+
+### v1.5.1.0 (Remote Transcoding / SSH) - **TEST VERSION**
+- **🚀 Remote Transcoding**: Connects to Docker via SSH to execute FFmpeg.
+- **☁️ Multi-Architecture**: Dedicated Docker images for NVIDIA, Intel, Apple Silicon, and CPU.
+- **📂 Path Mapping**: Map local media paths to remote Docker paths for direct file access.
+- **🔒 SSH Authentication**: Support for SSH Keys and Password auth.
+- **✨ Enhanced UI**: New configuration section for Remote Transcoding.
+
+### v1.5.0.9
+- **Fixed**: 'selectedModelId is undefined' error preventing models from loading.
+
+### v1.5.0.8
+- **Fixed**: Localization issues with 'Settings saved' message.
+
+### v1.5.0.7
+- **Fixed**: 'require is not defined' error in settings page.
+
+### v1.5.0.6
+- **Fixed**: Dynamic URL resolution for AI Service.
+
+### v1.5.0.5
+- **Fixed**: Loading spinner compatibility for Jellyfin <10.9.
+- **Improved**: Dashboard hardware status & connection checks.
+
+### v1.5.0.3 - v1.5.0.4
+- **Fixed**: Save Configuration button issues.
+- **Added**: Test Connection button.
 
 ### v1.5.0.1 (Hotfix)
 - **🔧 Fixed #34**: Plugin initialization error (HardwareBenchmarkService DI)
