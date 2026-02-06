@@ -131,6 +131,9 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 ## 📋 Changelog
 
 ### v1.5.1.0 (Remote Transcoding / SSH) - **TEST VERSION**
+> **⚠️ This is a TEST version!**
+> Introduces a new architecture for remote transcoding via SSH. Please report any connection issues!
+
 - **🚀 Remote Transcoding**: Connects to Docker via SSH to execute FFmpeg.
 - **☁️ Multi-Architecture**: Dedicated Docker images for NVIDIA, Intel, Apple Silicon, and CPU.
 - **📂 Path Mapping**: Map local media paths to remote Docker paths for direct file access.
@@ -156,6 +159,10 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 ### v1.5.0.3 - v1.5.0.4
 - **Fixed**: Save Configuration button issues.
 - **Added**: Test Connection button.
+
+### v1.5.0.2
+- **Fixed**: Settings not saving (#36) - AiServiceUrl now persists correctly.
+
 
 ### v1.5.0.1 (Hotfix)
 - **🔧 Fixed #34**: Plugin initialization error (HardwareBenchmarkService DI)
