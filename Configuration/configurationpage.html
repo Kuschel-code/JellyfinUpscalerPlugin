@@ -35,6 +35,87 @@
                     </div>
                 </div>
 
+                <!-- Remote Transcoding Section (SSH) -->
+                <div class="verticalSection"
+                    style="background: linear-gradient(135deg, #1e3a5f 0%, #0f1f3a 100%); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <h2 class="sectionTitle" style="color: #7dd3fc;">🔌 Remote Connection (Transcoding)</h2>
+                    <p class="sectionDescription">Configure SSH tunnel for true hardware-accelerated remote transcoding.
+                    </p>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input type="checkbox" is="emby-checkbox" id="EnableRemoteTranscoding"
+                                name="EnableRemoteTranscoding" />
+                            <span>Enable Remote Transcoding (SSH)</span>
+                        </label>
+                        <div class="fieldDescription">Offloads FFmpeg processing to the Docker container via SSH.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <div class="flex align-items-center flex-wrap-wrap">
+                            <div class="flex-grow-1 mr-1" style="min-width: 200px;">
+                                <label class="inputLabel" for="RemoteHost">Remote Host:</label>
+                                <input is="emby-input" type="text" id="RemoteHost" name="RemoteHost"
+                                    placeholder="localhost" />
+                            </div>
+                            <div style="width: 100px;">
+                                <label class="inputLabel" for="RemoteSshPort">SSH Port:</label>
+                                <input is="emby-input" type="number" id="RemoteSshPort" name="RemoteSshPort"
+                                    placeholder="2222" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="RemoteUser">SSH User:</label>
+                        <input is="emby-input" type="text" id="RemoteUser" name="RemoteUser" placeholder="root" />
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="RemoteSshKeyFile">SSH Key File Path (Private Key):</label>
+                        <input is="emby-input" type="text" id="RemoteSshKeyFile" name="RemoteSshKeyFile" />
+                        <div class="fieldDescription">Absolute path to your private SSH key (e.g.,
+                            C:\Users\Admin\.ssh\id_rsa).</div>
+                    </div>
+
+                    <h3 class="sectionTitle" style="font-size: 1.1em; margin-top: 1.5em; color: #bae6fd;">📂 Path
+                        Mapping</h3>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="LocalMediaMountPoint">Local Media Path (Jellyfin):</label>
+                        <input is="emby-input" type="text" id="LocalMediaMountPoint" name="LocalMediaMountPoint"
+                            placeholder="C:\Media" />
+                        <div class="fieldDescription">The path where media files are stored on this Jellyfin server.
+                        </div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="RemoteMediaMountPoint">Remote Media Path (Docker):</label>
+                        <input is="emby-input" type="text" id="RemoteMediaMountPoint" name="RemoteMediaMountPoint"
+                            placeholder="/media" />
+                        <div class="fieldDescription">The corresponding path where media files are mounted inside the
+                            Docker container.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="RemoteTranscodePath">Remote Transcode Directory:</label>
+                        <input is="emby-input" type="text" id="RemoteTranscodePath" name="RemoteTranscodePath"
+                            placeholder="/transcode" />
+                        <div class="fieldDescription">Shared directory for temporary transcoding files (must be
+                            accessible by both).</div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
+                        <button is="emby-button" type="button" id="btn-test-ssh" class="raised">
+                            <span>🔑 Test SSH Connection</span>
+                        </button>
+                        <div id="sshStatus"
+                            style="flex: 1; padding: 0.5rem; border-radius: 4px; background: rgba(0,0,0,0.3);">
+                            <span id="sshStatusText">Click 'Test SSH Connection' to verify</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="verticalSection">
                     <h2 class="sectionTitle">⚙️ Basic Settings</h2>
 

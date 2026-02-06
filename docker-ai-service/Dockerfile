@@ -13,7 +13,7 @@ ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 WORKDIR /app
 
-# Install Python and system dependencies for OpenCV + FULL TensorRT
+# Install Python and system dependencies for OpenCV + FULL TensorRT + OpenSSH
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     libxrender1 \
     curl \
+    openssh-server \
     # TensorRT Runtime Libraries (for ONNX Runtime TensorRT EP)
     libnvinfer8 \
     libnvinfer-plugin8 \
@@ -33,6 +34,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && ln -s /usr/bin/python3 /usr/bin/python
 
+# Configure SSH
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
+    && sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+
 # Copy requirements first for better caching
 COPY requirements.txt .
 
@@ -42,16 +47,19 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY app/ ./app/
 COPY static/ ./static/
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Create directories for models and cache
 RUN mkdir -p /app/models /app/cache
 
-# Expose port
-EXPOSE 5000
+# Expose ports (API and SSH)
+EXPOSE 5000 22
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
-# Run the application
+# Run the application via entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000"]

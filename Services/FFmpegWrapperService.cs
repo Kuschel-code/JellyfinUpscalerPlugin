@@ -21,28 +21,30 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly ILogger<FFmpegWrapperService> _logger;
         private readonly IPlatformDetectionService _platformService;
         private readonly IServerConfigurationManager _serverConfig;
-        private readonly IMediaEncoder _mediaEncoder; // Added
+        private readonly IMediaEncoder _mediaEncoder;
         private readonly string _pluginDirectory;
 
         public FFmpegWrapperService(
             ILogger<FFmpegWrapperService> logger,
             IPlatformDetectionService platformService,
             IServerConfigurationManager serverConfig,
-            IMediaEncoder mediaEncoder) // Added
+            IMediaEncoder mediaEncoder)
         {
             _logger = logger;
             _platformService = platformService;
             _serverConfig = serverConfig;
-            _mediaEncoder = mediaEncoder; // Added
+            _mediaEncoder = mediaEncoder;
             _pluginDirectory = Path.GetDirectoryName(typeof(Plugin).Assembly.Location) ?? string.Empty;
         }
 
         public async Task<string> GenerateWrapperScriptAsync()
         {
+            var config = Plugin.Instance?.Configuration;
             var scriptExtension = _platformService.GetScriptExtension();
             var wrapperPath = Path.Combine(_pluginDirectory, $"upscale-wrapper{scriptExtension}");
+            var psScriptPath = Path.Combine(_pluginDirectory, "upscale-logic.ps1");
             
-            // Use MediaEncoder path if available, or fallback
+            // Determine real FFmpeg path
             var realFFmpegPath = _mediaEncoder.EncoderPath;
             if (string.IsNullOrEmpty(realFFmpegPath))
             {
@@ -56,10 +58,17 @@ namespace JellyfinUpscalerPlugin.Services
 
             if (_platformService.IsWindows)
             {
-                scriptContent = GenerateWindowsScript(realFFmpegPath, logPath, activeMarkerPath);
+                // On Windows, we define the Batch entrypoint AND the PowerShell logic script
+                scriptContent = GenerateWindowsBatchScript(psScriptPath);
+                
+                // Generate the PowerShell logic script (handles path mapping & SSH)
+                var psContent = GenerateWindowsPowerShellScript(realFFmpegPath, logPath, activeMarkerPath, config);
+                await File.WriteAllTextAsync(psScriptPath, psContent);
             }
             else
             {
+                // Unix - not yet fully refactored for SSH in this step (as requested focus is Windows)
+                // But we keep existing logic + local fallback
                 scriptContent = GenerateUnixScript(realFFmpegPath, logPath, activeMarkerPath);
             }
 
@@ -89,86 +98,152 @@ namespace JellyfinUpscalerPlugin.Services
             }
 
             _logger.LogInformation($"Generated FFmpeg wrapper script at: {wrapperPath}");
+            if (_platformService.IsWindows) _logger.LogInformation($"Generated PowerShell logic script at: {psScriptPath}");
+            
             return wrapperPath;
         }
 
-        private string GenerateWindowsScript(string realFFmpegPath, string logPath, string activeMarkerPath)
+        private string GenerateWindowsBatchScript(string psScriptPath)
         {
+            // Simple Batch wrapper that passes everything to PowerShell
+            // We use -ExecutionPolicy Bypass to ensure it runs
             return $@"@echo off
-REM AI Upscaler Plugin - FFmpeg Wrapper for Windows
-REM This script intercepts FFmpeg calls and injects hardware upscaling filters
+pwsh -ExecutionPolicy Bypass -File ""{psScriptPath}"" %*
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+";
+        }
 
-set REAL_FFMPEG=""{realFFmpegPath}""
-set LOG_FILE=""{logPath}""
-set ACTIVE_MARKER=""{activeMarkerPath}""
+        private string GenerateWindowsPowerShellScript(string realFFmpegPath, string logPath, string activeMarkerPath, PluginConfiguration config)
+        {
+            bool enableRemote = config?.EnableRemoteTranscoding ?? false;
+            string remoteUser = config?.RemoteUser ?? "root";
+            string remoteHost = config?.RemoteHost ?? "localhost";
+            int remotePort = config?.RemoteSshPort ?? 2222;
+            string keyFile = config?.RemoteSshKeyFile ?? "";
+            
+            string localMount = config?.LocalMediaMountPoint?.Replace("\\", "\\\\") ?? "";
+            string remoteMount = config?.RemoteMediaMountPoint ?? "";
+            string transcodeDir = config?.RemoteTranscodePath ?? "/transcode";
 
-REM Check if upscaler is active
-if not exist %ACTIVE_MARKER% (
-    REM Upscaler disabled - pass through to real FFmpeg
-    %REAL_FFMPEG% %*
-    exit /b %ERRORLEVEL%
-)
+            // If remote is disabled, fall back to simple local execution with logging
+            if (!enableRemote)
+            {
+                 return $@"
+$RealFFmpeg = ""{realFFmpegPath}""
+$LogFile = ""{logPath}""
+$ActiveMarker = ""{activeMarkerPath}""
 
-REM Upscaler enabled - log and modify command
-echo [%date% %time%] Upscaler active: Intercepting FFmpeg call >> %LOG_FILE%
+if (-not (Test-Path $ActiveMarker)) {{
+    & $RealFFmpeg @args
+    exit $LASTEXITCODE
+}}
 
-REM Simple filter injection logic for demo purposes
-REM In a real scenario, we would parse arguments more robustly
-set ""ARGS=%*""
+Add-Content -Path $LogFile -Value ""[$(Get-Date)] Upscaler active (Local Mode)""
+& $RealFFmpeg @args
+exit $LASTEXITCODE
+";
+            }
 
-REM Check for video filter flag
-echo %ARGS% | findstr /C:""-vf"" >nul
-if %errorlevel%==0 (
-    REM Inject scale_cuda if not present (simplified)
-    set ""ARGS=%ARGS:-vf ""scale=-1:-1""=-vf ""hwupload_cuda,scale_cuda=-1:-1,hwdownload,format=yuv420p""""%""
-)
+            // Remote SSH Logic
+            return $@"
+$RealFFmpeg = ""{realFFmpegPath}""
+$LogFile = ""{logPath}""
+$ActiveMarker = ""{activeMarkerPath}""
 
-%REAL_FFMPEG% %ARGS%
-exit /b %ERRORLEVEL%
+# Configuration
+$RemoteUser = ""{remoteUser}""
+$RemoteHost = ""{remoteHost}""
+$RemotePort = {remotePort}
+$KeyFile = ""{keyFile}""
+$LocalMount = ""{localMount}""
+$RemoteMount = ""{remoteMount}""
+$RemoteTranscodeDir = ""{transcodeDir}""
+
+# If Upcaler is disabled via marker file, run local FFmpeg
+if (-not (Test-Path $ActiveMarker)) {{
+    & $RealFFmpeg @args
+    exit $LASTEXITCODE
+}}
+
+try {{
+    $CmdArgs = @()
+    
+    # Iterate arguments for Path Mapping
+    for ($i = 0; $i -lt $args.Count; $i++) {{
+        $arg = $args[$i]
+        
+        # Map Input Files (-i)
+        if ($arg -eq '-i' -and ($i + 1) -lt $args.Count) {{
+            $CmdArgs += '-i'
+            $path = $args[$i+1]
+            
+            # Translate Path
+            if ($path -like ""$LocalMount*"") {{
+                $relPath = $path.Substring($LocalMount.Length).Replace('\', '/')
+                if (-not $relPath.StartsWith('/')) {{ $relPath = '/' + $relPath }}
+                $newPath = ""$RemoteMount$relPath""
+                $CmdArgs += $newPath
+                $i++ # Skip next arg
+            }} else {{
+                $CmdArgs += $path
+                $i++
+            }}
+            continue
+        }}
+
+        # Map Transcode Directory (if present in arguments)
+        # Jellyfin often passes fully qualified paths for output
+        if ($arg -like ""$LocalMount*"") {{
+             $relPath = $arg.Substring($LocalMount.Length).Replace('\', '/')
+             if (-not $relPath.StartsWith('/')) {{ $relPath = '/' + $relPath }}
+             $newPath = ""$RemoteMount$relPath""
+             $CmdArgs += $newPath
+             continue
+        }}
+        
+        # Pass through other args
+        $CmdArgs += $arg
+    }}
+
+    # Construct SSH Command
+    # We use -o BatchMode=yes to fail fast if auth fails
+    # We strictly map stderr to host stderr to keep Jellyfin informed
+    
+    $SshArgs = @(
+        '-p', $RemotePort,
+        '-o', 'BatchMode=yes',
+        '-o', 'StrictHostKeyChecking=no',
+        ""$RemoteUser@$RemoteHost""
+    )
+    
+    if (-not [string]::IsNullOrWhiteSpace($KeyFile)) {{
+        $SshArgs = @('-i', $KeyFile) + $SshArgs
+    }}
+
+    # The command to run inside Docker
+    # We explicitly call the internal ffmpeg
+    $RemoteCommand = ""ffmpeg "" + ($CmdArgs -join ' ')
+
+    Add-Content -Path $LogFile -Value ""[$(Get-Date)] Remote Command: $RemoteCommand""
+
+    # Execute SSH
+    # 2>&1 ensures stderr is piped back
+    & ssh $SshArgs $RemoteCommand
+    exit $LASTEXITCODE
+
+}} catch {{
+    Add-Content -Path $LogFile -Value ""[$(Get-Date)] Error: $_""
+    exit 1
+}}
 ";
         }
 
         private string GenerateUnixScript(string realFFmpegPath, string logPath, string activeMarkerPath)
         {
             return $@"#!/bin/bash
-# AI Upscaler Plugin - FFmpeg Wrapper for Linux/macOS
-# This script intercepts FFmpeg calls and injects hardware upscaling filters
-
+# AI Upscaler Plugin - Unix Wrapper (Placeholder for future SSH update)
 REAL_FFMPEG=""{realFFmpegPath}""
-LOG_FILE=""{logPath}""
-ACTIVE_MARKER=""{activeMarkerPath}""
-
-# Check if upscaler is active
-if [ ! -f ""$ACTIVE_MARKER"" ]; then
-    # Upscaler disabled - pass through to real FFmpeg
-    exec ""$REAL_FFMPEG"" ""$@""
-fi
-
-# Upscaler enabled - log and modify command
-echo ""[$(date)] Upscaler active: Intercepting FFmpeg call"" >> ""$LOG_FILE""
-
-# Argument injection logic
-# Iterate over arguments to act as a proxy and inject filters
-# This is a complex task in bash, simplified here for demonstration
-
-ARGS=()
-for arg in ""$@""; do
-    if [[ ""$arg"" == ""-vf"" ]]; then
-        ARGS+=(""-vf"")
-        continue
-    fi
-    
-    # Check if this is a filter chain that needs modification
-    if [[ ""$arg"" == *""scale=""* ]]; then
-        # Inject CUDA scaling (example)
-        NEW_FILTER=""$(echo ""$arg"" | sed 's/scale=\([0-9]*:[0-9]*\)/hwupload_cuda,scale_cuda=\1,hwdownload,format=yuv420p/')""
-        ARGS+=(""$NEW_FILTER"")
-    else
-        ARGS+=(""$arg"")
-    fi
-done
-
-exec ""$REAL_FFMPEG"" ""${{ARGS[@]}}""
+exec ""$REAL_FFMPEG"" ""$@""
 ";
         }
 

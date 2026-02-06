@@ -41,13 +41,23 @@ namespace JellyfinUpscalerPlugin
         public string AiServiceUrl { get; set; } = "http://localhost:5000";
         public string ModelDownloadUrl { get; set; } = "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/models-v1.0";
         
+        // Remote Transcoding Configuration (SSH/rffmpeg style)
+        public bool EnableRemoteTranscoding { get; set; } = false;
+        public string RemoteHost { get; set; } = "localhost";
+        public int RemoteSshPort { get; set; } = 2222;
+        public string RemoteUser { get; set; } = "root";
+        public string RemoteSshKeyFile { get; set; } = ""; // Path to private key
+        public string LocalMediaMountPoint { get; set; } = ""; // e.g., "C:\Media"
+        public string RemoteMediaMountPoint { get; set; } = ""; // e.g., "/media"
+        public string RemoteTranscodePath { get; set; } = "/transcode"; // Shared transcode dir on remote
+        
         // Version tracking
-        public string PluginVersion { get; set; } = "1.5.0.9";
+        public string PluginVersion { get; set; } = "1.5.1.0";
         public DateTime LastConfigUpdate { get; set; } = DateTime.UtcNow;
 
         public PluginConfiguration()
         {
-            PluginVersion = "1.5.0.9";
+            PluginVersion = "1.5.1.0";
             LastConfigUpdate = DateTime.UtcNow;
         }
     }
