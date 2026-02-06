@@ -15,7 +15,7 @@ USER root
 
 WORKDIR /app
 
-# Install Python and system dependencies for OpenCV
+# Install Python and system dependencies for OpenCV + OpenSSH
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     libgl1 \
@@ -24,8 +24,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     libxrender1 \
     curl \
+    openssh-server \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
+
+# Configure SSH
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
+    && sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
 
 # Copy requirements first for better caching
 COPY requirements-intel.txt ./requirements.txt
@@ -36,20 +41,30 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY app/ ./app/
 COPY static/ ./static/
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# Create directories for models and cache
-RUN mkdir -p /app/models /app/cache && \
-    chown -R openvino:openvino /app
+# Create directories for models and cache and ensure SSH directories exist
+RUN mkdir -p /app/models /app/cache /run/sshd && \
+    chown -R openvino:openvino /app /entrypoint.sh /etc/ssh /run/sshd
 
 # Switch back to non-root user
-USER openvino
+# NOTE: To run SSHD usually requires root. For this container we might need to stay root 
+# or configure non-root SSH. For simplicity in this plugin architecture (where user expects root-like access for transcoding),
+# we will try to run as root OR user needs to map user. 
+# Reverting to ROOT for SSHD compatibility for now, or user 'openvino' needs rights.
+# Standard SSHD needs root to start.
+# Keeping USER root is safest for SSHD. 
 
-# Expose port
-EXPOSE 5000
+# USER openvino  <-- Commented out to allow SSHD startup
+
+# Expose ports (API and SSH)
+EXPOSE 5000 22
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
-# Run the application
+# Run the application via entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python3", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000"]

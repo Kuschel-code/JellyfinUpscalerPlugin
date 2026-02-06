@@ -24,7 +24,7 @@ ENV PYTHONUNBUFFERED=1
 ENV USE_GPU=false
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies for OpenCV
+# Install system dependencies for OpenCV + OpenSSH
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
@@ -33,7 +33,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxrender1 \
     libgomp1 \
     curl \
+    openssh-server \
     && rm -rf /var/lib/apt/lists/*
+
+# Configure SSH
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
+    && sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
 
 # Set working directory
 WORKDIR /app
@@ -48,16 +53,19 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application code
 COPY app/ ./app/
 COPY static/ ./static/
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Create directories for models and cache
 RUN mkdir -p /app/models /app/cache
 
-# Expose port
-EXPOSE 5000
+# Expose ports (API and SSH)
+EXPOSE 5000 22
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
 # Run the application
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000"]
