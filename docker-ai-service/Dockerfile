@@ -50,8 +50,8 @@ COPY static/ ./static/
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Create directories for models and cache
-RUN mkdir -p /app/models /app/cache
+# Create directories for models, cache, and SSH runtime
+RUN mkdir -p /app/models /app/cache /run/sshd
 
 # Expose ports (API and SSH)
 EXPOSE 5000 22
