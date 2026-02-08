@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.5.1.1",
+        "changelog": "v1.5.1.1: SSH configuration hotfix. Fixed SSH fields not saving/loading. Added Test SSH Connection button and backend endpoint.",
+        "targetAbi": "10.11.6.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.1.1/JellyfinUpscalerPlugin-v1.5.1.1.zip",
+        "checksum": "1C466428EF1F874402ECE13AB9BF8499",
+        "timestamp": "2026-02-08T00:00:00.000Z"
+      },
+      {
         "version": "1.5.1.0",
         "changelog": "v1.5.0.2: Fixed settings not saving (#36) - AiServiceUrl now persists correctly",
         "targetAbi": "10.11.6.0",
