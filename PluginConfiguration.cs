@@ -52,12 +52,12 @@ namespace JellyfinUpscalerPlugin
         public string RemoteTranscodePath { get; set; } = "/transcode"; // Shared transcode dir on remote
         
         // Version tracking
-        public string PluginVersion { get; set; } = "1.5.1.0";
+        public string PluginVersion { get; set; } = "1.5.1.1";
         public DateTime LastConfigUpdate { get; set; } = DateTime.UtcNow;
 
         public PluginConfiguration()
         {
-            PluginVersion = "1.5.1.0";
+            PluginVersion = "1.5.1.1";
             LastConfigUpdate = DateTime.UtcNow;
         }
     }
