@@ -423,6 +423,16 @@
                     page.querySelector('#MaxCacheAgeDays').value = config.MaxCacheAgeDays || 30;
                     page.querySelector('#CacheSizeMB').value = config.CacheSizeMB || 5120;
 
+                    // Remote Transcoding (SSH)
+                    page.querySelector('#EnableRemoteTranscoding').checked = config.EnableRemoteTranscoding || false;
+                    page.querySelector('#RemoteHost').value = config.RemoteHost || 'localhost';
+                    page.querySelector('#RemoteSshPort').value = config.RemoteSshPort || 2222;
+                    page.querySelector('#RemoteUser').value = config.RemoteUser || 'root';
+                    page.querySelector('#RemoteSshKeyFile').value = config.RemoteSshKeyFile || '';
+                    page.querySelector('#LocalMediaMountPoint').value = config.LocalMediaMountPoint || '';
+                    page.querySelector('#RemoteMediaMountPoint').value = config.RemoteMediaMountPoint || '';
+                    page.querySelector('#RemoteTranscodePath').value = config.RemoteTranscodePath || '/transcode';
+
                     Dashboard.hideLoadingMsg();
 
                     //call check serverstatus
@@ -743,6 +753,38 @@
                 });
             }
 
+            function testSshConnection(page) {
+                const btn = page.querySelector('#btn-test-ssh');
+                const statusEl = page.querySelector('#sshStatusText');
+                const statusContainer = page.querySelector('#sshStatus');
+
+                btn.disabled = true;
+                statusEl.textContent = 'Testing SSH connection...';
+                statusContainer.style.background = 'rgba(255, 193, 7, 0.2)';
+
+                // Call the backend API to test SSH (we need to implement this endpoint too)
+                ApiClient.ajax({
+                    type: 'POST',
+                    url: ApiClient.getUrl('api/upscaler/ssh/test'),
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        Host: page.querySelector('#RemoteHost').value || 'localhost',
+                        Port: parseInt(page.querySelector('#RemoteSshPort').value) || 2222,
+                        User: page.querySelector('#RemoteUser').value || 'root',
+                        KeyFile: page.querySelector('#RemoteSshKeyFile').value || ''
+                    })
+                }).then(function (response) {
+                    btn.disabled = false;
+                    statusEl.innerHTML = '✅ SSH Connection successful!';
+                    statusContainer.style.background = 'rgba(76, 175, 80, 0.2)';
+                }).catch(function (err) {
+                    btn.disabled = false;
+                    statusEl.innerHTML = '❌ SSH Connection failed (Check settings)';
+                    statusContainer.style.background = 'rgba(244, 67, 54, 0.2)';
+                    console.error('SSH Test Error:', err);
+                });
+            }
+
             // ===== CRITICAL: Save Configuration Handler =====
             function saveConfiguration(page) {
                 console.log('AI Upscaler: Saving configuration...');
@@ -767,7 +809,17 @@
                     EnablePerformanceMetrics: page.querySelector('#EnablePerformanceMetrics').checked,
                     EnablePreProcessingCache: page.querySelector('#EnablePreProcessingCache').checked,
                     MaxCacheAgeDays: parseInt(page.querySelector('#MaxCacheAgeDays').value) || 30,
-                    CacheSizeMB: parseInt(page.querySelector('#CacheSizeMB').value) || 5120
+                    CacheSizeMB: parseInt(page.querySelector('#CacheSizeMB').value) || 5120,
+
+                    // Remote Transcoding (SSH)
+                    EnableRemoteTranscoding: page.querySelector('#EnableRemoteTranscoding').checked,
+                    RemoteHost: page.querySelector('#RemoteHost').value || 'localhost',
+                    RemoteSshPort: parseInt(page.querySelector('#RemoteSshPort').value) || 2222,
+                    RemoteUser: page.querySelector('#RemoteUser').value || 'root',
+                    RemoteSshKeyFile: page.querySelector('#RemoteSshKeyFile').value || '',
+                    LocalMediaMountPoint: page.querySelector('#LocalMediaMountPoint').value || '',
+                    RemoteMediaMountPoint: page.querySelector('#RemoteMediaMountPoint').value || '',
+                    RemoteTranscodePath: page.querySelector('#RemoteTranscodePath').value || '/transcode'
                 };
 
                 console.log('AI Upscaler: Config to save:', config);
@@ -820,6 +872,14 @@
                 if (btnTestConnection) {
                     btnTestConnection.addEventListener('click', function () {
                         testConnection(page);
+                    });
+                }
+
+                // Test SSH Connection button
+                const btnTestSsh = page.querySelector('#btn-test-ssh');
+                if (btnTestSsh) {
+                    btnTestSsh.addEventListener('click', function () {
+                        testSshConnection(page);
                     });
                 }
 

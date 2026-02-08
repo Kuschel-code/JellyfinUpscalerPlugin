@@ -627,5 +627,78 @@ namespace JellyfinUpscalerPlugin.Controllers
                 return StatusCode(500, new { success = false, error = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Test SSH connection to remote transcoding host
+        /// </summary>
+        [HttpPost("ssh/test")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult<object>> TestSshConnection([FromBody] SshTestRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("Testing SSH connection to {User}@{Host}:{Port}", request.User, request.Host, request.Port);
+
+                var sshArgs = new List<string>
+                {
+                    "-o", "BatchMode=yes",
+                    "-o", "StrictHostKeyChecking=no",
+                    "-o", "ConnectTimeout=5",
+                    "-p", request.Port.ToString(),
+                    $"{request.User}@{request.Host}",
+                    "echo 'SSH_TEST_SUCCESS'"
+                };
+
+                if (!string.IsNullOrWhiteSpace(request.KeyFile) && System.IO.File.Exists(request.KeyFile))
+                {
+                    sshArgs.InsertRange(0, new[] { "-i", request.KeyFile });
+                }
+
+                var process = new System.Diagnostics.Process
+                {
+                    StartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "ssh",
+                        Arguments = string.Join(" ", sshArgs),
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true
+                    }
+                };
+
+                process.Start();
+                var output = await process.StandardOutput.ReadToEndAsync();
+                var error = await process.StandardError.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                if (process.ExitCode == 0 && output.Contains("SSH_TEST_SUCCESS"))
+                {
+                    _logger.LogInformation("SSH connection test successful");
+                    return Ok(new { success = true, message = "SSH connection successful" });
+                }
+                else
+                {
+                    _logger.LogWarning("SSH connection test failed: {Error}", error);
+                    return Ok(new { success = false, message = $"SSH connection failed: {error}" });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "SSH connection test error");
+                return Ok(new { success = false, message = $"SSH test error: {ex.Message}" });
+            }
+        }
+    }
+
+    /// <summary>
+    /// Request model for SSH connection test
+    /// </summary>
+    public class SshTestRequest
+    {
+        public string Host { get; set; } = "localhost";
+        public int Port { get; set; } = 2222;
+        public string User { get; set; } = "root";
+        public string KeyFile { get; set; } = "";
     }
 }
