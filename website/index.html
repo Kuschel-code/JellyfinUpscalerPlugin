@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jellyfin AI Upscaler – Transform Your Media with AI</title>
+    <meta name="description"
+        content="Enhance your Jellyfin media experience. Upscale SD to 4K using state-of-the-art neural networks. GPU-accelerated Docker microservice with SSH remote transcoding.">
+    <meta property="og:title" content="Jellyfin AI Upscaler">
+    <meta property="og:description"
+        content="Transform your media library with AI-powered video upscaling. Supports NVIDIA, AMD, Intel, Apple Silicon.">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Navigation -->
+    <nav class="nav" id="nav">
+        <div class="nav-inner">
+            <a href="#" class="nav-logo">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                    <rect width="28" height="28" rx="6" fill="url(#logo-grad)" />
+                    <path d="M8 14L12 10L16 14L20 10" stroke="white" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <path d="M8 18L12 14L16 18L20 14" stroke="white" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" opacity="0.5" />
+                    <defs>
+                        <linearGradient id="logo-grad" x1="0" y1="0" x2="28" y2="28">
+                            <stop stop-color="#6366f1" />
+                            <stop offset="1" stop-color="#a855f7" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <span>AI Upscaler</span>
+            </a>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#architecture">Architecture</a>
+                <a href="#gpus">GPUs</a>
+                <a href="#docker">Docker</a>
+                <a href="#docs">Docs</a>
+                <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" class="nav-btn" target="_blank">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path
+                            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+                    </svg>
+                    GitHub
+                </a>
+            </div>
+            <button class="nav-mobile-btn" id="mobileMenuBtn" aria-label="Menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-bg">
+            <div class="hero-orb hero-orb-1"></div>
+            <div class="hero-orb hero-orb-2"></div>
+            <div class="hero-orb hero-orb-3"></div>
+            <div class="hero-grid"></div>
+        </div>
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span class="badge-dot"></span>
+                v1.5.1 — SSH Remote Transcoding Edition
+            </div>
+            <h1 class="hero-title">
+                Transform your media<br>
+                <span class="gradient-text">with AI.</span>
+            </h1>
+            <p class="hero-subtitle">
+                Upscale SD to 4K using neural networks. GPU-accelerated Docker microservice
+                for Jellyfin with support for NVIDIA, AMD, Intel &amp; Apple Silicon.
+            </p>
+            <div class="hero-actions">
+                <a href="#install" class="btn btn-primary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    Get Started
+                </a>
+                <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" class="btn btn-secondary"
+                    target="_blank">
+                    View on GitHub
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M7 17L17 7" />
+                        <path d="M7 7h10v10" />
+                    </svg>
+                </a>
+            </div>
+            <div class="hero-stats">
+                <div class="stat">
+                    <span class="stat-value">5</span>
+                    <span class="stat-label">GPU Architectures</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat">
+                    <span class="stat-value">1.6<small>MB</small></span>
+                    <span class="stat-label">Plugin Size</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat">
+                    <span class="stat-value">4K</span>
+                    <span class="stat-label">Upscaling</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat">
+                    <span class="stat-value">MIT</span>
+                    <span class="stat-label">Open Source</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hero Visual -->
+        <div class="hero-visual">
+            <div class="comparison-card">
+                <div class="comparison-side comparison-before">
+                    <div class="comparison-label">Before</div>
+                    <div class="pixel-grid">
+                        <div class="pixel-row">
+                            <div class="px" style="--c:#3a2518"></div>
+                            <div class="px" style="--c:#4a3528"></div>
+                            <div class="px" style="--c:#5a4538"></div>
+                            <div class="px" style="--c:#6a5548"></div>
+                            <div class="px" style="--c:#7a6558"></div>
+                            <div class="px" style="--c:#8a7568"></div>
+                            <div class="px" style="--c:#7a6558"></div>
+                            <div class="px" style="--c:#6a5548"></div>
+                        </div>
+                        <div class="pixel-row">
+                            <div class="px" style="--c:#4a3528"></div>
+                            <div class="px" style="--c:#5a4538"></div>
+                            <div class="px" style="--c:#6a7548"></div>
+                            <div class="px" style="--c:#7a8558"></div>
+                            <div class="px" style="--c:#8a9568"></div>
+                            <div class="px" style="--c:#7a8558"></div>
+                            <div class="px" style="--c:#6a7548"></div>
+                            <div class="px" style="--c:#5a6538"></div>
+                        </div>
+                        <div class="pixel-row">
+                            <div class="px" style="--c:#5a6538"></div>
+                            <div class="px" style="--c:#6a7548"></div>
+                            <div class="px" style="--c:#7a9558"></div>
+                            <div class="px" style="--c:#8aa568"></div>
+                            <div class="px" style="--c:#9ab578"></div>
+                            <div class="px" style="--c:#8aa568"></div>
+                            <div class="px" style="--c:#7a9558"></div>
+                            <div class="px" style="--c:#6a8548"></div>
+                        </div>
+                        <div class="pixel-row">
+                            <div class="px" style="--c:#6a5548"></div>
+                            <div class="px" style="--c:#7a6558"></div>
+                            <div class="px" style="--c:#8a7568"></div>
+                            <div class="px" style="--c:#9a8578"></div>
+                            <div class="px" style="--c:#aa9588"></div>
+                            <div class="px" style="--c:#9a8578"></div>
+                            <div class="px" style="--c:#8a7568"></div>
+                            <div class="px" style="--c:#7a6558"></div>
+                        </div>
+                        <div class="pixel-row">
+                            <div class="px" style="--c:#4a6578"></div>
+                            <div class="px" style="--c:#5a7588"></div>
+                            <div class="px" style="--c:#6a8598"></div>
+                            <div class="px" style="--c:#7a95a8"></div>
+                            <div class="px" style="--c:#8aa5b8"></div>
+                            <div class="px" style="--c:#7a95a8"></div>
+                            <div class="px" style="--c:#6a8598"></div>
+                            <div class="px" style="--c:#5a7588"></div>
+                        </div>
+                        <div class="pixel-row">
+                            <div class="px" style="--c:#3a5568"></div>
+                            <div class="px" style="--c:#4a6578"></div>
+                            <div class="px" style="--c:#5a7588"></div>
+                            <div class="px" style="--c:#6a8598"></div>
+                            <div class="px" style="--c:#7a95a8"></div>
+                            <div class="px" style="--c:#6a8598"></div>
+                            <div class="px" style="--c:#5a7588"></div>
+                            <div class="px" style="--c:#4a6578"></div>
+                        </div>
+                    </div>
+                    <div class="res-tag">480p</div>
+                </div>
+                <div class="comparison-divider">
+                    <div class="divider-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M13 17l5-5-5-5M6 17l5-5-5-5" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="comparison-side comparison-after">
+                    <div class="comparison-label">After AI</div>
+                    <div class="enhanced-visual">
+                        <div class="ev-landscape"></div>
+                        <div class="ev-shimmer"></div>
+                    </div>
+                    <div class="res-tag res-tag-ai">4K Ultra HD</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="section features-section" id="features">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Features</span>
+                <h2 class="section-title">Everything you need.<br><span class="gradient-text">Nothing you don't.</span>
+                </h2>
+                <p class="section-desc">A complete AI upscaling pipeline that runs quietly alongside your Jellyfin
+                    server.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card feature-card-large" data-reveal>
+                    <div class="feature-icon feature-icon-docker">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <rect x="2" y="7" width="20" height="14" rx="2" />
+                            <path d="M6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2" />
+                            <line x1="6" y1="12" x2="6" y2="12" />
+                            <line x1="10" y1="12" x2="10" y2="12" />
+                            <line x1="14" y1="12" x2="14" y2="12" />
+                            <line x1="18" y1="12" x2="18" y2="12" />
+                        </svg>
+                    </div>
+                    <h3>Docker Microservice</h3>
+                    <p>AI processing runs in an isolated container — no DLL conflicts, no crashes. Only 1.6 MB plugin
+                        vs. 417 MB before.</p>
+                </div>
+                <div class="feature-card" data-reveal>
+                    <div class="feature-icon feature-icon-ssh">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <rect x="1" y="5" width="22" height="14" rx="2" />
+                            <path d="M7 15l3-3-3-3" />
+                            <line x1="13" y1="15" x2="17" y2="15" />
+                        </svg>
+                    </div>
+                    <h3>SSH Remote Transcoding</h3>
+                    <p>Offload FFmpeg to GPU-accelerated Docker containers via SSH. Your NAS delegates transcoding to
+                        powerful hardware.</p>
+                </div>
+                <div class="feature-card" data-reveal>
+                    <div class="feature-icon feature-icon-gpu">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <rect x="4" y="4" width="16" height="16" rx="2" />
+                            <rect x="8" y="8" width="8" height="8" rx="1" />
+                            <line x1="12" y1="2" x2="12" y2="4" />
+                            <line x1="12" y1="20" x2="12" y2="22" />
+                            <line x1="2" y1="12" x2="4" y2="12" />
+                            <line x1="20" y1="12" x2="22" y2="12" />
+                        </svg>
+                    </div>
+                    <h3>5 GPU Architectures</h3>
+                    <p>Native support for NVIDIA CUDA, AMD ROCm, Intel OpenVINO, Apple Silicon, and multi-threaded CPU.
+                    </p>
+                </div>
+                <div class="feature-card" data-reveal>
+                    <div class="feature-icon feature-icon-ai">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <circle cx="12" cy="12" r="3" />
+                            <path
+                                d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                        </svg>
+                    </div>
+                    <h3>Neural Network Models</h3>
+                    <p>FSRCNN, ESPCN, LapSRN, EDSR, Real-ESRGAN — from lightning-fast to maximum detail.</p>
+                </div>
+                <div class="feature-card feature-card-large" data-reveal>
+                    <div class="feature-icon feature-icon-ui">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <rect x="2" y="3" width="20" height="14" rx="2" />
+                            <line x1="8" y1="21" x2="16" y2="21" />
+                            <line x1="12" y1="17" x2="12" y2="21" />
+                        </svg>
+                    </div>
+                    <h3>Seamless Jellyfin Integration</h3>
+                    <p>Player button, side-by-side preview, real-time benchmarking, and a complete Web UI for model
+                        management. Works with TV remotes.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section class="section architecture-section" id="architecture">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Architecture</span>
+                <h2 class="section-title">Designed for<br><span class="gradient-text">separation.</span></h2>
+                <p class="section-desc">The plugin talks to Docker via two channels — HTTP for AI frames, SSH for FFmpeg
+                    execution.</p>
+            </div>
+            <div class="arch-visual">
+                <div class="arch-node arch-jellyfin">
+                    <div class="arch-node-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                            <path d="M2 17l10 5 10-5" />
+                            <path d="M2 12l10 5 10-5" />
+                        </svg>
+                    </div>
+                    <div class="arch-node-title">Jellyfin Server</div>
+                    <div class="arch-node-desc">Plugin (1.6 MB)</div>
+                    <div class="arch-node-items">
+                        <span>UI Controls</span>
+                        <span>HTTP Client</span>
+                        <span>FFmpeg Wrapper</span>
+                    </div>
+                </div>
+                <div class="arch-connections">
+                    <div class="arch-conn">
+                        <div class="arch-conn-line"></div>
+                        <div class="arch-conn-label">HTTP :5000</div>
+                        <div class="arch-conn-dot arch-conn-dot-1"></div>
+                        <div class="arch-conn-dot arch-conn-dot-2"></div>
+                    </div>
+                    <div class="arch-conn">
+                        <div class="arch-conn-line arch-conn-line-2"></div>
+                        <div class="arch-conn-label">SSH :2222</div>
+                        <div class="arch-conn-dot arch-conn-dot-3"></div>
+                        <div class="arch-conn-dot arch-conn-dot-4"></div>
+                    </div>
+                </div>
+                <div class="arch-node arch-docker">
+                    <div class="arch-node-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <rect x="2" y="7" width="20" height="14" rx="2" />
+                            <path d="M6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2" />
+                        </svg>
+                    </div>
+                    <div class="arch-node-title">Docker Container</div>
+                    <div class="arch-node-desc">AI Service (~500MB–6GB)</div>
+                    <div class="arch-node-items">
+                        <span>Python + FastAPI</span>
+                        <span>OpenCV / ONNX</span>
+                        <span>GPU Runtime</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- GPU Section -->
+    <section class="section gpu-section" id="gpus">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Hardware</span>
+                <h2 class="section-title">Runs on<br><span class="gradient-text">your GPU.</span></h2>
+                <p class="section-desc">Five dedicated Docker images — each optimized for a specific hardware platform.
+                </p>
+            </div>
+            <div class="gpu-grid">
+                <div class="gpu-card" data-reveal>
+                    <div class="gpu-color gpu-nvidia"></div>
+                    <div class="gpu-brand">NVIDIA</div>
+                    <div class="gpu-tech">CUDA + TensorRT</div>
+                    <code class="gpu-tag">:1.5.1</code>
+                    <div class="gpu-models">RTX 40/30/20, GTX 16/10</div>
+                    <div class="gpu-rating">
+                        <span>⭐⭐⭐⭐⭐</span>
+                    </div>
+                </div>
+                <div class="gpu-card" data-reveal>
+                    <div class="gpu-color gpu-amd"></div>
+                    <div class="gpu-brand">AMD</div>
+                    <div class="gpu-tech">ROCm</div>
+                    <code class="gpu-tag">:1.5.1-amd</code>
+                    <div class="gpu-models">RX 7000, RX 6000</div>
+                    <div class="gpu-rating">
+                        <span>⭐⭐⭐⭐</span>
+                    </div>
+                </div>
+                <div class="gpu-card" data-reveal>
+                    <div class="gpu-color gpu-intel"></div>
+                    <div class="gpu-brand">Intel</div>
+                    <div class="gpu-tech">OpenVINO</div>
+                    <code class="gpu-tag">:1.5.1-intel</code>
+                    <div class="gpu-models">Arc A-Series, Iris Xe</div>
+                    <div class="gpu-rating">
+                        <span>⭐⭐⭐⭐</span>
+                    </div>
+                </div>
+                <div class="gpu-card" data-reveal>
+                    <div class="gpu-color gpu-apple"></div>
+                    <div class="gpu-brand">Apple</div>
+                    <div class="gpu-tech">ARM64 Optimized</div>
+                    <code class="gpu-tag">:1.5.1-apple</code>
+                    <div class="gpu-models">M1, M2, M3, M4</div>
+                    <div class="gpu-rating">
+                        <span>⭐⭐⭐</span>
+                    </div>
+                </div>
+                <div class="gpu-card" data-reveal>
+                    <div class="gpu-color gpu-cpu"></div>
+                    <div class="gpu-brand">CPU</div>
+                    <div class="gpu-tech">Multi-Thread</div>
+                    <code class="gpu-tag">:1.5.1-cpu</code>
+                    <div class="gpu-models">Any x86/ARM64</div>
+                    <div class="gpu-rating">
+                        <span>⭐⭐</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Docker / Install Section -->
+    <section class="section docker-section" id="docker">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Get Started</span>
+                <h2 class="section-title">Up and running<br><span class="gradient-text">in minutes.</span></h2>
+            </div>
+            <div class="install-steps" id="install">
+                <div class="install-step" data-reveal>
+                    <div class="step-number">01</div>
+                    <div class="step-content">
+                        <h3>Start Docker Container</h3>
+                        <p>Pull and run the image that matches your GPU.</p>
+                        <div class="code-block">
+                            <div class="code-tabs">
+                                <button class="code-tab active" data-tab="nvidia">NVIDIA</button>
+                                <button class="code-tab" data-tab="amd">AMD</button>
+                                <button class="code-tab" data-tab="intel">Intel</button>
+                                <button class="code-tab" data-tab="cpu">CPU</button>
+                            </div>
+                            <pre class="code-content" id="code-nvidia"><code>docker run -d \
+  --name jellyfin-ai-upscaler \
+  --gpus all \
+  -p 5000:5000 -p 2222:22 \
+  -v /media:/media:ro \
+  kuscheltier/jellyfin-ai-upscaler:1.5.1</code></pre>
+                            <pre class="code-content" id="code-amd" style="display:none"><code>docker run -d \
+  --name jellyfin-ai-upscaler \
+  --device=/dev/kfd --device=/dev/dri \
+  --group-add video \
+  -p 5000:5000 -p 2222:22 \
+  -v /media:/media:ro \
+  kuscheltier/jellyfin-ai-upscaler:1.5.1-amd</code></pre>
+                            <pre class="code-content" id="code-intel" style="display:none"><code>docker run -d \
+  --name jellyfin-ai-upscaler \
+  --device=/dev/dri:/dev/dri \
+  -p 5000:5000 -p 2222:22 \
+  -v /media:/media:ro \
+  kuscheltier/jellyfin-ai-upscaler:1.5.1-intel</code></pre>
+                            <pre class="code-content" id="code-cpu" style="display:none"><code>docker run -d \
+  --name jellyfin-ai-upscaler \
+  -p 5000:5000 -p 2222:22 \
+  -v /media:/media:ro \
+  kuscheltier/jellyfin-ai-upscaler:1.5.1-cpu</code></pre>
+                            <button class="code-copy" title="Copy">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" />
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="install-step" data-reveal>
+                    <div class="step-number">02</div>
+                    <div class="step-content">
+                        <h3>Install Jellyfin Plugin</h3>
+                        <p>Add the plugin repository to Jellyfin and install.</p>
+                        <div class="code-block">
+                            <pre class="code-content"><code>Dashboard → Plugins → Repositories → Add:
+
+https://raw.githubusercontent.com/Kuschel-code/
+JellyfinUpscalerPlugin/main/manifest.json
+
+Then: Catalog → AI Upscaler → Install → Restart</code></pre>
+                        </div>
+                    </div>
+                </div>
+                <div class="install-step" data-reveal>
+                    <div class="step-number">03</div>
+                    <div class="step-content">
+                        <h3>Configure &amp; Enjoy</h3>
+                        <p>Set the AI Service URL, test the connection, and start watching.</p>
+                        <div class="config-preview">
+                            <div class="config-row">
+                                <span class="config-label">AI Service URL</span>
+                                <span class="config-value">http://your-server:5000</span>
+                            </div>
+                            <div class="config-row">
+                                <span class="config-label">Connection</span>
+                                <span class="config-status">✅ Connected</span>
+                            </div>
+                            <div class="config-row">
+                                <span class="config-label">GPU Detected</span>
+                                <span class="config-value">NVIDIA RTX 4080</span>
+                            </div>
+                            <div class="config-row">
+                                <span class="config-label">AI Model</span>
+                                <span class="config-value">Real-ESRGAN 4x</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Models Section -->
+    <section class="section models-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">AI Models</span>
+                <h2 class="section-title">Choose your<br><span class="gradient-text">neural network.</span></h2>
+                <p class="section-desc">From lightning-fast to maximum detail — pick the model that fits your hardware.
+                </p>
+            </div>
+            <div class="models-table-wrap">
+                <table class="models-table">
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>Speed</th>
+                            <th>Quality</th>
+                            <th>VRAM</th>
+                            <th>Best For</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr data-reveal>
+                            <td><strong>FSRCNN</strong></td>
+                            <td><span class="speed-bar speed-5"></span></td>
+                            <td>⭐⭐⭐</td>
+                            <td>200 MB</td>
+                            <td>General, real-time</td>
+                        </tr>
+                        <tr data-reveal>
+                            <td><strong>ESPCN</strong></td>
+                            <td><span class="speed-bar speed-5"></span></td>
+                            <td>⭐⭐⭐</td>
+                            <td>150 MB</td>
+                            <td>Low-power devices</td>
+                        </tr>
+                        <tr data-reveal>
+                            <td><strong>LapSRN</strong></td>
+                            <td><span class="speed-bar speed-4"></span></td>
+                            <td>⭐⭐⭐⭐</td>
+                            <td>500 MB</td>
+                            <td>Balanced</td>
+                        </tr>
+                        <tr data-reveal>
+                            <td><strong>EDSR</strong></td>
+                            <td><span class="speed-bar speed-2"></span></td>
+                            <td>⭐⭐⭐⭐⭐</td>
+                            <td>1 GB</td>
+                            <td>Maximum detail</td>
+                        </tr>
+                        <tr data-reveal>
+                            <td><strong>Real-ESRGAN</strong></td>
+                            <td><span class="speed-bar speed-2"></span></td>
+                            <td>⭐⭐⭐⭐⭐</td>
+                            <td>1.5 GB</td>
+                            <td>Movies, photos</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Docs Section -->
+    <section class="section docs-section" id="docs">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Documentation</span>
+                <h2 class="section-title">Everything is<br><span class="gradient-text">documented.</span></h2>
+            </div>
+            <div class="docs-grid">
+                <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki" class="doc-card" data-reveal
+                    target="_blank">
+                    <div class="doc-icon">📖</div>
+                    <h3>Wiki</h3>
+                    <p>Complete documentation with setup guides, configuration reference, and troubleshooting.</p>
+                </a>
+                <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki/Docker-Setup" class="doc-card"
+                    data-reveal target="_blank">
+                    <div class="doc-icon">🐳</div>
+                    <h3>Docker Guide</h3>
+                    <p>Docker Compose examples for every GPU. Volume mounts, environment variables, health checks.</p>
+                </a>
+                <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki/SSH-Remote-Transcoding"
+                    class="doc-card" data-reveal target="_blank">
+                    <div class="doc-icon">🔐</div>
+                    <h3>SSH Setup</h3>
+                    <p>Key generation, path mapping, remote FFmpeg execution, and security recommendations.</p>
+                </a>
+                <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki/Troubleshooting" class="doc-card"
+                    data-reveal target="_blank">
+                    <div class="doc-icon">🐛</div>
+                    <h3>Troubleshooting</h3>
+                    <p>Fix Docker, SSH, plugin, and playback issues with step-by-step debugging guides.</p>
+                </a>
+                <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki/FAQ" class="doc-card" data-reveal
+                    target="_blank">
+                    <div class="doc-icon">❓</div>
+                    <h3>FAQ</h3>
+                    <p>Frequently asked questions about hardware, Docker, SSH, and plugin configuration.</p>
+                </a>
+                <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases" class="doc-card" data-reveal
+                    target="_blank">
+                    <div class="doc-icon">📦</div>
+                    <h3>Releases</h3>
+                    <p>Download the latest plugin version and view the complete changelog.</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="section cta-section">
+        <div class="container">
+            <div class="cta-card">
+                <div class="cta-bg">
+                    <div class="cta-orb cta-orb-1"></div>
+                    <div class="cta-orb cta-orb-2"></div>
+                </div>
+                <h2>Ready to transform your media?</h2>
+                <p>Get started in under 5 minutes. Free, open-source, MIT licensed.</p>
+                <div class="cta-actions">
+                    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" class="btn btn-primary btn-large"
+                        target="_blank">
+                        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
+                            <path
+                                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+                        </svg>
+                        Get Started on GitHub
+                    </a>
+                    <a href="https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler"
+                        class="btn btn-secondary btn-large" target="_blank">
+                        Docker Hub
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M7 17L17 7" />
+                            <path d="M7 7h10v10" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-inner">
+                <div class="footer-brand">
+                    <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
+                        <rect width="28" height="28" rx="6" fill="url(#logo-grad2)" />
+                        <path d="M8 14L12 10L16 14L20 10" stroke="white" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                        <path d="M8 18L12 14L16 18L20 14" stroke="white" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" opacity="0.5" />
+                        <defs>
+                            <linearGradient id="logo-grad2" x1="0" y1="0" x2="28" y2="28">
+                                <stop stop-color="#6366f1" />
+                                <stop offset="1" stop-color="#a855f7" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <span>Jellyfin AI Upscaler</span>
+                </div>
+                <div class="footer-links">
+                    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub</a>
+                    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki" target="_blank">Wiki</a>
+                    <a href="https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler" target="_blank">Docker Hub</a>
+                    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions"
+                        target="_blank">Community</a>
+                    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues" target="_blank">Issues</a>
+                </div>
+                <div class="footer-copy">
+                    &copy; 2026 Kuschel-code. MIT License.
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
