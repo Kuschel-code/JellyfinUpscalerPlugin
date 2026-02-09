@@ -1,22 +1,41 @@
 # ⚡ Quick Start
 
-Follow these steps to get your system ready in less than 5 minutes.
-
-## 1. Installation
-Install the plugin via the Jellyfin catalog (see [Installation](Installation)). Restart the server.
-
-## 2. Provide Models
-The plugin is shipped without models. Upload at least one `.onnx` model (e.g., `realesrgan.onnx`) to the folder `plugins/configurations/JellyfinUpscalerPlugin/models/`.
-
-## 3. Check Hardware
-Go to **Dashboard -> Plugins -> AI Upscaler Plugin**.
-Click on **"Hardware Benchmark"**. The plugin will now analyze your CPU and GPU and automatically set the recommended values.
-
-## 4. Save Configuration
-Scroll down and click on **"💾 Save Configuration"**.
-
-## 5. Movie On!
-Open a movie in your browser. In the control bar at the bottom right, you will now find the **🎮 AI** button. Click on it to activate upscaling.
+Get up and running in under 5 minutes.
 
 ---
-**Tip:** If the video stutters, choose a lower scaling factor (2x instead of 4x) or a faster model like `FSRCNN` in the plugin settings.
+
+## 1. Start Docker (30 seconds)
+
+```bash
+docker run -d --name jellyfin-ai-upscaler \
+  -p 5000:5000 -p 2222:22 \
+  kuscheltier/jellyfin-ai-upscaler:1.5.1-cpu
+```
+
+> Use `:1.5.1` for NVIDIA, `:1.5.1-amd` for AMD, `:1.5.1-intel` for Intel
+
+## 2. Install Plugin (1 minute)
+
+1. Jellyfin Dashboard → **Plugins** → **Repositories** → **Add**
+2. URL: `https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/manifest.json`
+3. **Catalog** → Install **AI Upscaler Plugin** → **Restart Jellyfin**
+
+## 3. Configure (30 seconds)
+
+1. **Dashboard → Plugins → AI Upscaler → Settings**
+2. Set **AI Service URL**: `http://YOUR_DOCKER_IP:5000`
+3. Click **Test Connection** → ✅
+4. **Save**
+
+## 4. Enjoy! 🎬
+
+Start playing any video and use the **AI** button in the player controls to upscale.
+
+---
+
+## Want More?
+
+- [📥 Full Installation Guide](Installation)
+- [🐳 Docker Setup](Docker-Setup)
+- [🔐 SSH Remote Transcoding](SSH-Remote-Transcoding)
+- [⚙️ Configuration Reference](Configuration)

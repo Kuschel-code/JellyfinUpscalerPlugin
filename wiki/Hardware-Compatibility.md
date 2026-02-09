@@ -1,31 +1,108 @@
 # 🎯 Hardware Compatibility
 
-The AI Upscaler Plugin v1.4.0 uses **ONNX Runtime** to enable cross-platform hardware acceleration.
+The AI Upscaler Plugin v1.5.1 supports multiple GPU architectures through dedicated Docker images.
 
-## 🟢 NVIDIA Graphics Cards (Recommended)
-NVIDIA cards provide the best performance through the **CUDA Execution Provider**.
-- **RTX 40 Series**: Excellent (supports AV1, high-speed 4K upscaling).
-- **RTX 30 Series**: Excellent (very stable CUDA performance).
-- **RTX 20 Series**: Very good.
-- **GTX 10/16 Series**: Good (requires at least 4GB VRAM for 1080p).
+---
 
-## 🔵 Intel & AMD Graphics Cards
-On Windows, these cards use the **DirectML Execution Provider**.
-- **Intel Arc Series**: Very good (excellent ONNX compatibility).
-- **AMD Radeon RX 6000/7000**: Very good.
-- **AMD Radeon RX 500/5000**: Good.
-- **Intel UHD/Iris Xe**: Satisfactory (recommended only for 720p enhancement).
+## GPU Support Matrix
 
-## 🖥️ CPU Processing (Fallback)
-If no compatible GPU is found, the plugin uses optimized multi-threaded CPU processing.
-- **High-End (12+ cores)**: Can handle real-time 720p upscaling.
-- **Mid-Range (6-8 cores)**: Recommended for 480p -> 720p or background pre-processing.
-- **Entry-Level/NAS (2-4 cores)**: Background pre-processing is highly recommended.
+| GPU | Docker Image | Acceleration | Performance |
+|-----|-------------|--------------|-------------|
+| **NVIDIA RTX 40xx** | `:1.5.1` | CUDA + TensorRT | ⭐⭐⭐⭐⭐ Excellent |
+| **NVIDIA RTX 30xx** | `:1.5.1` | CUDA | ⭐⭐⭐⭐⭐ Excellent |
+| **NVIDIA RTX 20xx** | `:1.5.1` | CUDA | ⭐⭐⭐⭐ Very Good |
+| **NVIDIA GTX 16xx** | `:1.5.1` | CUDA | ⭐⭐⭐ Good |
+| **NVIDIA GTX 10xx** | `:1.5.1` | CUDA | ⭐⭐⭐ Good (4GB+ VRAM) |
+| **AMD RX 7000** | `:1.5.1-amd` | ROCm | ⭐⭐⭐⭐ Very Good |
+| **AMD RX 6000** | `:1.5.1-amd` | ROCm | ⭐⭐⭐⭐ Very Good |
+| **Intel Arc A-Series** | `:1.5.1-intel` | OpenVINO | ⭐⭐⭐⭐ Very Good |
+| **Intel Iris Xe** | `:1.5.1-intel` | OpenVINO | ⭐⭐ Satisfactory |
+| **Intel UHD 770** | `:1.5.1-intel` | OpenVINO | ⭐⭐ Satisfactory |
+| **Apple M4** | `:1.5.1-apple` | CPU (ARM64) | ⭐⭐⭐ Good |
+| **Apple M3** | `:1.5.1-apple` | CPU (ARM64) | ⭐⭐⭐ Good |
+| **Apple M1/M2** | `:1.5.1-apple` | CPU (ARM64) | ⭐⭐⭐ Good |
+| **Any x86 CPU** | `:1.5.1-cpu` | Multi-Thread | ⭐⭐ Satisfactory |
 
-## 💾 Memory Requirements
-- **1080p Upscaling**: approx. 2GB VRAM / 4GB system RAM.
-- **4K Upscaling**: approx. 6GB VRAM / 8GB system RAM.
-- **8K Preview**: approx. 12GB VRAM / 16GB system RAM.
+---
 
-## 🐧 Linux Support
-Linux users should ensure they have the latest **NVIDIA drivers** and the `nvidia-container-toolkit` installed (if Docker is used). Support for open-source drivers (Mesa) is currently provided via CPU or experimental Vulkan providers.
+## Driver Requirements
+
+### NVIDIA
+- **Driver:** 525+ (CUDA 12.2 support)
+- **Container Toolkit:** `nvidia-container-toolkit` required
+- Install: `apt-get install nvidia-container-toolkit`
+
+### AMD
+- **ROCm:** 5.0+ installed on host
+- **Kernel:** Linux 5.15+ recommended
+- Devices: `/dev/kfd` and `/dev/dri` must be accessible
+
+### Intel
+- **Driver:** i915 kernel module loaded
+- **Device:** `/dev/dri` must be accessible
+- Works on Intel Gen 11+ (Ice Lake) and Arc GPUs
+
+### Apple Silicon
+- **macOS:** Docker Desktop for Mac
+- **Note:** GPU acceleration requires native execution (not Docker)
+
+---
+
+## Memory Requirements
+
+| Task | VRAM | System RAM |
+|------|------|------------|
+| 720p → 1080p (2x) | ~1 GB | 4 GB |
+| 1080p → 4K (2x) | ~2 GB | 8 GB |
+| 1080p → 4K (4x) | ~6 GB | 8 GB |
+| 4K → 8K (2x) | ~12 GB | 16 GB |
+
+---
+
+## Recommended Setup by Use Case
+
+### Home Theater (Best Quality)
+- **GPU:** NVIDIA RTX 4070+ or AMD RX 7800 XT
+- **Docker:** GPU image on dedicated machine
+- **Settings:** 4x scale, High quality, SSH enabled
+
+### NAS / Low Power
+- **GPU:** None required
+- **Docker:** CPU image
+- **Settings:** 2x scale, Medium quality, Pre-processing cache ON
+
+### Budget / Mixed
+- **GPU:** Intel Arc A380 or NVIDIA GTX 1060
+- **Docker:** Matching GPU image
+- **Settings:** 2x scale, Medium quality
+
+---
+
+## Linux GPU Passthrough
+
+### NVIDIA GPU to Docker
+```bash
+# Install container toolkit
+sudo apt-get install nvidia-container-toolkit
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo systemctl restart docker
+
+# Test
+docker run --rm --gpus all nvidia/cuda:12.2.2-base-ubuntu22.04 nvidia-smi
+```
+
+### AMD GPU to Docker
+```bash
+# Ensure ROCm is installed
+# Pass devices to Docker
+docker run --device=/dev/kfd --device=/dev/dri --group-add video ...
+```
+
+### Intel GPU to Docker
+```bash
+# Check /dev/dri exists
+ls -la /dev/dri/
+
+# Pass to Docker
+docker run --device=/dev/dri:/dev/dri ...
+```
