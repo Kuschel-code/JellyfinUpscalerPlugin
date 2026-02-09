@@ -3,7 +3,7 @@
 ======================================== */
 const i18n = {
     en: {
-        nav: { home: "Home", installation: "Installation", configuration: "Configuration", features: "Features", troubleshooting: "Troubleshooting", dockerTags: "Docker Tags", changelog: "Changelog" },
+        nav: { home: "Home", installation: "Installation", sshSetup: "SSH Setup", configuration: "Configuration", features: "Features", troubleshooting: "Troubleshooting", dockerTags: "Docker Tags", changelog: "Changelog" },
         hero: {
             badge: "v1.5.1 — SSH Remote Transcoding Edition",
             title1: "Transform your media",
@@ -99,10 +99,46 @@ const i18n = {
                 { ver: "1.4.0", date: "Nov 2025", type: "Major", items: ["Redesigned UI for Jellyfin 10.10+", "Real hardware detection", "Side-by-side comparison preview", "14 AI model support"] }
             ]
         },
+        sshSetup: {
+            tag: "SSH Guide",
+            title1: "Set up SSH", title2: "Remote Transcoding.",
+            intro: "SSH Remote Transcoding lets your Jellyfin server offload video transcoding to a powerful GPU machine via SSH. This guide walks you through the complete setup process.",
+            prereqTitle: "Prerequisites",
+            prereqText: "You need Docker installed, the AI Upscaler container running with port 22 mapped, and SSH tools available on your Jellyfin host.",
+            step1: { title: "Start Container with SSH Port", desc: "Make sure port 22 inside the container is mapped to a host port (e.g. 2222). This enables SSH access to the container.", cmdLabel: "Docker Run", tip: "💡 Important:", tipText: "The -p 2222:22 flag maps container SSH (port 22) to host port 2222. Adjust if 2222 is already in use." },
+            step2: { title: "Generate SSH Key Pair", desc: "Create an ed25519 SSH key pair on your Jellyfin server. This key will authenticate the connection without a password.", cmdLabel: "Generate Key", tip: "💡 Tip:", tipText: "Press Enter when prompted for a passphrase to create a key without one (recommended for automated transcoding)." },
+            step3: { title: "Copy Public Key to Container", desc: "Copy your public key (.pub) into the container's authorized_keys file so SSH accepts the connection.", cmdLabel: "Copy Key", fixPerms: "Then fix the file permissions (required by SSH):", fixPermsLabel: "Fix Permissions" },
+            step4: { title: "Test SSH Connection", desc: "Verify the SSH connection works before configuring the plugin.", tip: "💡 First connection:", tipText: "Type 'yes' when asked about the host fingerprint. You should see a root shell inside the container." },
+            step5: {
+                title: "Configure Plugin Settings", desc: "Open Jellyfin → Dashboard → Plugins → AI Upscaler → Settings and enter the SSH details.", settingsTitle: "Plugin SSH Settings", settings: [
+                    { label: "Enable Remote Transcoding", value: "✅ Enabled" },
+                    { label: "Remote Host", value: "YOUR_SERVER_IP" },
+                    { label: "SSH Port", value: "2222" },
+                    { label: "SSH User", value: "root" },
+                    { label: "SSH Key Path", value: "~/.ssh/jellyfin_upscaler" }
+                ]
+            },
+            step6: {
+                title: "Configure Path Mapping", desc: "If your media files are in different paths on the Jellyfin server vs. the Docker container, configure path mapping.", mappingTitle: "Path Mapping Example", mappings: [
+                    { label: "Local Media Path (Jellyfin)", value: "/mnt/media/movies" },
+                    { label: "Remote Media Path (Docker)", value: "/media/movies" }
+                ], tip: "💡 Docker volumes:", tipText: "Make sure your Docker container has the media mounted with -v /mnt/media:/media so both paths point to the same files."
+            },
+            troubleshoot: {
+                title: "SSH Troubleshooting", items: [
+                    { q: "Permission denied (publickey)", a: "Your authorized_keys file permissions may be wrong. SSH requires 600 permissions on authorized_keys and 700 on the .ssh directory.", cmd: "docker exec jellyfin-ai-upscaler chmod 700 /root/.ssh && docker exec jellyfin-ai-upscaler chmod 600 /root/.ssh/authorized_keys", cmdLabel: "Fix permissions" },
+                    { q: "Connection refused on port 2222", a: "The SSHD service may not be running inside the container, or port mapping is incorrect. Check if SSHD is running.", cmd: "docker exec jellyfin-ai-upscaler ps aux | grep sshd", cmdLabel: "Check SSHD" },
+                    { q: "Host key verification failed", a: "If you recreated the container, the host key changed. Remove the old key entry.", cmd: "ssh-keygen -R \"[localhost]:2222\"", cmdLabel: "Remove old host key" },
+                    { q: "Transcoding starts but files not found", a: "Your path mapping is incorrect. The remote path must match the mount point inside the Docker container. Check your -v volume mount matches the Remote Media Path setting." }
+                ]
+            },
+            done: "SSH Setup Complete!",
+            doneText: "Your Jellyfin server will now offload transcoding to the Docker GPU container via SSH. Test by playing a video and checking the AI upscaler button."
+        },
         footer: { copyright: "© 2026 Kuschel-code. MIT License." }
     },
     de: {
-        nav: { home: "Startseite", installation: "Installation", configuration: "Konfiguration", features: "Funktionen", troubleshooting: "Fehlerbehebung", dockerTags: "Docker Tags", changelog: "Änderungen" },
+        nav: { home: "Startseite", installation: "Installation", sshSetup: "SSH Einrichtung", configuration: "Konfiguration", features: "Funktionen", troubleshooting: "Fehlerbehebung", dockerTags: "Docker Tags", changelog: "Änderungen" },
         hero: {
             badge: "v1.5.1 — SSH Remote Transcoding Edition",
             title1: "Transformiere deine Medien",
@@ -198,10 +234,46 @@ const i18n = {
                 { ver: "1.4.0", date: "Nov 2025", type: "Major", items: ["Redesigntes UI für Jellyfin 10.10+", "Echte Hardwareerkennung", "Vergleichsvorschau", "14 KI-Modelle"] }
             ]
         },
+        sshSetup: {
+            tag: "SSH Anleitung",
+            title1: "SSH Remote", title2: "Transcoding einrichten.",
+            intro: "SSH Remote Transcoding ermöglicht es deinem Jellyfin-Server, Video-Transcoding an einen leistungsstarken GPU-Rechner via SSH auszulagern. Diese Anleitung führt dich durch den gesamten Setup-Prozess.",
+            prereqTitle: "Voraussetzungen",
+            prereqText: "Docker muss installiert sein, der AI Upscaler Container muss mit Port 22 gemappt laufen, und SSH-Tools müssen auf deinem Jellyfin-Host verfügbar sein.",
+            step1: { title: "Container mit SSH-Port starten", desc: "Stelle sicher, dass Port 22 im Container auf einen Host-Port (z.B. 2222) gemappt ist.", cmdLabel: "Docker Run", tip: "💡 Wichtig:", tipText: "Das -p 2222:22 Flag mappt SSH (Port 22) auf Host-Port 2222. Passe an, falls 2222 belegt ist." },
+            step2: { title: "SSH-Schlüsselpaar generieren", desc: "Erstelle ein ed25519 SSH-Schlüsselpaar auf deinem Jellyfin-Server. Dieser Schlüssel authentifiziert die Verbindung ohne Passwort.", cmdLabel: "Schlüssel generieren", tip: "💡 Tipp:", tipText: "Drücke Enter bei der Passphrase-Abfrage für einen Schlüssel ohne Passwort (empfohlen für automatisches Transcoding)." },
+            step3: { title: "Public Key in Container kopieren", desc: "Kopiere deinen öffentlichen Schlüssel (.pub) in die authorized_keys Datei des Containers.", cmdLabel: "Schlüssel kopieren", fixPerms: "Dann Berechtigungen korrigieren (SSH erfordert dies):", fixPermsLabel: "Berechtigungen setzen" },
+            step4: { title: "SSH-Verbindung testen", desc: "Überprüfe die SSH-Verbindung bevor du das Plugin konfigurierst.", tip: "💡 Erste Verbindung:", tipText: "Tippe 'yes' wenn nach dem Host-Fingerprint gefragt wird. Du solltest eine Root-Shell im Container sehen." },
+            step5: {
+                title: "Plugin-Einstellungen konfigurieren", desc: "Öffne Jellyfin → Dashboard → Plugins → AI Upscaler → Einstellungen und gib die SSH-Details ein.", settingsTitle: "Plugin SSH-Einstellungen", settings: [
+                    { label: "Remote Transcoding aktivieren", value: "✅ Aktiviert" },
+                    { label: "Remote Host", value: "DEINE_SERVER_IP" },
+                    { label: "SSH Port", value: "2222" },
+                    { label: "SSH Benutzer", value: "root" },
+                    { label: "SSH Key Pfad", value: "~/.ssh/jellyfin_upscaler" }
+                ]
+            },
+            step6: {
+                title: "Pfad-Mapping konfigurieren", desc: "Falls deine Mediendateien unterschiedliche Pfade auf dem Jellyfin-Server und im Docker-Container haben, konfiguriere das Pfad-Mapping.", mappingTitle: "Pfad-Mapping Beispiel", mappings: [
+                    { label: "Lokaler Medienpfad (Jellyfin)", value: "/mnt/media/movies" },
+                    { label: "Remote Medienpfad (Docker)", value: "/media/movies" }
+                ], tip: "💡 Docker Volumes:", tipText: "Stelle sicher, dass dein Docker-Container die Medien mit -v /mnt/media:/media gemountet hat."
+            },
+            troubleshoot: {
+                title: "SSH Fehlerbehebung", items: [
+                    { q: "Permission denied (publickey)", a: "Die Berechtigungen der authorized_keys Datei könnten falsch sein. SSH erfordert 600 für authorized_keys und 700 für das .ssh Verzeichnis.", cmd: "docker exec jellyfin-ai-upscaler chmod 700 /root/.ssh && docker exec jellyfin-ai-upscaler chmod 600 /root/.ssh/authorized_keys", cmdLabel: "Berechtigungen reparieren" },
+                    { q: "Connection refused auf Port 2222", a: "Der SSHD-Dienst läuft möglicherweise nicht im Container oder das Port-Mapping ist falsch.", cmd: "docker exec jellyfin-ai-upscaler ps aux | grep sshd", cmdLabel: "SSHD prüfen" },
+                    { q: "Host key verification failed", a: "Wenn du den Container neu erstellt hast, hat sich der Host-Key geändert. Entferne den alten Eintrag.", cmd: "ssh-keygen -R \"[localhost]:2222\"", cmdLabel: "Alten Host-Key entfernen" },
+                    { q: "Transcoding startet aber Dateien nicht gefunden", a: "Dein Pfad-Mapping ist falsch. Der Remote-Pfad muss dem Mount-Punkt im Docker-Container entsprechen." }
+                ]
+            },
+            done: "SSH Einrichtung abgeschlossen!",
+            doneText: "Dein Jellyfin-Server wird jetzt Transcoding an den Docker GPU-Container via SSH auslagern. Teste es, indem du ein Video abspielst."
+        },
         footer: { copyright: "© 2026 Kuschel-code. MIT-Lizenz." }
     },
     fr: {
-        nav: { home: "Accueil", installation: "Installation", configuration: "Configuration", features: "Fonctionnalités", troubleshooting: "Dépannage", dockerTags: "Docker Tags", changelog: "Historique" },
+        nav: { home: "Accueil", installation: "Installation", sshSetup: "Config SSH", configuration: "Configuration", features: "Fonctionnalités", troubleshooting: "Dépannage", dockerTags: "Docker Tags", changelog: "Historique" },
         hero: {
             badge: "v1.5.1 — Édition SSH Remote Transcoding",
             title1: "Transformez vos médias",
@@ -269,10 +341,23 @@ const i18n = {
                 { ver: "1.4.0", date: "Nov 2025", type: "Majeur", items: ["Interface redessinée", "Détection matérielle", "Aperçu comparatif"] }
             ]
         },
+        sshSetup: {
+            tag: "Guide SSH", title1: "Configurer SSH", title2: "Remote Transcoding.",
+            intro: "Le transcodage distant SSH permet à votre serveur Jellyfin de déléguer le transcodage vidéo à une machine GPU via SSH.",
+            prereqTitle: "Prérequis", prereqText: "Docker installé, conteneur AI Upscaler avec port 22 mappé, outils SSH disponibles.",
+            step1: { title: "Démarrer le conteneur avec SSH", desc: "Mappez le port 22 du conteneur vers un port hôte (ex: 2222).", cmdLabel: "Docker Run", tip: "💡 Important :", tipText: "Le flag -p 2222:22 mappe le SSH du conteneur sur le port 2222." },
+            step2: { title: "Générer une paire de clés SSH", desc: "Créez une clé ed25519 sur votre serveur Jellyfin.", cmdLabel: "Générer la clé", tip: "💡 Astuce :", tipText: "Appuyez sur Entrée pour créer une clé sans phrase de passe." },
+            step3: { title: "Copier la clé dans le conteneur", desc: "Copiez votre clé publique dans le fichier authorized_keys du conteneur.", cmdLabel: "Copier la clé", fixPerms: "Puis corrigez les permissions :", fixPermsLabel: "Permissions" },
+            step4: { title: "Tester la connexion SSH", desc: "Vérifiez que la connexion SSH fonctionne.", tip: "💡 Première connexion :", tipText: "Tapez 'yes' pour accepter l'empreinte de l'hôte." },
+            step5: { title: "Configurer le plugin", desc: "Ouvrez Jellyfin → Dashboard → Plugins → AI Upscaler → Paramètres.", settingsTitle: "Paramètres SSH", settings: [{ label: "Transcodage distant", value: "✅ Activé" }, { label: "Hôte distant", value: "VOTRE_IP" }, { label: "Port SSH", value: "2222" }, { label: "Utilisateur SSH", value: "root" }, { label: "Chemin clé SSH", value: "~/.ssh/jellyfin_upscaler" }] },
+            step6: { title: "Mapping des chemins", desc: "Configurez le mapping si les chemins diffèrent entre Jellyfin et Docker.", mappingTitle: "Exemple de mapping", mappings: [{ label: "Chemin local (Jellyfin)", value: "/mnt/media/movies" }, { label: "Chemin distant (Docker)", value: "/media/movies" }], tip: "💡 Volumes Docker :", tipText: "Assurez-vous que le conteneur monte les médias avec -v /mnt/media:/media." },
+            troubleshoot: { title: "Dépannage SSH", items: [{ q: "Permission denied (publickey)", a: "Vérifiez les permissions : 600 pour authorized_keys, 700 pour .ssh.", cmd: "docker exec jellyfin-ai-upscaler chmod 700 /root/.ssh && docker exec jellyfin-ai-upscaler chmod 600 /root/.ssh/authorized_keys", cmdLabel: "Corriger" }, { q: "Connection refused", a: "SSHD pourrait ne pas fonctionner.", cmd: "docker exec jellyfin-ai-upscaler ps aux | grep sshd", cmdLabel: "Vérifier SSHD" }] },
+            done: "Configuration SSH terminée !", doneText: "Votre serveur Jellyfin déléguera le transcodage au conteneur GPU via SSH."
+        },
         footer: { copyright: "© 2026 Kuschel-code. Licence MIT." }
     },
     zh: {
-        nav: { home: "首页", installation: "安装", configuration: "配置", features: "功能", troubleshooting: "故障排除", dockerTags: "Docker 标签", changelog: "更新日志" },
+        nav: { home: "首页", installation: "安装", sshSetup: "SSH设置", configuration: "配置", features: "功能", troubleshooting: "故障排除", dockerTags: "Docker 标签", changelog: "更新日志" },
         hero: { badge: "v1.5.1 — SSH远程转码版", title1: "用人工智能", title2: "转换您的媒体。", subtitle: "使用神经网络将SD升级到4K。支持NVIDIA、AMD、Intel和Apple Silicon的GPU加速Docker微服务。", getStarted: "开始使用", viewGithub: "在GitHub上查看", stats: { gpus: "GPU架构", size: "插件大小", upscale: "升级", license: "开源" } },
         features: { tag: "功能", title1: "你需要的一切。", title2: "没有多余的。", docker: { title: "Docker微服务", desc: "AI处理在隔离容器中运行——无DLL冲突。仅1.6 MB。" }, ssh: { title: "SSH远程转码", desc: "通过SSH将FFmpeg卸载到GPU容器。" }, gpu: { title: "5种GPU架构", desc: "NVIDIA CUDA、AMD ROCm、Intel OpenVINO、Apple Silicon、CPU。" }, ai: { title: "神经网络模型", desc: "FSRCNN、ESPCN、LapSRN、EDSR、Real-ESRGAN。" }, ui: { title: "无缝集成", desc: "播放器按钮、对比预览、实时基准测试和Web UI。" } },
         installation: { tag: "入门", title1: "几分钟", title2: "即可启动。", warning: "重要提示", warningText: "此插件需要Docker容器。插件仅~1.6 MB，所有AI计算在Docker中完成。", step1: "启动Docker容器", step1desc: "拉取并运行匹配GPU的镜像。", recommended: "推荐", optionA: "Docker Hub", optionB: "本地构建", withGpu: "NVIDIA GPU", step2: "安装插件", step2desc: "将插件仓库添加到Jellyfin。", addRepo: "添加仓库URL", addRepoPath: "仪表板 → 插件 → 仓库 → 添加", installPlugin: "从目录安装", installPluginPath: "目录 → 常规 → AI Upscaler → 安装", restartJellyfin: "重启Jellyfin", restartText: "安装后重启服务器。", configureUrl: "配置AI服务URL", configureUrlText: "设置Docker容器URL：", done: "完成！", doneText: "插件已安装就绪。", tip: "💡 提示：", tipText: "将YOUR_SERVER_IP替换为Docker主机IP：" },
@@ -280,10 +365,23 @@ const i18n = {
         troubleshooting: { tag: "帮助", title1: "常见问题。", title2: "快速修复。", problems: [{ title: "插件显示'不支持'", desc: "插件无法加载。", solutions: ["卸载旧版本", "删除旧插件文件夹", "重启Jellyfin", "重新安装"] }, { title: "容器无法启动", desc: "Docker容器立即退出。", solutions: ["检查日志", "验证GPU驱动", "检查端口冲突"], commands: [{ label: "查看日志", code: "docker logs jellyfin-ai-upscaler --tail 50" }] }], solution: "解决方案", commands: "常用命令", needHelp: "还需要帮助？", githubIssues: "GitHub Issues", githubWiki: "GitHub Wiki" },
         dockerTags: { tag: "Docker", title1: "选择你的", title2: "镜像。", cards: [{ brand: "NVIDIA", tech: "CUDA + TensorRT", tag: ":1.5.1", models: "RTX 40/30/20, GTX 16/10", rating: 5, color: "#76b900" }, { brand: "AMD", tech: "ROCm", tag: ":1.5.1-amd", models: "RX 7000, RX 6000", rating: 4, color: "#ed1c24" }, { brand: "Intel", tech: "OpenVINO", tag: ":1.5.1-intel", models: "Arc A-Series, Iris Xe", rating: 4, color: "#0071c5" }, { brand: "Apple", tech: "ARM64优化", tag: ":1.5.1-apple", models: "M1, M2, M3, M4", rating: 3, color: "#a2aaad" }, { brand: "CPU", tech: "多线程", tag: ":1.5.1-cpu", models: "任意x86/ARM64", rating: 2, color: "#6366f1" }] },
         changelog: { tag: "日志", title1: "最新", title2: "更新。", versions: [{ ver: "1.5.1.1", date: "2026年2月", type: "修复", items: ["修复：SSH配置未保存", "新增：SSH连接测试按钮", "新增：API端点"] }, { ver: "1.5.0.0", date: "2026年1月", type: "重大", items: ["Docker微服务架构", "插件大小：417MB→1.6MB", "Web UI管理界面"] }] },
+        sshSetup: {
+            tag: "SSH指南", title1: "设置SSH", title2: "远程转码。",
+            intro: "SSH远程转码允许Jellyfin服务器通过SSH将视频转码卸载到GPU服务器。",
+            prereqTitle: "前提条件", prereqText: "需要已安装Docker，AI Upscaler容器映射端口22，SSH工具可用。",
+            step1: { title: "启动带SSH端口的容器", desc: "确保容器的22端口映射到主机端口（如2222）。", cmdLabel: "Docker Run", tip: "💡 重要：", tipText: "-p 2222:22 将容器SSH映射到主机端口2222。" },
+            step2: { title: "生成SSH密钥对", desc: "在Jellyfin服务器上创建ed25519 SSH密钥对。", cmdLabel: "生成密钥", tip: "💡 提示：", tipText: "按回车跳过密码短语（建议用于自动转码）。" },
+            step3: { title: "将公钥复制到容器", desc: "将公钥(.pub)复制到容器的authorized_keys文件中。", cmdLabel: "复制密钥", fixPerms: "然后修复文件权限：", fixPermsLabel: "修复权限" },
+            step4: { title: "测试SSH连接", desc: "在配置插件前验证SSH连接。", tip: "💡 首次连接：", tipText: "输入'yes'接受主机指纹。" },
+            step5: { title: "配置插件设置", desc: "打开Jellyfin → 仪表板 → 插件 → AI Upscaler → 设置。", settingsTitle: "SSH设置", settings: [{ label: "启用远程转码", value: "✅ 已启用" }, { label: "远程主机", value: "服务器IP" }, { label: "SSH端口", value: "2222" }, { label: "SSH用户", value: "root" }, { label: "SSH密钥路径", value: "~/.ssh/jellyfin_upscaler" }] },
+            step6: { title: "配置路径映射", desc: "如果Jellyfin和Docker的媒体路径不同，需要配置路径映射。", mappingTitle: "路径映射示例", mappings: [{ label: "本地媒体路径", value: "/mnt/media/movies" }, { label: "远程媒体路径", value: "/media/movies" }], tip: "💡 Docker卷：", tipText: "确保容器使用 -v /mnt/media:/media 挂载媒体。" },
+            troubleshoot: { title: "SSH故障排除", items: [{ q: "Permission denied (publickey)", a: "检查authorized_keys权限（需要600）和.ssh目录权限（需要700）。", cmd: "docker exec jellyfin-ai-upscaler chmod 700 /root/.ssh && docker exec jellyfin-ai-upscaler chmod 600 /root/.ssh/authorized_keys", cmdLabel: "修复权限" }, { q: "端口2222连接被拒绝", a: "SSHD可能未运行。", cmd: "docker exec jellyfin-ai-upscaler ps aux | grep sshd", cmdLabel: "检查SSHD" }] },
+            done: "SSH设置完成！", doneText: "Jellyfin将通过SSH将转码卸载到Docker GPU容器。"
+        },
         footer: { copyright: "© 2026 Kuschel-code。MIT许可证。" }
     },
     ru: {
-        nav: { home: "Главная", installation: "Установка", configuration: "Настройки", features: "Возможности", troubleshooting: "Устранение неполадок", dockerTags: "Docker Теги", changelog: "История изменений" },
+        nav: { home: "Главная", installation: "Установка", sshSetup: "Настройка SSH", configuration: "Настройки", features: "Возможности", troubleshooting: "Устранение неполадок", dockerTags: "Docker Теги", changelog: "История изменений" },
         hero: { badge: "v1.5.1 — SSH Remote Transcoding", title1: "Преобразуйте медиа", title2: "с помощью ИИ.", subtitle: "Масштабируйте SD до 4K с помощью нейросетей. GPU-ускоренный Docker-микросервис для Jellyfin.", getStarted: "Начать", viewGithub: "GitHub", stats: { gpus: "Архитектур GPU", size: "Размер плагина", upscale: "Масштабирование", license: "Open Source" } },
         features: { tag: "Возможности", title1: "Всё что нужно.", title2: "Ничего лишнего.", docker: { title: "Docker Микросервис", desc: "ИИ работает в изолированном контейнере — без конфликтов DLL. Всего 1,6 МБ." }, ssh: { title: "SSH Remote Transcoding", desc: "Перенаправьте FFmpeg на GPU-контейнеры через SSH." }, gpu: { title: "5 архитектур GPU", desc: "NVIDIA CUDA, AMD ROCm, Intel OpenVINO, Apple Silicon, CPU." }, ai: { title: "Модели нейросетей", desc: "FSRCNN, ESPCN, LapSRN, EDSR, Real-ESRGAN." }, ui: { title: "Бесшовная интеграция", desc: "Кнопка плеера, предпросмотр, бенчмарк и Web UI." } },
         installation: { tag: "Начало", title1: "Запуск", title2: "за минуты.", warning: "Важно", warningText: "Плагин требует Docker-контейнер.", step1: "Запустить Docker", step1desc: "Скачайте образ для вашей GPU.", recommended: "Рекомендуется", optionA: "Docker Hub", optionB: "Сборка", withGpu: "NVIDIA GPU", step2: "Установить плагин", step2desc: "Добавьте репозиторий.", addRepo: "URL репозитория", addRepoPath: "Панель → Плагины → Репозитории → Добавить", installPlugin: "Установить из каталога", installPluginPath: "Каталог → AI Upscaler → Установить", restartJellyfin: "Перезапустить Jellyfin", restartText: "Перезапустите сервер.", configureUrl: "Настроить URL", configureUrlText: "URL контейнера Docker:", done: "Готово!", doneText: "Плагин установлен.", tip: "💡 Совет:", tipText: "Замените YOUR_SERVER_IP:" },
@@ -291,10 +389,23 @@ const i18n = {
         troubleshooting: { tag: "Помощь", title1: "Частые проблемы.", title2: "Быстрые решения.", problems: [{ title: "Плагин 'Не поддерживается'", desc: "Плагин не загружается.", solutions: ["Удалить старые версии", "Очистить папку плагинов", "Перезапустить Jellyfin", "Переустановить"] }], solution: "Решение", commands: "Команды", needHelp: "Нужна помощь?", githubIssues: "GitHub Issues", githubWiki: "GitHub Wiki" },
         dockerTags: { tag: "Docker", title1: "Выберите", title2: "образ.", cards: [{ brand: "NVIDIA", tech: "CUDA + TensorRT", tag: ":1.5.1", models: "RTX 40/30/20, GTX 16/10", rating: 5, color: "#76b900" }, { brand: "AMD", tech: "ROCm", tag: ":1.5.1-amd", models: "RX 7000, RX 6000", rating: 4, color: "#ed1c24" }, { brand: "Intel", tech: "OpenVINO", tag: ":1.5.1-intel", models: "Arc A-Series, Iris Xe", rating: 4, color: "#0071c5" }, { brand: "Apple", tech: "ARM64", tag: ":1.5.1-apple", models: "M1, M2, M3, M4", rating: 3, color: "#a2aaad" }, { brand: "CPU", tech: "Multi-Thread", tag: ":1.5.1-cpu", models: "x86 / ARM64", rating: 2, color: "#6366f1" }] },
         changelog: { tag: "Журнал", title1: "Что", title2: "нового.", versions: [{ ver: "1.5.1.1", date: "Фев 2026", type: "Исправ.", items: ["SSH конфигурация исправлена", "Кнопка теста SSH", "API эндпоинт"] }, { ver: "1.5.0.0", date: "Янв 2026", type: "Мажорный", items: ["Docker микросервис", "1,6 МБ вместо 417 МБ", "Web UI"] }] },
+        sshSetup: {
+            tag: "SSH Руководство", title1: "Настройка SSH", title2: "удалённого транскодирования.",
+            intro: "SSH позволяет серверу Jellyfin делегировать транскодирование на GPU-машину через SSH.",
+            prereqTitle: "Требования", prereqText: "Docker установлен, контейнер AI Upscaler с маппингом порта 22, SSH-инструменты.",
+            step1: { title: "Запуск контейнера с SSH", desc: "Порт 22 контейнера маппится на хост (напр. 2222).", cmdLabel: "Docker Run", tip: "💡 Важно:", tipText: "Флаг -p 2222:22 маппит SSH контейнера на порт 2222." },
+            step2: { title: "Генерация SSH-ключей", desc: "Создайте ed25519 SSH-ключ на сервере Jellyfin.", cmdLabel: "Сгенерировать ключ", tip: "💡 Совет:", tipText: "Нажмите Enter, чтобы создать ключ без пароля." },
+            step3: { title: "Копирование ключа в контейнер", desc: "Скопируйте публичный ключ в authorized_keys контейнера.", cmdLabel: "Копировать ключ", fixPerms: "Затем исправьте права:", fixPermsLabel: "Права доступа" },
+            step4: { title: "Тест SSH-соединения", desc: "Проверьте SSH-соединение перед настройкой плагина.", tip: "💡 Первое подключение:", tipText: "Введите 'yes' для подтверждения отпечатка хоста." },
+            step5: { title: "Настройка плагина", desc: "Откройте Jellyfin → Панель → Плагины → AI Upscaler → Настройки.", settingsTitle: "SSH настройки", settings: [{ label: "Удалённый транскодинг", value: "✅ Включен" }, { label: "Хост", value: "IP_СЕРВЕРА" }, { label: "SSH порт", value: "2222" }, { label: "Пользователь", value: "root" }, { label: "Путь к ключу", value: "~/.ssh/jellyfin_upscaler" }] },
+            step6: { title: "Маппинг путей", desc: "Если пути медиафайлов различаются между Jellyfin и Docker.", mappingTitle: "Пример маппинга", mappings: [{ label: "Локальный путь", value: "/mnt/media/movies" }, { label: "Удалённый путь", value: "/media/movies" }], tip: "💡 Docker тома:", tipText: "Убедитесь, что контейнер монтирует медиа: -v /mnt/media:/media." },
+            troubleshoot: { title: "Устранение проблем SSH", items: [{ q: "Permission denied (publickey)", a: "Проверьте права: 600 для authorized_keys, 700 для .ssh.", cmd: "docker exec jellyfin-ai-upscaler chmod 700 /root/.ssh && docker exec jellyfin-ai-upscaler chmod 600 /root/.ssh/authorized_keys", cmdLabel: "Исправить права" }, { q: "Отказ соединения на порту 2222", a: "SSHD может не работать в контейнере.", cmd: "docker exec jellyfin-ai-upscaler ps aux | grep sshd", cmdLabel: "Проверить SSHD" }] },
+            done: "SSH настроен!", doneText: "Jellyfin будет делегировать транскодирование GPU-контейнеру через SSH."
+        },
         footer: { copyright: "© 2026 Kuschel-code. Лицензия MIT." }
     },
     ja: {
-        nav: { home: "ホーム", installation: "インストール", configuration: "設定", features: "機能", troubleshooting: "トラブルシューティング", dockerTags: "Docker タグ", changelog: "変更履歴" },
+        nav: { home: "ホーム", installation: "インストール", sshSetup: "SSH設定", configuration: "設定", features: "機能", troubleshooting: "トラブルシューティング", dockerTags: "Docker タグ", changelog: "変更履歴" },
         hero: { badge: "v1.5.1 — SSHリモートトランスコーディング版", title1: "AIでメディアを", title2: "変換する。", subtitle: "ニューラルネットワークでSDを4Kにアップスケール。NVIDIA、AMD、Intel、Apple Silicon対応のGPU対応Dockerマイクロサービス。", getStarted: "始める", viewGithub: "GitHub", stats: { gpus: "GPUアーキテクチャ", size: "プラグインサイズ", upscale: "アップスケール", license: "オープンソース" } },
         features: { tag: "機能", title1: "必要なものすべて。", title2: "余計なものなし。", docker: { title: "Dockerマイクロサービス", desc: "AI処理は隔離されたコンテナで実行。わずか1.6MBのプラグイン。" }, ssh: { title: "SSHリモートトランスコーディング", desc: "SSH経由でFFmpegをGPUコンテナに委託。" }, gpu: { title: "5つのGPUアーキテクチャ", desc: "NVIDIA CUDA、AMD ROCm、Intel OpenVINO、Apple Silicon、CPU。" }, ai: { title: "ニューラルネットワークモデル", desc: "FSRCNN、ESPCN、LapSRN、EDSR、Real-ESRGAN。" }, ui: { title: "シームレスな統合", desc: "プレーヤーボタン、プレビュー比較、ベンチマーク、Web UI。" } },
         installation: { tag: "はじめに", title1: "数分で", title2: "起動。", warning: "重要", warningText: "このプラグインにはDockerコンテナが必要です。", step1: "Dockerコンテナを起動", step1desc: "GPUに合うイメージを取得して実行。", recommended: "推奨", optionA: "Docker Hub", optionB: "ローカルビルド", withGpu: "NVIDIA GPU", step2: "プラグインをインストール", step2desc: "Jellyfinにプラグインリポジトリを追加。", addRepo: "リポジトリURLを追加", addRepoPath: "ダッシュボード → プラグイン → リポジトリ → 追加", installPlugin: "カタログからインストール", installPluginPath: "カタログ → AI Upscaler → インストール", restartJellyfin: "Jellyfinを再起動", restartText: "インストール後にサーバーを再起動。", configureUrl: "AIサービスURLを設定", configureUrlText: "DockerコンテナのURL：", done: "完了！", doneText: "プラグインの準備完了。", tip: "💡 ヒント：", tipText: "YOUR_SERVER_IPをDockerホストIPに置き換え：" },
@@ -302,6 +413,19 @@ const i18n = {
         troubleshooting: { tag: "ヘルプ", title1: "よくある問題。", title2: "素早い解決。", problems: [{ title: "プラグインが「サポートされていない」", desc: "プラグインが読み込めない。", solutions: ["古いバージョンをアンインストール", "古いフォルダを削除", "Jellyfinを再起動", "再インストール"] }], solution: "解決策", commands: "コマンド", needHelp: "まだ助けが必要？", githubIssues: "GitHub Issues", githubWiki: "GitHub Wiki" },
         dockerTags: { tag: "Docker", title1: "イメージを", title2: "選択。", cards: [{ brand: "NVIDIA", tech: "CUDA + TensorRT", tag: ":1.5.1", models: "RTX 40/30/20, GTX 16/10", rating: 5, color: "#76b900" }, { brand: "AMD", tech: "ROCm", tag: ":1.5.1-amd", models: "RX 7000, RX 6000", rating: 4, color: "#ed1c24" }, { brand: "Intel", tech: "OpenVINO", tag: ":1.5.1-intel", models: "Arc A-Series, Iris Xe", rating: 4, color: "#0071c5" }, { brand: "Apple", tech: "ARM64最適化", tag: ":1.5.1-apple", models: "M1, M2, M3, M4", rating: 3, color: "#a2aaad" }, { brand: "CPU", tech: "マルチスレッド", tag: ":1.5.1-cpu", models: "x86 / ARM64", rating: 2, color: "#6366f1" }] },
         changelog: { tag: "履歴", title1: "新機能", title2: "のご紹介。", versions: [{ ver: "1.5.1.1", date: "2026年2月", type: "修正", items: ["SSH設定の保存修正", "SSH接続テストボタン追加", "APIエンドポイント追加"] }, { ver: "1.5.0.0", date: "2026年1月", type: "メジャー", items: ["Dockerマイクロサービスアーキテクチャ", "プラグインサイズ削減", "Web UI"] }] },
+        sshSetup: {
+            tag: "SSHガイド", title1: "SSHリモート", title2: "トランスコーディング設定。",
+            intro: "SSHリモートトランスコーディングにより、JellyfinサーバーからGPUマシンにトランスコーディングを委託できます。",
+            prereqTitle: "前提条件", prereqText: "Dockerインストール済み、ポート22マッピング済みのAI Upscalerコンテナ、SSHツールが必要です。",
+            step1: { title: "SSHポート付きコンテナを起動", desc: "コンテナのポート22をホストポート（例：2222）にマッピング。", cmdLabel: "Docker Run", tip: "💡 重要：", tipText: "-p 2222:22 でコンテナSSHをホストポート2222にマッピング。" },
+            step2: { title: "SSH鍵ペアを生成", desc: "JellyfinサーバーでSSH鍵を作成。", cmdLabel: "鍵を生成", tip: "💡 ヒント：", tipText: "パスフレーズなしで作成するにはEnterを押してください。" },
+            step3: { title: "公開鍵をコンテナにコピー", desc: "公開鍵(.pub)をコンテナのauthorized_keysにコピー。", cmdLabel: "鍵をコピー", fixPerms: "次にパーミッションを修正：", fixPermsLabel: "パーミッション修正" },
+            step4: { title: "SSH接続テスト", desc: "プラグイン設定前にSSH接続を確認。", tip: "💡 初回接続：", tipText: "'yes'と入力してホストフィンガープリントを受け入れてください。" },
+            step5: { title: "プラグイン設定", desc: "Jellyfin → ダッシュボード → プラグイン → AI Upscaler → 設定を開きます。", settingsTitle: "SSH設定", settings: [{ label: "リモートトランスコーディング", value: "✅ 有効" }, { label: "リモートホスト", value: "サーバーIP" }, { label: "SSHポート", value: "2222" }, { label: "SSHユーザー", value: "root" }, { label: "SSH鍵パス", value: "~/.ssh/jellyfin_upscaler" }] },
+            step6: { title: "パスマッピング設定", desc: "JellyfinとDockerのメディアパスが異なる場合に設定。", mappingTitle: "パスマッピング例", mappings: [{ label: "ローカルメディアパス", value: "/mnt/media/movies" }, { label: "リモートメディアパス", value: "/media/movies" }], tip: "💡 Dockerボリューム：", tipText: "コンテナが -v /mnt/media:/media でメディアをマウントしていることを確認。" },
+            troubleshoot: { title: "SSHトラブルシューティング", items: [{ q: "Permission denied (publickey)", a: "authorized_keysの権限（600）と.sshディレクトリの権限（700）を確認。", cmd: "docker exec jellyfin-ai-upscaler chmod 700 /root/.ssh && docker exec jellyfin-ai-upscaler chmod 600 /root/.ssh/authorized_keys", cmdLabel: "権限修正" }, { q: "ポート2222接続拒否", a: "コンテナ内でSSHDが実行されていない可能性があります。", cmd: "docker exec jellyfin-ai-upscaler ps aux | grep sshd", cmdLabel: "SSHD確認" }] },
+            done: "SSH設定完了！", doneText: "JellyfinはSSH経由でDockerのGPUコンテナにトランスコーディングを委託します。"
+        },
         footer: { copyright: "© 2026 Kuschel-code。MITライセンス。" }
     }
 };

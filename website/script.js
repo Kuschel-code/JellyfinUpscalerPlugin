@@ -26,9 +26,13 @@ const icons = {
     terminal: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>',
     docker: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M12 11v-4"/></svg>',
     ssh: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>',
+    sshSetup: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 15l3-3-3-3"/><line x1="13" y1="15" x2="17" y2="15"/></svg>',
     gpu: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>',
     ai: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
-    ui: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>'
+    ui: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>',
+    key: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>',
+    link: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+    folder: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>'
 };
 
 /* ========================================
@@ -55,6 +59,7 @@ function escapeHtml(s) {
 const navItems = [
     { id: 'home', icon: 'home' },
     { id: 'installation', icon: 'installation' },
+    { id: 'sshSetup', icon: 'sshSetup' },
     { id: 'configuration', icon: 'configuration' },
     { id: 'features', icon: 'features' },
     { id: 'troubleshooting', icon: 'troubleshooting' },
@@ -466,12 +471,209 @@ function renderChangelog() {
     `;
 }
 
+// SSH SETUP
+function renderSshSetup() {
+    const s = t().sshSetup;
+    const cmds = {
+        startContainer: 'docker run -d \\\
+  --name jellyfin-ai-upscaler \\\
+  --gpus all \\\
+  -p 5000:5000 \\\
+  -p 2222:22 \\\
+  kuscheltier/jellyfin-ai-upscaler:latest',
+        genKey: 'ssh-keygen -t ed25519 -C "jellyfin-upscaler" -f ~/.ssh/jellyfin_upscaler',
+        genKeyWin: 'ssh-keygen -t ed25519 -C "jellyfin-upscaler" -f %USERPROFILE%\\.ssh\\jellyfin_upscaler',
+        copyKey: 'docker cp ~/.ssh/jellyfin_upscaler.pub jellyfin-ai-upscaler:/root/.ssh/authorized_keys',
+        copyKeyWin: 'docker cp %USERPROFILE%\\.ssh\\jellyfin_upscaler.pub jellyfin-ai-upscaler:/root/.ssh/authorized_keys',
+        fixPerms: 'docker exec jellyfin-ai-upscaler chmod 600 /root/.ssh/authorized_keys',
+        testSsh: 'ssh -i ~/.ssh/jellyfin_upscaler -p 2222 root@localhost',
+        testSshWin: 'ssh -i %USERPROFILE%\\.ssh\\jellyfin_upscaler -p 2222 root@localhost',
+        testHealth: 'curl http://localhost:5000/health',
+        checkSshd: 'docker exec jellyfin-ai-upscaler ps aux | grep sshd',
+        removeHostKey: 'ssh-keygen -R "[localhost]:2222"'
+    };
+
+    return `
+        <div class="page-header fade-in">
+            <div class="page-tag">${escapeHtml(s.tag)}</div>
+            <h2 class="page-title">${escapeHtml(s.title1)} <span class="gradient">${escapeHtml(s.title2)}</span></h2>
+            <p style="color:var(--text-400);margin-top:12px;max-width:640px;line-height:1.6">${escapeHtml(s.intro)}</p>
+        </div>
+
+        <div class="warning-box fade-in delay-1">
+            <div class="warning-icon">${icons.warning}</div>
+            <div>
+                <h3>${escapeHtml(s.prereqTitle)}</h3>
+                <p>${escapeHtml(s.prereqText)}</p>
+            </div>
+        </div>
+
+        <!-- Step 1: Docker Container -->
+        <div class="step-section fade-in delay-2">
+            <div class="step-header">
+                <div class="step-number">1</div>
+                <h2>${icons.docker} ${escapeHtml(s.step1.title)}</h2>
+            </div>
+            <div style="margin-left:56px">
+                <p style="color:var(--text-400);margin-bottom:16px;font-size:14px">${escapeHtml(s.step1.desc)}</p>
+                ${codeBlock(null, s.step1.cmdLabel, cmds.startContainer)}
+                <div class="tip-box" style="margin-top:12px">
+                    <span class="tip-label">${escapeHtml(s.step1.tip)}</span>
+                    <span style="color:var(--text-400);font-size:13px">${escapeHtml(s.step1.tipText)}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Generate SSH Key -->
+        <div class="step-section fade-in delay-3">
+            <div class="step-header">
+                <div class="step-number">2</div>
+                <h2>${icons.key} ${escapeHtml(s.step2.title)}</h2>
+            </div>
+            <div style="margin-left:56px">
+                <p style="color:var(--text-400);margin-bottom:16px;font-size:14px">${escapeHtml(s.step2.desc)}</p>
+                ${codeBlock('Linux / macOS', s.step2.cmdLabel, cmds.genKey, 'green')}
+                ${codeBlock('Windows', 'PowerShell / CMD', cmds.genKeyWin, 'purple')}
+                <div class="tip-box" style="margin-top:12px">
+                    <span class="tip-label">${escapeHtml(s.step2.tip)}</span>
+                    <span style="color:var(--text-400);font-size:13px">${escapeHtml(s.step2.tipText)}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Copy Key into Container -->
+        <div class="step-section fade-in delay-4">
+            <div class="step-header">
+                <div class="step-number">3</div>
+                <h2>${icons.copy} ${escapeHtml(s.step3.title)}</h2>
+            </div>
+            <div style="margin-left:56px">
+                <p style="color:var(--text-400);margin-bottom:16px;font-size:14px">${escapeHtml(s.step3.desc)}</p>
+                ${codeBlock('Linux / macOS', s.step3.cmdLabel, cmds.copyKey, 'green')}
+                ${codeBlock('Windows', 'PowerShell / CMD', cmds.copyKeyWin, 'purple')}
+                <p style="color:var(--text-400);margin:12px 0 8px;font-size:13px">${escapeHtml(s.step3.fixPerms)}</p>
+                ${codeBlock(null, s.step3.fixPermsLabel, cmds.fixPerms)}
+            </div>
+        </div>
+
+        <!-- Step 4: Test SSH Connection -->
+        <div class="step-section fade-in delay-5">
+            <div class="step-header">
+                <div class="step-number">4</div>
+                <h2>${icons.link} ${escapeHtml(s.step4.title)}</h2>
+            </div>
+            <div style="margin-left:56px">
+                <p style="color:var(--text-400);margin-bottom:16px;font-size:14px">${escapeHtml(s.step4.desc)}</p>
+                ${codeBlock('Linux / macOS', 'SSH', cmds.testSsh, 'green')}
+                ${codeBlock('Windows', 'PowerShell', cmds.testSshWin, 'purple')}
+                <div class="tip-box" style="margin-top:12px">
+                    <span class="tip-label">${escapeHtml(s.step4.tip)}</span>
+                    <span style="color:var(--text-400);font-size:13px">${escapeHtml(s.step4.tipText)}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 5: Configure Plugin -->
+        <div class="step-section fade-in delay-5">
+            <div class="step-header">
+                <div class="step-number">5</div>
+                <h2>${icons.configuration} ${escapeHtml(s.step5.title)}</h2>
+            </div>
+            <div style="margin-left:56px">
+                <p style="color:var(--text-400);margin-bottom:16px;font-size:14px">${escapeHtml(s.step5.desc)}</p>
+                <div class="config-group">
+                    <div class="config-group-header">${icons.ssh} ${escapeHtml(s.step5.settingsTitle)}</div>
+                    <div class="config-list">
+                        ${s.step5.settings.map(setting => `
+                            <div class="config-row">
+                                <span class="config-label">${escapeHtml(setting.label)}</span>
+                                <span class="config-value">${escapeHtml(setting.value)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 6: Path Mapping -->
+        <div class="step-section fade-in delay-5">
+            <div class="step-header">
+                <div class="step-number">6</div>
+                <h2>${icons.folder} ${escapeHtml(s.step6.title)}</h2>
+            </div>
+            <div style="margin-left:56px">
+                <p style="color:var(--text-400);margin-bottom:16px;font-size:14px">${escapeHtml(s.step6.desc)}</p>
+                <div class="config-group">
+                    <div class="config-group-header">${icons.folder} ${escapeHtml(s.step6.mappingTitle)}</div>
+                    <div class="config-list">
+                        ${s.step6.mappings.map(m => `
+                            <div class="config-row">
+                                <span class="config-label">${escapeHtml(m.label)}</span>
+                                <span class="config-value">${escapeHtml(m.value)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                <div class="tip-box" style="margin-top:12px">
+                    <span class="tip-label">${escapeHtml(s.step6.tip)}</span>
+                    <span style="color:var(--text-400);font-size:13px">${escapeHtml(s.step6.tipText)}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Troubleshooting -->
+        <div style="margin-top:40px" class="fade-in delay-5">
+            <h3 style="color:white;font-weight:600;font-size:18px;margin-bottom:16px">${escapeHtml(s.troubleshoot.title)}</h3>
+            <div class="accordion">
+                ${s.troubleshoot.items.map((item, i) => `
+                    <div class="accordion-item" data-idx="${i}">
+                        <button class="accordion-trigger" onclick="toggleAccordion(${i})">
+                            <div class="accordion-dot"></div>
+                            <div class="accordion-trigger-text">
+                                <h3>${escapeHtml(item.q)}</h3>
+                            </div>
+                            <span class="accordion-chevron">${icons.chevronDown}</span>
+                        </button>
+                        <div class="accordion-body">
+                            <p style="color:var(--text-300);font-size:13px;margin-bottom:12px">${escapeHtml(item.a)}</p>
+                            ${item.cmd ? `
+                                <div class="code-block">
+                                    <div class="code-header">
+                                        <span style="color:var(--text-400);font-size:12px">${escapeHtml(item.cmdLabel || 'Command')}</span>
+                                        <button class="copy-btn" onclick="copyText('${item.cmd.replace(/'/g, "\\'").replace(/\\/g, '\\\\')}', this)">${icons.copy}</button>
+                                    </div>
+                                    <div class="code-content" style="padding:12px 20px">${escapeHtml(item.cmd)}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+
+        <div class="success-box fade-in delay-5" style="margin-top:32px">
+            <div class="success-icon">${icons.checkCircle}</div>
+            <div>
+                <h3>${escapeHtml(s.done)}</h3>
+                <p>${escapeHtml(s.doneText)}</p>
+            </div>
+        </div>
+
+        <div class="nav-buttons fade-in delay-5" style="margin-top:24px">
+            <a href="#configuration" class="btn-primary">${escapeHtml(t().nav.configuration)} ${icons.arrow}</a>
+            <a href="#troubleshooting" class="btn-secondary">${escapeHtml(t().nav.troubleshooting)} ${icons.arrow}</a>
+        </div>
+        <div class="page-footer">${t().footer.copyright}</div>
+    `;
+}
+
 /* ========================================
    Router
 ======================================== */
 const renderers = {
     home: renderHome,
     installation: renderInstallation,
+    sshSetup: renderSshSetup,
     configuration: renderConfiguration,
     features: renderFeatures,
     troubleshooting: renderTroubleshooting,
