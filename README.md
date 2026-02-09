@@ -4,7 +4,7 @@
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
 [![Docker Hub](https://img.shields.io/docker/pulls/kuscheltier/jellyfin-ai-upscaler?logo=docker&label=Docker%20Hub)](https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler)
 [![Docker Image](https://img.shields.io/docker/v/kuscheltier/jellyfin-ai-upscaler?logo=docker&label=Latest)](https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler)
-[![Project Website](https://img.shields.io/badge/Website-Visit-blueviolet)](https://jellyfin-upscale-ai.base44.app)
+[![Project Website](https://img.shields.io/badge/Website-Visit-blueviolet)](https://transcendent-blancmange-824967.netlify.app)
 
 > [!CAUTION]
 > **🧪 TEST PHASE - v1.5.1.1 (Remote Transcoding Edition)**
@@ -214,7 +214,7 @@ docker logs jellyfin-ai-upscaler
 
 ## 📖 Support
 
-- [Project Website](https://jellyfin-upscale-ai.base44.app)
+- [Project Website](https://transcendent-blancmange-824967.netlify.app)
 - [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 - [GitHub Wiki](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki)
 
