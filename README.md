@@ -1,4 +1,4 @@
-# 🎮 Jellyfin AI Upscaler Plugin v1.5.1.1
+# 🎮 Jellyfin AI Upscaler Plugin v1.5.2.0
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -7,16 +7,16 @@
 [![Project Website](https://img.shields.io/badge/Website-Visit-blueviolet)](https://transcendent-blancmange-824967.netlify.app)
 
 > [!CAUTION]
-> **🧪 TEST PHASE - v1.5.1.1 (Remote Transcoding Edition)**
+> **🧪 TEST PHASE - v1.5.2.0 (GPU Fix Edition)**
 >
 > This is an **EXPERIMENTAL** release introducing **Remote Transcoding via SSH**!
 > It allows Jellyfin to offload FFmpeg processing to a remote Docker container (or local one) via SSH, enabling true hardware acceleration on NVIDIA, Intel, and Apple Silicon.
 >
 > **🐳 Docker Images:**
-> *   `kuscheltier/jellyfin-ai-upscaler:1.5.1` (NVIDIA CUDA)
-> *   `kuscheltier/jellyfin-ai-upscaler:1.5.1-cpu` (CPU Only)
-> *   `kuscheltier/jellyfin-ai-upscaler:1.5.1-apple` (MacOS Apple Silicon)
-> *   `kuscheltier/jellyfin-ai-upscaler:1.5.1-intel` (Intel Arc/iGPU)
+> *   `kuscheltier/jellyfin-ai-upscaler:1.5.2` (NVIDIA CUDA + cuDNN 9)
+> *   `kuscheltier/jellyfin-ai-upscaler:1.5.2-cpu` (CPU Only)
+> *   `kuscheltier/jellyfin-ai-upscaler:1.5.2-apple` (MacOS Apple Silicon)
+> *   `kuscheltier/jellyfin-ai-upscaler:1.5.2-intel` (Intel Arc/iGPU)
 >
 > **Please report bugs:** [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 
@@ -129,6 +129,14 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 ---
 
 ## 📋 Changelog
+
+### v1.5.2.0 (GPU Fix) - **Fixes Issue #44**
+> **🔧 Fixes NVIDIA GPU falling back to CPU-only processing.**
+
+- **🔧 Fixed**: cuDNN version mismatch — upgraded base image to `nvidia/cuda:12.6.3-cudnn-runtime-ubuntu22.04` (cuDNN 9)
+- **🔧 Fixed**: ONNX Runtime provider detection now intelligent — only requests available providers
+- **🔧 Fixed**: Removed spurious `OpenVINOExecutionProvider` warning on NVIDIA images
+- **✅ Result**: NVIDIA GPUs now correctly use CUDA/TensorRT acceleration instead of CPU fallback
 
 ### v1.5.1.0 (Remote Transcoding / SSH) - **TEST VERSION**
 > **⚠️ This is a TEST version!**

@@ -237,6 +237,21 @@ AVAILABLE_MODELS = {
         "category": "quality",
         "model_type": "edsr",
         "available": True
+    },
+    
+    # ============================================================
+    # === Experimental / User Added Models ===
+    # ============================================================
+    "claude-opus-4-6": {
+        "name": "Claude Opus 4-6",
+        # TODO: User must provide the real URL for this model
+        "url": "https://placeholder.url/claude-opus-4-6.onnx", 
+        "scale": 4,
+        "description": "Experimental Claude Opus 4-6 Model",
+        "type": "onnx",
+        "category": "custom",
+        "model_type": "realesrgan",
+        "available": True
     }
 }
 
@@ -493,14 +508,22 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
         sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         
         # Choose providers based on GPU setting and available hardware
-        # Priority: TensorRT (NVIDIA) > CUDA (NVIDIA) > OpenVINO (Intel) > CPU
+        # Only request providers that are actually installed to avoid warnings
+        available_providers = ort.get_available_providers()
+        logger.info(f"Available ONNX Runtime providers: {available_providers}")
+        
         if state.use_gpu:
-            providers = [
+            # Priority order: TensorRT > CUDA > OpenVINO > CPU
+            desired_providers = [
                 'TensorrtExecutionProvider',   # NVIDIA TensorRT (fastest)
                 'CUDAExecutionProvider',        # NVIDIA CUDA
                 'OpenVINOExecutionProvider',    # Intel GPU/iGPU (OpenVINO)
                 'CPUExecutionProvider'          # Fallback
             ]
+            providers = [p for p in desired_providers if p in available_providers]
+            if not providers:
+                providers = ['CPUExecutionProvider']
+            logger.info(f"Selected providers (filtered): {providers}")
         else:
             providers = ['CPUExecutionProvider']
         

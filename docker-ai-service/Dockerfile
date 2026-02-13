@@ -1,8 +1,8 @@
 # === CPU Version ===
 # FROM python:3.11-slim-bookworm
 
-# === GPU Version (NVIDIA CUDA) ===
-FROM nvidia/cuda:12.2.2-cudnn8-runtime-ubuntu22.04
+# === GPU Version (NVIDIA CUDA + cuDNN 9) ===
+FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu22.04
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -25,11 +25,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     openssh-server \
     # TensorRT Runtime Libraries (for ONNX Runtime TensorRT EP)
-    libnvinfer8 \
-    libnvinfer-plugin8 \
-    libnvparsers8 \
-    libnvonnxparsers8 \
-    libnvinfer-bin \
+    libnvinfer-headers-dev \
+    libnvinfer-lean10 \
+    libnvinfer-dispatch10 \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean \
     && ln -s /usr/bin/python3 /usr/bin/python

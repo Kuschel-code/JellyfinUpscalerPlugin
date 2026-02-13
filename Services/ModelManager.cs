@@ -90,6 +90,14 @@ namespace JellyfinUpscalerPlugin.Services
                 Name = "SwinIR x4 (Transformer)", 
                 Scale = 4, 
                 Description = "Transformer-based model, high quality but slow"
+            },
+            
+            // === Custom ===
+            ["claude-opus-4-6"] = new ModelInfo 
+            { 
+                Name = "Claude Opus 4-6", 
+                Scale = 4, 
+                Description = "Experimental Claude Opus 4-6 Model"
             }
         };
 
