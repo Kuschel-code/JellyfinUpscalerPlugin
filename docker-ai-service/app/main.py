@@ -495,7 +495,7 @@ async def load_model(model_name: str) -> bool:
 
 
 async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -> bool:
-    """Load an ONNX model (Real-ESRGAN) into memory."""
+    """Load an ONNX model (Real-ESRGAN) into memory with robust GPU fallback."""
     if not ONNX_AVAILABLE:
         logger.error("ONNX Runtime not available. Cannot load ONNX models.")
         return False
@@ -507,28 +507,66 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
         sess_options = ort.SessionOptions()
         sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         
-        # Choose providers based on GPU setting and available hardware
-        # Only request providers that are actually installed to avoid warnings
+        # Detect available providers
         available_providers = ort.get_available_providers()
         logger.info(f"Available ONNX Runtime providers: {available_providers}")
         
-        if state.use_gpu:
-            # Priority order: TensorRT > CUDA > OpenVINO > CPU
-            desired_providers = [
-                'TensorrtExecutionProvider',   # NVIDIA TensorRT (fastest)
-                'CUDAExecutionProvider',        # NVIDIA CUDA
-                'OpenVINOExecutionProvider',    # Intel GPU/iGPU (OpenVINO)
-                'CPUExecutionProvider'          # Fallback
-            ]
-            providers = [p for p in desired_providers if p in available_providers]
-            if not providers:
-                providers = ['CPUExecutionProvider']
-            logger.info(f"Selected providers (filtered): {providers}")
-        else:
-            providers = ['CPUExecutionProvider']
+        # Build prioritized provider chains to try (most capable first)
+        # Each chain is attempted in order — if one fails, the next is tried
+        provider_chains = []
         
-        # Create session
-        session = ort.InferenceSession(str(model_path), sess_options, providers=providers)
+        if state.use_gpu:
+            # Chain 1: TensorRT + CUDA + CPU (best performance)
+            chain1 = [p for p in [
+                'TensorrtExecutionProvider',
+                'CUDAExecutionProvider',
+                'CPUExecutionProvider'
+            ] if p in available_providers]
+            if 'TensorrtExecutionProvider' in chain1:
+                provider_chains.append(chain1)
+            
+            # Chain 2: CUDA + CPU (skip TensorRT — often has missing libs)
+            chain2 = [p for p in [
+                'CUDAExecutionProvider',
+                'CPUExecutionProvider'
+            ] if p in available_providers]
+            if 'CUDAExecutionProvider' in chain2:
+                provider_chains.append(chain2)
+            
+            # Chain 3: OpenVINO + CPU (Intel GPUs)
+            chain3 = [p for p in [
+                'OpenVINOExecutionProvider',
+                'CPUExecutionProvider'
+            ] if p in available_providers]
+            if 'OpenVINOExecutionProvider' in chain3:
+                provider_chains.append(chain3)
+        
+        # Chain 4: CPU only (always works)
+        provider_chains.append(['CPUExecutionProvider'])
+        
+        # Try each provider chain until one succeeds
+        session = None
+        last_error = None
+        
+        for providers in provider_chains:
+            try:
+                logger.info(f"Trying providers: {providers}")
+                session = ort.InferenceSession(
+                    str(model_path), sess_options, providers=providers
+                )
+                actual_providers = session.get_providers()
+                logger.info(f"✅ Session created with providers: {actual_providers}")
+                break  # Success!
+            except Exception as e:
+                last_error = e
+                failed_names = ', '.join(providers)
+                logger.warning(f"⚠️ Failed with [{failed_names}]: {e}")
+                logger.info("Falling back to next provider chain...")
+                continue
+        
+        if session is None:
+            logger.error(f"All provider chains failed for {model_name}. Last error: {last_error}")
+            return False
         
         state.onnx_session = session
         state.onnx_model_name = model_name
@@ -537,9 +575,10 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
         state.current_model_type = "onnx"
         state.cv_model = None
         
-        # Log actual providers being used
+        # Update providers list with actual active providers
         actual_providers = session.get_providers()
-        logger.info(f"ONNX model {model_name} loaded with providers: {actual_providers}")
+        state.providers = actual_providers
+        logger.info(f"ONNX model {model_name} loaded successfully with: {actual_providers}")
         
         return True
         

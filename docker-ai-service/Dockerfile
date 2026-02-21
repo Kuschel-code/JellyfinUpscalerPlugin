@@ -25,9 +25,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     openssh-server \
     # TensorRT Runtime Libraries (for ONNX Runtime TensorRT EP)
-    libnvinfer-headers-dev \
-    libnvinfer-lean10 \
-    libnvinfer-dispatch10 \
+    libnvinfer10 \
+    libnvinfer-plugin10 \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean \
     && ln -s /usr/bin/python3 /usr/bin/python
