@@ -332,6 +332,63 @@ def detect_hardware():
         except Exception as e:
             logger.debug(f"AMD GPU not detected: {e}")
     
+    # Try Intel GPU (via /dev/dri and lspci)
+    if not gpu_detected:
+        try:
+            # Check if /dev/dri exists (Intel GPU render node)
+            dri_path = Path("/dev/dri")
+            render_nodes = list(dri_path.glob("renderD*")) if dri_path.exists() else []
+            
+            if render_nodes:
+                # Try lspci to get Intel GPU name
+                gpu_name = "Intel GPU"
+                try:
+                    result = subprocess.run(
+                        ["lspci"],
+                        capture_output=True, text=True, timeout=5
+                    )
+                    if result.returncode == 0:
+                        for line in result.stdout.split("\n"):
+                            if "VGA" in line and "Intel" in line:
+                                gpu_name = line.split(":")[-1].strip()
+                                break
+                            elif "Display" in line and "Intel" in line:
+                                gpu_name = line.split(":")[-1].strip()
+                                break
+                except:
+                    pass
+                
+                # Also check via /sys for device info
+                if gpu_name == "Intel GPU":
+                    try:
+                        for card_dir in Path("/sys/class/drm").glob("card*/device"):
+                            vendor_path = card_dir / "vendor"
+                            if vendor_path.exists():
+                                vendor = vendor_path.read_text().strip()
+                                if vendor == "0x8086":  # Intel vendor ID
+                                    device_path = card_dir / "device"
+                                    if device_path.exists():
+                                        device_id = device_path.read_text().strip()
+                                        gpu_name = f"Intel GPU (Device {device_id})"
+                                    break
+                    except:
+                        pass
+                
+                state.gpu_name = gpu_name
+                state.gpu_memory = "Shared Memory"
+                gpu_detected = True
+                logger.info(f"Detected Intel GPU: {state.gpu_name} (render nodes: {[str(r) for r in render_nodes]})")
+            
+            # If no render nodes but OpenVINO is available, still mark as detected
+            elif ONNX_AVAILABLE and 'OpenVINOExecutionProvider' in ort.get_available_providers():
+                state.gpu_name = "Intel OpenVINO (CPU inference)"
+                state.gpu_memory = "Shared"
+                gpu_detected = True
+                logger.info(f"Intel OpenVINO available (no /dev/dri, using CPU backend)")
+                
+        except Exception as e:
+            logger.debug(f"Intel GPU not detected: {e}")
+    
     # Try Apple Silicon (macOS)
     if not gpu_detected and platform.system() == "Darwin":
         try:
