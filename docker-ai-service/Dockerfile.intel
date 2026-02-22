@@ -15,7 +15,9 @@ USER root
 
 WORKDIR /app
 
-# Install Python and system dependencies for OpenCV + OpenSSH
+# Install Intel GPU compute runtime + Python and system dependencies
+# The compute-runtime (intel-opencl-icd) is REQUIRED for OpenVINO GPU inference
+# Without it, OpenVINO falls back to CPU even with /dev/dri present
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     libgl1 \
@@ -25,7 +27,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxrender1 \
     curl \
     pciutils \
+    gpg-agent \
+    software-properties-common \
     openssh-server \
+    # Intel GPU compute runtime for OpenVINO GPU inference
+    intel-opencl-icd \
+    ocl-icd-libopencl1 \
+    clinfo \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
