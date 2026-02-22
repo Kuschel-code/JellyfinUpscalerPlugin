@@ -5,13 +5,13 @@ using MediaBrowser.Model.Plugins;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// Plugin Configuration - v1.5.0.9 (Docker-based AI Service)
+    /// Plugin Configuration - v1.5.2 (Docker-based AI Service)
     /// </summary>
     public class PluginConfiguration : BasePluginConfiguration
     {
         // Basic Settings
         public bool EnablePlugin { get; set; } = true;
-        public string Model { get; set; } = "realesrgan";
+        public string Model { get; set; } = "realesrgan-x4";
         public int ScaleFactor { get; set; } = 2;
         public string QualityLevel { get; set; } = "medium";
         public bool HardwareAcceleration { get; set; } = true;
@@ -52,12 +52,12 @@ namespace JellyfinUpscalerPlugin
         public string RemoteTranscodePath { get; set; } = "/transcode"; // Shared transcode dir on remote
         
         // Version tracking
-        public string PluginVersion { get; set; } = "1.5.1.1";
+        public string PluginVersion { get; set; } = "1.5.2.0";
         public DateTime LastConfigUpdate { get; set; } = DateTime.UtcNow;
 
         public PluginConfiguration()
         {
-            PluginVersion = "1.5.1.1";
+            PluginVersion = "1.5.2.0";
             LastConfigUpdate = DateTime.UtcNow;
         }
     }

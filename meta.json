@@ -2,11 +2,11 @@
     "guid": "f87f700e-679d-43e6-9c7c-b3a410dc3f22",
     "name": "AI Upscaler Plugin",
     "overview": "AI-Powered Video Upscaling Plugin with Docker Microservice Architecture",
-    "description": "Revolutionary AI upscaling plugin with Docker-based AI processing. Eliminates native DLL conflicts. Features automated hardware benchmarking, intelligent fallback system, pre-processing cache, and sidebar integration.",
-    "version": "1.5.0.9",
+    "description": "Revolutionary AI upscaling plugin with Docker-based AI processing. Supports NVIDIA CUDA/TensorRT, Intel OpenVINO, AMD ROCm, and CPU. Features automated hardware benchmarking, intelligent fallback system, pre-processing cache, and sidebar integration.",
+    "version": "1.5.2.0",
     "targetAbi": "10.11.6.0",
     "framework": "net9.0",
     "owner": "Kuschel-code",
     "category": "Video Enhancement",
-    "changelog": "v1.5.0.9: Fixed 'selectedModelId is undefined' error prevent models from loading (PR #41). Fixes Issue #42."
+    "changelog": "v1.5.2: Intel GPU detection fix (Issue #45), TensorRT fallback fix (Issue #46), full multi-GPU provider chain, website troubleshooting updates."
 }
