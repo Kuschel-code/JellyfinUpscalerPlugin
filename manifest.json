@@ -10,11 +10,11 @@
     "versions": [
       {
         "version": "1.5.2.0",
-        "changelog": "v1.5.2.0: Fixed GPU acceleration not working (Issue #44). Upgraded to cuDNN 9, intelligent ONNX provider detection. NVIDIA GPUs now correctly use CUDA/TensorRT instead of falling back to CPU.",
+        "changelog": "v1.5.2.0: Intel GPU detection fix (Issue #45), TensorRT fallback fix (Issue #46), fixed model default, full multi-GPU provider chain, version alignment.",
         "targetAbi": "10.11.6.0",
-        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.2.0/JellyfinUpscalerPlugin-v1.5.2.0.zip",
-        "checksum": "5FE67376ED0E652BC3FF5500D78A62F4",
-        "timestamp": "2026-02-13T15:00:00.000Z"
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.2.0/JellyfinUpscalerPlugin_v1.5.2.0.zip",
+        "checksum": "0C2034F1FDB8514599933C927651957F",
+        "timestamp": "2026-02-22T21:00:00.000Z"
       },
       {
         "version": "1.5.1.1",
