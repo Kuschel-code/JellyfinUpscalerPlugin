@@ -1,22 +1,19 @@
 # Apple Silicon (M1/M2/M3/M4) requirements
-# For native macOS installation with CoreML support
+# For native macOS installation or Docker on Apple Silicon
 
-fastapi>=0.104.0
-uvicorn[standard]>=0.24.0
-opencv-python>=4.8.0
-opencv-contrib-python>=4.8.0
-numpy>=1.24.0
-Pillow>=10.0.0
-aiohttp>=3.9.0
-aiofiles>=23.2.0
-python-multipart>=0.0.6
-httpx>=0.25.0
-psutil>=5.9.0
+# FastAPI and Server
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+aiofiles==23.2.1
 
-# ONNX Runtime with CoreML support for Apple Silicon
-# CoreML provider gives excellent performance on M1/M2/M3/M4 chips
+# AI/ML - ONNX Runtime (CPU mode in Docker, CoreML natively)
 onnxruntime>=1.17.0
+numpy>=1.24.0,<2.0.0
 
-# Optional: For GPU acceleration on Apple Silicon
-# Uncomment if you want to use Metal Performance Shaders
-# coremltools>=7.0
+# Image Processing - OpenCV with DNN Super Resolution
+opencv-contrib-python==4.9.0.80
+
+# Utilities
+pydantic>=2.0.0
+httpx>=0.26.0

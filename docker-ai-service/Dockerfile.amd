@@ -1,14 +1,14 @@
 # ============================================
 # AI Upscaler Service - AMD GPU (ROCm) Version
 # ============================================
-# Build: docker build -f Dockerfile.amd -t kuscheltier/jellyfin-ai-upscaler:1.5.1-amd .
-# Run: docker run --device=/dev/kfd --device=/dev/dri --group-add video -p 5000:5000 -p 2222:22 kuscheltier/jellyfin-ai-upscaler:1.5.1-amd
+# Build: docker build -f Dockerfile.amd -t kuscheltier/jellyfin-ai-upscaler:1.5.2-amd .
+# Run: docker run --device=/dev/kfd --device=/dev/dri --group-add video -p 5000:5000 -p 2222:22 kuscheltier/jellyfin-ai-upscaler:1.5.2-amd
 
 FROM rocm/pytorch:latest
 
 LABEL maintainer="Kuschel-code"
 LABEL description="AI Upscaler Service with AMD ROCm GPU Acceleration and SSH"
-LABEL version="1.5.1"
+LABEL version="1.5.2"
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -27,7 +27,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     curl \
     openssh-server \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 # Configure SSH
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
