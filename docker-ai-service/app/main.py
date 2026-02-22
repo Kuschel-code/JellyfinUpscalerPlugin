@@ -605,20 +605,38 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
         session = None
         last_error = None
         
-        for providers in provider_chains:
+        for chain_idx, providers in enumerate(provider_chains):
             try:
-                logger.info(f"Trying providers: {providers}")
+                logger.info(f"Trying provider chain {chain_idx + 1}/{len(provider_chains)}: {providers}")
+                
+                # Create FRESH session options for each attempt
+                # This prevents TensorRT initialization state from poisoning subsequent attempts
+                chain_sess_options = ort.SessionOptions()
+                chain_sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+                
                 session = ort.InferenceSession(
-                    str(model_path), sess_options, providers=providers
+                    str(model_path), chain_sess_options, providers=providers
                 )
                 actual_providers = session.get_providers()
                 logger.info(f"✅ Session created with providers: {actual_providers}")
+                
+                # Verify we actually got a GPU provider (not just CPU when we requested GPU)
+                gpu_providers = [p for p in actual_providers if p != 'CPUExecutionProvider']
+                if state.use_gpu and gpu_providers:
+                    logger.info(f"✅ GPU acceleration active: {gpu_providers[0]}")
+                elif state.use_gpu and chain_idx < len(provider_chains) - 1:
+                    # Session created but only CPU — try next chain for better GPU support
+                    logger.warning(f"⚠️ Session created but only CPU active, trying next chain...")
+                    session = None
+                    continue
+                
                 break  # Success!
             except Exception as e:
                 last_error = e
                 failed_names = ', '.join(providers)
-                logger.warning(f"⚠️ Failed with [{failed_names}]: {e}")
-                logger.info("Falling back to next provider chain...")
+                logger.warning(f"⚠️ Chain {chain_idx + 1} failed [{failed_names}]: {e}")
+                logger.info(f"Falling back to next provider chain...")
+                session = None
                 continue
         
         if session is None:

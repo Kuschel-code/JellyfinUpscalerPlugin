@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # TensorRT Runtime Libraries (for ONNX Runtime TensorRT EP)
     libnvinfer10 \
     libnvinfer-plugin10 \
+    libnvonnxparsers10 \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean \
     && ln -s /usr/bin/python3 /usr/bin/python
