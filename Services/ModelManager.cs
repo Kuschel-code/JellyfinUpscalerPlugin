@@ -24,46 +24,32 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         public static readonly Dictionary<string, ModelInfo> AvailableModels = new()
         {
-            // === General Purpose ===
-            ["realesrgan-x4plus"] = new ModelInfo 
-            { 
-                Name = "Real-ESRGAN x4+ (Best Quality)", 
-                Scale = 4, 
-                Description = "Best quality 4x upscaling for photos and real-world images"
-            },
+            // === Real-ESRGAN (GPU-accelerated ONNX models) ===
             ["realesrgan-x4"] = new ModelInfo 
             { 
-                Name = "Real-ESRGAN x4", 
+                Name = "Real-ESRGAN x4 (Best Quality)", 
                 Scale = 4, 
-                Description = "High-quality 4x upscaling for real-world images"
+                Description = "Best quality 4x for photos & anime (67MB ONNX, GPU-accelerated)"
             },
-            ["realesrgan-x2"] = new ModelInfo 
+            ["realesrgan-x4-256"] = new ModelInfo 
             { 
-                Name = "Real-ESRGAN x2", 
-                Scale = 2, 
-                Description = "High-quality 2x upscaling for real-world images"
+                Name = "Real-ESRGAN x4 (Low VRAM)", 
+                Scale = 4, 
+                Description = "Optimized for 256px tiles, better for low VRAM GPUs"
             },
             
-            // === Anime/Cartoon ===
-            ["realesrgan-anime"] = new ModelInfo 
-            { 
-                Name = "Real-ESRGAN Anime x4", 
-                Scale = 4, 
-                Description = "Optimized for anime and cartoon content"
-            },
-            ["waifu2x-anime"] = new ModelInfo 
-            { 
-                Name = "Waifu2x Anime x2", 
-                Scale = 2, 
-                Description = "Classic anime upscaler, good for illustrations"
-            },
-            
-            // === Fast Models ===
+            // === Fast Models (OpenCV, CPU) ===
             ["fsrcnn-x2"] = new ModelInfo 
             { 
                 Name = "FSRCNN x2 (Fast)", 
                 Scale = 2, 
                 Description = "Very fast 2x upscaling, good for real-time"
+            },
+            ["fsrcnn-x3"] = new ModelInfo 
+            { 
+                Name = "FSRCNN x3 (Fast)", 
+                Scale = 3, 
+                Description = "Fast 3x upscaling"
             },
             ["fsrcnn-x4"] = new ModelInfo 
             { 
@@ -77,27 +63,55 @@ namespace JellyfinUpscalerPlugin.Services
                 Scale = 2, 
                 Description = "Fastest model, minimal quality improvement"
             },
-            
-            // === Quality Models ===
-            ["bsrgan-x4"] = new ModelInfo 
+            ["espcn-x3"] = new ModelInfo 
             { 
-                Name = "BSRGAN x4 (Degraded Images)", 
-                Scale = 4, 
-                Description = "Best for old, compressed, or degraded images"
+                Name = "ESPCN x3 (Fastest)", 
+                Scale = 3, 
+                Description = "Fastest 3x model"
             },
-            ["swinir-x4"] = new ModelInfo 
+            ["espcn-x4"] = new ModelInfo 
             { 
-                Name = "SwinIR x4 (Transformer)", 
+                Name = "ESPCN x4 (Fastest)", 
                 Scale = 4, 
-                Description = "Transformer-based model, high quality but slow"
+                Description = "Fastest 4x model"
             },
             
-            // === Custom ===
-            ["claude-opus-4-6"] = new ModelInfo 
+            // === Quality Models (OpenCV) ===
+            ["lapsrn-x2"] = new ModelInfo 
             { 
-                Name = "Claude Opus 4-6", 
+                Name = "LapSRN x2 (Quality)", 
+                Scale = 2, 
+                Description = "Good quality 2x upscaling"
+            },
+            ["lapsrn-x4"] = new ModelInfo 
+            { 
+                Name = "LapSRN x4 (Quality)", 
                 Scale = 4, 
-                Description = "Experimental Claude Opus 4-6 Model"
+                Description = "Good quality 4x upscaling"
+            },
+            ["lapsrn-x8"] = new ModelInfo 
+            { 
+                Name = "LapSRN x8 (Quality)", 
+                Scale = 8, 
+                Description = "Extreme 8x upscaling"
+            },
+            ["edsr-x2"] = new ModelInfo 
+            { 
+                Name = "EDSR x2 (Best OpenCV)", 
+                Scale = 2, 
+                Description = "Best quality 2x with OpenCV, requires more compute"
+            },
+            ["edsr-x3"] = new ModelInfo 
+            { 
+                Name = "EDSR x3 (Best OpenCV)", 
+                Scale = 3, 
+                Description = "Best quality 3x with OpenCV"
+            },
+            ["edsr-x4"] = new ModelInfo 
+            { 
+                Name = "EDSR x4 (Best OpenCV)", 
+                Scale = 4, 
+                Description = "Best quality 4x with OpenCV, slowest but best"
             }
         };
 

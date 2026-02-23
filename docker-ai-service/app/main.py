@@ -44,7 +44,7 @@ CACHE_DIR = Path("/app/cache")
 STATIC_DIR = Path("/app/static")
 
 # Version
-VERSION = "1.1.5"
+VERSION = "1.5.2"
 
 # Global state
 class AppState:
@@ -251,7 +251,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "custom",
         "model_type": "realesrgan",
-        "available": True
+        "available": False
     }
 }
 
@@ -820,7 +820,15 @@ async def root():
 @app.get("/health")
 async def health():
     """Health check endpoint."""
-    return {"status": "healthy", "model_loaded": state.current_model is not None}
+    return {
+        "status": "healthy",
+        "model_loaded": state.current_model is not None,
+        "model_name": state.current_model,
+        "model_type": state.current_model_type,
+        "providers": state.providers,
+        "using_gpu": state.use_gpu,
+        "gpu_name": state.gpu_name
+    }
 
 
 @app.get("/status")
@@ -978,7 +986,7 @@ async def upscale_endpoint(
     scale: int = Form(2)
 ):
     """Upscale an image."""
-    if state.cv_model is None:
+    if state.cv_model is None and state.onnx_session is None:
         raise HTTPException(status_code=400, detail="No model loaded. Please load a model first.")
     
     if state.processing_count >= state.max_concurrent:
