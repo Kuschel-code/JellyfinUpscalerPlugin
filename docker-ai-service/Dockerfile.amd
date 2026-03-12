@@ -1,14 +1,14 @@
 # ============================================
 # AI Upscaler Service - AMD GPU (ROCm) Version
 # ============================================
-# Build: docker build -f Dockerfile.amd -t kuscheltier/jellyfin-ai-upscaler:1.5.2-amd .
-# Run: docker run --device=/dev/kfd --device=/dev/dri --group-add video -p 5000:5000 -p 2222:22 kuscheltier/jellyfin-ai-upscaler:1.5.2-amd
+# Build: docker build -f Dockerfile.amd -t kuscheltier/jellyfin-ai-upscaler:1.5.3-amd .
+# Run: docker run --device=/dev/kfd --device=/dev/dri --group-add video -p 5000:5000 -p 2222:22 kuscheltier/jellyfin-ai-upscaler:1.5.3-amd
 
-FROM rocm/pytorch:latest
+FROM rocm/pytorch:rocm6.2.3_ubuntu22.04_py3.10_pytorch_release_2.3.0
 
 LABEL maintainer="Kuschel-code"
 LABEL description="AI Upscaler Service with AMD ROCm GPU Acceleration and SSH"
-LABEL version="1.5.2"
+LABEL version="1.5.3"
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -30,9 +30,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Configure SSH
+# Configure SSH (key-based auth only, no passwords)
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
-    && sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+    && sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config \
+    && sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config \
+    && sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords no/' /etc/ssh/sshd_config
 
 # Set working directory
 WORKDIR /app

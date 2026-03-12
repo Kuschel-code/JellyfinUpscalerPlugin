@@ -16,7 +16,7 @@ FROM python:3.11-slim
 
 LABEL maintainer="Kuschel-code"
 LABEL description="AI Upscaler Service optimized for Apple Silicon (ARM64)"
-LABEL version="1.5.2"
+LABEL version="1.5.3"
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -37,9 +37,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Configure SSH
+# Configure SSH (key-based auth only, no passwords)
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
-    && sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+    && sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config \
+    && sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config \
+    && sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords no/' /etc/ssh/sshd_config
 
 # Set working directory
 WORKDIR /app

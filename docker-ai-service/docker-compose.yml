@@ -12,13 +12,14 @@ services:
     container_name: jellyfin-ai-upscaler
     ports:
       - "5000:5000"
+      - "2222:22"
     volumes:
       - ai-models:/app/models
       - ai-cache:/app/cache
     environment:
       - USE_GPU=true
       - MAX_CONCURRENT_REQUESTS=4
-      - DEFAULT_MODEL=realesrgan-x4plus-anime
+      - DEFAULT_MODEL=realesrgan-x4
       - LOG_LEVEL=INFO
     restart: unless-stopped
     # GPU support (requires nvidia-docker)

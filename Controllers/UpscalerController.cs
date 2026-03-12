@@ -10,6 +10,7 @@ using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Session;
 using MediaBrowser.Controller.Net;
 using System.Net.Mime;
+using System.Text.RegularExpressions;
 using System.Threading;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
@@ -60,22 +61,26 @@ namespace JellyfinUpscalerPlugin.Controllers
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<List<object>> GetAvailableModels()
         {
+            // Models must match the Docker AI service AVAILABLE_MODELS exactly
             return Ok(new List<object>
             {
-                new { id = "realesrgan", name = "Real-ESRGAN", description = "Best Overall Quality (Anime/Photo)", scale = new[] { 2, 3, 4 } },
-                new { id = "esrgan-pro", name = "ESRGAN Pro", description = "Optimized for Movies & TV Shows", scale = new[] { 2, 4 } },
-                new { id = "swinir", name = "SwinIR", description = "State-of-the-art Transformer based", scale = new[] { 2, 4, 8 } },
-                new { id = "srcnn-light", name = "SRCNN Light", description = "Fast processing for low-end hardware", scale = new[] { 2, 3 } },
-                new { id = "waifu2x", name = "Waifu2x", description = "Classic Anime upscaling", scale = new[] { 2 } },
-                new { id = "hat", name = "HAT", description = "High Detail Enhancement", scale = new[] { 2, 4 } },
-                new { id = "edsr", name = "EDSR", description = "Precise Super-Resolution", scale = new[] { 2, 3, 4 } },
-                new { id = "vdsr", name = "VDSR", description = "Deep Learning approach", scale = new[] { 2, 3, 4 } },
-                new { id = "rdn", name = "RDN", description = "Enhanced Texture Detail", scale = new[] { 2, 4 } },
-                new { id = "srresnet", name = "SRResNet", description = "Balanced Performance", scale = new[] { 2, 4 } },
-                new { id = "carn", name = "CARN", description = "Compact & Fast", scale = new[] { 2, 3, 4 } },
-                new { id = "rrdbnet", name = "RRDBNet", description = "High Fidelity Quality", scale = new[] { 2, 4 } },
-                new { id = "drln", name = "DRLN", description = "Advanced Noise Reduction", scale = new[] { 2, 4 } },
-                new { id = "fsrcnn", name = "FSRCNN", description = "Lightweight Real-time capable", scale = new[] { 2, 3, 4 } }
+                // Real-ESRGAN (ONNX GPU - Best Quality)
+                new { id = "realesrgan-x4", name = "Real-ESRGAN x4 (Best Quality)", description = "Best quality 4x for photos & anime (67MB ONNX)", scale = new[] { 4 }, category = "realesrgan", type = "onnx" },
+                new { id = "realesrgan-x4-256", name = "Real-ESRGAN x4 (256px optimized)", description = "Optimized for 256px tiles, better for low VRAM", scale = new[] { 4 }, category = "realesrgan", type = "onnx" },
+                // Fast Models (OpenCV - Real-time)
+                new { id = "fsrcnn-x2", name = "FSRCNN x2 (Fast)", description = "Very fast 2x upscaling, good for real-time", scale = new[] { 2 }, category = "fast", type = "pb" },
+                new { id = "fsrcnn-x3", name = "FSRCNN x3 (Fast)", description = "Fast 3x upscaling", scale = new[] { 3 }, category = "fast", type = "pb" },
+                new { id = "fsrcnn-x4", name = "FSRCNN x4 (Fast)", description = "Fast 4x upscaling, lower quality but quick", scale = new[] { 4 }, category = "fast", type = "pb" },
+                new { id = "espcn-x2", name = "ESPCN x2 (Fastest)", description = "Fastest model, minimal quality improvement", scale = new[] { 2 }, category = "fast", type = "pb" },
+                new { id = "espcn-x3", name = "ESPCN x3 (Fastest)", description = "Fastest 3x model", scale = new[] { 3 }, category = "fast", type = "pb" },
+                new { id = "espcn-x4", name = "ESPCN x4 (Fastest)", description = "Fastest 4x model", scale = new[] { 4 }, category = "fast", type = "pb" },
+                // Quality Models (OpenCV - High Quality)
+                new { id = "lapsrn-x2", name = "LapSRN x2 (Quality)", description = "Good quality 2x upscaling", scale = new[] { 2 }, category = "quality", type = "pb" },
+                new { id = "lapsrn-x4", name = "LapSRN x4 (Quality)", description = "Good quality 4x upscaling", scale = new[] { 4 }, category = "quality", type = "pb" },
+                new { id = "lapsrn-x8", name = "LapSRN x8 (Quality)", description = "Extreme 8x upscaling", scale = new[] { 8 }, category = "quality", type = "pb" },
+                new { id = "edsr-x2", name = "EDSR x2 (Best OpenCV)", description = "Best quality 2x with OpenCV", scale = new[] { 2 }, category = "quality", type = "pb" },
+                new { id = "edsr-x3", name = "EDSR x3 (Best OpenCV)", description = "Best quality 3x with OpenCV", scale = new[] { 3 }, category = "quality", type = "pb" },
+                new { id = "edsr-x4", name = "EDSR x4 (Best OpenCV)", description = "Best quality 4x with OpenCV, slowest but best", scale = new[] { 4 }, category = "quality", type = "pb" }
             });
         }
 
@@ -212,7 +217,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                     FFmpegAvailable = true,
                     OnnxRuntime = "Available",
                     Platform = Environment.OSVersion.Platform.ToString(),
-                    PluginVersion = "1.5.0.9"
+                    PluginVersion = typeof(Plugin).Assembly.GetName().Version?.ToString(4) ?? "1.5.2.1"
                 });
             }
             catch (Exception ex)
@@ -316,11 +321,15 @@ namespace JellyfinUpscalerPlugin.Controllers
                 }
 
                 // Security: Validate paths to prevent path traversal attacks
+                var fullInputPath = Path.GetFullPath(request.InputPath);
                 var fullOutputPath = Path.GetFullPath(request.OutputPath);
-                var jellyfinDataPath = Path.GetFullPath(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
-                if (fullOutputPath.Contains("..") || request.OutputPath.Contains(".."))
+
+                // Block writes to system-critical directories
+                var blockedPrefixes = new[] { "/etc", "/usr", "/bin", "/sbin", "/boot", "/proc", "/sys",
+                    @"C:\Windows", @"C:\Program Files", @"C:\Program Files (x86)" };
+                if (blockedPrefixes.Any(p => fullOutputPath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
                 {
-                    return BadRequest(new { success = false, error = "Invalid output path - path traversal not allowed" });
+                    return BadRequest(new { success = false, error = "Output path not allowed - system directory" });
                 }
 
                 var outputDir = Path.GetDirectoryName(fullOutputPath);
@@ -637,40 +646,56 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
+                // Security: Validate inputs to prevent command injection
+                if (!Regex.IsMatch(request.Host, @"^[a-zA-Z0-9._\-]+$"))
+                    return BadRequest(new { success = false, message = "Invalid host format. Only alphanumeric, dots, hyphens allowed." });
+
+                if (!Regex.IsMatch(request.User, @"^[a-zA-Z0-9._\-]+$"))
+                    return BadRequest(new { success = false, message = "Invalid user format. Only alphanumeric, dots, hyphens allowed." });
+
+                if (request.Port < 1 || request.Port > 65535)
+                    return BadRequest(new { success = false, message = "Invalid port. Must be 1-65535." });
+
                 _logger.LogInformation("Testing SSH connection to {User}@{Host}:{Port}", request.User, request.Host, request.Port);
 
-                var sshArgs = new List<string>
+                var psi = new System.Diagnostics.ProcessStartInfo
                 {
-                    "-o", "BatchMode=yes",
-                    "-o", "StrictHostKeyChecking=no",
-                    "-o", "ConnectTimeout=5",
-                    "-p", request.Port.ToString(),
-                    $"{request.User}@{request.Host}",
-                    "echo 'SSH_TEST_SUCCESS'"
+                    FileName = "ssh",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
                 };
 
-                if (!string.IsNullOrWhiteSpace(request.KeyFile) && System.IO.File.Exists(request.KeyFile))
+                // Use ArgumentList to prevent shell injection
+                if (!string.IsNullOrWhiteSpace(request.KeyFile))
                 {
-                    sshArgs.InsertRange(0, new[] { "-i", request.KeyFile });
+                    var resolvedKeyPath = Path.GetFullPath(request.KeyFile);
+                    if (!IOFile.Exists(resolvedKeyPath))
+                        return BadRequest(new { success = false, message = "SSH key file not found." });
+
+                    psi.ArgumentList.Add("-i");
+                    psi.ArgumentList.Add(resolvedKeyPath);
                 }
 
-                var process = new System.Diagnostics.Process
-                {
-                    StartInfo = new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = "ssh",
-                        Arguments = string.Join(" ", sshArgs),
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        CreateNoWindow = true
-                    }
-                };
+                psi.ArgumentList.Add("-o");
+                psi.ArgumentList.Add("BatchMode=yes");
+                psi.ArgumentList.Add("-o");
+                psi.ArgumentList.Add("StrictHostKeyChecking=accept-new");
+                psi.ArgumentList.Add("-o");
+                psi.ArgumentList.Add("ConnectTimeout=5");
+                psi.ArgumentList.Add("-p");
+                psi.ArgumentList.Add(request.Port.ToString());
+                psi.ArgumentList.Add($"{request.User}@{request.Host}");
+                psi.ArgumentList.Add("echo 'SSH_TEST_SUCCESS'");
 
+                using var process = new System.Diagnostics.Process { StartInfo = psi };
                 process.Start();
-                var output = await process.StandardOutput.ReadToEndAsync();
-                var error = await process.StandardError.ReadToEndAsync();
-                await process.WaitForExitAsync();
+
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+                var output = await process.StandardOutput.ReadToEndAsync(cts.Token);
+                var error = await process.StandardError.ReadToEndAsync(cts.Token);
+                await process.WaitForExitAsync(cts.Token);
 
                 if (process.ExitCode == 0 && output.Contains("SSH_TEST_SUCCESS"))
                 {
@@ -682,6 +707,10 @@ namespace JellyfinUpscalerPlugin.Controllers
                     _logger.LogWarning("SSH connection test failed: {Error}", error);
                     return Ok(new { success = false, message = $"SSH connection failed: {error}" });
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                return Ok(new { success = false, message = "SSH connection timed out after 15 seconds" });
             }
             catch (Exception ex)
             {

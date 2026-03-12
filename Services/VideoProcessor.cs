@@ -158,6 +158,7 @@ namespace JellyfinUpscalerPlugin.Services
                 job.ProcessingMethod = processingMethod;
                 
                 // 5. Execute processing
+                job.Status = ProcessingStatus.Processing;
                 var result = await ExecuteProcessingAsync(inputPath, outputPath, job, cancellationToken);
                 
                 job.Status = result.Success ? ProcessingStatus.Completed : ProcessingStatus.Failed;
@@ -272,18 +273,21 @@ namespace JellyfinUpscalerPlugin.Services
         private double CalculateJobProgress(ProcessingJob job)
         {
             if (job.Status == ProcessingStatus.Completed)
-            {
                 return 100.0;
-            }
+            if (job.Status == ProcessingStatus.Cancelled || job.Status == ProcessingStatus.Failed)
+                return 0;
+            if (job.Status == ProcessingStatus.Starting || job.Status == ProcessingStatus.Analyzing)
+                return 5.0;
 
-            if (job.Status == ProcessingStatus.Processing && job.InputInfo != null)
+            if (job.Status == ProcessingStatus.Processing && job.InputInfo != null && job.InputInfo.Duration.TotalSeconds > 0)
             {
-                var elapsed = DateTime.Now - job.StartTime;
-                var estimated = elapsed.TotalSeconds * 2; // Rough estimate
-                return Math.Min(95, (elapsed.TotalSeconds / estimated) * 100);
+                var elapsed = (DateTime.Now - job.StartTime).TotalSeconds;
+                var estimatedTotal = job.InputInfo.Duration.TotalSeconds * 0.5; // rough: processing ~2x realtime
+                if (estimatedTotal <= 0) estimatedTotal = 60;
+                return Math.Min(95, (elapsed / estimatedTotal) * 100);
             }
 
-            return 0;
+            return 10;
         }
 
         /// <summary>
@@ -506,7 +510,7 @@ namespace JellyfinUpscalerPlugin.Services
                     var processedDir = Path.Combine(tempDir, "processed");
                     Directory.CreateDirectory(processedDir);
                     
-                    await ProcessFramesAsync(framesDir, processedDir, job.OptimizedOptions, cancellationToken);
+                    await ProcessFramesAsync(framesDir, processedDir, job.OptimizedOptions, job.Id, cancellationToken);
                     
                     // 3. Reconstruct video
                     await ReconstructVideoAsync(processedDir, inputPath, outputPath, job.OptimizedOptions, framesFps, cancellationToken);
@@ -609,6 +613,7 @@ namespace JellyfinUpscalerPlugin.Services
             string framesDir,
             string processedDir,
             VideoProcessingOptions options,
+            string processingJobId,
             CancellationToken cancellationToken)
         {
             var frameFiles = Directory.GetFiles(framesDir, "*.png").OrderBy(f => f).ToArray();
@@ -645,8 +650,7 @@ namespace JellyfinUpscalerPlugin.Services
                     try
                     {
                         // Check for pause before processing
-                        var jobId = Path.GetFileNameWithoutExtension(framesDir);
-                        while (_pausedJobs.GetValueOrDefault(jobId, false))
+                        while (_pausedJobs.GetValueOrDefault(processingJobId, false))
                         {
                             await Task.Delay(500, cancellationToken);
                         }
@@ -666,7 +670,7 @@ namespace JellyfinUpscalerPlugin.Services
                             var fps = processedFrames / elapsed;
                             
                             await _progressHub.SendFrameProgress(
-                                jobId,
+                                processingJobId,
                                 Path.GetFileName(frameFile),
                                 processedFrames,
                                 totalFrames,

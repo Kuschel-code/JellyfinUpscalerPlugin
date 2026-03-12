@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.5.2.1",
+        "changelog": "v1.5.2.1: Security hardening (SSH injection fix, path traversal fix, SSH key-only auth), fixed progress tracking, fixed pause/resume, fixed model list sync, dynamic version, build pipeline rewrite.",
+        "targetAbi": "10.11.6.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.2.1/JellyfinUpscalerPlugin_v1.5.2.1.zip",
+        "checksum": "d1ae77275dd6a09deda6e59dac6ee3f2",
+        "timestamp": "2026-03-12T02:00:00.000Z"
+      },
+      {
         "version": "1.5.2.0",
         "changelog": "v1.5.2.0: Intel GPU detection fix (Issue #45), TensorRT fallback fix (Issue #46), fixed model default, full multi-GPU provider chain, version alignment.",
         "targetAbi": "10.11.6.0",

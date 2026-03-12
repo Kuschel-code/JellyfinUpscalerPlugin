@@ -44,7 +44,7 @@ CACHE_DIR = Path("/app/cache")
 STATIC_DIR = Path("/app/static")
 
 # Version
-VERSION = "1.5.2"
+VERSION = "1.5.3"
 
 # Global state
 class AppState:
@@ -239,20 +239,6 @@ AVAILABLE_MODELS = {
         "available": True
     },
     
-    # ============================================================
-    # === Experimental / User Added Models ===
-    # ============================================================
-    "claude-opus-4-6": {
-        "name": "Claude Opus 4-6",
-        # TODO: User must provide the real URL for this model
-        "url": "https://placeholder.url/claude-opus-4-6.onnx", 
-        "scale": 4,
-        "description": "Experimental Claude Opus 4-6 Model",
-        "type": "onnx",
-        "category": "custom",
-        "model_type": "realesrgan",
-        "available": False
-    }
 }
 
 
@@ -688,9 +674,10 @@ async def download_model(model_name: str) -> bool:
         async with httpx.AsyncClient(timeout=600.0) as client:
             response = await client.get(download_url, follow_redirects=True)
             response.raise_for_status()
-            
-            with open(model_path, "wb") as f:
-                f.write(response.content)
+
+            # Use run_in_executor to avoid blocking the event loop on large file writes
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, model_path.write_bytes, response.content)
         
         size_mb = model_path.stat().st_size / 1024 / 1024
         logger.info(f"Model {model_name} downloaded ({size_mb:.1f} MB)")
@@ -985,21 +972,26 @@ async def upscale_endpoint(
     file: UploadFile = File(...),
     scale: int = Form(2)
 ):
-    """Upscale an image."""
+    """Upscale an image. Scale is determined by the loaded model; the scale parameter is validated for consistency."""
     if state.cv_model is None and state.onnx_session is None:
         raise HTTPException(status_code=400, detail="No model loaded. Please load a model first.")
-    
+
+    # Validate scale against loaded model's native scale
+    model_scale = state.onnx_model_scale if state.current_model_type == "onnx" else state.cv_model_scale
+    if scale != model_scale:
+        logger.warning(f"Requested scale={scale} differs from loaded model scale={model_scale}. Using model's native scale={model_scale}.")
+
     if state.processing_count >= state.max_concurrent:
         raise HTTPException(status_code=429, detail="Too many concurrent requests")
-    
+
     state.processing_count += 1
-    
+
     try:
         # Read image
         image_bytes = await file.read()
-        
+
         # Upscale in thread pool to not block async
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, upscale_image, image_bytes)
         
         return Response(content=result, media_type="image/png")
@@ -1019,7 +1011,7 @@ async def benchmark_endpoint():
     if state.cv_model is None and state.onnx_session is None:
         raise HTTPException(status_code=400, detail="No model loaded")
     
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(None, run_benchmark, 256)
     return result
 
