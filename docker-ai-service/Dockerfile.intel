@@ -15,9 +15,7 @@ USER root
 
 WORKDIR /app
 
-# Install Intel GPU compute runtime + Python and system dependencies
-# The compute-runtime (intel-opencl-icd) is REQUIRED for OpenVINO GPU inference
-# Without it, OpenVINO falls back to CPU even with /dev/dri present
+# Install system dependencies first
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     libgl1 \
@@ -26,16 +24,30 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     libxrender1 \
     curl \
+    wget \
     pciutils \
     gpg-agent \
     software-properties-common \
     openssh-server \
-    # Intel GPU compute runtime for OpenVINO GPU inference
-    intel-opencl-icd \
     ocl-icd-libopencl1 \
     clinfo \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Intel GPU compute runtime from OFFICIAL Intel repos
+# The Ubuntu 22.04 intel-opencl-icd is too old for Arc GPUs (DG2/Alchemist).
+# We need the latest NEO compute-runtime + Level-Zero for Arc A310/A380/A770 support.
+RUN mkdir -p /tmp/gpu && cd /tmp/gpu \
+    && wget -qO - https://repositories.intel.com/gpu/intel-graphics.key | \
+       gpg --dearmor --output /usr/share/keyrings/intel-graphics.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/gpu/ubuntu jammy unified" | \
+       tee /etc/apt/sources.list.d/intel-gpu-jammy.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+       intel-opencl-icd \
+       intel-level-zero-gpu \
+       level-zero \
+       libigdgmm12 \
+    && rm -rf /var/lib/apt/lists/* /tmp/gpu
 
 # Configure SSH (key-based auth only, no passwords)
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \

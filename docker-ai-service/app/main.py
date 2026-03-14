@@ -44,7 +44,7 @@ CACHE_DIR = Path("/app/cache")
 STATIC_DIR = Path("/app/static")
 
 # Version
-VERSION = "1.5.3"
+VERSION = "1.5.4"
 
 # Global state
 class AppState:
@@ -576,12 +576,13 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
             if 'CUDAExecutionProvider' in chain2:
                 provider_chains.append(chain2)
             
-            # Chain 3: OpenVINO + CPU (Intel GPUs)
+            # Chain 3: OpenVINO GPU (Intel GPUs — requires compute runtime)
             chain3 = [p for p in [
                 'OpenVINOExecutionProvider',
                 'CPUExecutionProvider'
             ] if p in available_providers]
             if 'OpenVINOExecutionProvider' in chain3:
+                # Try to force OpenVINO to use GPU device
                 provider_chains.append(chain3)
         
         # Chain 4: CPU only (always works)
@@ -594,18 +595,33 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
         for chain_idx, providers in enumerate(provider_chains):
             try:
                 logger.info(f"Trying provider chain {chain_idx + 1}/{len(provider_chains)}: {providers}")
-                
+
                 # Create FRESH session options for each attempt
-                # This prevents TensorRT initialization state from poisoning subsequent attempts
                 chain_sess_options = ort.SessionOptions()
                 chain_sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-                
-                session = ort.InferenceSession(
-                    str(model_path), chain_sess_options, providers=providers
-                )
+
+                # For OpenVINO, configure provider options to explicitly target GPU device
+                provider_options = None
+                if 'OpenVINOExecutionProvider' in providers:
+                    provider_options = [
+                        {'device_type': 'GPU_FP32', 'precision': 'FP32'} if p == 'OpenVINOExecutionProvider' else {}
+                        for p in providers
+                    ]
+                    logger.info(f"OpenVINO: Requesting GPU_FP32 device explicitly")
+
+                if provider_options:
+                    session = ort.InferenceSession(
+                        str(model_path), chain_sess_options,
+                        providers=providers, provider_options=provider_options
+                    )
+                else:
+                    session = ort.InferenceSession(
+                        str(model_path), chain_sess_options, providers=providers
+                    )
+
                 actual_providers = session.get_providers()
                 logger.info(f"✅ Session created with providers: {actual_providers}")
-                
+
                 # Verify we actually got a GPU provider (not just CPU when we requested GPU)
                 gpu_providers = [p for p in actual_providers if p != 'CPUExecutionProvider']
                 if state.use_gpu and gpu_providers:
@@ -615,12 +631,35 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
                     logger.warning(f"⚠️ Session created but only CPU active, trying next chain...")
                     session = None
                     continue
-                
+
                 break  # Success!
             except Exception as e:
                 last_error = e
                 failed_names = ', '.join(providers)
                 logger.warning(f"⚠️ Chain {chain_idx + 1} failed [{failed_names}]: {e}")
+
+                # If OpenVINO GPU failed, try again with CPU device before giving up on OpenVINO
+                if 'OpenVINOExecutionProvider' in providers and 'GPU' in str(e):
+                    try:
+                        logger.info(f"OpenVINO GPU failed, trying OpenVINO CPU device...")
+                        cpu_options = [
+                            {'device_type': 'CPU'} if p == 'OpenVINOExecutionProvider' else {}
+                            for p in providers
+                        ]
+                        session = ort.InferenceSession(
+                            str(model_path), chain_sess_options,
+                            providers=providers, provider_options=cpu_options
+                        )
+                        actual_providers = session.get_providers()
+                        logger.warning(f"⚠️ OpenVINO running on CPU (GPU compute runtime not available)")
+                        logger.info(f"Session providers: {actual_providers}")
+                        # Don't break here — let it fall through since this is CPU mode
+                        # Mark that we're NOT using GPU even though OpenVINO says so
+                        state.use_gpu = False
+                        break
+                    except Exception as e2:
+                        logger.warning(f"OpenVINO CPU also failed: {e2}")
+
                 logger.info(f"Falling back to next provider chain...")
                 session = None
                 continue
