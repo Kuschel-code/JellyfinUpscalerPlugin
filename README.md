@@ -1,4 +1,4 @@
-# 🎮 Jellyfin AI Upscaler Plugin v1.5.2.0
+# 🎮 Jellyfin AI Upscaler Plugin v1.5.2.1
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -7,16 +7,16 @@
 [![Project Website](https://img.shields.io/badge/Website-Visit-blueviolet)](https://transcendent-blancmange-824967.netlify.app)
 
 > [!CAUTION]
-> **🧪 TEST PHASE - v1.5.2.0 (GPU Fix Edition)**
+> **🧪 TEST PHASE - v1.5.2.1 (Security & Bug Fix)**
 >
-> This is an **EXPERIMENTAL** release introducing **Remote Transcoding via SSH**!
-> It allows Jellyfin to offload FFmpeg processing to a remote Docker container (or local one) via SSH, enabling true hardware acceleration on NVIDIA, Intel, and Apple Silicon.
+> This release includes **security hardening** (SSH injection prevention, path traversal protection, SSH key-only auth) and **bug fixes** (progress tracking, pause/resume, model list sync).
 >
-> **🐳 Docker Images:**
-> *   `kuscheltier/jellyfin-ai-upscaler:1.5.2` (NVIDIA CUDA + cuDNN 9)
-> *   `kuscheltier/jellyfin-ai-upscaler:1.5.2-cpu` (CPU Only)
-> *   `kuscheltier/jellyfin-ai-upscaler:1.5.2-apple` (MacOS Apple Silicon)
-> *   `kuscheltier/jellyfin-ai-upscaler:1.5.2-intel` (Intel Arc/iGPU)
+> **🐳 Docker Images (v1.5.3):**
+> *   `kuscheltier/jellyfin-ai-upscaler:1.5.3` (NVIDIA CUDA + cuDNN 9)
+> *   `kuscheltier/jellyfin-ai-upscaler:1.5.3-amd` (AMD ROCm)
+> *   `kuscheltier/jellyfin-ai-upscaler:1.5.3-intel` (Intel Arc/iGPU OpenVINO)
+> *   `kuscheltier/jellyfin-ai-upscaler:1.5.3-apple` (macOS Apple Silicon)
+> *   `kuscheltier/jellyfin-ai-upscaler:1.5.3-cpu` (CPU Only)
 >
 > **Please report bugs:** [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 
@@ -98,7 +98,7 @@ Open http://YOUR_SERVER_IP:5000 to see the Web UI.
    ```
    https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/manifest.json
    ```
-3. Go to **Catalog**, find "AI Upscaler", install **v1.5.0.0**
+3. Go to **Catalog**, find "AI Upscaler", install the latest version
 4. Restart Jellyfin
 5. In Plugin Settings: Set **AI Service URL** to `http://YOUR_SERVER_IP:5000`
 
@@ -129,6 +129,18 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 ---
 
 ## 📋 Changelog
+
+### v1.5.2.1 (Security & Bug Fix) — Docker v1.5.3
+> **🔒 Security hardening + bug fixes across plugin and Docker.**
+
+- **🔒 Security**: SSH command injection prevention — regex validation + `ProcessStartInfo.ArgumentList`
+- **🔒 Security**: Path traversal protection — blocks system directory prefixes
+- **🔒 Security**: SSH hardening — key-only auth (`PasswordAuthentication no`), conditional sshd start
+- **🔧 Fixed**: Progress tracking was stuck at 0%/50% — now uses time-based estimation
+- **🔧 Fixed**: Pause/resume job ID resolution (`Path.GetFileNameWithoutExtension` bug)
+- **🔄 Synced**: Model list aligned (14 models) between C# plugin and Python backend
+- **🐳 Docker 1.5.3**: Scale parameter validation, async file I/O, pinned AMD ROCm base image
+- **⚙️ CI/CD**: Rewritten build pipeline for .NET 9.0 with auto checksum & GitHub release
 
 ### v1.5.2.0 (GPU Fix) - **Fixes Issue #44**
 > **🔧 Fixes NVIDIA GPU falling back to CPU-only processing.**
