@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.5.2.2",
+        "changelog": "v1.5.2.2: Fixed player button not showing (Issue #45) — global script injection via index.html like Intro Skipper. Updated player-integration.js for Jellyfin 10.11+ SPA navigation with viewshow events and correct OSD selectors.",
+        "targetAbi": "10.11.6.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.2.2/JellyfinUpscalerPlugin_v1.5.2.2.zip",
+        "checksum": "cfe28329a7f035e8d6d4903b25a87d01",
+        "timestamp": "2026-03-14T12:00:00.000Z"
+      },
+      {
         "version": "1.5.2.1",
         "changelog": "v1.5.2.1: Security hardening (SSH injection fix, path traversal fix, SSH key-only auth), fixed progress tracking, fixed pause/resume, fixed model list sync, dynamic version, build pipeline rewrite.",
         "targetAbi": "10.11.6.0",

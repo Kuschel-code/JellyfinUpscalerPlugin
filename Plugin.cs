@@ -1,18 +1,23 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Text.RegularExpressions;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
+using Microsoft.Extensions.Logging;
 
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// AI Upscaler Plugin for Jellyfin v1.5.2.1 - Docker Microservice Architecture
-    /// v1.5.2.1 - Security fixes, model sync, pause/progress fixes, Docker v1.5.3
+    /// AI Upscaler Plugin for Jellyfin v1.5.2.2 - Docker Microservice Architecture
+    /// v1.5.2.2 - Player button injection fix (global script like Intro Skipper)
     /// </summary>
     public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     {
+        private readonly IApplicationPaths _applicationPaths;
+
         /// <summary>
         /// Initializes a new instance of the Plugin class.
         /// </summary>
@@ -22,6 +27,17 @@ namespace JellyfinUpscalerPlugin
             : base(applicationPaths, xmlSerializer)
         {
             Instance = this;
+            _applicationPaths = applicationPaths;
+
+            // Inject player script into Jellyfin's index.html (like Intro Skipper plugin)
+            try
+            {
+                InjectPlayerScript(applicationPaths.WebPath);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"AI Upscaler: Failed to inject player script: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -45,6 +61,47 @@ namespace JellyfinUpscalerPlugin
         public static Plugin? Instance { get; private set; }
 
 
+
+        /// <summary>
+        /// Injects the AI Upscaler player script into Jellyfin's index.html.
+        /// This ensures the script loads on every page, not just the config page.
+        /// Same approach as the Intro Skipper plugin.
+        /// </summary>
+        private void InjectPlayerScript(string webPath)
+        {
+            if (string.IsNullOrEmpty(webPath))
+            {
+                return;
+            }
+
+            var indexPath = Path.Join(webPath, "index.html");
+            if (!File.Exists(indexPath))
+            {
+                return;
+            }
+
+            var contents = File.ReadAllText(indexPath);
+            var version = GetType().Assembly.GetName().Version;
+
+            // Script tag that loads our player integration JS globally
+            var scriptTag = $"<script src=\"configurationpage?name=UPSCALERPlayerIntegration&release={version}\"></script>";
+
+            // Already injected?
+            if (contents.Contains(scriptTag, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            // Remove old versions of our script tag (if version changed)
+            var pattern = @"<script src=""configurationpage\?name=UPSCALERPlayerIntegration.*?</script>";
+            contents = Regex.Replace(contents, pattern, string.Empty, RegexOptions.IgnoreCase);
+
+            // Inject before </head>
+            var headEndRegex = new Regex(@"</head>", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
+            contents = headEndRegex.Replace(contents, scriptTag + "</head>", 1);
+
+            File.WriteAllText(indexPath, contents);
+        }
 
         /// <summary>
         /// Gets the plugin web pages for configuration.
