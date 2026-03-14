@@ -11,12 +11,12 @@
 >
 > This release includes **security hardening** (SSH injection prevention, path traversal protection, SSH key-only auth) and **bug fixes** (progress tracking, pause/resume, model list sync).
 >
-> **🐳 Docker Images (v1.5.3):**
-> *   `kuscheltier/jellyfin-ai-upscaler:1.5.3` (NVIDIA CUDA + cuDNN 9)
-> *   `kuscheltier/jellyfin-ai-upscaler:1.5.3-amd` (AMD ROCm)
-> *   `kuscheltier/jellyfin-ai-upscaler:1.5.3-intel` (Intel Arc/iGPU OpenVINO)
-> *   `kuscheltier/jellyfin-ai-upscaler:1.5.3-apple` (macOS Apple Silicon)
-> *   `kuscheltier/jellyfin-ai-upscaler:1.5.3-cpu` (CPU Only)
+> **🐳 Docker Images (v1.5.4):**
+> *   `kuscheltier/jellyfin-ai-upscaler:1.5.4` (NVIDIA CUDA + cuDNN 9)
+> *   `kuscheltier/jellyfin-ai-upscaler:1.5.4-amd` (AMD ROCm)
+> *   `kuscheltier/jellyfin-ai-upscaler:1.5.4-intel` (Intel Arc/iGPU OpenVINO)
+> *   `kuscheltier/jellyfin-ai-upscaler:1.5.4-apple` (macOS Apple Silicon)
+> *   `kuscheltier/jellyfin-ai-upscaler:1.5.4-cpu` (CPU Only)
 >
 > **Please report bugs:** [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 
@@ -130,7 +130,7 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 ## 📋 Changelog
 
-### v1.5.2.1 (Security & Bug Fix) — Docker v1.5.3
+### v1.5.2.1 (Security & Bug Fix) — Docker v1.5.4
 > **🔒 Security hardening + bug fixes across plugin and Docker.**
 
 - **🔒 Security**: SSH command injection prevention — regex validation + `ProcessStartInfo.ArgumentList`
@@ -139,7 +139,7 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 - **🔧 Fixed**: Progress tracking was stuck at 0%/50% — now uses time-based estimation
 - **🔧 Fixed**: Pause/resume job ID resolution (`Path.GetFileNameWithoutExtension` bug)
 - **🔄 Synced**: Model list aligned (14 models) between C# plugin and Python backend
-- **🐳 Docker 1.5.3**: Scale parameter validation, async file I/O, pinned AMD ROCm base image
+- **🐳 Docker 1.5.4**: Scale parameter validation, async file I/O, pinned AMD ROCm base image
 - **⚙️ CI/CD**: Rewritten build pipeline for .NET 9.0 with auto checksum & GitHub release
 
 ### v1.5.2.0 (GPU Fix) - **Fixes Issue #44**

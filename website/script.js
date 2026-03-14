@@ -132,11 +132,11 @@ function renderHome() {
 function renderInstallation() {
     const inst = t().installation;
     const cmds = {
-        hub: 'docker pull kuscheltier/jellyfin-ai-upscaler:latest\ndocker run -d \\\n  --name jellyfin-ai-upscaler \\\n  -p 5000:5000 -p 2222:22 \\\n  kuscheltier/jellyfin-ai-upscaler:1.5.3',
+        hub: 'docker pull kuscheltier/jellyfin-ai-upscaler:latest\ndocker run -d \\\n  --name jellyfin-ai-upscaler \\\n  -p 5000:5000 -p 2222:22 \\\n  kuscheltier/jellyfin-ai-upscaler:1.5.4',
         local: 'git clone https://github.com/Kuschel-code/JellyfinUpscalerPlugin\ncd JellyfinUpscalerPlugin/docker-ai-service\ndocker build -t jellyfin-ai-upscaler .',
-        gpu: 'docker run -d \\\n  --name jellyfin-ai-upscaler \\\n  --gpus all \\\n  -p 5000:5000 -p 2222:22 \\\n  kuscheltier/jellyfin-ai-upscaler:1.5.3',
-        intel: 'docker run -d \\\n  --name jellyfin-ai-upscaler \\\n  --device=/dev/dri \\\n  -p 5000:5000 -p 2222:22 \\\n  kuscheltier/jellyfin-ai-upscaler:1.5.3-intel',
-        amd: 'docker run -d \\\n  --name jellyfin-ai-upscaler \\\n  --device=/dev/kfd --device=/dev/dri \\\n  -p 5000:5000 -p 2222:22 \\\n  kuscheltier/jellyfin-ai-upscaler:1.5.3-amd'
+        gpu: 'docker run -d \\\n  --name jellyfin-ai-upscaler \\\n  --gpus all \\\n  -p 5000:5000 -p 2222:22 \\\n  kuscheltier/jellyfin-ai-upscaler:1.5.4',
+        intel: 'docker run -d \\\n  --name jellyfin-ai-upscaler \\\n  --device=/dev/dri \\\n  -p 5000:5000 -p 2222:22 \\\n  kuscheltier/jellyfin-ai-upscaler:1.5.4-intel',
+        amd: 'docker run -d \\\n  --name jellyfin-ai-upscaler \\\n  --device=/dev/kfd --device=/dev/dri \\\n  -p 5000:5000 -p 2222:22 \\\n  kuscheltier/jellyfin-ai-upscaler:1.5.4-amd'
     };
 
     return `
@@ -439,7 +439,7 @@ function renderDockerTags() {
         </div>
         <div class="docker-pull-section fade-in delay-5">
             <h3>Quick Pull</h3>
-            ${codeBlock('NVIDIA', 'Default Tag', 'docker pull kuscheltier/jellyfin-ai-upscaler:1.5.3', 'green')}
+            ${codeBlock('NVIDIA', 'Default Tag', 'docker pull kuscheltier/jellyfin-ai-upscaler:1.5.4', 'green')}
         </div>
         <div class="page-footer">${t().footer.copyright}</div>
     `;
@@ -484,7 +484,7 @@ function renderSshSetup() {
   --gpus all \\\
   -p 5000:5000 \\\
   -p 2222:22 \\\
-  kuscheltier/jellyfin-ai-upscaler:1.5.3',
+  kuscheltier/jellyfin-ai-upscaler:1.5.4',
         genKey: 'ssh-keygen -t ed25519 -C "jellyfin-upscaler" -f ~/.ssh/jellyfin_upscaler',
         genKeyWin: 'ssh-keygen -t ed25519 -C "jellyfin-upscaler" -f %USERPROFILE%\\.ssh\\jellyfin_upscaler',
         copyKey: 'docker cp ~/.ssh/jellyfin_upscaler.pub jellyfin-ai-upscaler:/root/.ssh/authorized_keys',
