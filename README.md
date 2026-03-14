@@ -1,4 +1,4 @@
-# 🎮 Jellyfin AI Upscaler Plugin v1.5.2.1
+# 🎮 Jellyfin AI Upscaler Plugin v1.5.2.2
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -7,9 +7,9 @@
 [![Project Website](https://img.shields.io/badge/Website-Visit-blueviolet)](https://transcendent-blancmange-824967.netlify.app)
 
 > [!CAUTION]
-> **🧪 TEST PHASE - v1.5.2.1 (Security & Bug Fix)**
+> **🧪 TEST PHASE - v1.5.2.2 (Player Button Fix + Intel GPU Fix)**
 >
-> This release includes **security hardening** (SSH injection prevention, path traversal protection, SSH key-only auth) and **bug fixes** (progress tracking, pause/resume, model list sync).
+> This release fixes the **player button not showing** (global script injection via index.html) and **Intel OpenVINO GPU running on CPU** (updated compute runtime + explicit GPU_FP32 device targeting).
 >
 > **🐳 Docker Images (v1.5.4):**
 > *   `kuscheltier/jellyfin-ai-upscaler:1.5.4` (NVIDIA CUDA + cuDNN 9)
@@ -129,6 +129,14 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 ---
 
 ## 📋 Changelog
+
+### v1.5.2.2 (Player Button Fix + Intel GPU Fix) — Docker v1.5.4
+> **🎮 Fixes Issue #45: Player button not showing + Intel OpenVINO GPU running on CPU.**
+
+- **🎮 Fixed**: Player upscale button not showing — global script injection into `index.html` (same approach as Intro Skipper plugin)
+- **🔧 Fixed**: `player-integration.js` rewritten for Jellyfin 10.11+ SPA navigation using `viewshow` events
+- **🔧 Fixed**: Intel OpenVINO GPU falling back to CPU — updated Intel compute-runtime from official PPA + explicit `GPU_FP32` device targeting
+- **🐳 Docker 1.5.4**: Intel Dockerfile updated with latest NEO compute-runtime + Level-Zero for Arc A310/A380/A770
 
 ### v1.5.2.1 (Security & Bug Fix) — Docker v1.5.4
 > **🔒 Security hardening + bug fixes across plugin and Docker.**
