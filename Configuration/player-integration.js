@@ -1,4 +1,4 @@
-// AI Upscaler Plugin - Player Integration v1.5.2.4
+// AI Upscaler Plugin - Player Integration v1.5.2.6
 // Global script injection (loaded via index.html like Intro Skipper)
 // Compatible with Jellyfin 10.11+
 
@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.5.2.4';
+    const PLUGIN_VERSION = '1.5.2.6';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;

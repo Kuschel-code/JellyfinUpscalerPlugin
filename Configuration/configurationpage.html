@@ -26,28 +26,91 @@
     #UpscalerConfigurationPage .button-submit:hover {
         background: linear-gradient(135deg, #0284c7, #0ea5e9) !important;
     }
+    /* Force dark theme on ALL form elements including Jellyfin custom elements */
+    #UpscalerConfigurationPage input[is="emby-input"],
+    #UpscalerConfigurationPage select[is="emby-select"],
+    #UpscalerConfigurationPage .emby-input,
+    #UpscalerConfigurationPage .emby-select,
+    #UpscalerConfigurationPage input[type="text"],
+    #UpscalerConfigurationPage input[type="number"],
+    #UpscalerConfigurationPage input[type="url"],
+    #UpscalerConfigurationPage input[type="file"],
+    #UpscalerConfigurationPage select,
     #UpscalerConfigurationPage .selectContainer select,
     #UpscalerConfigurationPage .inputContainer input {
-        background: #0f172a !important;
+        background: #1e293b !important;
+        background-color: #1e293b !important;
         color: #e2e8f0 !important;
         border: 1px solid #334155 !important;
         border-radius: 4px !important;
+        padding: 0.5rem !important;
+        -webkit-appearance: none;
+    }
+    #UpscalerConfigurationPage input:focus,
+    #UpscalerConfigurationPage select:focus {
+        border-color: #00d4ff !important;
+        outline: none !important;
+        box-shadow: 0 0 0 2px rgba(0,212,255,0.15) !important;
+    }
+    /* Remove Jellyfin's default input underline/background */
+    #UpscalerConfigurationPage .emby-input:not(:focus),
+    #UpscalerConfigurationPage .emby-select:not(:focus) {
+        border-bottom-color: #334155 !important;
+    }
+    /* Select dropdown arrow */
+    #UpscalerConfigurationPage select option {
+        background: #1e293b !important;
+        color: #e2e8f0 !important;
+    }
+    /* Checkbox styling */
+    #UpscalerConfigurationPage .checkboxContainer {
+        margin: 0.5rem 0;
+    }
+    #UpscalerConfigurationPage .checkboxContainer label {
+        color: #cbd5e1 !important;
+        cursor: pointer;
+    }
+    #UpscalerConfigurationPage input[type="checkbox"] {
+        accent-color: #00d4ff;
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+    /* All labels */
+    #UpscalerConfigurationPage label {
+        color: #cbd5e1 !important;
+    }
+    #UpscalerConfigurationPage .inputLabel,
+    #UpscalerConfigurationPage .selectLabel {
+        color: #94a3b8 !important;
     }
     #UpscalerConfigurationPage .sectionTitle {
         color: #7dd3fc;
         border-bottom: 1px solid #1e3a5f;
         padding-bottom: 0.5rem;
     }
-    #UpscalerConfigurationPage .checkboxContainer label {
-        color: #cbd5e1;
-    }
-    #UpscalerConfigurationPage .inputLabel,
-    #UpscalerConfigurationPage .selectLabel {
-        color: #94a3b8 !important;
-    }
     #UpscalerConfigurationPage .fieldDescription {
         color: #64748b !important;
         font-size: 0.8rem;
+    }
+    /* Toast notification */
+    #UpscalerConfigurationPage .upscaler-toast {
+        position: fixed;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1e293b;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        border: 1px solid #334155;
+        z-index: 99999;
+        font-size: 0.9rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        animation: toastFadeIn 0.3s ease;
+    }
+    @keyframes toastFadeIn {
+        from { opacity: 0; transform: translateX(-50%) translateY(1rem); }
+        to { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
 </style>
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage">
@@ -61,7 +124,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:0.75rem;">
                     <span id="service-badge" style="padding:0.25rem 0.75rem;border-radius:12px;font-size:0.8rem;background:#333;">Checking...</span>
-                    <span class="bubble">v1.5.2.5</span>
+                    <span class="bubble">v1.5.2.6</span>
                 </div>
             </div>
 
@@ -241,10 +304,6 @@
                         </div>
                     </div>
 
-                    <div style="margin-top:1rem;">
-                        <button is="emby-button" type="button" id="btn-save" class="raised button-submit block">Save Settings</button>
-                    </div>
-
                     <!-- Settings Export/Import -->
                     <div class="verticalSection" style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;margin-top:1rem;">
                         <h3 style="margin-top:0;color:#7dd3fc;">Settings Backup</h3>
@@ -255,6 +314,10 @@
                             <input type="file" id="settings-file-input" accept=".json,.txt" style="display:none;" />
                         </div>
                         <div id="settings-backup-status" style="font-size:0.85rem;margin-top:0.5rem;"></div>
+                    </div>
+
+                    <div style="margin-top:1rem;">
+                        <button is="emby-button" type="button" id="btn-save" class="raised button-submit block">Save Settings</button>
                     </div>
                 </form>
             </div>
@@ -370,6 +433,20 @@
         var pluginId = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
         var modelsData = [];
         var refreshInterval = null;
+        var _initialized = false;
+
+        // HTML escape to prevent XSS
+        function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+
+        // English-only toast notification (replaces alert + Dashboard toast)
+        function showToast(msg, color) {
+            var t = document.createElement('div');
+            t.className = 'upscaler-toast';
+            t.textContent = msg;
+            t.style.color = color || '#4ade80';
+            document.body.appendChild(t);
+            setTimeout(function() { if (t.parentNode) t.remove(); }, 3000);
+        }
 
         // ===== TAB SYSTEM =====
         function initTabs(page) {
@@ -447,9 +524,9 @@
                         else if (j.status === 'Failed') failed++;
 
                         if (j.status === 'Processing' || j.status === 'Starting') {
-                            var prog = Math.round(j.progress || 0);
+                            var prog = Math.min(Math.max(Math.round(j.progress || 0), 0), 100);
                             jobsHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid #333;">' +
-                                '<span>' + (j.inputPath || 'Unknown') + '</span>' +
+                                '<span>' + esc(j.inputPath || 'Unknown') + '</span>' +
                                 '<div style="display:flex;align-items:center;gap:0.5rem;">' +
                                 '<div style="width:80px;height:6px;background:#333;border-radius:3px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:#00d4ff;border-radius:3px;"></div></div>' +
                                 '<span style="font-size:0.75rem;">' + prog + '%</span>' +
@@ -485,23 +562,24 @@
                 }
                 var html = '';
                 data.jobs.forEach(function(j) {
-                    var prog = Math.round(j.progress || 0);
+                    var prog = Math.min(Math.max(Math.round(j.progress || 0), 0), 100);
                     var dur = j.duration ? j.duration.toFixed(1) + 's' : '-';
                     var statusColor = j.status === 'Completed' ? '#4ade80' : j.status === 'Failed' ? '#f87171' : j.status === 'Processing' ? '#00d4ff' : '#fbbf24';
+                    var safeJobId = esc(j.jobId || '');
                     var actions = '';
                     if (j.status === 'Processing' || j.status === 'Starting') {
                         if (j.isPaused) {
-                            actions = '<button type="button" onclick="window._upscalerResumeJob(\'' + j.jobId + '\')" style="background:#065f46;border:none;color:#4ade80;padding:0.2rem 0.5rem;border-radius:4px;cursor:pointer;font-size:0.75rem;">Resume</button>';
+                            actions = '<button type="button" data-action="resume" data-jobid="' + safeJobId + '" style="background:#065f46;border:none;color:#4ade80;padding:0.2rem 0.5rem;border-radius:4px;cursor:pointer;font-size:0.75rem;">Resume</button>';
                         } else {
-                            actions = '<button type="button" onclick="window._upscalerPauseJob(\'' + j.jobId + '\')" style="background:#1e3a5f;border:none;color:#7dd3fc;padding:0.2rem 0.5rem;border-radius:4px;cursor:pointer;font-size:0.75rem;">Pause</button> ' +
-                                      '<button type="button" onclick="window._upscalerCancelJob(\'' + j.jobId + '\')" style="background:#7f1d1d;border:none;color:#f87171;padding:0.2rem 0.5rem;border-radius:4px;cursor:pointer;font-size:0.75rem;">Stop</button>';
+                            actions = '<button type="button" data-action="pause" data-jobid="' + safeJobId + '" style="background:#1e3a5f;border:none;color:#7dd3fc;padding:0.2rem 0.5rem;border-radius:4px;cursor:pointer;font-size:0.75rem;">Pause</button> ' +
+                                      '<button type="button" data-action="cancel" data-jobid="' + safeJobId + '" style="background:#7f1d1d;border:none;color:#f87171;padding:0.2rem 0.5rem;border-radius:4px;cursor:pointer;font-size:0.75rem;">Stop</button>';
                         }
                     }
                     html += '<tr style="border-bottom:1px solid #333;">' +
-                        '<td style="padding:0.5rem;">' + (j.inputPath || '-') + '</td>' +
-                        '<td style="padding:0.5rem;color:' + statusColor + ';">' + (j.status || '-') + '</td>' +
+                        '<td style="padding:0.5rem;">' + esc(j.inputPath || '-') + '</td>' +
+                        '<td style="padding:0.5rem;color:' + statusColor + ';">' + esc(j.status || '-') + '</td>' +
                         '<td style="padding:0.5rem;"><div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:60px;height:5px;background:#333;border-radius:3px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:#00d4ff;"></div></div><span style="font-size:0.75rem;">' + prog + '%</span></div></td>' +
-                        '<td style="padding:0.5rem;">' + (j.method || '-') + '</td>' +
+                        '<td style="padding:0.5rem;">' + esc(j.method || '-') + '</td>' +
                         '<td style="padding:0.5rem;">' + dur + '</td>' +
                         '<td style="padding:0.5rem;text-align:center;">' + actions + '</td>' +
                         '</tr>';
@@ -512,25 +590,19 @@
             });
         }
 
-        // Global job control functions
-        window._upscalerPauseJob = function(jobId) {
-            ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/jobs/' + jobId + '/pause') }).then(function() {
+        // Delegated job control via data attributes (no inline onclick - XSS safe)
+        document.addEventListener('click', function(e) {
+            var btn = e.target.closest('[data-action][data-jobid]');
+            if (!btn) return;
+            var action = btn.getAttribute('data-action');
+            var jobId = btn.getAttribute('data-jobid');
+            if (!jobId || !/^[a-zA-Z0-9\-_]+$/.test(jobId)) return;
+            var endpoint = 'Upscaler/jobs/' + encodeURIComponent(jobId) + '/' + action;
+            ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl(endpoint) }).then(function() {
                 var page = document.querySelector('#UpscalerConfigurationPage');
                 if (page) refreshJobs(page);
             });
-        };
-        window._upscalerResumeJob = function(jobId) {
-            ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/jobs/' + jobId + '/resume') }).then(function() {
-                var page = document.querySelector('#UpscalerConfigurationPage');
-                if (page) refreshJobs(page);
-            });
-        };
-        window._upscalerCancelJob = function(jobId) {
-            ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/jobs/' + jobId + '/cancel') }).then(function() {
-                var page = document.querySelector('#UpscalerConfigurationPage');
-                if (page) refreshJobs(page);
-            });
-        };
+        });
 
         // ===== CACHE =====
         function refreshCache(page) {
@@ -552,7 +624,7 @@
                 if (data && data.system) {
                     page.querySelector('#hw-cpu').textContent = data.system.ProcessorCount + ' Cores (' + data.system.Architecture + ')';
                     page.querySelector('#hw-platform').textContent = data.system.Platform || '-';
-                    page.querySelector('#hw-container').textContent = data.system.IsContainer ? 'Ja' : 'Nein';
+                    page.querySelector('#hw-container').textContent = data.system.IsContainer ? 'Yes' : 'No';
                 }
                 if (data && data.hardware) {
                     var gpu = data.hardware.CudaAvailable ? 'NVIDIA (CUDA)' : data.hardware.DirectMlAvailable ? 'AMD/Intel (DirectML)' : 'CPU only';
@@ -689,13 +761,12 @@
                 config.QualityLevel = page.querySelector('#QualityLevel').value;
                 config.ButtonPosition = page.querySelector('#ButtonPosition').value;
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
-                config.PluginVersion = '1.5.2.5';
+                config.PluginVersion = '1.5.2.6';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
-                    if (typeof Dashboard !== 'undefined' && Dashboard.processPluginConfigurationUpdateResult) {
-                        Dashboard.processPluginConfigurationUpdateResult();
-                    }
-                    alert('Settings saved!');
+                    showToast('Settings saved!');
+                }).catch(function() {
+                    showToast('Failed to save settings', '#f87171');
                 });
             });
         }
@@ -766,21 +837,21 @@
             // Wrapper buttons
             page.querySelector('#btn-install-wrapper').addEventListener('click', function() {
                 ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('upscaler/wrapper/install'), dataType: 'json' }).then(function(data) {
-                    alert(data.Message || 'Installed');
+                    showToast(data.Message || 'Wrapper installed');
                     loadWrapperStatus(page);
-                });
+                }).catch(function() { showToast('Install failed', '#f87171'); });
             });
             page.querySelector('#btn-uninstall-wrapper').addEventListener('click', function() {
                 ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('upscaler/wrapper/uninstall'), dataType: 'json' }).then(function(data) {
-                    alert(data.Message || 'Uninstalled');
+                    showToast(data.Message || 'Wrapper uninstalled');
                     loadWrapperStatus(page);
-                });
+                }).catch(function() { showToast('Uninstall failed', '#f87171'); });
             });
             page.querySelector('#btn-regenerate-wrapper').addEventListener('click', function() {
                 ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('upscaler/wrapper/regenerate'), dataType: 'json' }).then(function(data) {
-                    alert(data.Message || 'Regenerated');
+                    showToast(data.Message || 'Wrapper regenerated');
                     loadWrapperStatus(page);
-                });
+                }).catch(function() { showToast('Regenerate failed', '#f87171'); });
             });
 
             // Dashboard refresh
@@ -790,11 +861,11 @@
 
             // Clear cache
             page.querySelector('#btn-clear-cache').addEventListener('click', function() {
-                if (confirm('Really clear cache?')) {
+                if (confirm('Clear all cached data?')) {
                     ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/cache/clear') }).then(function() {
-                        alert('Cache cleared');
+                        showToast('Cache cleared');
                         refreshCache(page);
-                    });
+                    }).catch(function() { showToast('Failed to clear cache', '#f87171'); });
                 }
             });
 
@@ -822,7 +893,7 @@
             // Comparison
             page.querySelector('#btn-compare').addEventListener('click', function() {
                 var itemId = page.querySelector('#comparison-item').value;
-                if (!itemId) { alert('Please select an item'); return; }
+                if (!itemId) { showToast('Please select an item', '#fbbf24'); return; }
                 var model = page.querySelector('#Model').value || 'realesrgan-x4';
                 var scale = page.querySelector('#ScaleFactor').value || 2;
                 page.querySelector('#comparison-container').style.display = 'none';
@@ -833,7 +904,7 @@
                     page.querySelector('#comparison-container').style.display = '';
                     page.querySelector('#btn-compare').textContent = 'Generate Comparison';
                 }).catch(function() {
-                    alert('Comparison failed');
+                    showToast('Comparison failed', '#f87171');
                     page.querySelector('#btn-compare').textContent = 'Generate Comparison';
                 });
             });
@@ -906,10 +977,16 @@
             var page = document.querySelector('#UpscalerConfigurationPage');
             if (!page) return;
 
-            initTabs(page);
-            attachEvents(page);
+            if (!_initialized) {
+                initTabs(page);
+                attachEvents(page);
+                _initialized = true;
+            }
 
             loadModels(page).then(function() {
+                loadConfig(page);
+            }).catch(function() {
+                // Load config even if models API fails
                 loadConfig(page);
             });
             loadWrapperStatus(page);
@@ -953,6 +1030,7 @@
                     clearInterval(refreshInterval);
                     refreshInterval = null;
                 }
+                _initialized = false;
             }
         });
     })();
