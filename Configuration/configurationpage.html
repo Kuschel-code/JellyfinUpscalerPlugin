@@ -26,18 +26,13 @@
     #UpscalerConfigurationPage .button-submit:hover {
         background: linear-gradient(135deg, #0284c7, #0ea5e9) !important;
     }
-    /* Force dark theme on ALL form elements including Jellyfin custom elements */
-    #UpscalerConfigurationPage input[is="emby-input"],
-    #UpscalerConfigurationPage select[is="emby-select"],
+    /* Force dark theme on ALL form elements - global override for Jellyfin custom elements */
+    #UpscalerConfigurationPage input,
+    #UpscalerConfigurationPage select,
+    #UpscalerConfigurationPage textarea,
     #UpscalerConfigurationPage .emby-input,
     #UpscalerConfigurationPage .emby-select,
-    #UpscalerConfigurationPage input[type="text"],
-    #UpscalerConfigurationPage input[type="number"],
-    #UpscalerConfigurationPage input[type="url"],
-    #UpscalerConfigurationPage input[type="file"],
-    #UpscalerConfigurationPage select,
-    #UpscalerConfigurationPage .selectContainer select,
-    #UpscalerConfigurationPage .inputContainer input {
+    #UpscalerConfigurationPage .selectContainer select {
         background: #1e293b !important;
         background-color: #1e293b !important;
         color: #e2e8f0 !important;
@@ -45,17 +40,34 @@
         border-radius: 4px !important;
         padding: 0.5rem !important;
         -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+    }
+    /* Restore checkbox appearance */
+    #UpscalerConfigurationPage input[type="checkbox"],
+    #UpscalerConfigurationPage .emby-checkbox {
+        -webkit-appearance: checkbox !important;
+        -moz-appearance: checkbox !important;
+        appearance: checkbox !important;
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+    }
+    /* Override Jellyfin's internal emby-input/emby-select styling */
+    #UpscalerConfigurationPage .inputContainer,
+    #UpscalerConfigurationPage .selectContainer {
+        margin-bottom: 0;
+    }
+    #UpscalerConfigurationPage .emby-input,
+    #UpscalerConfigurationPage .emby-select {
+        border-bottom: none !important;
+        height: auto !important;
     }
     #UpscalerConfigurationPage input:focus,
     #UpscalerConfigurationPage select:focus {
         border-color: #00d4ff !important;
         outline: none !important;
         box-shadow: 0 0 0 2px rgba(0,212,255,0.15) !important;
-    }
-    /* Remove Jellyfin's default input underline/background */
-    #UpscalerConfigurationPage .emby-input:not(:focus),
-    #UpscalerConfigurationPage .emby-select:not(:focus) {
-        border-bottom-color: #334155 !important;
     }
     /* Select dropdown arrow */
     #UpscalerConfigurationPage select option {
@@ -69,12 +81,22 @@
     #UpscalerConfigurationPage .checkboxContainer label {
         color: #cbd5e1 !important;
         cursor: pointer;
+        display: flex !important;
+        align-items: center;
+        gap: 0.5rem;
     }
-    #UpscalerConfigurationPage input[type="checkbox"] {
+    #UpscalerConfigurationPage input[type="checkbox"],
+    #UpscalerConfigurationPage .emby-checkbox {
         accent-color: #00d4ff;
-        width: 18px;
-        height: 18px;
+        width: 18px !important;
+        height: 18px !important;
         cursor: pointer;
+        min-width: 18px;
+    }
+    /* Jellyfin emby-checkbox: hide the custom checkmark span if it exists */
+    #UpscalerConfigurationPage .checkboxIcon,
+    #UpscalerConfigurationPage .checkboxOutline {
+        display: none !important;
     }
     /* All labels */
     #UpscalerConfigurationPage label {
@@ -718,7 +740,15 @@
                     'EnablePreProcessingCache','EnableRemoteTranscoding'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
-                    if (el) el.checked = !!config[f];
+                    if (el) {
+                        el.checked = !!config[f];
+                        // Force emby-checkbox visual update
+                        if (el.checked) {
+                            el.setAttribute('checked', 'checked');
+                        } else {
+                            el.removeAttribute('checked');
+                        }
+                    }
                 });
 
                 var selects = ['Model','QualityLevel','ButtonPosition'];
@@ -754,7 +784,7 @@
                     'EnablePreProcessingCache','EnableRemoteTranscoding'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
-                    if (el) config[f] = el.checked;
+                    if (el) config[f] = !!el.checked;
                 });
 
                 config.Model = page.querySelector('#Model').value;
@@ -985,9 +1015,12 @@
 
             loadModels(page).then(function() {
                 loadConfig(page);
+                // Re-apply after emby custom elements upgrade (they can be slow)
+                setTimeout(function() { loadConfig(page); }, 500);
             }).catch(function() {
                 // Load config even if models API fails
                 loadConfig(page);
+                setTimeout(function() { loadConfig(page); }, 500);
             });
             loadWrapperStatus(page);
             loadMediaItems(page);

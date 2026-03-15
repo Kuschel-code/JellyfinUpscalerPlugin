@@ -6,6 +6,7 @@
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <AssemblyTitle>AI Upscaler Plugin</AssemblyTitle>
+    <Version>1.5.2.6</Version>
     <AssemblyVersion>1.5.2.6</AssemblyVersion>
     <FileVersion>1.5.2.6</FileVersion>
     <NoWarn>CS8632</NoWarn>
