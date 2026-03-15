@@ -127,7 +127,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 hardwareAcceleration = config.HardwareAcceleration,
                 maxConcurrentStreams = config.MaxConcurrentStreams,
                 isProcessing = false, // Placeholder for actual processing state
-                version = typeof(Plugin).Assembly.GetName().Version?.ToString(4) ?? "1.5.2.6"
+                version = typeof(Plugin).Assembly.GetName().Version?.ToString(4) ?? "1.5.2.7"
             });
         }
 
@@ -231,7 +231,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                     FFmpegAvailable = true,
                     OnnxRuntime = "Available",
                     Platform = Environment.OSVersion.Platform.ToString(),
-                    PluginVersion = typeof(Plugin).Assembly.GetName().Version?.ToString(4) ?? "1.5.2.6"
+                    PluginVersion = typeof(Plugin).Assembly.GetName().Version?.ToString(4) ?? "1.5.2.7"
                 });
             }
             catch (Exception ex)
@@ -664,7 +664,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 return Ok(new
                 {
                     success = true,
-                    pluginVersion = "1.5.2.6",
+                    pluginVersion = "1.5.2.7",
                     exportDate = DateTime.UtcNow.ToString("o"),
                     settings = new
                     {

@@ -33,20 +33,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     clinfo \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Intel GPU compute runtime (NEO) from Intel's official PPA
-# Ubuntu 22.04 intel-opencl-icd is too old for Arc GPUs (DG2/Alchemist).
-# We need the latest NEO compute-runtime + Level-Zero for Arc A310/A380/A770.
-RUN wget -qO- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | \
-       gpg --dearmor -o /usr/share/keyrings/intel-sw.gpg && \
-    echo "deb [signed-by=/usr/share/keyrings/intel-sw.gpg] https://apt.repos.intel.com/oneapi all main" > \
-       /etc/apt/sources.list.d/intel-oneapi.list && \
+# Install Intel GPU compute runtime (NEO) from Intel's compute-runtime PPA
+# The oneapi repo does NOT contain the GPU compute runtime needed for OpenCL/Level-Zero.
+# We need packages from repositories.intel.com/gpu for Arc A310/A380/A770 and iGPU support.
+RUN wget -qO- https://repositories.intel.com/gpu/intel-graphics.key | \
+       gpg --dearmor -o /usr/share/keyrings/intel-graphics.gpg && \
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/gpu/ubuntu jammy unified" > \
+       /etc/apt/sources.list.d/intel-gpu.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
        intel-opencl-icd \
        intel-level-zero-gpu \
        level-zero \
-    || true && \
-    rm -rf /var/lib/apt/lists/*
+       intel-media-va-driver-non-free \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add root to render and video groups for GPU access inside container
+RUN usermod -aG render root 2>/dev/null || true && \
+    usermod -aG video root 2>/dev/null || true && \
+    usermod -aG render openvino 2>/dev/null || true && \
+    usermod -aG video openvino 2>/dev/null || true
 
 # Configure SSH (key-based auth only, no passwords)
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \

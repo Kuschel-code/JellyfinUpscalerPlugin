@@ -5,7 +5,7 @@ using MediaBrowser.Model.Plugins;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// Plugin Configuration - v1.5.2.6 (Docker-based AI Service)
+    /// Plugin Configuration - v1.5.2.7 (Docker-based AI Service)
     /// </summary>
     public class PluginConfiguration : BasePluginConfiguration
     {
@@ -40,6 +40,7 @@ namespace JellyfinUpscalerPlugin
         // AI Service Configuration (Docker)
         public string AiServiceUrl { get; set; } = "http://localhost:5000";
         public string ModelDownloadUrl { get; set; } = "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/models-v1.0";
+        public int GpuDeviceIndex { get; set; } = 0;
         
         // Remote Transcoding Configuration (SSH/rffmpeg style)
         public bool EnableRemoteTranscoding { get; set; } = false;
@@ -52,7 +53,7 @@ namespace JellyfinUpscalerPlugin
         public string RemoteTranscodePath { get; set; } = "/transcode"; // Shared transcode dir on remote
         
         // Version tracking
-        public string PluginVersion { get; set; } = "1.5.2.6";
+        public string PluginVersion { get; set; } = "1.5.2.7";
 
         public PluginConfiguration()
         {

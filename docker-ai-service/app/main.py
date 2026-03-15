@@ -1,7 +1,8 @@
 """
 AI Upscaler Service - FastAPI Application
-Jellyfin AI Upscaler Plugin - Microservice Component v1.1.2
+Jellyfin AI Upscaler Plugin - Microservice Component v1.5.5
 Supports OpenCV DNN (.pb) and ONNX Runtime models with GPU detection
+Multi-GPU selection, robust TensorRT/CUDA/OpenVINO fallback
 """
 
 import os
@@ -11,8 +12,9 @@ import logging
 import asyncio
 import platform
 import subprocess
+import multiprocessing
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional, Any, List
 from contextlib import asynccontextmanager
 
 import numpy as np
@@ -44,7 +46,7 @@ CACHE_DIR = Path("/app/cache")
 STATIC_DIR = Path("/app/static")
 
 # Version
-VERSION = "1.5.4"
+VERSION = "1.5.5"
 
 # Global state
 class AppState:
@@ -64,10 +66,12 @@ class AppState:
     use_gpu: bool = True
     processing_count: int = 0
     max_concurrent: int = 4
-    
+    gpu_device_id: int = 0  # GPU device index for multi-GPU systems
+
     # Hardware info
     gpu_name: str = "Unknown"
     gpu_memory: str = "Unknown"
+    gpu_list: list = []  # List of detected GPUs for multi-GPU selection
     cpu_name: str = "Unknown"
     cpu_cores: int = 0
     
@@ -261,21 +265,30 @@ def detect_hardware():
     
     gpu_detected = False
     
-    # Try NVIDIA GPU first (nvidia-smi)
+    # Try NVIDIA GPU first (nvidia-smi) — enumerate ALL GPUs
     try:
         result = subprocess.run(
-            ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
+            ["nvidia-smi", "--query-gpu=index,name,memory.total", "--format=csv,noheader,nounits"],
             capture_output=True, text=True, timeout=5
         )
         if result.returncode == 0:
-            parts = result.stdout.strip().split(",")
-            if len(parts) >= 2:
-                state.gpu_name = parts[0].strip()
-                state.gpu_memory = f"{int(parts[1].strip())} MB"
-            else:
-                state.gpu_name = result.stdout.strip()
-            gpu_detected = True
-            logger.info(f"Detected NVIDIA GPU: {state.gpu_name}")
+            for line in result.stdout.strip().split("\n"):
+                parts = [p.strip() for p in line.split(",")]
+                if len(parts) >= 3:
+                    gpu_entry = {
+                        "index": int(parts[0]),
+                        "name": parts[1],
+                        "memory": f"{int(parts[2])} MB",
+                        "type": "nvidia"
+                    }
+                    state.gpu_list.append(gpu_entry)
+            if state.gpu_list:
+                # Use the selected device or first GPU
+                idx = min(state.gpu_device_id, len(state.gpu_list) - 1)
+                state.gpu_name = state.gpu_list[idx]["name"]
+                state.gpu_memory = state.gpu_list[idx]["memory"]
+                gpu_detected = True
+                logger.info(f"Detected {len(state.gpu_list)} NVIDIA GPU(s): {[g['name'] for g in state.gpu_list]}")
     except Exception as e:
         logger.debug(f"NVIDIA GPU not detected: {e}")
     
@@ -362,6 +375,15 @@ def detect_hardware():
                 
                 state.gpu_name = gpu_name
                 state.gpu_memory = "Shared Memory"
+                # Enumerate Intel GPUs by render nodes
+                for i, rn in enumerate(render_nodes):
+                    state.gpu_list.append({
+                        "index": i,
+                        "name": gpu_name if i == 0 else f"Intel GPU {i}",
+                        "memory": "Shared Memory",
+                        "type": "intel",
+                        "render_node": str(rn)
+                    })
                 gpu_detected = True
                 logger.info(f"Detected Intel GPU: {state.gpu_name} (render nodes: {[str(r) for r in render_nodes]})")
             
@@ -537,151 +559,227 @@ async def load_model(model_name: str) -> bool:
         return False
 
 
+def _probe_tensorrt_subprocess(model_path_str: str, device_id: int) -> bool:
+    """Test TensorRT in an isolated subprocess to avoid poisoning the CUDA context.
+    Returns True if TensorRT works, False otherwise."""
+    try:
+        result = subprocess.run(
+            [
+                "python3", "-c",
+                f"""
+import onnxruntime as ort
+import sys
+try:
+    opts = ort.SessionOptions()
+    opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+    providers = ['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider']
+    provider_options = [
+        {{'device_id': '{device_id}', 'trt_max_workspace_size': '2147483648'}},
+        {{'device_id': '{device_id}'}},
+        {{}}
+    ]
+    sess = ort.InferenceSession('{model_path_str}', opts, providers=providers, provider_options=provider_options)
+    actual = sess.get_providers()
+    if 'TensorrtExecutionProvider' in actual:
+        print('OK')
+        sys.exit(0)
+    else:
+        print('NO_TRT')
+        sys.exit(1)
+except Exception as e:
+    print(f'FAIL:{{e}}')
+    sys.exit(1)
+"""
+            ],
+            capture_output=True, text=True, timeout=60
+        )
+        if result.returncode == 0 and 'OK' in result.stdout:
+            return True
+        logger.debug(f"TensorRT probe result: {result.stdout.strip()} {result.stderr.strip()}")
+    except Exception as e:
+        logger.debug(f"TensorRT subprocess probe failed: {e}")
+    return False
+
+
 async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -> bool:
-    """Load an ONNX model (Real-ESRGAN) into memory with robust GPU fallback."""
+    """Load an ONNX model (Real-ESRGAN) into memory with robust GPU fallback.
+
+    Chain order (CUDA first to avoid TensorRT poisoning the CUDA context):
+    1. CUDA + CPU (reliable, fast to test)
+    2. OpenVINO GPU + CPU (Intel GPUs)
+    3. CPU only (always works)
+
+    After CUDA succeeds, optionally probe TensorRT in a subprocess.
+    If TensorRT works, reload with TensorRT for better performance.
+    """
     if not ONNX_AVAILABLE:
         logger.error("ONNX Runtime not available. Cannot load ONNX models.")
         return False
-    
+
     try:
         scale = model_info.get("scale", 4)
-        
-        # Set up ONNX Runtime session options
-        sess_options = ort.SessionOptions()
-        sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-        
+        skip_tensorrt = os.getenv("SKIP_TENSORRT", "false").lower() == "true"
+        device_id = state.gpu_device_id
+
         # Detect available providers
         available_providers = ort.get_available_providers()
         logger.info(f"Available ONNX Runtime providers: {available_providers}")
-        
-        # Build prioritized provider chains to try (most capable first)
-        # Each chain is attempted in order — if one fails, the next is tried
+        logger.info(f"GPU device ID: {device_id}, SKIP_TENSORRT: {skip_tensorrt}")
+
+        # Build provider chains — CUDA first (safe), TensorRT probed separately
         provider_chains = []
-        
+
         if state.use_gpu:
-            # Chain 1: TensorRT + CUDA + CPU (best performance)
-            chain1 = [p for p in [
-                'TensorrtExecutionProvider',
-                'CUDAExecutionProvider',
-                'CPUExecutionProvider'
-            ] if p in available_providers]
-            if 'TensorrtExecutionProvider' in chain1:
-                provider_chains.append(chain1)
-            
-            # Chain 2: CUDA + CPU (skip TensorRT — often has missing libs)
-            chain2 = [p for p in [
-                'CUDAExecutionProvider',
-                'CPUExecutionProvider'
-            ] if p in available_providers]
-            if 'CUDAExecutionProvider' in chain2:
-                provider_chains.append(chain2)
-            
-            # Chain 3: OpenVINO GPU (Intel GPUs — requires compute runtime)
-            chain3 = [p for p in [
-                'OpenVINOExecutionProvider',
-                'CPUExecutionProvider'
-            ] if p in available_providers]
-            if 'OpenVINOExecutionProvider' in chain3:
-                # Try to force OpenVINO to use GPU device
-                provider_chains.append(chain3)
-        
-        # Chain 4: CPU only (always works)
-        provider_chains.append(['CPUExecutionProvider'])
-        
-        # Try each provider chain until one succeeds
+            # Chain 1: CUDA + CPU (most reliable GPU path — try FIRST)
+            if 'CUDAExecutionProvider' in available_providers:
+                provider_chains.append({
+                    'providers': ['CUDAExecutionProvider', 'CPUExecutionProvider'],
+                    'options': [{'device_id': str(device_id)}, {}],
+                    'name': 'CUDA'
+                })
+
+            # Chain 2: OpenVINO GPU (Intel GPUs)
+            if 'OpenVINOExecutionProvider' in available_providers:
+                openvino_device = f'GPU.{device_id}' if device_id > 0 else 'GPU_FP32'
+                provider_chains.append({
+                    'providers': ['OpenVINOExecutionProvider', 'CPUExecutionProvider'],
+                    'options': [{'device_type': openvino_device, 'precision': 'FP32'}, {}],
+                    'name': 'OpenVINO GPU'
+                })
+
+        # Chain 3: CPU only (always works)
+        provider_chains.append({
+            'providers': ['CPUExecutionProvider'],
+            'options': [{}],
+            'name': 'CPU'
+        })
+
+        # Try each chain
         session = None
         last_error = None
-        
-        for chain_idx, providers in enumerate(provider_chains):
-            try:
-                logger.info(f"Trying provider chain {chain_idx + 1}/{len(provider_chains)}: {providers}")
 
-                # Create FRESH session options for each attempt
+        for chain_idx, chain in enumerate(provider_chains):
+            providers = chain['providers']
+            provider_options = chain['options']
+            chain_name = chain['name']
+
+            try:
+                logger.info(f"Trying chain {chain_idx + 1}/{len(provider_chains)}: {chain_name} ({providers})")
+
                 chain_sess_options = ort.SessionOptions()
                 chain_sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
 
-                # For OpenVINO, configure provider options to explicitly target GPU device
-                provider_options = None
-                if 'OpenVINOExecutionProvider' in providers:
-                    provider_options = [
-                        {'device_type': 'GPU_FP32', 'precision': 'FP32'} if p == 'OpenVINOExecutionProvider' else {}
-                        for p in providers
-                    ]
-                    logger.info(f"OpenVINO: Requesting GPU_FP32 device explicitly")
-
-                if provider_options:
-                    session = ort.InferenceSession(
-                        str(model_path), chain_sess_options,
-                        providers=providers, provider_options=provider_options
-                    )
-                else:
-                    session = ort.InferenceSession(
-                        str(model_path), chain_sess_options, providers=providers
-                    )
+                session = ort.InferenceSession(
+                    str(model_path), chain_sess_options,
+                    providers=providers, provider_options=provider_options
+                )
 
                 actual_providers = session.get_providers()
-                logger.info(f"✅ Session created with providers: {actual_providers}")
+                logger.info(f"Session created with providers: {actual_providers}")
 
-                # Verify we actually got a GPU provider (not just CPU when we requested GPU)
+                # Verify GPU is actually active
                 gpu_providers = [p for p in actual_providers if p != 'CPUExecutionProvider']
+
                 if state.use_gpu and gpu_providers:
-                    logger.info(f"✅ GPU acceleration active: {gpu_providers[0]}")
+                    # GPU is active — verify with a real inference test
+                    try:
+                        test_input = np.random.rand(1, 3, 16, 16).astype(np.float32)
+                        input_name = session.get_inputs()[0].name
+                        session.run(None, {input_name: test_input})
+                        logger.info(f"GPU inference verification passed ({gpu_providers[0]})")
+                    except Exception as verify_err:
+                        logger.warning(f"GPU inference verification failed: {verify_err}")
+                        session = None
+                        continue
+
+                    logger.info(f"GPU acceleration active: {gpu_providers[0]}")
+                    break
+
                 elif state.use_gpu and chain_idx < len(provider_chains) - 1:
-                    # Session created but only CPU — try next chain for better GPU support
-                    logger.warning(f"⚠️ Session created but only CPU active, trying next chain...")
+                    logger.warning(f"Session created but only CPU active, trying next chain...")
                     session = None
                     continue
+                else:
+                    # CPU chain or last resort
+                    break
 
-                break  # Success!
             except Exception as e:
                 last_error = e
-                failed_names = ', '.join(providers)
-                logger.warning(f"⚠️ Chain {chain_idx + 1} failed [{failed_names}]: {e}")
+                logger.warning(f"Chain {chain_idx + 1} ({chain_name}) failed: {e}")
 
-                # If OpenVINO GPU failed, try again with CPU device before giving up on OpenVINO
+                # OpenVINO GPU failed — try CPU device before giving up
                 if 'OpenVINOExecutionProvider' in providers and 'GPU' in str(e):
                     try:
-                        logger.info(f"OpenVINO GPU failed, trying OpenVINO CPU device...")
-                        cpu_options = [
-                            {'device_type': 'CPU'} if p == 'OpenVINOExecutionProvider' else {}
-                            for p in providers
-                        ]
+                        logger.info("OpenVINO GPU failed, trying OpenVINO CPU device...")
+                        cpu_options = [{'device_type': 'CPU'}, {}]
                         session = ort.InferenceSession(
                             str(model_path), chain_sess_options,
                             providers=providers, provider_options=cpu_options
                         )
                         actual_providers = session.get_providers()
-                        logger.warning(f"⚠️ OpenVINO running on CPU (GPU compute runtime not available)")
-                        logger.info(f"Session providers: {actual_providers}")
-                        # Don't break here — let it fall through since this is CPU mode
-                        # Mark that we're NOT using GPU even though OpenVINO says so
+                        logger.warning("OpenVINO running on CPU (GPU compute runtime not available)")
                         state.use_gpu = False
                         break
                     except Exception as e2:
                         logger.warning(f"OpenVINO CPU also failed: {e2}")
 
-                logger.info(f"Falling back to next provider chain...")
                 session = None
                 continue
-        
+
         if session is None:
             logger.error(f"All provider chains failed for {model_name}. Last error: {last_error}")
             return False
-        
+
+        # If we got CUDA and TensorRT is available, probe TensorRT in subprocess
+        actual_providers = session.get_providers()
+        if (not skip_tensorrt
+                and 'CUDAExecutionProvider' in actual_providers
+                and 'TensorrtExecutionProvider' in available_providers):
+            logger.info("Probing TensorRT in isolated subprocess...")
+            loop = asyncio.get_running_loop()
+            trt_ok = await loop.run_in_executor(
+                None, _probe_tensorrt_subprocess, str(model_path), device_id
+            )
+            if trt_ok:
+                logger.info("TensorRT probe succeeded — reloading with TensorRT...")
+                try:
+                    trt_opts = ort.SessionOptions()
+                    trt_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+                    trt_session = ort.InferenceSession(
+                        str(model_path), trt_opts,
+                        providers=['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider'],
+                        provider_options=[
+                            {'device_id': str(device_id), 'trt_max_workspace_size': '2147483648'},
+                            {'device_id': str(device_id)},
+                            {}
+                        ]
+                    )
+                    trt_actual = trt_session.get_providers()
+                    if 'TensorrtExecutionProvider' in trt_actual:
+                        session = trt_session
+                        actual_providers = trt_actual
+                        logger.info(f"TensorRT active: {actual_providers}")
+                    else:
+                        logger.info("TensorRT not in active providers after reload, keeping CUDA")
+                except Exception as trt_err:
+                    logger.warning(f"TensorRT reload failed (keeping CUDA): {trt_err}")
+            else:
+                logger.info("TensorRT probe failed — keeping CUDA (no context poisoning)")
+
         state.onnx_session = session
         state.onnx_model_name = model_name
         state.onnx_model_scale = scale
         state.current_model = model_name
         state.current_model_type = "onnx"
         state.cv_model = None
-        
+
         # Update providers list with actual active providers
         actual_providers = session.get_providers()
         state.providers = actual_providers
         logger.info(f"ONNX model {model_name} loaded successfully with: {actual_providers}")
-        
+
         return True
-        
+
     except Exception as e:
         logger.error(f"Failed to load ONNX model {model_name}: {e}")
         return False
@@ -887,21 +985,127 @@ async def status():
 async def hardware_info():
     """Get hardware information."""
     has_cuda = any("CUDA" in p for p in state.providers)
-    
+
     return {
         "gpu": {
             "name": state.gpu_name,
             "memory": state.gpu_memory,
             "cuda_available": has_cuda,
-            "tensorrt_available": any("Tensorrt" in p for p in state.providers)
+            "tensorrt_available": any("Tensorrt" in p for p in state.providers),
+            "device_id": state.gpu_device_id
         },
         "cpu": {
             "name": state.cpu_name,
             "cores": state.cpu_cores
         },
         "providers": state.providers,
-        "using_gpu": state.use_gpu
+        "using_gpu": state.use_gpu,
+        "gpu_list": state.gpu_list
     }
+
+
+@app.get("/gpus")
+async def list_gpus():
+    """Enumerate available GPUs for multi-GPU selection."""
+    gpus = []
+
+    # Try NVIDIA GPUs via nvidia-smi
+    try:
+        result = subprocess.run(
+            ["nvidia-smi", "--query-gpu=index,name,memory.total,memory.free,driver_version",
+             "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=10
+        )
+        if result.returncode == 0:
+            for line in result.stdout.strip().split("\n"):
+                parts = [p.strip() for p in line.split(",")]
+                if len(parts) >= 4:
+                    gpus.append({
+                        "index": int(parts[0]),
+                        "name": parts[1],
+                        "memory_total_mb": int(float(parts[2])),
+                        "memory_free_mb": int(float(parts[3])),
+                        "driver": parts[4] if len(parts) > 4 else "unknown",
+                        "type": "nvidia"
+                    })
+    except Exception:
+        pass
+
+    # Try Intel GPUs via render nodes
+    try:
+        drm_path = Path("/sys/class/drm")
+        if drm_path.exists():
+            for render_node in sorted(drm_path.glob("renderD*")):
+                device_path = render_node / "device"
+                vendor_path = device_path / "vendor"
+                if vendor_path.exists():
+                    vendor = vendor_path.read_text().strip()
+                    if vendor == "0x8086":  # Intel
+                        device_name = "Intel GPU"
+                        device_file = device_path / "device"
+                        if device_file.exists():
+                            device_id_hex = device_file.read_text().strip()
+                            device_name = f"Intel GPU ({device_id_hex})"
+                        idx = len(gpus)
+                        gpus.append({
+                            "index": idx,
+                            "name": device_name,
+                            "memory_total_mb": 0,
+                            "memory_free_mb": 0,
+                            "driver": "i915/xe",
+                            "type": "intel"
+                        })
+    except Exception:
+        pass
+
+    return {
+        "gpus": gpus,
+        "total": len(gpus),
+        "current_device_id": state.gpu_device_id
+    }
+
+
+@app.get("/gpu-verify")
+async def gpu_verify():
+    """Run GPU diagnostics — clinfo, nvidia-smi, ONNX providers."""
+    diagnostics = {
+        "onnx_providers": ort.get_available_providers() if ONNX_AVAILABLE else [],
+        "active_providers": state.providers,
+        "using_gpu": state.use_gpu,
+        "gpu_device_id": state.gpu_device_id,
+        "gpu_list": state.gpu_list
+    }
+
+    # clinfo for OpenCL/Intel
+    try:
+        result = subprocess.run(["clinfo", "--list"], capture_output=True, text=True, timeout=10)
+        diagnostics["clinfo"] = result.stdout.strip() if result.returncode == 0 else f"error: {result.stderr.strip()}"
+    except Exception as e:
+        diagnostics["clinfo"] = f"not available: {e}"
+
+    # nvidia-smi
+    try:
+        result = subprocess.run(["nvidia-smi", "--query-gpu=name,driver_version,memory.total",
+                                 "--format=csv,noheader"], capture_output=True, text=True, timeout=10)
+        diagnostics["nvidia_smi"] = result.stdout.strip() if result.returncode == 0 else f"error: {result.stderr.strip()}"
+    except Exception as e:
+        diagnostics["nvidia_smi"] = f"not available: {e}"
+
+    # ONNX inference test
+    if ONNX_AVAILABLE and state.onnx_session is not None:
+        try:
+            test_input = np.random.rand(1, 3, 16, 16).astype(np.float32)
+            input_name = state.onnx_session.get_inputs()[0].name
+            start = time.time()
+            state.onnx_session.run(None, {input_name: test_input})
+            elapsed = time.time() - start
+            diagnostics["inference_test"] = {"status": "ok", "time_ms": round(elapsed * 1000, 2)}
+        except Exception as e:
+            diagnostics["inference_test"] = {"status": "failed", "error": str(e)}
+    else:
+        diagnostics["inference_test"] = {"status": "no_model_loaded"}
+
+    return diagnostics
 
 
 @app.get("/connections")
@@ -978,31 +1182,41 @@ async def download_model_endpoint(model_name: str = Form(...)):
 
 
 @app.post("/models/load")
-async def load_model_endpoint(model_name: str = Form(...), use_gpu: bool = Form(True)):
-    """Load a model into memory."""
+async def load_model_endpoint(
+    model_name: str = Form(...),
+    use_gpu: bool = Form(True),
+    gpu_device_id: Optional[int] = Form(None)
+):
+    """Load a model into memory. Optionally specify GPU device index."""
     if model_name not in AVAILABLE_MODELS:
         raise HTTPException(status_code=404, detail=f"Model {model_name} not found")
-    
+
     model_info = AVAILABLE_MODELS[model_name]
     if not model_info.get("available", True):
         raise HTTPException(status_code=400, detail=f"Model {model_name} is not yet available")
-    
+
     model_path = get_model_path(model_name)
-    
+
     if not model_path.exists():
         raise HTTPException(status_code=404, detail=f"Model {model_name} not downloaded")
-    
+
     state.use_gpu = use_gpu
+    if gpu_device_id is not None:
+        state.gpu_device_id = gpu_device_id
+        logger.info(f"GPU device ID set to {gpu_device_id}")
+
     success = await load_model(model_name)
-    
+
     if not success:
         raise HTTPException(status_code=500, detail="Failed to load model")
-    
+
     return {
-        "status": "success", 
-        "model": model_name, 
+        "status": "success",
+        "model": model_name,
         "model_type": state.current_model_type,
-        "using_gpu": use_gpu
+        "using_gpu": state.use_gpu,
+        "gpu_device_id": state.gpu_device_id,
+        "providers": state.providers
     }
 
 
@@ -1058,15 +1272,20 @@ async def benchmark_endpoint():
 @app.post("/config")
 async def update_config(
     use_gpu: Optional[bool] = Form(None),
-    max_concurrent: Optional[int] = Form(None)
+    max_concurrent: Optional[int] = Form(None),
+    gpu_device_id: Optional[int] = Form(None)
 ):
     """Update service configuration."""
     if use_gpu is not None:
         state.use_gpu = use_gpu
     if max_concurrent is not None:
         state.max_concurrent = max_concurrent
-    
+    if gpu_device_id is not None:
+        state.gpu_device_id = gpu_device_id
+        logger.info(f"GPU device ID updated to {gpu_device_id}")
+
     return {
         "use_gpu": state.use_gpu,
-        "max_concurrent": state.max_concurrent
+        "max_concurrent": state.max_concurrent,
+        "gpu_device_id": state.gpu_device_id
     }

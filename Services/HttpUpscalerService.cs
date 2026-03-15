@@ -11,7 +11,7 @@ namespace JellyfinUpscalerPlugin.Services
 {
     /// <summary>
     /// HTTP-based upscaler service that communicates with the AI Upscaler Docker container.
-    /// v1.5.2.4 - Uses IHttpClientFactory pattern to avoid DNS/socket issues.
+    /// v1.5.2.7 - Health caching, retry logic, multi-GPU support.
     /// </summary>
     public class HttpUpscalerService : IDisposable
     {
@@ -19,6 +19,11 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly HttpClient _fallbackClient;
         private readonly ILogger<HttpUpscalerService> _logger;
         private bool _disposed;
+
+        // Health check cache (30 seconds)
+        private bool? _cachedHealthResult;
+        private DateTime _healthCacheExpiry = DateTime.MinValue;
+        private static readonly TimeSpan HealthCacheDuration = TimeSpan.FromSeconds(30);
 
         public HttpUpscalerService(ILogger<HttpUpscalerService> logger, IHttpClientFactory? httpClientFactory = null)
         {
@@ -35,7 +40,7 @@ namespace JellyfinUpscalerPlugin.Services
                 Timeout = TimeSpan.FromMinutes(5)
             };
 
-            _logger.LogInformation("HttpUpscalerService v1.5.2.4 initialized");
+            _logger.LogInformation("HttpUpscalerService v1.5.2.7 initialized");
         }
 
         private HttpClient GetClient()
@@ -61,6 +66,12 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         public async Task<bool> IsServiceAvailableAsync(CancellationToken cancellationToken = default)
         {
+            // Return cached result if still valid
+            if (_cachedHealthResult.HasValue && DateTime.UtcNow < _healthCacheExpiry)
+            {
+                return _cachedHealthResult.Value;
+            }
+
             var baseUrl = GetServiceUrl();
             try
             {
@@ -70,6 +81,8 @@ namespace JellyfinUpscalerPlugin.Services
                 if (response.IsSuccessStatusCode)
                 {
                     _logger.LogDebug("AI Service health check OK at {Url}", baseUrl);
+                    _cachedHealthResult = true;
+                    _healthCacheExpiry = DateTime.UtcNow + HealthCacheDuration;
                     return true;
                 }
             }
@@ -77,6 +90,9 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 _logger.LogDebug("AI Service health check failed at {Url}: {Message}", baseUrl, ex.Message);
             }
+
+            _cachedHealthResult = false;
+            _healthCacheExpiry = DateTime.UtcNow + HealthCacheDuration;
             return false;
         }
 
@@ -119,43 +135,63 @@ namespace JellyfinUpscalerPlugin.Services
             }
 
             var baseUrl = GetServiceUrl();
+            const int maxRetries = 2;
 
-            try
+            for (int attempt = 0; attempt <= maxRetries; attempt++)
             {
-                using var content = new MultipartFormDataContent();
-
-                using var imageContent = new ByteArrayContent(imageData);
-                imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
-                content.Add(imageContent, "file", "frame.png");
-                content.Add(new StringContent(scale.ToString()), "scale");
-
-                _logger.LogDebug("Sending image ({Size} bytes) to AI service for {Scale}x upscaling", imageData.Length, scale);
-
-                var response = await GetClient().PostAsync($"{baseUrl}/upscale", content, cancellationToken);
-
-                if (response.IsSuccessStatusCode)
+                try
                 {
-                    var result = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-                    _logger.LogDebug("Received upscaled image ({Size} bytes)", result.Length);
-                    return result;
+                    using var content = new MultipartFormDataContent();
+
+                    using var imageContent = new ByteArrayContent(imageData);
+                    imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+                    content.Add(imageContent, "file", "frame.png");
+                    content.Add(new StringContent(scale.ToString()), "scale");
+
+                    if (attempt == 0)
+                    {
+                        _logger.LogDebug("Sending image ({Size} bytes) to AI service for {Scale}x upscaling", imageData.Length, scale);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("Retry {Attempt}/{MaxRetries} for upscaling", attempt, maxRetries);
+                    }
+
+                    var response = await GetClient().PostAsync($"{baseUrl}/upscale", content, cancellationToken);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var result = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+                        _logger.LogDebug("Received upscaled image ({Size} bytes)", result.Length);
+                        return result;
+                    }
+                    else
+                    {
+                        var error = await response.Content.ReadAsStringAsync(cancellationToken);
+                        _logger.LogError("AI service upscaling failed: {StatusCode} - {Error}", response.StatusCode, error);
+                        // Don't retry on 4xx client errors
+                        if ((int)response.StatusCode < 500) break;
+                    }
                 }
-                else
+                catch (TaskCanceledException)
                 {
-                    var error = await response.Content.ReadAsStringAsync(cancellationToken);
-                    _logger.LogError("AI service upscaling failed: {StatusCode} - {Error}", response.StatusCode, error);
+                    _logger.LogWarning("Upscaling request was cancelled");
+                    break; // Don't retry on cancellation
                 }
-            }
-            catch (TaskCanceledException)
-            {
-                _logger.LogWarning("Upscaling request was cancelled");
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogError(ex, "HTTP error communicating with AI service at {Url}", baseUrl);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error during upscaling");
+                catch (HttpRequestException ex)
+                {
+                    _logger.LogError(ex, "HTTP error communicating with AI service at {Url} (attempt {Attempt})", baseUrl, attempt + 1);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Unexpected error during upscaling");
+                    break;
+                }
+
+                if (attempt < maxRetries)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                }
             }
 
             return null;
@@ -184,7 +220,7 @@ namespace JellyfinUpscalerPlugin.Services
         /// <summary>
         /// Request the AI service to load a model.
         /// </summary>
-        public async Task<bool> LoadModelAsync(string modelName, bool useGpu = true, CancellationToken cancellationToken = default)
+        public async Task<bool> LoadModelAsync(string modelName, bool useGpu = true, int gpuDeviceId = 0, CancellationToken cancellationToken = default)
         {
             var baseUrl = GetServiceUrl();
             try
@@ -192,6 +228,7 @@ namespace JellyfinUpscalerPlugin.Services
                 using var content = new MultipartFormDataContent();
                 content.Add(new StringContent(modelName), "model_name");
                 content.Add(new StringContent(useGpu.ToString().ToLower()), "use_gpu");
+                content.Add(new StringContent(gpuDeviceId.ToString()), "gpu_device_id");
                 var response = await GetClient().PostAsync($"{baseUrl}/models/load", content, cancellationToken);
                 return response.IsSuccessStatusCode;
             }

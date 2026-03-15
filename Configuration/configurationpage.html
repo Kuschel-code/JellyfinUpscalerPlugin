@@ -1,31 +1,95 @@
 <style>
+    /* ===== CSS DESIGN SYSTEM v1.5.2.7 ===== */
+    #UpscalerConfigurationPage {
+        --bg-primary: #0f172a;
+        --bg-card: rgba(30, 41, 59, 0.6);
+        --bg-input: #1e293b;
+        --bg-sidebar: rgba(15, 23, 42, 0.98);
+        --border: rgba(255, 255, 255, 0.06);
+        --border-hover: rgba(255, 255, 255, 0.12);
+        --accent: #00d4ff;
+        --accent-glow: rgba(0, 212, 255, 0.15);
+        --success: #4ade80;
+        --warning: #fbbf24;
+        --danger: #f87171;
+        --text-primary: #e2e8f0;
+        --text-secondary: #94a3b8;
+        --text-muted: #64748b;
+        --radius: 12px;
+        --radius-sm: 8px;
+    }
+
+    /* ===== JELLYFIN 10.11+ OVERRIDES ===== */
+    /* Force dark theme on everything — prevent Jellyfin from injecting white backgrounds */
+    #UpscalerConfigurationPage,
+    #UpscalerConfigurationPage * {
+        color-scheme: dark !important;
+    }
+    #UpscalerConfigurationPage .content-primary {
+        background: transparent !important;
+    }
+    /* Override ALL button styles Jellyfin might inject */
+    #UpscalerConfigurationPage button,
+    #UpscalerConfigurationPage .button-submit,
+    #UpscalerConfigurationPage [type="button"],
+    #UpscalerConfigurationPage .btnSubmit,
+    #UpscalerConfigurationPage .emby-button,
+    #UpscalerConfigurationPage .paper-icon-button-light {
+        background: var(--bg-input) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        -webkit-appearance: none !important;
+        appearance: none !important;
+    }
+    #UpscalerConfigurationPage button:hover,
+    #UpscalerConfigurationPage [type="button"]:hover {
+        background: rgba(255,255,255,0.08) !important;
+        border-color: var(--accent) !important;
+        color: var(--accent) !important;
+    }
+    /* Override Jellyfin's default white block button style */
+    #UpscalerConfigurationPage .block {
+        display: block !important;
+        width: 100% !important;
+    }
+    /* Ensure verticalSection from Jellyfin has no white bg */
+    #UpscalerConfigurationPage .verticalSection {
+        background: transparent !important;
+    }
+    /* Override Jellyfin page-level backgrounds */
+    #UpscalerConfigurationPage[data-role="page"] {
+        background: transparent !important;
+    }
+
+    /* Raised buttons */
     #UpscalerConfigurationPage .raised {
-        background: #1e293b !important;
-        color: #e2e8f0 !important;
-        border: 1px solid #334155 !important;
-        border-radius: 6px !important;
+        background: var(--bg-input) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        border-radius: var(--radius-sm) !important;
         padding: 0.5rem 1.2rem !important;
         cursor: pointer !important;
         transition: all 0.2s !important;
         font-size: 0.85rem !important;
     }
     #UpscalerConfigurationPage .raised:hover {
-        background: #334155 !important;
-        border-color: #00d4ff !important;
-        color: #00d4ff !important;
+        background: rgba(255,255,255,0.08) !important;
+        border-color: var(--accent) !important;
+        color: var(--accent) !important;
     }
-    #UpscalerConfigurationPage .raised:active {
-        background: #0f172a !important;
-    }
+    #UpscalerConfigurationPage button.button-submit,
     #UpscalerConfigurationPage .button-submit {
         background: linear-gradient(135deg, #0369a1, #0284c7) !important;
         color: #fff !important;
         border: none !important;
         font-weight: bold !important;
     }
+    #UpscalerConfigurationPage button.button-submit:hover,
     #UpscalerConfigurationPage .button-submit:hover {
         background: linear-gradient(135deg, #0284c7, #0ea5e9) !important;
+        color: #fff !important;
     }
+
     /* Force dark theme on ALL form elements */
     #UpscalerConfigurationPage input[type="text"],
     #UpscalerConfigurationPage input[type="number"],
@@ -34,12 +98,12 @@
     #UpscalerConfigurationPage input:not([type]),
     #UpscalerConfigurationPage select,
     #UpscalerConfigurationPage textarea {
-        background: #1e293b !important;
-        background-color: #1e293b !important;
-        color: #e2e8f0 !important;
-        border: 1px solid #334155 !important;
-        border-bottom: 1px solid #334155 !important;
-        border-radius: 4px !important;
+        background: var(--bg-input) !important;
+        background-color: var(--bg-input) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+        border-radius: 6px !important;
         padding: 0.5rem !important;
         width: 100%;
         box-sizing: border-box;
@@ -49,23 +113,19 @@
     #UpscalerConfigurationPage input:focus,
     #UpscalerConfigurationPage select:focus,
     #UpscalerConfigurationPage textarea:focus {
-        border-color: #00d4ff !important;
+        border-color: var(--accent) !important;
         outline: none !important;
-        box-shadow: 0 0 0 2px rgba(0,212,255,0.15) !important;
+        box-shadow: 0 0 0 2px var(--accent-glow) !important;
     }
     #UpscalerConfigurationPage select option {
-        background: #1e293b !important;
-        color: #e2e8f0 !important;
+        background: var(--bg-input) !important;
+        color: var(--text-primary) !important;
     }
-    /* Override any Jellyfin container styling */
     #UpscalerConfigurationPage .inputContainer,
-    #UpscalerConfigurationPage .selectContainer {
-        margin-bottom: 0;
-    }
+    #UpscalerConfigurationPage .selectContainer { margin-bottom: 0; }
+
     /* Checkbox styling */
-    #UpscalerConfigurationPage .checkboxContainer {
-        margin: 0.5rem 0;
-    }
+    #UpscalerConfigurationPage .checkboxContainer { margin: 0.5rem 0; }
     #UpscalerConfigurationPage .checkboxContainer label {
         color: #cbd5e1 !important;
         cursor: pointer;
@@ -76,7 +136,7 @@
     #UpscalerConfigurationPage input[type="checkbox"] {
         -webkit-appearance: checkbox !important;
         appearance: checkbox !important;
-        accent-color: #00d4ff;
+        accent-color: var(--accent);
         width: 18px !important;
         height: 18px !important;
         cursor: pointer;
@@ -85,359 +145,783 @@
         border: none !important;
         padding: 0 !important;
     }
-    /* Hide Jellyfin custom checkmark overlay if it exists */
     #UpscalerConfigurationPage .checkboxIcon,
-    #UpscalerConfigurationPage .checkboxOutline {
-        display: none !important;
-    }
-    /* All labels */
-    #UpscalerConfigurationPage label {
-        color: #cbd5e1 !important;
-    }
+    #UpscalerConfigurationPage .checkboxOutline { display: none !important; }
+    #UpscalerConfigurationPage label { color: #cbd5e1 !important; }
     #UpscalerConfigurationPage .inputLabel,
-    #UpscalerConfigurationPage .selectLabel {
-        color: #94a3b8 !important;
+    #UpscalerConfigurationPage .selectLabel { color: var(--text-secondary) !important; }
+    #UpscalerConfigurationPage .fieldDescription { color: var(--text-muted) !important; font-size: 0.8rem; }
+
+    /* ===== LAYOUT: Sidebar + Main ===== */
+    #UpscalerConfigurationPage .upscaler-layout {
+        display: flex;
+        min-height: 600px;
+        gap: 0;
     }
-    #UpscalerConfigurationPage .sectionTitle {
-        color: #7dd3fc;
-        border-bottom: 1px solid #1e3a5f;
-        padding-bottom: 0.5rem;
+    #UpscalerConfigurationPage .upscaler-sidebar {
+        width: 220px;
+        min-width: 220px;
+        background: var(--bg-sidebar);
+        border-right: 1px solid var(--border);
+        border-radius: var(--radius) 0 0 var(--radius);
+        display: flex;
+        flex-direction: column;
+        padding: 1.25rem 0;
     }
-    #UpscalerConfigurationPage .fieldDescription {
-        color: #64748b !important;
-        font-size: 0.8rem;
+    #UpscalerConfigurationPage .sidebar-brand {
+        padding: 0 1.25rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 0.75rem;
     }
-    /* Toast notification */
+    #UpscalerConfigurationPage .sidebar-brand h2 {
+        margin: 0;
+        font-size: 1.1rem;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    #UpscalerConfigurationPage .sidebar-brand h2 .material-icons { color: var(--accent); font-size: 22px; }
+    #UpscalerConfigurationPage .sidebar-brand .brand-sub {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        margin-top: 0.2rem;
+    }
+    #UpscalerConfigurationPage .sidebar-nav { flex: 1; }
+    #UpscalerConfigurationPage .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.65rem 1.25rem;
+        color: var(--text-secondary);
+        cursor: pointer;
+        border-left: 2px solid transparent;
+        transition: all 0.15s;
+        font-size: 0.88rem;
+        user-select: none;
+    }
+    #UpscalerConfigurationPage .nav-item:hover {
+        color: var(--text-primary);
+        background: rgba(255,255,255,0.03);
+    }
+    #UpscalerConfigurationPage .nav-item.active {
+        color: var(--accent);
+        border-left-color: var(--accent);
+        background: var(--accent-glow);
+    }
+    #UpscalerConfigurationPage .nav-item .material-icons { font-size: 20px; }
+    #UpscalerConfigurationPage .sidebar-footer {
+        padding: 1rem 1.25rem 0;
+        border-top: 1px solid var(--border);
+        margin-top: auto;
+    }
+    #UpscalerConfigurationPage .sidebar-footer .version-badge {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+    }
+    #UpscalerConfigurationPage .sidebar-footer .status-dot {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        margin-top: 0.4rem;
+    }
+    #UpscalerConfigurationPage .sidebar-footer .status-dot::before {
+        content: '';
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    #UpscalerConfigurationPage .sidebar-footer .status-dot.online::before { background: var(--success); }
+    #UpscalerConfigurationPage .sidebar-footer .status-dot.offline::before { background: var(--danger); }
+    #UpscalerConfigurationPage .sidebar-footer .status-dot.checking::before { background: var(--warning); }
+
+    #UpscalerConfigurationPage .upscaler-main {
+        flex: 1;
+        padding: 1.5rem;
+        min-width: 0;
+    }
+    #UpscalerConfigurationPage .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+    #UpscalerConfigurationPage .page-header h1 {
+        margin: 0;
+        font-size: 1.4rem;
+        color: var(--text-primary);
+    }
+
+    /* ===== STATUS PILLS ===== */
+    #UpscalerConfigurationPage .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 10px;
+        border-radius: 100px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    #UpscalerConfigurationPage .status-pill--online { background: rgba(74,222,128,0.15); color: var(--success); }
+    #UpscalerConfigurationPage .status-pill--offline { background: rgba(248,113,113,0.15); color: var(--danger); }
+    #UpscalerConfigurationPage .status-pill--processing { background: rgba(0,212,255,0.15); color: var(--accent); }
+    #UpscalerConfigurationPage .status-pill--warning { background: rgba(251,191,36,0.15); color: var(--warning); }
+
+    /* ===== GLASSMORPHISM CARDS ===== */
+    #UpscalerConfigurationPage .upscaler-card {
+        background: var(--bg-card);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.25rem;
+        transition: border-color 0.2s;
+    }
+    #UpscalerConfigurationPage .upscaler-card:hover { border-color: var(--border-hover); }
+    #UpscalerConfigurationPage .upscaler-card h3 {
+        margin: 0 0 1rem;
+        font-size: 0.95rem;
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    #UpscalerConfigurationPage .upscaler-card h3 .material-icons { font-size: 18px; }
+
+    /* ===== STAT CARDS ===== */
+    #UpscalerConfigurationPage .stat-card {
+        background: var(--bg-card);
+        backdrop-filter: blur(16px);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1rem 1.25rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+    #UpscalerConfigurationPage .stat-card .stat-icon {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 48px;
+        opacity: 0.05;
+        color: var(--text-primary);
+    }
+    #UpscalerConfigurationPage .stat-card .stat-value {
+        font-size: 1.8rem;
+        font-weight: bold;
+        line-height: 1.2;
+    }
+    #UpscalerConfigurationPage .stat-card .stat-label {
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        margin-top: 0.2rem;
+    }
+
+    /* ===== SKELETON LOADERS ===== */
+    #UpscalerConfigurationPage .skeleton {
+        background: linear-gradient(90deg, var(--bg-input) 25%, #2d3a4f 50%, var(--bg-input) 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: 4px;
+    }
+    @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+
+    /* ===== ACCORDION SECTIONS ===== */
+    #UpscalerConfigurationPage .accordion-section {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        margin-bottom: 0.5rem;
+        overflow: hidden;
+    }
+    #UpscalerConfigurationPage .accordion-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.85rem 1rem;
+        cursor: pointer;
+        background: rgba(255,255,255,0.02) !important;
+        color: var(--text-primary) !important;
+        font-size: 0.9rem;
+        font-weight: 500;
+        user-select: none;
+        transition: background 0.15s;
+        border: none !important;
+    }
+    #UpscalerConfigurationPage .accordion-header:hover { background: rgba(255,255,255,0.04) !important; }
+    #UpscalerConfigurationPage .accordion-header .material-icons { font-size: 18px; color: var(--accent); }
+    #UpscalerConfigurationPage .accordion-header .chevron {
+        margin-left: auto;
+        font-size: 18px;
+        color: var(--text-muted);
+        transition: transform 0.2s;
+    }
+    #UpscalerConfigurationPage .accordion-section.open .accordion-header .chevron { transform: rotate(180deg); }
+    #UpscalerConfigurationPage .accordion-body {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+    }
+    #UpscalerConfigurationPage .accordion-section.open .accordion-body { max-height: 2000px; }
+    #UpscalerConfigurationPage .accordion-body-inner {
+        padding: 0 1rem 1rem;
+    }
+
+    /* ===== JOBS TABLE ===== */
+    #UpscalerConfigurationPage .jobs-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+    }
+    #UpscalerConfigurationPage .jobs-table th {
+        text-align: left;
+        padding: 0.6rem 0.75rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+        border-bottom: 1px solid var(--border);
+        cursor: pointer;
+        user-select: none;
+    }
+    #UpscalerConfigurationPage .jobs-table th:hover { color: var(--accent); }
+    #UpscalerConfigurationPage .jobs-table td {
+        padding: 0.6rem 0.75rem;
+        border-bottom: 1px solid var(--border);
+        color: var(--text-primary);
+    }
+    #UpscalerConfigurationPage .jobs-table .file-path {
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* ===== TOAST ===== */
     #UpscalerConfigurationPage .upscaler-toast {
         position: fixed;
         bottom: 2rem;
         left: 50%;
         transform: translateX(-50%);
-        background: #1e293b;
+        background: var(--bg-input);
         padding: 0.75rem 1.5rem;
-        border-radius: 8px;
-        border: 1px solid #334155;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
         z-index: 99999;
         font-size: 0.9rem;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        box-shadow: 0 4px 24px rgba(0,0,0,0.5);
         animation: toastFadeIn 0.3s ease;
     }
     @keyframes toastFadeIn {
         from { opacity: 0; transform: translateX(-50%) translateY(1rem); }
         to { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
+
+    /* ===== QUICK ACTIONS ===== */
+    #UpscalerConfigurationPage .quick-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    #UpscalerConfigurationPage button.quick-action-btn,
+    #UpscalerConfigurationPage .quick-action-btn {
+        display: inline-flex !important;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.4rem 0.85rem !important;
+        background: var(--bg-card) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius-sm) !important;
+        color: var(--text-secondary) !important;
+        font-size: 0.8rem !important;
+        cursor: pointer !important;
+        transition: all 0.15s;
+    }
+    #UpscalerConfigurationPage button.quick-action-btn:hover,
+    #UpscalerConfigurationPage .quick-action-btn:hover {
+        border-color: var(--accent) !important;
+        color: var(--accent) !important;
+        background: rgba(0,212,255,0.08) !important;
+    }
+    #UpscalerConfigurationPage .quick-action-btn .material-icons { font-size: 16px; }
+
+    /* ===== SERVICE BANNER ===== */
+    #UpscalerConfigurationPage .service-banner {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.85rem 1.25rem;
+        border-radius: var(--radius);
+        margin-bottom: 1.25rem;
+        font-size: 0.88rem;
+    }
+    #UpscalerConfigurationPage .service-banner.online {
+        background: rgba(74,222,128,0.08);
+        border: 1px solid rgba(74,222,128,0.2);
+        color: var(--success);
+    }
+    #UpscalerConfigurationPage .service-banner.offline {
+        background: rgba(248,113,113,0.08);
+        border: 1px solid rgba(248,113,113,0.2);
+        color: var(--danger);
+    }
+    #UpscalerConfigurationPage .service-banner.checking {
+        background: rgba(251,191,36,0.08);
+        border: 1px solid rgba(251,191,36,0.2);
+        color: var(--warning);
+    }
+    #UpscalerConfigurationPage .service-banner .material-icons { font-size: 20px; }
+    #UpscalerConfigurationPage .service-banner .banner-details {
+        margin-left: auto;
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+    }
+
+    /* ===== GRID HELPERS ===== */
+    #UpscalerConfigurationPage .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    #UpscalerConfigurationPage .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; }
+
+    /* ===== INFO ROWS ===== */
+    #UpscalerConfigurationPage .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.4rem 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.85rem;
+    }
+    #UpscalerConfigurationPage .info-row:last-child { border-bottom: none; }
+    #UpscalerConfigurationPage .info-row .label { color: var(--text-secondary); }
+    #UpscalerConfigurationPage .info-row .value { color: var(--text-primary); }
+
+    /* ===== MOBILE RESPONSIVE ===== */
+    @media (max-width: 768px) {
+        #UpscalerConfigurationPage .upscaler-layout {
+            flex-direction: column;
+        }
+        #UpscalerConfigurationPage .upscaler-sidebar {
+            width: 100%;
+            min-width: unset;
+            flex-direction: row;
+            padding: 0;
+            border-right: none;
+            border-bottom: 1px solid var(--border);
+            border-radius: var(--radius) var(--radius) 0 0;
+            overflow-x: auto;
+        }
+        #UpscalerConfigurationPage .sidebar-brand { display: none; }
+        #UpscalerConfigurationPage .sidebar-footer { display: none; }
+        #UpscalerConfigurationPage .sidebar-nav {
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+        }
+        #UpscalerConfigurationPage .nav-item {
+            border-left: none;
+            border-bottom: 2px solid transparent;
+            padding: 0.65rem 1rem;
+            white-space: nowrap;
+            flex-direction: column;
+            gap: 0.2rem;
+            font-size: 0.75rem;
+        }
+        #UpscalerConfigurationPage .nav-item.active {
+            border-bottom-color: var(--accent);
+            border-left-color: transparent;
+        }
+        #UpscalerConfigurationPage .grid-2 { grid-template-columns: 1fr; }
+    }
 </style>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage">
     <div data-role="content">
         <div class="content-primary">
-            <!-- Header -->
-            <div class="verticalSection" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;">
-                <div>
-                    <h1 style="margin:0;font-size:1.6rem;">AI Upscaler Plugin</h1>
-                    <p style="margin:0.2rem 0 0;opacity:0.7;font-size:0.9rem;">Docker Microservice Architecture</p>
-                </div>
-                <div style="display:flex;align-items:center;gap:0.75rem;">
-                    <span id="service-badge" style="padding:0.25rem 0.75rem;border-radius:12px;font-size:0.8rem;background:#333;">Checking...</span>
-                    <span class="bubble">v1.5.2.6</span>
-                </div>
-            </div>
-
-            <!-- Tab Navigation -->
-            <div id="tab-nav" style="display:flex;gap:0;border-bottom:2px solid #333;margin-bottom:1rem;">
-                <button type="button" class="tab-btn active" data-tab="dashboard" style="padding:0.6rem 1.2rem;background:none;border:none;border-bottom:2px solid #00d4ff;color:#00d4ff;cursor:pointer;font-size:0.9rem;margin-bottom:-2px;">Dashboard</button>
-                <button type="button" class="tab-btn" data-tab="settings" style="padding:0.6rem 1.2rem;background:none;border:none;border-bottom:2px solid transparent;color:#aaa;cursor:pointer;font-size:0.9rem;margin-bottom:-2px;">Settings</button>
-                <button type="button" class="tab-btn" data-tab="jobs" style="padding:0.6rem 1.2rem;background:none;border:none;border-bottom:2px solid transparent;color:#aaa;cursor:pointer;font-size:0.9rem;margin-bottom:-2px;">Jobs</button>
-                <button type="button" class="tab-btn" data-tab="cache" style="padding:0.6rem 1.2rem;background:none;border:none;border-bottom:2px solid transparent;color:#aaa;cursor:pointer;font-size:0.9rem;margin-bottom:-2px;">Cache</button>
-                <button type="button" class="tab-btn" data-tab="system" style="padding:0.6rem 1.2rem;background:none;border:none;border-bottom:2px solid transparent;color:#aaa;cursor:pointer;font-size:0.9rem;margin-bottom:-2px;">System</button>
-            </div>
-
-            <!-- ==================== TAB: DASHBOARD ==================== -->
-            <div id="tab-dashboard" class="tab-content">
-                <!-- Stats Cards -->
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;margin-bottom:1rem;">
-                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
-                        <div style="font-size:1.8rem;font-weight:bold;color:#00d4ff;" id="stat-active">0</div>
-                        <div style="font-size:0.8rem;opacity:0.7;">Active Jobs</div>
+            <div class="upscaler-layout">
+                <!-- ===== SIDEBAR ===== -->
+                <div class="upscaler-sidebar">
+                    <div class="sidebar-brand">
+                        <h2><span class="material-icons">auto_awesome</span> AI Upscaler</h2>
+                        <div class="brand-sub">Docker Microservice Architecture</div>
                     </div>
-                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
-                        <div style="font-size:1.8rem;font-weight:bold;color:#4ade80;" id="stat-completed">0</div>
-                        <div style="font-size:0.8rem;opacity:0.7;">Completed</div>
+                    <div class="sidebar-nav">
+                        <div class="nav-item active" data-tab="dashboard"><span class="material-icons">dashboard</span> Dashboard</div>
+                        <div class="nav-item" data-tab="settings"><span class="material-icons">tune</span> Settings</div>
+                        <div class="nav-item" data-tab="jobs"><span class="material-icons">work</span> Jobs</div>
+                        <div class="nav-item" data-tab="cache"><span class="material-icons">cached</span> Cache</div>
+                        <div class="nav-item" data-tab="system"><span class="material-icons">memory</span> System</div>
                     </div>
-                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
-                        <div style="font-size:1.8rem;font-weight:bold;color:#f87171;" id="stat-failed">0</div>
-                        <div style="font-size:0.8rem;opacity:0.7;">Failed</div>
-                    </div>
-                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
-                        <div style="font-size:1.8rem;font-weight:bold;color:#fbbf24;" id="stat-cache-hit">-</div>
-                        <div style="font-size:0.8rem;opacity:0.7;">Cache Hit Rate</div>
+                    <div class="sidebar-footer">
+                        <div class="version-badge">v1.5.2.7</div>
+                        <div class="status-dot checking" id="sidebar-status">Checking...</div>
                     </div>
                 </div>
 
-                <div style="display:grid;grid-template-columns:1fr 300px;gap:1rem;">
-                    <!-- Active Jobs List -->
-                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;">
-                        <h3 style="margin:0 0 0.75rem;font-size:1rem;color:#00d4ff;">Active Jobs</h3>
-                        <div id="active-jobs-list" style="font-size:0.85rem;">
-                            <div style="opacity:0.5;text-align:center;padding:2rem;">No active jobs</div>
+                <!-- ===== MAIN CONTENT ===== -->
+                <div class="upscaler-main">
+
+                    <!-- ==================== TAB: DASHBOARD ==================== -->
+                    <div id="tab-dashboard" class="tab-content">
+                        <div class="page-header">
+                            <h1>Dashboard</h1>
+                            <span id="service-badge" class="status-pill status-pill--warning">Checking...</span>
                         </div>
-                    </div>
 
-                    <!-- Service Status -->
-                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;">
-                        <h3 style="margin:0 0 0.75rem;font-size:1rem;color:#00d4ff;">Service Status</h3>
-                        <div style="font-size:0.85rem;">
-                            <div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid #333;">
-                                <span>Docker Service</span>
-                                <span id="svc-docker" style="color:#666;">...</span>
+                        <!-- Service Banner -->
+                        <div id="service-banner" class="service-banner checking">
+                            <span class="material-icons">cloud</span>
+                            <span id="banner-text">Connecting to AI service...</span>
+                            <span class="banner-details" id="banner-details"></span>
+                        </div>
+
+                        <!-- Stats Cards -->
+                        <div class="grid-4" style="margin-bottom:1.25rem;">
+                            <div class="stat-card">
+                                <span class="material-icons stat-icon">play_circle</span>
+                                <div class="stat-value" style="color:var(--accent);" id="stat-active">
+                                    <div class="skeleton" style="width:40px;height:28px;margin:0 auto;"></div>
+                                </div>
+                                <div class="stat-label">Active Jobs</div>
                             </div>
-                            <div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid #333;">
-                                <span>GPU</span>
-                                <span id="svc-gpu" style="color:#666;">...</span>
+                            <div class="stat-card">
+                                <span class="material-icons stat-icon">check_circle</span>
+                                <div class="stat-value" style="color:var(--success);" id="stat-completed">
+                                    <div class="skeleton" style="width:40px;height:28px;margin:0 auto;"></div>
+                                </div>
+                                <div class="stat-label">Completed</div>
                             </div>
-                            <div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid #333;">
-                                <span>Latency</span>
-                                <span id="svc-latency" style="color:#666;">...</span>
+                            <div class="stat-card">
+                                <span class="material-icons stat-icon">error</span>
+                                <div class="stat-value" style="color:var(--danger);" id="stat-failed">
+                                    <div class="skeleton" style="width:40px;height:28px;margin:0 auto;"></div>
+                                </div>
+                                <div class="stat-label">Failed</div>
                             </div>
-                            <div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid #333;">
-                                <span>Model</span>
-                                <span id="svc-model" style="color:#666;">...</span>
-                            </div>
-                            <div style="display:flex;justify-content:space-between;padding:0.4rem 0;">
-                                <span>Processing</span>
-                                <span id="svc-processing" style="color:#666;">...</span>
+                            <div class="stat-card">
+                                <span class="material-icons stat-icon">speed</span>
+                                <div class="stat-value" style="color:var(--warning);" id="stat-cache-hit">
+                                    <div class="skeleton" style="width:40px;height:28px;margin:0 auto;"></div>
+                                </div>
+                                <div class="stat-label">Cache Hit Rate</div>
                             </div>
                         </div>
-                        <div style="margin-top:1rem;display:flex;flex-direction:column;gap:0.5rem;">
-                            <button type="button" id="btn-refresh-status" class="raised" style="width:100%;">Refresh</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- ==================== TAB: SETTINGS ==================== -->
-            <div id="tab-settings" class="tab-content" style="display:none;">
-                <form id="UpscalerConfigForm">
-                    <!-- Docker AI Service -->
-                    <div class="verticalSection" style="background:linear-gradient(135deg,#1e3a5f,#0f1f3a);padding:1rem;border-radius:8px;margin-bottom:1rem;">
-                        <h3 style="color:#7dd3fc;margin-top:0;">Docker AI Service</h3>
-                        <div class="inputContainer">
-                            <label class="inputLabel" for="AiServiceUrl">AI Service URL:</label>
-                            <input type="text" id="AiServiceUrl" name="AiServiceUrl" placeholder="http://localhost:5000" />
-                            <div class="fieldDescription">URL to Docker AI Container</div>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.5rem;">
-                            <button type="button" id="btn-test-connection" class="raised">Test Connection</button>
-                            <span id="connection-status" style="font-size:0.85rem;"></span>
-                        </div>
-                    </div>
-
-                    <!-- Remote SSH -->
-                    <div class="verticalSection" style="background:linear-gradient(135deg,#1e3a5f,#0f1f3a);padding:1rem;border-radius:8px;margin-bottom:1rem;">
-                        <h3 style="color:#7dd3fc;margin-top:0;">Remote Transcoding (SSH)</h3>
-                        <div class="checkboxContainer">
-                            <label><input type="checkbox" id="EnableRemoteTranscoding" /> Enable Remote Transcoding</label>
-                        </div>
-                        <div id="ssh-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:0.75rem;">
-                            <div class="inputContainer"><label class="inputLabel" for="RemoteHost">Host:</label><input type="text" id="RemoteHost" /></div>
-                            <div class="inputContainer"><label class="inputLabel" for="RemoteSshPort">SSH Port:</label><input type="number" id="RemoteSshPort" /></div>
-                            <div class="inputContainer"><label class="inputLabel" for="RemoteUser">User:</label><input type="text" id="RemoteUser" /></div>
-                            <div class="inputContainer"><label class="inputLabel" for="RemoteSshKeyFile">SSH Key:</label><input type="text" id="RemoteSshKeyFile" /></div>
-                            <div class="inputContainer"><label class="inputLabel" for="LocalMediaMountPoint">Local Media Path:</label><input type="text" id="LocalMediaMountPoint" /></div>
-                            <div class="inputContainer"><label class="inputLabel" for="RemoteMediaMountPoint">Remote Media Path:</label><input type="text" id="RemoteMediaMountPoint" /></div>
-                            <div class="inputContainer" style="grid-column:span 2;"><label class="inputLabel" for="RemoteTranscodePath">Remote Transcode Path:</label><input type="text" id="RemoteTranscodePath" /></div>
-                        </div>
-                        <button type="button" id="btn-test-ssh" class="raised" style="margin-top:0.5rem;">SSH Test</button>
-                        <span id="ssh-status" style="font-size:0.85rem;margin-left:0.5rem;"></span>
-                    </div>
-
-                    <!-- Upscaling Settings -->
-                    <div class="verticalSection">
-                        <h3 class="sectionTitle">Upscaling Settings</h3>
-                        <div class="checkboxContainer"><label><input type="checkbox" id="EnablePlugin" /> Plugin enabled</label></div>
-                        <div class="checkboxContainer"><label><input type="checkbox" id="PlayerButton" /> Show Player Button</label></div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:0.75rem;">
-                            <div class="selectContainer"><label class="selectLabel" for="Model">Model:</label><select id="Model"></select></div>
-                            <div class="selectContainer"><label class="selectLabel" for="ScaleFactor">Scale:</label><select id="ScaleFactor"></select></div>
-                            <div class="selectContainer"><label class="selectLabel" for="QualityLevel">Quality:</label>
-                                <select id="QualityLevel">
-                                    <option value="high">High</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="low">Low</option>
-                                </select>
+                        <div class="grid-2" style="margin-bottom:1.25rem;">
+                            <!-- Active Jobs List -->
+                            <div class="upscaler-card">
+                                <h3><span class="material-icons">pending_actions</span> Active Jobs</h3>
+                                <div id="active-jobs-list" style="font-size:0.85rem;">
+                                    <div style="opacity:0.5;text-align:center;padding:2rem;">No active jobs</div>
+                                </div>
                             </div>
-                            <div class="inputContainer"><label class="inputLabel" for="MaxConcurrentStreams">Max Concurrent Streams:</label><input type="number" id="MaxConcurrentStreams" min="1" max="8" /></div>
+
+                            <!-- Service Status -->
+                            <div class="upscaler-card">
+                                <h3><span class="material-icons">monitor_heart</span> Service Status</h3>
+                                <div>
+                                    <div class="info-row"><span class="label">Docker Service</span><span class="value" id="svc-docker"><span class="skeleton" style="display:inline-block;width:60px;height:16px;"></span></span></div>
+                                    <div class="info-row"><span class="label">GPU</span><span class="value" id="svc-gpu"><span class="skeleton" style="display:inline-block;width:60px;height:16px;"></span></span></div>
+                                    <div class="info-row"><span class="label">Latency</span><span class="value" id="svc-latency"><span class="skeleton" style="display:inline-block;width:50px;height:16px;"></span></span></div>
+                                    <div class="info-row"><span class="label">Model</span><span class="value" id="svc-model"><span class="skeleton" style="display:inline-block;width:80px;height:16px;"></span></span></div>
+                                    <div class="info-row"><span class="label">Processing</span><span class="value" id="svc-processing"><span class="skeleton" style="display:inline-block;width:40px;height:16px;"></span></span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="quick-actions">
+                            <button type="button" id="btn-refresh-status" class="quick-action-btn"><span class="material-icons">refresh</span> Refresh</button>
+                            <button type="button" id="btn-quick-clear-cache" class="quick-action-btn"><span class="material-icons">delete_sweep</span> Clear Cache</button>
+                            <button type="button" id="btn-quick-benchmark" class="quick-action-btn"><span class="material-icons">speed</span> Run Benchmark</button>
                         </div>
                     </div>
 
-                    <!-- Hardware Settings -->
-                    <div class="verticalSection">
-                        <h3 class="sectionTitle">Hardware</h3>
-                        <div class="checkboxContainer"><label><input type="checkbox" id="HardwareAcceleration" /> Hardware Acceleration</label></div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:0.75rem;">
-                            <div class="inputContainer"><label class="inputLabel" for="MaxVRAMUsage">Max VRAM (MB):</label><input type="number" id="MaxVRAMUsage" min="512" max="32768" /></div>
-                            <div class="inputContainer"><label class="inputLabel" for="CpuThreads">CPU Threads:</label><input type="number" id="CpuThreads" min="1" max="64" /></div>
+                    <!-- ==================== TAB: SETTINGS ==================== -->
+                    <div id="tab-settings" class="tab-content" style="display:none;">
+                        <div class="page-header"><h1>Settings</h1></div>
+
+                        <form id="UpscalerConfigForm">
+                            <!-- Section: Docker AI Service -->
+                            <div class="accordion-section open">
+                                <div class="accordion-header">
+                                    <span class="material-icons">cloud</span> Docker AI Service
+                                    <span class="material-icons chevron">expand_more</span>
+                                </div>
+                                <div class="accordion-body"><div class="accordion-body-inner">
+                                    <div class="inputContainer">
+                                        <label class="inputLabel" for="AiServiceUrl">AI Service URL:</label>
+                                        <input type="text" id="AiServiceUrl" name="AiServiceUrl" placeholder="http://localhost:5000" />
+                                        <div class="fieldDescription">URL to Docker AI Container</div>
+                                    </div>
+                                    <div class="selectContainer" style="margin-top:0.75rem;">
+                                        <label class="selectLabel" for="GpuDeviceIndex">GPU Device:</label>
+                                        <select id="GpuDeviceIndex">
+                                            <option value="0">GPU 0 (Default)</option>
+                                        </select>
+                                        <div class="fieldDescription">Select GPU for AI processing (multi-GPU systems)</div>
+                                    </div>
+                                    <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.75rem;">
+                                        <button type="button" id="btn-test-connection" class="raised">Test Connection</button>
+                                        <span id="connection-status" style="font-size:0.85rem;"></span>
+                                    </div>
+                                </div></div>
+                            </div>
+
+                            <!-- Section: Remote Transcoding -->
+                            <div class="accordion-section">
+                                <div class="accordion-header">
+                                    <span class="material-icons">lan</span> Remote Transcoding
+                                    <span class="material-icons chevron">expand_more</span>
+                                </div>
+                                <div class="accordion-body"><div class="accordion-body-inner">
+                                    <div class="checkboxContainer">
+                                        <label><input type="checkbox" id="EnableRemoteTranscoding" /> Enable Remote Transcoding</label>
+                                    </div>
+                                    <div id="ssh-fields" class="grid-2" style="margin-top:0.75rem;">
+                                        <div class="inputContainer"><label class="inputLabel" for="RemoteHost">Host:</label><input type="text" id="RemoteHost" /></div>
+                                        <div class="inputContainer"><label class="inputLabel" for="RemoteSshPort">SSH Port:</label><input type="number" id="RemoteSshPort" /></div>
+                                        <div class="inputContainer"><label class="inputLabel" for="RemoteUser">User:</label><input type="text" id="RemoteUser" /></div>
+                                        <div class="inputContainer"><label class="inputLabel" for="RemoteSshKeyFile">SSH Key:</label><input type="text" id="RemoteSshKeyFile" /></div>
+                                        <div class="inputContainer"><label class="inputLabel" for="LocalMediaMountPoint">Local Media Path:</label><input type="text" id="LocalMediaMountPoint" /></div>
+                                        <div class="inputContainer"><label class="inputLabel" for="RemoteMediaMountPoint">Remote Media Path:</label><input type="text" id="RemoteMediaMountPoint" /></div>
+                                        <div class="inputContainer" style="grid-column:span 2;"><label class="inputLabel" for="RemoteTranscodePath">Remote Transcode Path:</label><input type="text" id="RemoteTranscodePath" /></div>
+                                    </div>
+                                    <div style="margin-top:0.5rem;">
+                                        <button type="button" id="btn-test-ssh" class="raised">SSH Test</button>
+                                        <span id="ssh-status" style="font-size:0.85rem;margin-left:0.5rem;"></span>
+                                    </div>
+                                </div></div>
+                            </div>
+
+                            <!-- Section: Upscaling -->
+                            <div class="accordion-section open">
+                                <div class="accordion-header">
+                                    <span class="material-icons">auto_awesome</span> Upscaling
+                                    <span class="material-icons chevron">expand_more</span>
+                                </div>
+                                <div class="accordion-body"><div class="accordion-body-inner">
+                                    <div class="checkboxContainer"><label><input type="checkbox" id="EnablePlugin" /> Plugin enabled</label></div>
+                                    <div class="grid-2" style="margin-top:0.75rem;">
+                                        <div class="selectContainer"><label class="selectLabel" for="Model">Model:</label><select id="Model"></select></div>
+                                        <div class="selectContainer"><label class="selectLabel" for="ScaleFactor">Scale:</label><select id="ScaleFactor"></select></div>
+                                        <div class="selectContainer"><label class="selectLabel" for="QualityLevel">Quality:</label>
+                                            <select id="QualityLevel">
+                                                <option value="high">High</option>
+                                                <option value="medium">Medium</option>
+                                                <option value="low">Low</option>
+                                            </select>
+                                        </div>
+                                        <div class="inputContainer"><label class="inputLabel" for="MaxConcurrentStreams">Max Concurrent Streams:</label><input type="number" id="MaxConcurrentStreams" min="1" max="8" /></div>
+                                    </div>
+                                </div></div>
+                            </div>
+
+                            <!-- Section: Hardware -->
+                            <div class="accordion-section">
+                                <div class="accordion-header">
+                                    <span class="material-icons">memory</span> Hardware
+                                    <span class="material-icons chevron">expand_more</span>
+                                </div>
+                                <div class="accordion-body"><div class="accordion-body-inner">
+                                    <div class="checkboxContainer"><label><input type="checkbox" id="HardwareAcceleration" /> Hardware Acceleration</label></div>
+                                    <div class="grid-2" style="margin-top:0.75rem;">
+                                        <div class="inputContainer"><label class="inputLabel" for="MaxVRAMUsage">Max VRAM (MB):</label><input type="number" id="MaxVRAMUsage" min="512" max="32768" /></div>
+                                        <div class="inputContainer"><label class="inputLabel" for="CpuThreads">CPU Threads:</label><input type="number" id="CpuThreads" min="1" max="64" /></div>
+                                    </div>
+                                </div></div>
+                            </div>
+
+                            <!-- Section: Player -->
+                            <div class="accordion-section">
+                                <div class="accordion-header">
+                                    <span class="material-icons">smart_display</span> Player
+                                    <span class="material-icons chevron">expand_more</span>
+                                </div>
+                                <div class="accordion-body"><div class="accordion-body-inner">
+                                    <div class="checkboxContainer"><label><input type="checkbox" id="PlayerButton" /> Show Player Button</label></div>
+                                    <div class="checkboxContainer"><label><input type="checkbox" id="Notifications" /> Notifications</label></div>
+                                    <div class="checkboxContainer"><label><input type="checkbox" id="AutoRetryButton" /> Auto-Retry Button</label></div>
+                                    <div class="selectContainer" style="margin-top:0.75rem;"><label class="selectLabel" for="ButtonPosition">Button Position:</label>
+                                        <select id="ButtonPosition">
+                                            <option value="right">Right</option>
+                                            <option value="left">Left</option>
+                                            <option value="center">Center</option>
+                                        </select>
+                                    </div>
+                                </div></div>
+                            </div>
+
+                            <!-- Section: Features -->
+                            <div class="accordion-section">
+                                <div class="accordion-header">
+                                    <span class="material-icons">extension</span> Features
+                                    <span class="material-icons chevron">expand_more</span>
+                                </div>
+                                <div class="accordion-body"><div class="accordion-body-inner">
+                                    <div class="checkboxContainer"><label><input type="checkbox" id="EnableComparisonView" /> Comparison View</label></div>
+                                    <div class="checkboxContainer"><label><input type="checkbox" id="EnablePerformanceMetrics" /> Performance Metrics</label></div>
+                                    <div class="checkboxContainer"><label><input type="checkbox" id="EnableAutoBenchmarking" /> Auto-Benchmarking</label></div>
+                                </div></div>
+                            </div>
+
+                            <!-- Section: FFmpeg Wrapper -->
+                            <div class="accordion-section">
+                                <div class="accordion-header">
+                                    <span class="material-icons">terminal</span> FFmpeg Wrapper
+                                    <span class="material-icons chevron">expand_more</span>
+                                </div>
+                                <div class="accordion-body"><div class="accordion-body-inner">
+                                    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
+                                        <span style="color:var(--text-secondary);">Status:</span>
+                                        <span id="wrapper-status" style="font-weight:bold;">...</span>
+                                        <span id="wrapper-platform" style="color:var(--text-muted);font-size:0.8rem;"></span>
+                                    </div>
+                                    <div id="wrapper-path-container" style="display:none;margin-bottom:0.75rem;font-size:0.8rem;color:var(--text-muted);">
+                                        Path: <code id="wrapper-path"></code>
+                                    </div>
+                                    <div style="display:flex;gap:0.5rem;">
+                                        <button type="button" id="btn-install-wrapper" class="raised">Install</button>
+                                        <button type="button" id="btn-uninstall-wrapper" class="raised">Uninstall</button>
+                                        <button type="button" id="btn-regenerate-wrapper" class="raised">Regenerate</button>
+                                    </div>
+                                </div></div>
+                            </div>
+
+                            <!-- Section: Backup -->
+                            <div class="accordion-section">
+                                <div class="accordion-header">
+                                    <span class="material-icons">backup</span> Backup
+                                    <span class="material-icons chevron">expand_more</span>
+                                </div>
+                                <div class="accordion-body"><div class="accordion-body-inner">
+                                    <p style="font-size:0.8rem;color:var(--text-muted);margin:0 0 0.75rem;">Export your settings to restore them on another device.</p>
+                                    <div style="display:flex;gap:0.5rem;align-items:center;">
+                                        <button type="button" id="btn-export-settings" class="raised">Export Settings</button>
+                                        <button type="button" id="btn-import-settings" class="raised">Import Settings</button>
+                                        <input type="file" id="settings-file-input" accept=".json,.txt" style="display:none;" />
+                                    </div>
+                                    <div id="settings-backup-status" style="font-size:0.85rem;margin-top:0.5rem;"></div>
+                                </div></div>
+                            </div>
+
+                            <div style="margin-top:1rem;">
+                                <button type="button" id="btn-save" class="raised button-submit" style="width:100%;padding:0.7rem !important;font-size:0.95rem !important;">Save Settings</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- ==================== TAB: JOBS ==================== -->
+                    <div id="tab-jobs" class="tab-content" style="display:none;">
+                        <div class="page-header">
+                            <h1>Jobs</h1>
+                            <button type="button" id="btn-refresh-jobs" class="quick-action-btn"><span class="material-icons">refresh</span> Refresh</button>
+                        </div>
+                        <div class="upscaler-card">
+                            <table class="jobs-table" id="jobs-table">
+                                <thead>
+                                    <tr>
+                                        <th>File</th>
+                                        <th>Status</th>
+                                        <th>Progress</th>
+                                        <th>Method</th>
+                                        <th>Duration</th>
+                                        <th style="text-align:center;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="jobs-tbody">
+                                    <tr><td colspan="6" style="text-align:center;padding:2rem;opacity:0.5;">No jobs found</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
-                    <!-- Player Integration -->
-                    <div class="verticalSection">
-                        <h3 class="sectionTitle">Player Integration</h3>
-                        <div class="checkboxContainer"><label><input type="checkbox" id="Notifications" /> Notifications</label></div>
-                        <div class="checkboxContainer"><label><input type="checkbox" id="AutoRetryButton" /> Auto-Retry Button</label></div>
-                        <div class="selectContainer"><label class="selectLabel" for="ButtonPosition">Button Position:</label>
-                            <select id="ButtonPosition">
-                                <option value="right">Right</option>
-                                <option value="left">Left</option>
-                                <option value="center">Center</option>
-                            </select>
+                    <!-- ==================== TAB: CACHE ==================== -->
+                    <div id="tab-cache" class="tab-content" style="display:none;">
+                        <div class="page-header"><h1>Cache</h1></div>
+
+                        <div class="grid-4" style="margin-bottom:1.25rem;">
+                            <div class="stat-card">
+                                <span class="material-icons stat-icon">storage</span>
+                                <div class="stat-value" style="color:var(--accent);" id="cache-size"><div class="skeleton" style="width:60px;height:24px;margin:0 auto;"></div></div>
+                                <div class="stat-label">Size</div>
+                            </div>
+                            <div class="stat-card">
+                                <span class="material-icons stat-icon">folder</span>
+                                <div class="stat-value" style="color:var(--success);" id="cache-entries"><div class="skeleton" style="width:40px;height:24px;margin:0 auto;"></div></div>
+                                <div class="stat-label">Entries</div>
+                            </div>
+                            <div class="stat-card">
+                                <span class="material-icons stat-icon">trending_up</span>
+                                <div class="stat-value" style="color:var(--warning);" id="cache-hitrate"><div class="skeleton" style="width:50px;height:24px;margin:0 auto;"></div></div>
+                                <div class="stat-label">Hit Rate</div>
+                            </div>
+                            <div class="stat-card">
+                                <span class="material-icons stat-icon">data_usage</span>
+                                <div class="stat-value" style="color:var(--danger);" id="cache-usage"><div class="skeleton" style="width:50px;height:24px;margin:0 auto;"></div></div>
+                                <div class="stat-label">Usage</div>
+                            </div>
+                        </div>
+
+                        <div class="upscaler-card">
+                            <h3><span class="material-icons">settings</span> Cache Settings</h3>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnablePreProcessingCache" /> Cache enabled</label></div>
+                            <div class="grid-2" style="margin-top:0.75rem;">
+                                <div class="inputContainer"><label class="inputLabel" for="MaxCacheAgeDays">Max Age (Days):</label><input type="number" id="MaxCacheAgeDays" min="1" max="365" /></div>
+                                <div class="inputContainer"><label class="inputLabel" for="CacheSizeMB">Max Size (MB):</label><input type="number" id="CacheSizeMB" min="128" max="1048576" /></div>
+                            </div>
+                            <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
+                                <button type="button" id="btn-clear-cache" class="raised">Clear Cache</button>
+                                <button type="button" id="btn-refresh-cache" class="raised">Refresh</button>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Features -->
-                    <div class="verticalSection">
-                        <h3 class="sectionTitle">Features</h3>
-                        <div class="checkboxContainer"><label><input type="checkbox" id="EnableComparisonView" /> Comparison View</label></div>
-                        <div class="checkboxContainer"><label><input type="checkbox" id="EnablePerformanceMetrics" /> Performance Metrics</label></div>
-                        <div class="checkboxContainer"><label><input type="checkbox" id="EnableAutoBenchmarking" /> Auto-Benchmarking</label></div>
-                    </div>
+                    <!-- ==================== TAB: SYSTEM ==================== -->
+                    <div id="tab-system" class="tab-content" style="display:none;">
+                        <div class="page-header"><h1>System</h1></div>
 
-                    <!-- FFmpeg Wrapper -->
-                    <div class="verticalSection" style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;">
-                        <h3 style="margin-top:0;">FFmpeg Wrapper</h3>
-                        <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
-                            <span>Status:</span> <span id="wrapper-status" style="font-weight:bold;">...</span>
-                            <span id="wrapper-platform" style="opacity:0.6;font-size:0.8rem;"></span>
+                        <div class="grid-2" style="margin-bottom:1.25rem;">
+                            <div class="upscaler-card">
+                                <h3><span class="material-icons">developer_board</span> Hardware Info</h3>
+                                <div id="hw-info">
+                                    <div class="info-row"><span class="label">CPU</span><span class="value" id="hw-cpu"><span class="skeleton" style="display:inline-block;width:120px;height:16px;"></span></span></div>
+                                    <div class="info-row"><span class="label">GPU</span><span class="value" id="hw-gpu"><span class="skeleton" style="display:inline-block;width:120px;height:16px;"></span></span></div>
+                                    <div class="info-row"><span class="label">Platform</span><span class="value" id="hw-platform"><span class="skeleton" style="display:inline-block;width:80px;height:16px;"></span></span></div>
+                                    <div class="info-row"><span class="label">Providers</span><span class="value" id="hw-providers"><span class="skeleton" style="display:inline-block;width:100px;height:16px;"></span></span></div>
+                                    <div class="info-row"><span class="label">Container</span><span class="value" id="hw-container"><span class="skeleton" style="display:inline-block;width:40px;height:16px;"></span></span></div>
+                                </div>
+                            </div>
+
+                            <div class="upscaler-card">
+                                <h3><span class="material-icons">speed</span> Benchmark</h3>
+                                <div id="benchmark-result" style="font-size:0.85rem;margin-bottom:0.75rem;">
+                                    <div style="opacity:0.5;">No benchmark run yet</div>
+                                </div>
+                                <button type="button" id="btn-run-benchmark" class="raised" style="width:100%;">Run Benchmark</button>
+                            </div>
                         </div>
-                        <div id="wrapper-path-container" style="display:none;margin-bottom:0.75rem;font-size:0.8rem;opacity:0.7;">
-                            Path: <code id="wrapper-path"></code>
-                        </div>
-                        <div style="display:flex;gap:0.5rem;">
-                            <button type="button" id="btn-install-wrapper" class="raised">Install</button>
-                            <button type="button" id="btn-uninstall-wrapper" class="raised">Uninstall</button>
-                            <button type="button" id="btn-regenerate-wrapper" class="raised">Regenerate</button>
-                        </div>
-                    </div>
 
-                    <!-- Settings Export/Import -->
-                    <div class="verticalSection" style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;margin-top:1rem;">
-                        <h3 style="margin-top:0;color:#7dd3fc;">Settings Backup</h3>
-                        <p style="font-size:0.8rem;opacity:0.6;margin:0 0 0.75rem;">Export your settings as a file to restore them on another device.</p>
-                        <div style="display:flex;gap:0.5rem;align-items:center;">
-                            <button type="button" id="btn-export-settings" class="raised">Export Settings</button>
-                            <button type="button" id="btn-import-settings" class="raised">Import Settings</button>
-                            <input type="file" id="settings-file-input" accept=".json,.txt" style="display:none;" />
-                        </div>
-                        <div id="settings-backup-status" style="font-size:0.85rem;margin-top:0.5rem;"></div>
-                    </div>
-
-                    <div style="margin-top:1rem;">
-                        <button type="button" id="btn-save" class="raised button-submit block">Save Settings</button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- ==================== TAB: JOBS ==================== -->
-            <div id="tab-jobs" class="tab-content" style="display:none;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-                    <h3 style="margin:0;">Processing Jobs</h3>
-                    <button type="button" id="btn-refresh-jobs" class="raised">Refresh</button>
-                </div>
-                <div id="jobs-table-container" style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;">
-                    <table style="width:100%;border-collapse:collapse;font-size:0.85rem;" id="jobs-table">
-                        <thead>
-                            <tr style="border-bottom:1px solid #333;">
-                                <th style="text-align:left;padding:0.5rem;">File</th>
-                                <th style="text-align:left;padding:0.5rem;">Status</th>
-                                <th style="text-align:left;padding:0.5rem;">Progress</th>
-                                <th style="text-align:left;padding:0.5rem;">Method</th>
-                                <th style="text-align:left;padding:0.5rem;">Duration</th>
-                                <th style="text-align:center;padding:0.5rem;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="jobs-tbody">
-                            <tr><td colspan="6" style="text-align:center;padding:2rem;opacity:0.5;">No jobs found</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- ==================== TAB: CACHE ==================== -->
-            <div id="tab-cache" class="tab-content" style="display:none;">
-                <!-- Cache Stats -->
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;margin-bottom:1rem;">
-                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
-                        <div style="font-size:1.5rem;font-weight:bold;color:#00d4ff;" id="cache-size">-</div>
-                        <div style="font-size:0.8rem;opacity:0.7;">Size</div>
-                    </div>
-                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
-                        <div style="font-size:1.5rem;font-weight:bold;color:#4ade80;" id="cache-entries">0</div>
-                        <div style="font-size:0.8rem;opacity:0.7;">Entries</div>
-                    </div>
-                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
-                        <div style="font-size:1.5rem;font-weight:bold;color:#fbbf24;" id="cache-hitrate">-</div>
-                        <div style="font-size:0.8rem;opacity:0.7;">Hit Rate</div>
-                    </div>
-                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
-                        <div style="font-size:1.5rem;font-weight:bold;color:#f87171;" id="cache-usage">-</div>
-                        <div style="font-size:0.8rem;opacity:0.7;">Usage</div>
-                    </div>
-                </div>
-
-                <!-- Cache Config -->
-                <div class="verticalSection" style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;">
-                    <h3 style="margin-top:0;">Cache Settings</h3>
-                    <div class="checkboxContainer"><label><input type="checkbox" id="EnablePreProcessingCache" /> Cache enabled</label></div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:0.75rem;">
-                        <div class="inputContainer"><label class="inputLabel" for="MaxCacheAgeDays">Max Age (Days):</label><input type="number" id="MaxCacheAgeDays" min="1" max="365" /></div>
-                        <div class="inputContainer"><label class="inputLabel" for="CacheSizeMB">Max Size (MB):</label><input type="number" id="CacheSizeMB" min="128" max="1048576" /></div>
-                    </div>
-                    <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
-                        <button type="button" id="btn-clear-cache" class="raised">Clear Cache</button>
-                        <button type="button" id="btn-refresh-cache" class="raised">Refresh</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==================== TAB: SYSTEM ==================== -->
-            <div id="tab-system" class="tab-content" style="display:none;">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-                    <!-- Hardware Info -->
-                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;">
-                        <h3 style="margin-top:0;color:#00d4ff;">Hardware Info</h3>
-                        <div style="font-size:0.85rem;" id="hw-info">
-                            <div style="padding:0.3rem 0;border-bottom:1px solid #333;"><span style="opacity:0.7;">CPU:</span> <span id="hw-cpu">Detecting...</span></div>
-                            <div style="padding:0.3rem 0;border-bottom:1px solid #333;"><span style="opacity:0.7;">GPU:</span> <span id="hw-gpu">Detecting...</span></div>
-                            <div style="padding:0.3rem 0;border-bottom:1px solid #333;"><span style="opacity:0.7;">Platform:</span> <span id="hw-platform">-</span></div>
-                            <div style="padding:0.3rem 0;border-bottom:1px solid #333;"><span style="opacity:0.7;">Providers:</span> <span id="hw-providers">-</span></div>
-                            <div style="padding:0.3rem 0;"><span style="opacity:0.7;">Container:</span> <span id="hw-container">-</span></div>
+                        <div class="upscaler-card">
+                            <h3><span class="material-icons">compare</span> AI Comparison View</h3>
+                            <div style="display:flex;gap:0.75rem;align-items:flex-end;margin-bottom:1rem;">
+                                <div class="selectContainer" style="flex:1;"><label class="selectLabel" for="comparison-item">Media Item:</label><select id="comparison-item"></select></div>
+                                <button type="button" id="btn-compare" class="raised">Generate Comparison</button>
+                            </div>
+                            <div id="comparison-container" style="display:none;">
+                                <div class="grid-2">
+                                    <div style="text-align:center;"><div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.3rem;">Original</div><img id="img-original" style="max-width:100%;border-radius:6px;" /></div>
+                                    <div style="text-align:center;"><div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.3rem;">Upscaled</div><img id="img-upscaled" style="max-width:100%;border-radius:6px;" /></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Benchmark -->
-                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;">
-                        <h3 style="margin-top:0;color:#00d4ff;">Benchmark</h3>
-                        <div id="benchmark-result" style="font-size:0.85rem;margin-bottom:0.75rem;">
-                            <div style="opacity:0.5;">No benchmark run yet</div>
-                        </div>
-                        <button type="button" id="btn-run-benchmark" class="raised" style="width:100%;">Run Benchmark</button>
-                    </div>
-                </div>
-
-                <!-- AI Comparison -->
-                <div class="verticalSection" style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;margin-top:1rem;">
-                    <h3 style="margin-top:0;color:#00d4ff;">AI Comparison View</h3>
-                    <div style="display:flex;gap:0.75rem;align-items:flex-end;margin-bottom:1rem;">
-                        <div class="selectContainer" style="flex:1;"><label class="selectLabel" for="comparison-item">Media Item:</label><select id="comparison-item"></select></div>
-                        <button type="button" id="btn-compare" class="raised">Generate Comparison</button>
-                    </div>
-                    <div id="comparison-container" style="display:none;">
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-                            <div style="text-align:center;"><div style="font-size:0.8rem;opacity:0.7;margin-bottom:0.3rem;">Original</div><img id="img-original" style="max-width:100%;border-radius:4px;" /></div>
-                            <div style="text-align:center;"><div style="font-size:0.8rem;opacity:0.7;margin-bottom:0.3rem;">Upscaled</div><img id="img-upscaled" style="max-width:100%;border-radius:4px;" /></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                </div><!-- /upscaler-main -->
+            </div><!-- /upscaler-layout -->
         </div>
     </div>
 
@@ -449,10 +933,8 @@
         var refreshInterval = null;
         var _initialized = false;
 
-        // HTML escape to prevent XSS
         function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
 
-        // English-only toast notification (replaces alert + Dashboard toast)
         function showToast(msg, color) {
             var t = document.createElement('div');
             t.className = 'upscaler-toast';
@@ -462,43 +944,54 @@
             setTimeout(function() { if (t.parentNode) t.remove(); }, 3000);
         }
 
-        // ===== TAB SYSTEM =====
-        function initTabs(page) {
-            var btns = page.querySelectorAll('.tab-btn');
-            btns.forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    var tabId = btn.getAttribute('data-tab');
-                    btns.forEach(function(b) {
-                        b.style.borderBottomColor = 'transparent';
-                        b.style.color = '#aaa';
-                        b.classList.remove('active');
-                    });
-                    btn.style.borderBottomColor = '#00d4ff';
-                    btn.style.color = '#00d4ff';
-                    btn.classList.add('active');
+        // ===== SIDEBAR NAV =====
+        function initNav(page) {
+            var items = page.querySelectorAll('.nav-item[data-tab]');
+            items.forEach(function(item) {
+                item.addEventListener('click', function() {
+                    var tabId = item.getAttribute('data-tab');
+                    items.forEach(function(i) { i.classList.remove('active'); });
+                    item.classList.add('active');
 
                     page.querySelectorAll('.tab-content').forEach(function(c) { c.style.display = 'none'; });
                     var target = page.querySelector('#tab-' + tabId);
                     if (target) target.style.display = '';
 
-                    // Refresh data when switching tabs
-                    if (tabId === 'dashboard') { refreshDashboard(page); }
-                    else if (tabId === 'jobs') { refreshJobs(page); }
-                    else if (tabId === 'cache') { refreshCache(page); }
-                    else if (tabId === 'system') { refreshSystem(page); }
+                    if (tabId === 'dashboard') refreshDashboard(page);
+                    else if (tabId === 'jobs') refreshJobs(page);
+                    else if (tabId === 'cache') refreshCache(page);
+                    else if (tabId === 'system') refreshSystem(page);
+                });
+            });
+
+            // Accordion toggle
+            page.querySelectorAll('.accordion-header').forEach(function(header) {
+                header.addEventListener('click', function() {
+                    var section = header.parentElement;
+                    section.classList.toggle('open');
                 });
             });
         }
 
-        // ===== SERVICE HEALTH (Backend Proxy) =====
+        // ===== SERVICE HEALTH =====
         function checkServiceHealth(page) {
             var apiUrl = ApiClient.getUrl('Upscaler/service-health');
             ApiClient.ajax({ type: 'GET', url: apiUrl, dataType: 'json' }).then(function(data) {
                 var badge = page.querySelector('#service-badge');
+                var banner = page.querySelector('#service-banner');
+                var bannerText = page.querySelector('#banner-text');
+                var bannerDetails = page.querySelector('#banner-details');
+                var sidebarStatus = page.querySelector('#sidebar-status');
+
                 if (data.available) {
+                    badge.className = 'status-pill status-pill--online';
                     badge.textContent = 'Online';
-                    badge.style.background = '#065f46';
-                    badge.style.color = '#4ade80';
+                    banner.className = 'service-banner online';
+                    bannerText.textContent = 'AI service connected and running';
+                    bannerDetails.textContent = data.currentModel ? ('Model: ' + data.currentModel + ' | ' + data.latencyMs + 'ms') : (data.latencyMs + 'ms');
+                    sidebarStatus.className = 'status-dot online';
+                    sidebarStatus.textContent = 'Online';
+
                     page.querySelector('#svc-docker').textContent = 'Online';
                     page.querySelector('#svc-docker').style.color = '#4ade80';
                     page.querySelector('#svc-gpu').textContent = data.usingGpu ? 'Active' : 'CPU Mode';
@@ -510,24 +1003,57 @@
                     page.querySelector('#svc-processing').textContent = data.processingCount + '/' + data.maxConcurrent;
                     page.querySelector('#svc-processing').style.color = '#e2e8f0';
                 } else {
+                    badge.className = 'status-pill status-pill--offline';
                     badge.textContent = 'Offline';
-                    badge.style.background = '#7f1d1d';
-                    badge.style.color = '#f87171';
+                    banner.className = 'service-banner offline';
+                    bannerText.textContent = 'AI service is not reachable';
+                    bannerDetails.textContent = '';
+                    sidebarStatus.className = 'status-dot offline';
+                    sidebarStatus.textContent = 'Offline';
+
                     page.querySelector('#svc-docker').textContent = 'Offline';
                     page.querySelector('#svc-docker').style.color = '#f87171';
                 }
             }).catch(function() {
                 var badge = page.querySelector('#service-badge');
+                badge.className = 'status-pill status-pill--offline';
                 badge.textContent = 'Error';
-                badge.style.background = '#7f1d1d';
-                badge.style.color = '#f87171';
+                var sidebarStatus = page.querySelector('#sidebar-status');
+                sidebarStatus.className = 'status-dot offline';
+                sidebarStatus.textContent = 'Error';
             });
+        }
+
+        // ===== GPU LIST =====
+        function loadGpuList(page) {
+            ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/service-health'), dataType: 'json' }).then(function(data) {
+                if (!data.available) return;
+                var serviceUrl = page.querySelector('#AiServiceUrl').value || 'http://localhost:5000';
+                // Try to fetch GPU list from the Docker service directly through proxy
+                ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/gpus'), dataType: 'json' }).then(function(gpuData) {
+                    var select = page.querySelector('#GpuDeviceIndex');
+                    if (!select || !gpuData || !gpuData.gpus) return;
+                    select.innerHTML = '';
+                    if (gpuData.gpus.length === 0) {
+                        var opt = document.createElement('option');
+                        opt.value = '0';
+                        opt.textContent = 'GPU 0 (Default)';
+                        select.appendChild(opt);
+                    } else {
+                        gpuData.gpus.forEach(function(gpu) {
+                            var opt = document.createElement('option');
+                            opt.value = gpu.index;
+                            opt.textContent = 'GPU ' + gpu.index + ': ' + gpu.name + (gpu.memory_total_mb ? ' (' + gpu.memory_total_mb + ' MB)' : '');
+                            select.appendChild(opt);
+                        });
+                    }
+                }).catch(function() {});
+            }).catch(function() {});
         }
 
         // ===== DASHBOARD =====
         function refreshDashboard(page) {
             checkServiceHealth(page);
-            // Load jobs for stats
             ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/jobs'), dataType: 'json' }).then(function(data) {
                 if (data && data.jobs) {
                     var active = 0, completed = 0, failed = 0;
@@ -539,11 +1065,11 @@
 
                         if (j.status === 'Processing' || j.status === 'Starting') {
                             var prog = Math.min(Math.max(Math.round(j.progress || 0), 0), 100);
-                            jobsHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid #333;">' +
-                                '<span>' + esc(j.inputPath || 'Unknown') + '</span>' +
+                            jobsHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid rgba(255,255,255,0.06);">' +
+                                '<span style="font-size:0.85rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(j.inputPath || 'Unknown') + '</span>' +
                                 '<div style="display:flex;align-items:center;gap:0.5rem;">' +
-                                '<div style="width:80px;height:6px;background:#333;border-radius:3px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:#00d4ff;border-radius:3px;"></div></div>' +
-                                '<span style="font-size:0.75rem;">' + prog + '%</span>' +
+                                '<div style="width:80px;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:var(--accent);border-radius:3px;"></div></div>' +
+                                '<span style="font-size:0.75rem;color:var(--text-secondary);">' + prog + '%</span>' +
                                 '</div></div>';
                         }
                     });
@@ -558,7 +1084,6 @@
                 }
             }).catch(function() {});
 
-            // Load cache stats for hit rate
             ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/cache/stats'), dataType: 'json' }).then(function(data) {
                 if (data) {
                     page.querySelector('#stat-cache-hit').textContent = data.HitRate ? data.HitRate.toFixed(1) + '%' : '0%';
@@ -578,33 +1103,34 @@
                 data.jobs.forEach(function(j) {
                     var prog = Math.min(Math.max(Math.round(j.progress || 0), 0), 100);
                     var dur = j.duration ? j.duration.toFixed(1) + 's' : '-';
-                    var statusColor = j.status === 'Completed' ? '#4ade80' : j.status === 'Failed' ? '#f87171' : j.status === 'Processing' ? '#00d4ff' : '#fbbf24';
+                    var statusColor = j.status === 'Completed' ? 'var(--success)' : j.status === 'Failed' ? 'var(--danger)' : j.status === 'Processing' ? 'var(--accent)' : 'var(--warning)';
+                    var statusIcon = j.status === 'Completed' ? 'check_circle' : j.status === 'Failed' ? 'error' : j.status === 'Processing' ? 'play_circle' : 'pending';
                     var safeJobId = esc(j.jobId || '');
                     var actions = '';
                     if (j.status === 'Processing' || j.status === 'Starting') {
                         if (j.isPaused) {
-                            actions = '<button type="button" data-action="resume" data-jobid="' + safeJobId + '" style="background:#065f46;border:none;color:#4ade80;padding:0.2rem 0.5rem;border-radius:4px;cursor:pointer;font-size:0.75rem;">Resume</button>';
+                            actions = '<button type="button" data-action="resume" data-jobid="' + safeJobId + '" class="quick-action-btn" style="padding:0.2rem 0.5rem;"><span class="material-icons" style="font-size:14px;">play_arrow</span></button>';
                         } else {
-                            actions = '<button type="button" data-action="pause" data-jobid="' + safeJobId + '" style="background:#1e3a5f;border:none;color:#7dd3fc;padding:0.2rem 0.5rem;border-radius:4px;cursor:pointer;font-size:0.75rem;">Pause</button> ' +
-                                      '<button type="button" data-action="cancel" data-jobid="' + safeJobId + '" style="background:#7f1d1d;border:none;color:#f87171;padding:0.2rem 0.5rem;border-radius:4px;cursor:pointer;font-size:0.75rem;">Stop</button>';
+                            actions = '<button type="button" data-action="pause" data-jobid="' + safeJobId + '" class="quick-action-btn" style="padding:0.2rem 0.5rem;"><span class="material-icons" style="font-size:14px;">pause</span></button> ' +
+                                      '<button type="button" data-action="cancel" data-jobid="' + safeJobId + '" class="quick-action-btn" style="padding:0.2rem 0.5rem;border-color:rgba(248,113,113,0.3);color:var(--danger);"><span class="material-icons" style="font-size:14px;">stop</span></button>';
                         }
                     }
-                    html += '<tr style="border-bottom:1px solid #333;">' +
-                        '<td style="padding:0.5rem;">' + esc(j.inputPath || '-') + '</td>' +
-                        '<td style="padding:0.5rem;color:' + statusColor + ';">' + esc(j.status || '-') + '</td>' +
-                        '<td style="padding:0.5rem;"><div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:60px;height:5px;background:#333;border-radius:3px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:#00d4ff;"></div></div><span style="font-size:0.75rem;">' + prog + '%</span></div></td>' +
-                        '<td style="padding:0.5rem;">' + esc(j.method || '-') + '</td>' +
-                        '<td style="padding:0.5rem;">' + dur + '</td>' +
-                        '<td style="padding:0.5rem;text-align:center;">' + actions + '</td>' +
+                    html += '<tr>' +
+                        '<td class="file-path" title="' + esc(j.inputPath || '') + '">' + esc(j.inputPath || '-') + '</td>' +
+                        '<td><span class="status-pill status-pill--' + (j.status === 'Completed' ? 'online' : j.status === 'Failed' ? 'offline' : j.status === 'Processing' ? 'processing' : 'warning') + '"><span class="material-icons" style="font-size:14px;">' + statusIcon + '</span> ' + esc(j.status || '-') + '</span></td>' +
+                        '<td><div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:60px;height:5px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:var(--accent);"></div></div><span style="font-size:0.75rem;">' + prog + '%</span></div></td>' +
+                        '<td>' + esc(j.method || '-') + '</td>' +
+                        '<td>' + dur + '</td>' +
+                        '<td style="text-align:center;">' + actions + '</td>' +
                         '</tr>';
                 });
                 tbody.innerHTML = html;
             }).catch(function() {
-                page.querySelector('#jobs-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:#f87171;">Error loading jobs</td></tr>';
+                page.querySelector('#jobs-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--danger);">Error loading jobs</td></tr>';
             });
         }
 
-        // Delegated job control via data attributes (no inline onclick - XSS safe)
+        // Delegated job control
         document.addEventListener('click', function(e) {
             var btn = e.target.closest('[data-action][data-jobid]');
             if (!btn) return;
@@ -688,7 +1214,7 @@
             if (currentVal) select.value = currentVal;
         }
 
-        // ===== MEDIA ITEMS for Comparison =====
+        // ===== MEDIA ITEMS =====
         function loadMediaItems(page) {
             try {
                 ApiClient.getItems(ApiClient.getCurrentUserId(), {
@@ -734,12 +1260,8 @@
                     var el = page.querySelector('#' + f);
                     if (el) {
                         el.checked = !!config[f];
-                        // Force emby-checkbox visual update
-                        if (el.checked) {
-                            el.setAttribute('checked', 'checked');
-                        } else {
-                            el.removeAttribute('checked');
-                        }
+                        if (el.checked) { el.setAttribute('checked', 'checked'); }
+                        else { el.removeAttribute('checked'); }
                     }
                 });
 
@@ -753,6 +1275,12 @@
                     updateScaleOptions(page);
                     page.querySelector('#ScaleFactor').value = config.ScaleFactor;
                 }
+
+                // GPU device index
+                if (config.GpuDeviceIndex !== undefined) {
+                    var gpuSel = page.querySelector('#GpuDeviceIndex');
+                    if (gpuSel) gpuSel.value = config.GpuDeviceIndex;
+                }
             });
         }
 
@@ -765,7 +1293,7 @@
                     if (el) config[f] = el.value;
                 });
 
-                var nums = ['RemoteSshPort','MaxVRAMUsage','CpuThreads','MaxConcurrentStreams','MaxCacheAgeDays','CacheSizeMB','ScaleFactor'];
+                var nums = ['RemoteSshPort','MaxVRAMUsage','CpuThreads','MaxConcurrentStreams','MaxCacheAgeDays','CacheSizeMB','ScaleFactor','GpuDeviceIndex'];
                 nums.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) config[f] = parseInt(el.value, 10) || config[f];
@@ -783,7 +1311,7 @@
                 config.QualityLevel = page.querySelector('#QualityLevel').value;
                 config.ButtonPosition = page.querySelector('#ButtonPosition').value;
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
-                config.PluginVersion = '1.5.2.6';
+                config.PluginVersion = '1.5.2.7';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -816,10 +1344,8 @@
 
         // ===== EVENT HANDLERS =====
         function attachEvents(page) {
-            // Save
             page.querySelector('#btn-save').addEventListener('click', function() { saveConfig(page); });
 
-            // Connection Test (via backend proxy)
             page.querySelector('#btn-test-connection').addEventListener('click', function() {
                 var status = page.querySelector('#connection-status');
                 status.textContent = 'Testing...';
@@ -839,7 +1365,6 @@
                 });
             });
 
-            // SSH Test
             page.querySelector('#btn-test-ssh').addEventListener('click', function() {
                 var status = page.querySelector('#ssh-status');
                 status.textContent = 'Testing...';
@@ -856,7 +1381,6 @@
                 }).catch(function() { status.textContent = 'Error'; status.style.color = '#f87171'; });
             });
 
-            // Wrapper buttons
             page.querySelector('#btn-install-wrapper').addEventListener('click', function() {
                 ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('upscaler/wrapper/install'), dataType: 'json' }).then(function(data) {
                     showToast(data.Message || 'Wrapper installed');
@@ -876,12 +1400,18 @@
                 }).catch(function() { showToast('Regenerate failed', '#f87171'); });
             });
 
-            // Dashboard refresh
             page.querySelector('#btn-refresh-status').addEventListener('click', function() { refreshDashboard(page); });
             page.querySelector('#btn-refresh-jobs').addEventListener('click', function() { refreshJobs(page); });
             page.querySelector('#btn-refresh-cache').addEventListener('click', function() { refreshCache(page); });
 
-            // Clear cache
+            page.querySelector('#btn-quick-clear-cache').addEventListener('click', function() {
+                if (confirm('Clear all cached data?')) {
+                    ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/cache/clear') }).then(function() {
+                        showToast('Cache cleared');
+                    }).catch(function() { showToast('Failed to clear cache', '#f87171'); });
+                }
+            });
+
             page.querySelector('#btn-clear-cache').addEventListener('click', function() {
                 if (confirm('Clear all cached data?')) {
                     ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/cache/clear') }).then(function() {
@@ -891,28 +1421,31 @@
                 }
             });
 
-            // Benchmark
             page.querySelector('#btn-run-benchmark').addEventListener('click', function() {
                 var result = page.querySelector('#benchmark-result');
-                result.innerHTML = '<div style="color:#fbbf24;">Running benchmark...</div>';
+                result.innerHTML = '<div style="color:var(--warning);">Running benchmark...</div>';
                 ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/benchmark'), dataType: 'json' }).then(function(data) {
                     if (data.success && data.results) {
                         var r = data.results;
-                        var html = '<div style="padding:0.3rem 0;border-bottom:1px solid #333;">Duration:' + (r.duration || 0).toFixed(1) + 's</div>';
+                        var html = '<div class="info-row"><span class="label">Duration</span><span class="value">' + (r.duration || 0).toFixed(1) + 's</span></div>';
                         if (r.optimalSettings) {
-                            html += '<div style="padding:0.3rem 0;border-bottom:1px solid #333;">Rec. Model: <strong>' + (r.optimalSettings.RecommendedModel || '-') + '</strong></div>';
-                            html += '<div style="padding:0.3rem 0;border-bottom:1px solid #333;">Max Resolution: ' + (r.optimalSettings.RecommendedMaxResolution || '-') + '</div>';
-                            html += '<div style="padding:0.3rem 0;border-bottom:1px solid #333;">Quality: ' + (r.optimalSettings.RecommendedQuality || '-') + '</div>';
-                            html += '<div style="padding:0.3rem 0;">Max Streams: ' + (r.optimalSettings.MaxConcurrentStreams || 1) + '</div>';
+                            html += '<div class="info-row"><span class="label">Recommended Model</span><span class="value">' + (r.optimalSettings.RecommendedModel || '-') + '</span></div>';
+                            html += '<div class="info-row"><span class="label">Max Resolution</span><span class="value">' + (r.optimalSettings.RecommendedMaxResolution || '-') + '</span></div>';
+                            html += '<div class="info-row"><span class="label">Quality</span><span class="value">' + (r.optimalSettings.RecommendedQuality || '-') + '</span></div>';
+                            html += '<div class="info-row"><span class="label">Max Streams</span><span class="value">' + (r.optimalSettings.MaxConcurrentStreams || 1) + '</span></div>';
                         }
                         result.innerHTML = html;
                     }
                 }).catch(function() {
-                    result.innerHTML = '<div style="color:#f87171;">Benchmark failed</div>';
+                    result.innerHTML = '<div style="color:var(--danger);">Benchmark failed</div>';
                 });
             });
 
-            // Comparison
+            page.querySelector('#btn-quick-benchmark').addEventListener('click', function() {
+                page.querySelector('.nav-item[data-tab="system"]').click();
+                page.querySelector('#btn-run-benchmark').click();
+            });
+
             page.querySelector('#btn-compare').addEventListener('click', function() {
                 var itemId = page.querySelector('#comparison-item').value;
                 if (!itemId) { showToast('Please select an item', '#fbbf24'); return; }
@@ -931,7 +1464,6 @@
                 });
             });
 
-            // Settings Export
             page.querySelector('#btn-export-settings').addEventListener('click', function() {
                 var statusEl = page.querySelector('#settings-backup-status');
                 statusEl.textContent = 'Exporting...';
@@ -955,7 +1487,6 @@
                 });
             });
 
-            // Settings Import
             var fileInput = page.querySelector('#settings-file-input');
             page.querySelector('#btn-import-settings').addEventListener('click', function() {
                 fileInput.value = '';
@@ -1000,37 +1531,34 @@
             if (!page) return;
 
             if (!_initialized) {
-                initTabs(page);
+                initNav(page);
                 attachEvents(page);
                 _initialized = true;
             }
 
             loadModels(page).then(function() {
                 loadConfig(page);
-                // Re-apply after emby custom elements upgrade (they can be slow)
                 setTimeout(function() { loadConfig(page); }, 500);
             }).catch(function() {
-                // Load config even if models API fails
                 loadConfig(page);
                 setTimeout(function() { loadConfig(page); }, 500);
             });
             loadWrapperStatus(page);
             loadMediaItems(page);
+            loadGpuList(page);
             refreshDashboard(page);
 
-            // Auto-refresh every 15 seconds
             if (refreshInterval) clearInterval(refreshInterval);
             refreshInterval = setInterval(function() {
-                var activeTab = page.querySelector('.tab-btn.active');
-                if (activeTab) {
-                    var tab = activeTab.getAttribute('data-tab');
+                var activeItem = page.querySelector('.nav-item.active');
+                if (activeItem) {
+                    var tab = activeItem.getAttribute('data-tab');
                     if (tab === 'dashboard') refreshDashboard(page);
                     else if (tab === 'jobs') refreshJobs(page);
                 }
             }, 15000);
         }
 
-        // Jellyfin SPA page lifecycle
         var events = ['pageshow', 'viewshow'];
         events.forEach(function(evt) {
             document.addEventListener(evt, function(e) {
@@ -1041,14 +1569,12 @@
             });
         });
 
-        // Fallback
         setTimeout(function() {
             if (document.querySelector('#UpscalerConfigurationPage')) {
                 onPageShow();
             }
         }, 500);
 
-        // Cleanup on leave
         document.addEventListener('viewbeforehide', function(e) {
             if (e.target && e.target.id === 'UpscalerConfigurationPage') {
                 if (refreshInterval) {

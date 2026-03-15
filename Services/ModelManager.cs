@@ -172,7 +172,8 @@ namespace JellyfinUpscalerPlugin.Services
             try
             {
                 _logger.LogInformation("Requesting model load: {Model}, GPU: {UseGpu}", modelName, useGpu);
-                return await httpUpscaler.LoadModelAsync(modelName, useGpu, cancellationToken);
+                var gpuDeviceId = Plugin.Instance?.Configuration?.GpuDeviceIndex ?? 0;
+                return await httpUpscaler.LoadModelAsync(modelName, useGpu, gpuDeviceId, cancellationToken);
             }
             catch (Exception ex)
             {

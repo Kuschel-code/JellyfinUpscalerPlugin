@@ -1,4 +1,4 @@
-# 🎮 Jellyfin AI Upscaler Plugin v1.5.2.3
+# Jellyfin AI Upscaler Plugin v1.5.2.7
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -7,16 +7,16 @@
 [![Project Website](https://img.shields.io/badge/Website-Visit-blueviolet)](https://transcendent-blancmange-824967.netlify.app)
 
 > [!CAUTION]
-> **🧪 TEST PHASE - v1.5.2.3 (Player Button Fix + Intel GPU Fix)**
+> **TEST PHASE - v1.5.2.7 (Docker Fixes + Premium Dashboard)**
 >
-> This release fixes the **player button not showing** (global script injection via index.html) and **Intel OpenVINO GPU running on CPU** (updated compute runtime + explicit GPU_FP32 device targeting).
+> Major update: fixes **TensorRT poisoning CUDA fallback** (Issue #46), **Intel OpenVINO GPU not using GPU** (Issue #45), adds **multi-GPU selection**, **premium sidebar dashboard**, and **robust player button injection** with MutationObserver.
 >
-> **🐳 Docker Images (v1.5.4):**
-> *   `kuscheltier/jellyfin-ai-upscaler:1.5.4` (NVIDIA CUDA + cuDNN 9)
-> *   `kuscheltier/jellyfin-ai-upscaler:1.5.4-amd` (AMD ROCm)
-> *   `kuscheltier/jellyfin-ai-upscaler:1.5.4-intel` (Intel Arc/iGPU OpenVINO)
-> *   `kuscheltier/jellyfin-ai-upscaler:1.5.4-apple` (macOS Apple Silicon)
-> *   `kuscheltier/jellyfin-ai-upscaler:1.5.4-cpu` (CPU Only)
+> **Docker Images (docker4 / v1.5.5):**
+> *   `kuscheltier/jellyfin-ai-upscaler:docker4` (NVIDIA CUDA + cuDNN 9)
+> *   `kuscheltier/jellyfin-ai-upscaler:docker4-amd` (AMD ROCm)
+> *   `kuscheltier/jellyfin-ai-upscaler:docker4-intel` (Intel Arc/iGPU OpenVINO)
+> *   `kuscheltier/jellyfin-ai-upscaler:docker4-apple` (macOS Apple Silicon)
+> *   `kuscheltier/jellyfin-ai-upscaler:docker4-cpu` (CPU Only)
 >
 > **Please report bugs:** [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 
@@ -129,6 +129,30 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 ---
 
 ## 📋 Changelog
+
+### v1.5.2.7 (Docker Fixes + Premium Dashboard) — Docker docker4 / v1.5.5
+> **🔧 Fixes Issue #46: TensorRT poisoning CUDA fallback. Fixes Issue #45: Intel OpenVINO GPU not using GPU. Adds multi-GPU selection and premium sidebar dashboard.**
+
+- **🔧 Fixed**: TensorRT poisoning CUDA fallback — CUDA chain tried first (safe), TensorRT probed in isolated subprocess (#46)
+- **🔧 Fixed**: Intel OpenVINO GPU not actually using GPU — replaced wrong PPA, added real inference verification (#45)
+- **🔧 Fixed**: Player button not appearing — MutationObserver fallback, 8 OSD selectors, exponential backoff retry up to 10 attempts
+- **🚀 Added**: Multi-GPU selection — `/gpus` endpoint, GPU device dropdown in settings, `device_id` pass-through
+- **🚀 Added**: `/gpu-verify` endpoint for GPU diagnostics (clinfo, nvidia-smi, ONNX inference test)
+- **🎨 Redesigned**: Premium sidebar dashboard — glassmorphism cards, CSS variables design system, skeleton loaders
+- **🎨 Added**: Sidebar navigation (Dashboard, Settings, Jobs, Cache, System) with collapsible accordion settings
+- **⚡ Added**: Health check caching (30s), retry logic (2 retries with 1s delay) in HttpUpscalerService
+- **🔒 Fixed**: All Jellyfin 10.11+ button overrides — no white elements, dark theme enforced everywhere
+- **🐳 Docker docker4**: 5 image variants (NVIDIA CUDA+cuDNN 9, AMD ROCm, Intel OpenVINO, Apple Silicon, CPU)
+- **🌐 All UI text in English**
+
+### v1.5.2.6 (Notification Fix + Dark Theme) — Docker v1.5.4
+> **🔧 Fixed notification spam, forced English UI, dark theme input fields, XSS security fixes.**
+
+- **🔧 Fixed**: Notification spam on settings save
+- **🔒 Fixed**: XSS security — sanitized all user inputs in dashboard
+- **🎨 Fixed**: Dark theme input fields, select boxes, checkboxes
+- **🌐 Added**: Forced English UI text
+- **✨ Added**: Settings export/import visible in UI
 
 ### v1.5.2.3 (Player Button Fix + Intel GPU Fix) — Docker v1.5.4
 > **🎮 Fixes Issue #45: Player button not showing + Intel OpenVINO GPU running on CPU.**

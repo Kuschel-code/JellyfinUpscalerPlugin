@@ -1,4 +1,4 @@
-// AI Upscaler Plugin - Player Integration v1.5.2.6
+// AI Upscaler Plugin - Player Integration v1.5.2.7
 // Global script injection (loaded via index.html like Intro Skipper)
 // Compatible with Jellyfin 10.11+
 
@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.5.2.6';
+    const PLUGIN_VERSION = '1.5.2.7';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -72,29 +72,52 @@
             }
         },
 
-        // Inject button into video player OSD
+        // Inject button into video player OSD with robust retry + MutationObserver fallback
+        _injectRetryCount: 0,
+        _injectMaxRetries: 10,
+        _mutationObserver: null,
+
         injectPlayerButton: function() {
             if (this._buttonInjected) return;
 
             // Try multiple selectors for different Jellyfin versions
             const selectors = [
-                '.videoOsdBottom .buttons',           // 10.11 standard
-                '.videoOsdBottom',                     // 10.11 fallback
+                '.videoOsdBottom .buttons',             // 10.11 standard
+                '.videoOsdBottom .osdControls',         // 10.11 controls area
+                '.videoOsdBottom',                      // 10.11 fallback
                 '#videoOsdPage .osdControls',           // alternate
                 '.osdControls',                         // generic
+                '.osdBottomBar',                        // some skins
+                '[data-action="fullscreen"]',           // near fullscreen button
+                '.btnToggleFullscreen',                 // fullscreen button parent
             ];
 
             let container = null;
             for (const sel of selectors) {
-                container = document.querySelector(sel);
-                if (container) break;
+                const el = document.querySelector(sel);
+                if (el) {
+                    // For button elements, use parent as container
+                    container = (el.tagName === 'BUTTON') ? el.parentElement : el;
+                    break;
+                }
             }
 
             if (!container) {
-                // Player DOM not ready yet — retry
-                setTimeout(() => this.injectPlayerButton(), 500);
+                this._injectRetryCount++;
+                if (this._injectRetryCount <= this._injectMaxRetries) {
+                    // Exponential backoff: 500ms, 750ms, 1125ms, ... up to ~3s
+                    const delay = Math.min(500 * Math.pow(1.5, this._injectRetryCount - 1), 3000);
+                    console.warn(`AI Upscaler: OSD container not found (attempt ${this._injectRetryCount}/${this._injectMaxRetries}), retrying in ${Math.round(delay)}ms`);
+                    setTimeout(() => this.injectPlayerButton(), delay);
+                } else {
+                    console.warn('AI Upscaler: OSD container not found after max retries, starting MutationObserver fallback');
+                    this._startMutationObserver();
+                }
                 return;
             }
+
+            this._injectRetryCount = 0;
+            this._stopMutationObserver();
 
             // Don't duplicate
             if (document.querySelector('#aiUpscalerButton')) {
@@ -324,6 +347,51 @@
                     this.toggleUpscalerMenu();
                 }
             });
+        },
+
+        // MutationObserver fallback: watch for video OSD DOM appearing
+        _startMutationObserver: function() {
+            if (this._mutationObserver) return;
+
+            this._mutationObserver = new MutationObserver((mutations) => {
+                if (this._buttonInjected) {
+                    this._stopMutationObserver();
+                    return;
+                }
+                // Check if any OSD-related elements appeared
+                for (const mutation of mutations) {
+                    for (const node of mutation.addedNodes) {
+                        if (node.nodeType !== 1) continue;
+                        if (node.classList && (
+                            node.classList.contains('videoOsdBottom') ||
+                            node.classList.contains('osdControls') ||
+                            node.id === 'videoOsdPage'
+                        )) {
+                            console.log('AI Upscaler: MutationObserver detected OSD element');
+                            this._injectRetryCount = 0;
+                            this.injectPlayerButton();
+                            return;
+                        }
+                        // Also check children
+                        if (node.querySelector && node.querySelector('.videoOsdBottom, .osdControls, #videoOsdPage')) {
+                            console.log('AI Upscaler: MutationObserver detected OSD in subtree');
+                            this._injectRetryCount = 0;
+                            this.injectPlayerButton();
+                            return;
+                        }
+                    }
+                }
+            });
+
+            this._mutationObserver.observe(document.body, { childList: true, subtree: true });
+            console.log('AI Upscaler: MutationObserver started');
+        },
+
+        _stopMutationObserver: function() {
+            if (this._mutationObserver) {
+                this._mutationObserver.disconnect();
+                this._mutationObserver = null;
+            }
         },
 
         // Add styles (once)
