@@ -11,8 +11,8 @@ using Microsoft.Extensions.Logging;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// AI Upscaler Plugin for Jellyfin v1.5.2.2 - Docker Microservice Architecture
-    /// v1.5.2.2 - Player button injection fix (global script like Intro Skipper)
+    /// AI Upscaler Plugin for Jellyfin v1.5.2.3 - Docker Microservice Architecture
+    /// v1.5.2.3 - Player button injection fix (global script like Intro Skipper)
     /// </summary>
     public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     {
