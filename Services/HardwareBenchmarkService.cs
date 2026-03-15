@@ -78,22 +78,22 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         public async Task<BenchmarkResults> RunHardwareBenchmark()
         {
-            _logger.LogInformation("Starting hardware detection via Docker AI service...");
-            
+            _logger.LogDebug("Starting hardware detection via Docker AI service...");
+
             var results = new BenchmarkResults
             {
                 StartTime = DateTime.UtcNow,
                 SystemInfo = DetectSystemInfo()
             };
-            
+
             try
             {
                 // Check if Docker AI service is available
                 var isAvailable = await _httpUpscaler.IsServiceAvailableAsync();
-                
+
                 if (!isAvailable)
                 {
-                    _logger.LogWarning("Docker AI service not available at {Url}", Config.AiServiceUrl);
+                    _logger.LogDebug("Docker AI service not available at {Url}", Config.AiServiceUrl);
                     results.Hardware = new HardwareProfile
                     {
                         ServiceAvailable = false,

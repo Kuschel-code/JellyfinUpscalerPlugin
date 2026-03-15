@@ -995,7 +995,7 @@ namespace JellyfinUpscalerPlugin.Services
                 var completedJobs = _performanceHistory.Count(m => m.Value.Success);
                 var failedJobs = _performanceHistory.Count(m => !m.Value.Success);
                 
-                _logger.LogInformation($"📊 Stats: {activeJobs} active, {completedJobs} completed, {failedJobs} failed");
+                _logger.LogDebug($"📊 Stats: {activeJobs} active, {completedJobs} completed, {failedJobs} failed");
             }
             catch (Exception ex)
             {

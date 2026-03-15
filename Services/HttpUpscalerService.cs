@@ -75,7 +75,7 @@ namespace JellyfinUpscalerPlugin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("AI Service health check failed at {Url}: {Message}", baseUrl, ex.Message);
+                _logger.LogDebug("AI Service health check failed at {Url}: {Message}", baseUrl, ex.Message);
             }
             return false;
         }
