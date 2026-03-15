@@ -651,6 +651,116 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
+        [HttpGet("settings/export")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> ExportSettings()
+        {
+            try
+            {
+                var config = Plugin.Instance?.Configuration;
+                if (config == null) return BadRequest(new { success = false, error = "Plugin not loaded" });
+
+                return Ok(new
+                {
+                    success = true,
+                    pluginVersion = "1.5.2.5",
+                    exportDate = DateTime.UtcNow.ToString("o"),
+                    settings = new
+                    {
+                        config.EnablePlugin,
+                        config.Model,
+                        config.ScaleFactor,
+                        config.QualityLevel,
+                        config.HardwareAcceleration,
+                        config.MaxConcurrentStreams,
+                        config.MaxVRAMUsage,
+                        config.CpuThreads,
+                        config.AiServiceUrl,
+                        config.EnableRemoteTranscoding,
+                        config.RemoteHost,
+                        config.RemoteSshPort,
+                        config.RemoteUser,
+                        config.RemoteSshKeyFile,
+                        config.LocalMediaMountPoint,
+                        config.RemoteMediaMountPoint,
+                        config.RemoteTranscodePath,
+                        config.PlayerButton,
+                        config.Notifications,
+                        config.AutoRetryButton,
+                        config.ButtonPosition,
+                        config.EnableComparisonView,
+                        config.EnablePerformanceMetrics,
+                        config.EnableAutoBenchmarking,
+                        config.EnablePreProcessingCache,
+                        config.MaxCacheAgeDays,
+                        config.CacheSizeMB
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to export settings");
+                return StatusCode(500, new { success = false, error = ex.Message });
+            }
+        }
+
+        [HttpPost("settings/import")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> ImportSettings([FromBody] System.Text.Json.JsonElement body)
+        {
+            try
+            {
+                var config = Plugin.Instance?.Configuration;
+                if (config == null) return BadRequest(new { success = false, error = "Plugin not loaded" });
+
+                System.Text.Json.JsonElement settings;
+                if (!body.TryGetProperty("settings", out settings))
+                {
+                    return BadRequest(new { success = false, error = "Missing 'settings' property" });
+                }
+
+                // Apply each setting if present
+                if (settings.TryGetProperty("EnablePlugin", out var v)) config.EnablePlugin = v.GetBoolean();
+                if (settings.TryGetProperty("Model", out v)) config.Model = v.GetString() ?? "realesrgan-x4";
+                if (settings.TryGetProperty("ScaleFactor", out v)) config.ScaleFactor = v.GetInt32();
+                if (settings.TryGetProperty("QualityLevel", out v)) config.QualityLevel = v.GetString() ?? "medium";
+                if (settings.TryGetProperty("HardwareAcceleration", out v)) config.HardwareAcceleration = v.GetBoolean();
+                if (settings.TryGetProperty("MaxConcurrentStreams", out v)) config.MaxConcurrentStreams = v.GetInt32();
+                if (settings.TryGetProperty("MaxVRAMUsage", out v)) config.MaxVRAMUsage = v.GetInt32();
+                if (settings.TryGetProperty("CpuThreads", out v)) config.CpuThreads = v.GetInt32();
+                if (settings.TryGetProperty("AiServiceUrl", out v)) config.AiServiceUrl = v.GetString() ?? "http://localhost:5000";
+                if (settings.TryGetProperty("EnableRemoteTranscoding", out v)) config.EnableRemoteTranscoding = v.GetBoolean();
+                if (settings.TryGetProperty("RemoteHost", out v)) config.RemoteHost = v.GetString() ?? "";
+                if (settings.TryGetProperty("RemoteSshPort", out v)) config.RemoteSshPort = v.GetInt32();
+                if (settings.TryGetProperty("RemoteUser", out v)) config.RemoteUser = v.GetString() ?? "";
+                if (settings.TryGetProperty("RemoteSshKeyFile", out v)) config.RemoteSshKeyFile = v.GetString() ?? "";
+                if (settings.TryGetProperty("LocalMediaMountPoint", out v)) config.LocalMediaMountPoint = v.GetString() ?? "";
+                if (settings.TryGetProperty("RemoteMediaMountPoint", out v)) config.RemoteMediaMountPoint = v.GetString() ?? "";
+                if (settings.TryGetProperty("RemoteTranscodePath", out v)) config.RemoteTranscodePath = v.GetString() ?? "";
+                if (settings.TryGetProperty("PlayerButton", out v)) config.PlayerButton = v.GetBoolean();
+                if (settings.TryGetProperty("Notifications", out v)) config.Notifications = v.GetBoolean();
+                if (settings.TryGetProperty("AutoRetryButton", out v)) config.AutoRetryButton = v.GetBoolean();
+                if (settings.TryGetProperty("ButtonPosition", out v)) config.ButtonPosition = v.GetString() ?? "right";
+                if (settings.TryGetProperty("EnableComparisonView", out v)) config.EnableComparisonView = v.GetBoolean();
+                if (settings.TryGetProperty("EnablePerformanceMetrics", out v)) config.EnablePerformanceMetrics = v.GetBoolean();
+                if (settings.TryGetProperty("EnableAutoBenchmarking", out v)) config.EnableAutoBenchmarking = v.GetBoolean();
+                if (settings.TryGetProperty("EnablePreProcessingCache", out v)) config.EnablePreProcessingCache = v.GetBoolean();
+                if (settings.TryGetProperty("MaxCacheAgeDays", out v)) config.MaxCacheAgeDays = v.GetInt32();
+                if (settings.TryGetProperty("CacheSizeMB", out v)) config.CacheSizeMB = v.GetInt32();
+
+                Plugin.Instance?.SaveConfiguration();
+                _logger.LogInformation("Settings imported successfully");
+                return Ok(new { success = true, message = "Settings imported successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to import settings");
+                return StatusCode(500, new { success = false, error = ex.Message });
+            }
+        }
+
         [HttpGet("fallback")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> GetFallbackStatus()

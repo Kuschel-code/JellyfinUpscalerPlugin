@@ -61,7 +61,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:0.75rem;">
                     <span id="service-badge" style="padding:0.25rem 0.75rem;border-radius:12px;font-size:0.8rem;background:#333;">Checking...</span>
-                    <span class="bubble">v1.5.2.4</span>
+                    <span class="bubble">v1.5.2.5</span>
                 </div>
             </div>
 
@@ -243,6 +243,18 @@
 
                     <div style="margin-top:1rem;">
                         <button is="emby-button" type="button" id="btn-save" class="raised button-submit block">Save Settings</button>
+                    </div>
+
+                    <!-- Settings Export/Import -->
+                    <div class="verticalSection" style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;margin-top:1rem;">
+                        <h3 style="margin-top:0;color:#7dd3fc;">Settings Backup</h3>
+                        <p style="font-size:0.8rem;opacity:0.6;margin:0 0 0.75rem;">Export your settings as a file to restore them on another device.</p>
+                        <div style="display:flex;gap:0.5rem;align-items:center;">
+                            <button is="emby-button" type="button" id="btn-export-settings" class="raised">Export Settings</button>
+                            <button is="emby-button" type="button" id="btn-import-settings" class="raised">Import Settings</button>
+                            <input type="file" id="settings-file-input" accept=".json,.txt" style="display:none;" />
+                        </div>
+                        <div id="settings-backup-status" style="font-size:0.85rem;margin-top:0.5rem;"></div>
                     </div>
                 </form>
             </div>
@@ -677,7 +689,7 @@
                 config.QualityLevel = page.querySelector('#QualityLevel').value;
                 config.ButtonPosition = page.querySelector('#ButtonPosition').value;
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
-                config.PluginVersion = '1.5.2.4';
+                config.PluginVersion = '1.5.2.5';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     if (typeof Dashboard !== 'undefined' && Dashboard.processPluginConfigurationUpdateResult) {
@@ -824,6 +836,68 @@
                     alert('Comparison failed');
                     page.querySelector('#btn-compare').textContent = 'Generate Comparison';
                 });
+            });
+
+            // Settings Export
+            page.querySelector('#btn-export-settings').addEventListener('click', function() {
+                var statusEl = page.querySelector('#settings-backup-status');
+                statusEl.textContent = 'Exporting...';
+                statusEl.style.color = '#fbbf24';
+                ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/settings/export'), dataType: 'json' }).then(function(data) {
+                    var json = JSON.stringify(data, null, 2);
+                    var blob = new Blob([json], { type: 'application/json' });
+                    var url = URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'upscaler-settings-' + new Date().toISOString().slice(0, 10) + '.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    statusEl.textContent = 'Settings exported!';
+                    statusEl.style.color = '#4ade80';
+                }).catch(function() {
+                    statusEl.textContent = 'Export failed';
+                    statusEl.style.color = '#f87171';
+                });
+            });
+
+            // Settings Import
+            var fileInput = page.querySelector('#settings-file-input');
+            page.querySelector('#btn-import-settings').addEventListener('click', function() {
+                fileInput.value = '';
+                fileInput.click();
+            });
+            fileInput.addEventListener('change', function() {
+                if (!fileInput.files || !fileInput.files[0]) return;
+                var statusEl = page.querySelector('#settings-backup-status');
+                statusEl.textContent = 'Importing...';
+                statusEl.style.color = '#fbbf24';
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        var imported = JSON.parse(e.target.result);
+                        var payload = imported.settings ? imported : { settings: imported };
+                        ApiClient.ajax({
+                            type: 'POST',
+                            url: ApiClient.getUrl('Upscaler/settings/import'),
+                            data: JSON.stringify(payload),
+                            contentType: 'application/json',
+                            dataType: 'json'
+                        }).then(function(data) {
+                            statusEl.textContent = 'Settings imported! Reloading...';
+                            statusEl.style.color = '#4ade80';
+                            setTimeout(function() { location.reload(); }, 1500);
+                        }).catch(function() {
+                            statusEl.textContent = 'Import failed';
+                            statusEl.style.color = '#f87171';
+                        });
+                    } catch (ex) {
+                        statusEl.textContent = 'Invalid JSON file';
+                        statusEl.style.color = '#f87171';
+                    }
+                };
+                reader.readAsText(fileInput.files[0]);
             });
         }
 
