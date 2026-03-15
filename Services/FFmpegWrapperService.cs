@@ -113,17 +113,30 @@ if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 ";
         }
 
+        // Security: Sanitize a string for safe embedding in PowerShell double-quoted strings
+        private static string SanitizeForPowerShell(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return "";
+            // Escape backticks, double quotes, dollar signs, and newlines
+            return input
+                .Replace("`", "``")
+                .Replace("\"", "`\"")
+                .Replace("$", "`$")
+                .Replace("\r", "")
+                .Replace("\n", "");
+        }
+
         private string GenerateWindowsPowerShellScript(string realFFmpegPath, string logPath, string activeMarkerPath, PluginConfiguration config)
         {
             bool enableRemote = config?.EnableRemoteTranscoding ?? false;
-            string remoteUser = config?.RemoteUser ?? "root";
-            string remoteHost = config?.RemoteHost ?? "localhost";
-            int remotePort = config?.RemoteSshPort ?? 2222;
-            string keyFile = config?.RemoteSshKeyFile ?? "";
-            
-            string localMount = config?.LocalMediaMountPoint?.Replace("\\", "\\\\") ?? "";
-            string remoteMount = config?.RemoteMediaMountPoint ?? "";
-            string transcodeDir = config?.RemoteTranscodePath ?? "/transcode";
+            string remoteUser = SanitizeForPowerShell(config?.RemoteUser ?? "root");
+            string remoteHost = SanitizeForPowerShell(config?.RemoteHost ?? "localhost");
+            int remotePort = Math.Clamp(config?.RemoteSshPort ?? 2222, 1, 65535);
+            string keyFile = SanitizeForPowerShell(config?.RemoteSshKeyFile ?? "");
+
+            string localMount = SanitizeForPowerShell(config?.LocalMediaMountPoint?.Replace("\\", "\\\\") ?? "");
+            string remoteMount = SanitizeForPowerShell(config?.RemoteMediaMountPoint ?? "");
+            string transcodeDir = SanitizeForPowerShell(config?.RemoteTranscodePath ?? "/transcode");
 
             // If remote is disabled, fall back to simple local execution with logging
             if (!enableRemote)
@@ -212,7 +225,7 @@ try {{
     $SshArgs = @(
         '-p', $RemotePort,
         '-o', 'BatchMode=yes',
-        '-o', 'StrictHostKeyChecking=no',
+        '-o', 'StrictHostKeyChecking=accept-new',
         ""$RemoteUser@$RemoteHost""
     )
     

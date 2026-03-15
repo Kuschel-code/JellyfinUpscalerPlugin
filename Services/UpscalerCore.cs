@@ -197,7 +197,6 @@ namespace JellyfinUpscalerPlugin.Services
         {
             return new Dictionary<string, object>
             {
-                ["service_url"] = Config.AiServiceUrl,
                 ["hardware_cached"] = _cachedHardwareProfile != null
             };
         }

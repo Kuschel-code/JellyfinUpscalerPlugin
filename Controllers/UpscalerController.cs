@@ -116,10 +116,23 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             var config = Plugin.Instance?.Configuration;
             if (config == null) return BadRequest();
-            return Ok(config);
+            // Return only non-sensitive operational state (not full config with SSH paths etc.)
+            return Ok(new
+            {
+                status = "Active",
+                enablePlugin = config.EnablePlugin,
+                model = config.Model,
+                scaleFactor = config.ScaleFactor,
+                qualityLevel = config.QualityLevel,
+                hardwareAcceleration = config.HardwareAcceleration,
+                maxConcurrentStreams = config.MaxConcurrentStreams,
+                isProcessing = false, // Placeholder for actual processing state
+                version = typeof(Plugin).Assembly.GetName().Version?.ToString(4) ?? "1.5.2.4"
+            });
         }
 
         [HttpPost("test")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> TestUpscaling()
         {
@@ -174,6 +187,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpPost("benchmark")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> RunHardwareBenchmark()
         {
@@ -304,6 +318,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpPost("process")]
+        [Authorize(Policy = "RequiresElevation")]
         [Consumes(MediaTypeNames.Application.Json)]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> ProcessVideo([FromBody] VideoProcessRequest request)
@@ -345,7 +360,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                     Quality = request.Quality ?? "medium"
                 };
                 
-                var result = await _videoProcessor.ProcessVideoAsync(request.InputPath, request.OutputPath, options);
+                var result = await _videoProcessor.ProcessVideoAsync(fullInputPath, fullOutputPath, options);
                 
                 return Ok(new 
                 {
@@ -364,6 +379,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpPost("process/item/{itemId}")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> ProcessItem(string itemId, [FromQuery] string? model = null, [FromQuery] int? scale = null)
         {
@@ -514,6 +530,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpPost("cache/clear")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> ClearCache()
         {
@@ -545,13 +562,23 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpPost("upscale/image")]
+        [Authorize(Policy = "RequiresElevation")]
         [Consumes("application/octet-stream")]
         [Produces("application/octet-stream")]
         [RequestSizeLimit(52428800)] // 50MB max
-        public async Task<ActionResult> UpscaleImage([FromQuery] string model = "realesrgan", [FromQuery] int scale = 2)
+        public async Task<ActionResult> UpscaleImage([FromQuery] string model = "realesrgan-x4", [FromQuery] int scale = 2)
         {
             try
             {
+                // Security: Validate scale parameter
+                var allowedScales = new[] { 2, 3, 4, 8 };
+                if (!allowedScales.Contains(scale))
+                    return BadRequest(new { error = "Invalid scale. Allowed values: 2, 3, 4, 8" });
+
+                // Security: Validate model name (alphanumeric, hyphens only)
+                if (!Regex.IsMatch(model, @"^[a-zA-Z0-9\-]+$"))
+                    return BadRequest(new { error = "Invalid model name" });
+
                 // Security: Limit upload size to prevent DOS attacks
                 const long maxSizeBytes = 50 * 1024 * 1024; // 50MB
                 if (Request.ContentLength > maxSizeBytes)
@@ -579,6 +606,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpPost("preprocess")]
+        [Authorize(Policy = "RequiresElevation")]
         [Consumes(MediaTypeNames.Application.Json)]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> PreProcessVideo([FromBody] PreProcessRequest request)
@@ -602,6 +630,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpPost("cache/config")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> ConfigurePreProcessingCache([FromBody] PreProcessingCacheRequest request)
         {
@@ -708,6 +737,15 @@ namespace JellyfinUpscalerPlugin.Controllers
                     var resolvedKeyPath = Path.GetFullPath(request.KeyFile);
                     if (!IOFile.Exists(resolvedKeyPath))
                         return BadRequest(new { success = false, message = "SSH key file not found." });
+
+                    // Security: Restrict key file to .ssh directories or plugin data path
+                    var sshDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh");
+                    var pluginDir = Plugin.Instance != null ? Path.GetDirectoryName(Plugin.Instance.ConfigurationFilePath) ?? "" : "";
+                    if (!resolvedKeyPath.StartsWith(sshDir, StringComparison.OrdinalIgnoreCase) &&
+                        !resolvedKeyPath.StartsWith(pluginDir, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return BadRequest(new { success = false, message = "SSH key file must be in ~/.ssh/ or plugin data directory." });
+                    }
 
                     psi.ArgumentList.Add("-i");
                     psi.ArgumentList.Add(resolvedKeyPath);
