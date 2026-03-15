@@ -120,14 +120,6 @@ namespace JellyfinUpscalerPlugin
                 },
                 new PluginPageInfo
                 {
-                    Name = "upscaler-dashboard",
-                    EmbeddedResourcePath = GetType().Namespace + ".Pages.dashboard.html",
-                    EnableInMainMenu = true,
-                    MenuIcon = "trending_up",
-                    DisplayName = "AI Upscaler Dashboard"
-                },
-                new PluginPageInfo
-                {
                     Name = "UPSCALERPlayerIntegration",
                     EmbeddedResourcePath = GetType().Namespace + ".Configuration.player-integration.js"
                 },

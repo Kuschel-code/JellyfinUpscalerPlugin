@@ -16,7 +16,7 @@
             <!-- Tab Navigation -->
             <div id="tab-nav" style="display:flex;gap:0;border-bottom:2px solid #333;margin-bottom:1rem;">
                 <button type="button" class="tab-btn active" data-tab="dashboard" style="padding:0.6rem 1.2rem;background:none;border:none;border-bottom:2px solid #00d4ff;color:#00d4ff;cursor:pointer;font-size:0.9rem;margin-bottom:-2px;">Dashboard</button>
-                <button type="button" class="tab-btn" data-tab="settings" style="padding:0.6rem 1.2rem;background:none;border:none;border-bottom:2px solid transparent;color:#aaa;cursor:pointer;font-size:0.9rem;margin-bottom:-2px;">Einstellungen</button>
+                <button type="button" class="tab-btn" data-tab="settings" style="padding:0.6rem 1.2rem;background:none;border:none;border-bottom:2px solid transparent;color:#aaa;cursor:pointer;font-size:0.9rem;margin-bottom:-2px;">Settings</button>
                 <button type="button" class="tab-btn" data-tab="jobs" style="padding:0.6rem 1.2rem;background:none;border:none;border-bottom:2px solid transparent;color:#aaa;cursor:pointer;font-size:0.9rem;margin-bottom:-2px;">Jobs</button>
                 <button type="button" class="tab-btn" data-tab="cache" style="padding:0.6rem 1.2rem;background:none;border:none;border-bottom:2px solid transparent;color:#aaa;cursor:pointer;font-size:0.9rem;margin-bottom:-2px;">Cache</button>
                 <button type="button" class="tab-btn" data-tab="system" style="padding:0.6rem 1.2rem;background:none;border:none;border-bottom:2px solid transparent;color:#aaa;cursor:pointer;font-size:0.9rem;margin-bottom:-2px;">System</button>
@@ -28,15 +28,15 @@
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;margin-bottom:1rem;">
                     <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
                         <div style="font-size:1.8rem;font-weight:bold;color:#00d4ff;" id="stat-active">0</div>
-                        <div style="font-size:0.8rem;opacity:0.7;">Aktive Jobs</div>
+                        <div style="font-size:0.8rem;opacity:0.7;">Active Jobs</div>
                     </div>
                     <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
                         <div style="font-size:1.8rem;font-weight:bold;color:#4ade80;" id="stat-completed">0</div>
-                        <div style="font-size:0.8rem;opacity:0.7;">Abgeschlossen</div>
+                        <div style="font-size:0.8rem;opacity:0.7;">Completed</div>
                     </div>
                     <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
                         <div style="font-size:1.8rem;font-weight:bold;color:#f87171;" id="stat-failed">0</div>
-                        <div style="font-size:0.8rem;opacity:0.7;">Fehlgeschlagen</div>
+                        <div style="font-size:0.8rem;opacity:0.7;">Failed</div>
                     </div>
                     <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
                         <div style="font-size:1.8rem;font-weight:bold;color:#fbbf24;" id="stat-cache-hit">-</div>
@@ -47,9 +47,9 @@
                 <div style="display:grid;grid-template-columns:1fr 300px;gap:1rem;">
                     <!-- Active Jobs List -->
                     <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;">
-                        <h3 style="margin:0 0 0.75rem;font-size:1rem;color:#00d4ff;">Aktive Jobs</h3>
+                        <h3 style="margin:0 0 0.75rem;font-size:1rem;color:#00d4ff;">Active Jobs</h3>
                         <div id="active-jobs-list" style="font-size:0.85rem;">
-                            <div style="opacity:0.5;text-align:center;padding:2rem;">Keine aktiven Jobs</div>
+                            <div style="opacity:0.5;text-align:center;padding:2rem;">No active jobs</div>
                         </div>
                     </div>
 
@@ -85,7 +85,7 @@
                 </div>
             </div>
 
-            <!-- ==================== TAB: EINSTELLUNGEN ==================== -->
+            <!-- ==================== TAB: SETTINGS ==================== -->
             <div id="tab-settings" class="tab-content" style="display:none;">
                 <form id="UpscalerConfigForm">
                     <!-- Docker AI Service -->
@@ -123,8 +123,8 @@
 
                     <!-- Upscaling Settings -->
                     <div class="verticalSection">
-                        <h3 class="sectionTitle">Upscaling Einstellungen</h3>
-                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="EnablePlugin" /> Plugin aktiviert</label></div>
+                        <h3 class="sectionTitle">Upscaling Settings</h3>
+                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="EnablePlugin" /> Plugin enabled</label></div>
                         <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="PlayerButton" /> Player Button anzeigen</label></div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:0.75rem;">
                             <div class="selectContainer"><label class="selectLabel" for="Model">Model:</label><select is="emby-select" id="Model"></select></div>
@@ -167,7 +167,7 @@
                     <!-- Features -->
                     <div class="verticalSection">
                         <h3 class="sectionTitle">Features</h3>
-                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="EnableComparisonView" /> Vergleichsansicht</label></div>
+                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="EnableComparisonView" /> Comparison View</label></div>
                         <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="EnablePerformanceMetrics" /> Performance Metriken</label></div>
                         <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="EnableAutoBenchmarking" /> Auto-Benchmarking</label></div>
                     </div>
@@ -190,7 +190,7 @@
                     </div>
 
                     <div style="margin-top:1rem;">
-                        <button is="emby-button" type="button" id="btn-save" class="raised button-submit block">Einstellungen speichern</button>
+                        <button is="emby-button" type="button" id="btn-save" class="raised button-submit block">Save Settings</button>
                     </div>
                 </form>
             </div>
@@ -207,14 +207,14 @@
                             <tr style="border-bottom:1px solid #333;">
                                 <th style="text-align:left;padding:0.5rem;">Datei</th>
                                 <th style="text-align:left;padding:0.5rem;">Status</th>
-                                <th style="text-align:left;padding:0.5rem;">Fortschritt</th>
-                                <th style="text-align:left;padding:0.5rem;">Methode</th>
-                                <th style="text-align:left;padding:0.5rem;">Dauer</th>
-                                <th style="text-align:center;padding:0.5rem;">Aktion</th>
+                                <th style="text-align:left;padding:0.5rem;">Progress</th>
+                                <th style="text-align:left;padding:0.5rem;">Method</th>
+                                <th style="text-align:left;padding:0.5rem;">Duration</th>
+                                <th style="text-align:center;padding:0.5rem;">Action</th>
                             </tr>
                         </thead>
                         <tbody id="jobs-tbody">
-                            <tr><td colspan="6" style="text-align:center;padding:2rem;opacity:0.5;">Keine Jobs vorhanden</td></tr>
+                            <tr><td colspan="6" style="text-align:center;padding:2rem;opacity:0.5;">No jobs found</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -244,14 +244,14 @@
 
                 <!-- Cache Config -->
                 <div class="verticalSection" style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;">
-                    <h3 style="margin-top:0;">Cache Einstellungen</h3>
-                    <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="EnablePreProcessingCache" /> Cache aktiviert</label></div>
+                    <h3 style="margin-top:0;">Cache Settings</h3>
+                    <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="EnablePreProcessingCache" /> Cache enabled</label></div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:0.75rem;">
                         <div class="inputContainer"><label class="inputLabel" for="MaxCacheAgeDays">Max Alter (Tage):</label><input is="emby-input" type="number" id="MaxCacheAgeDays" min="1" max="365" /></div>
                         <div class="inputContainer"><label class="inputLabel" for="CacheSizeMB">Max Groesse (MB):</label><input is="emby-input" type="number" id="CacheSizeMB" min="128" max="1048576" /></div>
                     </div>
                     <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
-                        <button is="emby-button" type="button" id="btn-clear-cache" class="raised">Cache leeren</button>
+                        <button is="emby-button" type="button" id="btn-clear-cache" class="raised">Clear Cache</button>
                         <button is="emby-button" type="button" id="btn-refresh-cache" class="raised">Aktualisieren</button>
                     </div>
                 </div>
@@ -276,18 +276,18 @@
                     <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;">
                         <h3 style="margin-top:0;color:#00d4ff;">Benchmark</h3>
                         <div id="benchmark-result" style="font-size:0.85rem;margin-bottom:0.75rem;">
-                            <div style="opacity:0.5;">Noch kein Benchmark ausgefuehrt</div>
+                            <div style="opacity:0.5;">No benchmark run yet</div>
                         </div>
-                        <button is="emby-button" type="button" id="btn-run-benchmark" class="raised" style="width:100%;">Benchmark starten</button>
+                        <button is="emby-button" type="button" id="btn-run-benchmark" class="raised" style="width:100%;">Run Benchmark</button>
                     </div>
                 </div>
 
                 <!-- AI Comparison -->
                 <div class="verticalSection" style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;margin-top:1rem;">
-                    <h3 style="margin-top:0;color:#00d4ff;">AI Vergleichsansicht</h3>
+                    <h3 style="margin-top:0;color:#00d4ff;">AI Comparison View</h3>
                     <div style="display:flex;gap:0.75rem;align-items:flex-end;margin-bottom:1rem;">
                         <div class="selectContainer" style="flex:1;"><label class="selectLabel" for="comparison-item">Medien-Item:</label><select is="emby-select" id="comparison-item"></select></div>
-                        <button is="emby-button" type="button" id="btn-compare" class="raised">Vergleich generieren</button>
+                        <button is="emby-button" type="button" id="btn-compare" class="raised">Generate Comparison</button>
                     </div>
                     <div id="comparison-container" style="display:none;">
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
@@ -363,7 +363,7 @@
                 }
             }).catch(function() {
                 var badge = page.querySelector('#service-badge');
-                badge.textContent = 'Fehler';
+                badge.textContent = 'Error';
                 badge.style.background = '#7f1d1d';
                 badge.style.color = '#f87171';
             });
@@ -398,7 +398,7 @@
                     if (jobsHtml) {
                         page.querySelector('#active-jobs-list').innerHTML = jobsHtml;
                     } else {
-                        page.querySelector('#active-jobs-list').innerHTML = '<div style="opacity:0.5;text-align:center;padding:2rem;">Keine aktiven Jobs</div>';
+                        page.querySelector('#active-jobs-list').innerHTML = '<div style="opacity:0.5;text-align:center;padding:2rem;">No active jobs</div>';
                     }
                 }
             }).catch(function() {});
@@ -416,7 +416,7 @@
             ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/jobs'), dataType: 'json' }).then(function(data) {
                 var tbody = page.querySelector('#jobs-tbody');
                 if (!data || !data.jobs || data.jobs.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;opacity:0.5;">Keine Jobs vorhanden</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;opacity:0.5;">No jobs found</td></tr>';
                     return;
                 }
                 var html = '';
@@ -444,7 +444,7 @@
                 });
                 tbody.innerHTML = html;
             }).catch(function() {
-                page.querySelector('#jobs-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:#f87171;">Fehler beim Laden</td></tr>';
+                page.querySelector('#jobs-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:#f87171;">Error loading jobs</td></tr>';
             });
         }
 
@@ -551,7 +551,7 @@
                     EnableImageTypes: 'Primary'
                 }).then(function(result) {
                     var select = page.querySelector('#comparison-item');
-                    select.innerHTML = '<option value="">-- Item auswaehlen --</option>';
+                    select.innerHTML = '<option value="">-- Select item --</option>';
                     if (result && result.Items) {
                         result.Items.forEach(function(item) {
                             if (item.ImageTags && item.ImageTags.Primary) {
@@ -631,7 +631,7 @@
                     if (typeof Dashboard !== 'undefined' && Dashboard.processPluginConfigurationUpdateResult) {
                         Dashboard.processPluginConfigurationUpdateResult();
                     }
-                    alert('Einstellungen gespeichert!');
+                    alert('Settings saved!');
                 });
             });
         }
@@ -652,7 +652,7 @@
                 }
                 page.querySelector('#wrapper-platform').textContent = (data.Platform || '') + ' ' + (data.RuntimeIdentifier || '');
             }).catch(function() {
-                page.querySelector('#wrapper-status').textContent = 'Fehler';
+                page.querySelector('#wrapper-status').textContent = 'Error';
                 page.querySelector('#wrapper-status').style.color = '#f87171';
             });
         }
@@ -665,19 +665,19 @@
             // Connection Test (via backend proxy)
             page.querySelector('#btn-test-connection').addEventListener('click', function() {
                 var status = page.querySelector('#connection-status');
-                status.textContent = 'Teste...';
+                status.textContent = 'Testing...';
                 status.style.color = '#fbbf24';
                 checkServiceHealth(page);
                 ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/service-health'), dataType: 'json' }).then(function(data) {
                     if (data.available) {
-                        status.textContent = 'Verbunden (' + data.latencyMs + 'ms)';
+                        status.textContent = 'Connected (' + data.latencyMs + 'ms)';
                         status.style.color = '#4ade80';
                     } else {
-                        status.textContent = 'Nicht erreichbar';
+                        status.textContent = 'Unreachable';
                         status.style.color = '#f87171';
                     }
                 }).catch(function() {
-                    status.textContent = 'Fehler';
+                    status.textContent = 'Error';
                     status.style.color = '#f87171';
                 });
             });
@@ -685,7 +685,7 @@
             // SSH Test
             page.querySelector('#btn-test-ssh').addEventListener('click', function() {
                 var status = page.querySelector('#ssh-status');
-                status.textContent = 'Teste...';
+                status.textContent = 'Testing...';
                 status.style.color = '#fbbf24';
                 var body = JSON.stringify({
                     Host: page.querySelector('#RemoteHost').value,
@@ -694,9 +694,9 @@
                     KeyFile: page.querySelector('#RemoteSshKeyFile').value
                 });
                 ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/ssh/test'), data: body, contentType: 'application/json', dataType: 'json' }).then(function(data) {
-                    status.textContent = data.success ? 'Verbunden!' : data.message || 'Fehlgeschlagen';
+                    status.textContent = data.success ? 'Connected!' : data.message || 'Failed';
                     status.style.color = data.success ? '#4ade80' : '#f87171';
-                }).catch(function() { status.textContent = 'Fehler'; status.style.color = '#f87171'; });
+                }).catch(function() { status.textContent = 'Error'; status.style.color = '#f87171'; });
             });
 
             // Wrapper buttons
@@ -726,9 +726,9 @@
 
             // Clear cache
             page.querySelector('#btn-clear-cache').addEventListener('click', function() {
-                if (confirm('Cache wirklich leeren?')) {
+                if (confirm('Really clear cache?')) {
                     ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/cache/clear') }).then(function() {
-                        alert('Cache geleert');
+                        alert('Cache cleared');
                         refreshCache(page);
                     });
                 }
@@ -737,13 +737,13 @@
             // Benchmark
             page.querySelector('#btn-run-benchmark').addEventListener('click', function() {
                 var result = page.querySelector('#benchmark-result');
-                result.innerHTML = '<div style="color:#fbbf24;">Benchmark laeuft...</div>';
+                result.innerHTML = '<div style="color:#fbbf24;">Running benchmark...</div>';
                 ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/benchmark'), dataType: 'json' }).then(function(data) {
                     if (data.success && data.results) {
                         var r = data.results;
-                        var html = '<div style="padding:0.3rem 0;border-bottom:1px solid #333;">Dauer: ' + (r.duration || 0).toFixed(1) + 's</div>';
+                        var html = '<div style="padding:0.3rem 0;border-bottom:1px solid #333;">Duration:' + (r.duration || 0).toFixed(1) + 's</div>';
                         if (r.optimalSettings) {
-                            html += '<div style="padding:0.3rem 0;border-bottom:1px solid #333;">Empf. Model: <strong>' + (r.optimalSettings.RecommendedModel || '-') + '</strong></div>';
+                            html += '<div style="padding:0.3rem 0;border-bottom:1px solid #333;">Rec. Model: <strong>' + (r.optimalSettings.RecommendedModel || '-') + '</strong></div>';
                             html += '<div style="padding:0.3rem 0;border-bottom:1px solid #333;">Max Resolution: ' + (r.optimalSettings.RecommendedMaxResolution || '-') + '</div>';
                             html += '<div style="padding:0.3rem 0;border-bottom:1px solid #333;">Quality: ' + (r.optimalSettings.RecommendedQuality || '-') + '</div>';
                             html += '<div style="padding:0.3rem 0;">Max Streams: ' + (r.optimalSettings.MaxConcurrentStreams || 1) + '</div>';
@@ -751,26 +751,26 @@
                         result.innerHTML = html;
                     }
                 }).catch(function() {
-                    result.innerHTML = '<div style="color:#f87171;">Benchmark fehlgeschlagen</div>';
+                    result.innerHTML = '<div style="color:#f87171;">Benchmark failed</div>';
                 });
             });
 
             // Comparison
             page.querySelector('#btn-compare').addEventListener('click', function() {
                 var itemId = page.querySelector('#comparison-item').value;
-                if (!itemId) { alert('Bitte Item auswaehlen'); return; }
+                if (!itemId) { alert('Please select an item'); return; }
                 var model = page.querySelector('#Model').value || 'realesrgan-x4';
                 var scale = page.querySelector('#ScaleFactor').value || 2;
                 page.querySelector('#comparison-container').style.display = 'none';
-                page.querySelector('#btn-compare').textContent = 'Generiere...';
+                page.querySelector('#btn-compare').textContent = 'Generating...';
                 ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/compare/' + itemId + '?model=' + model + '&scale=' + scale), dataType: 'json' }).then(function(data) {
                     page.querySelector('#img-original').src = data.originalBase64;
                     page.querySelector('#img-upscaled').src = data.upscaledBase64;
                     page.querySelector('#comparison-container').style.display = '';
-                    page.querySelector('#btn-compare').textContent = 'Vergleich generieren';
+                    page.querySelector('#btn-compare').textContent = 'Generate Comparison';
                 }).catch(function() {
-                    alert('Vergleich fehlgeschlagen');
-                    page.querySelector('#btn-compare').textContent = 'Vergleich generieren';
+                    alert('Comparison failed');
+                    page.querySelector('#btn-compare').textContent = 'Generate Comparison';
                 });
             });
         }
