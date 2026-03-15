@@ -26,53 +26,41 @@
     #UpscalerConfigurationPage .button-submit:hover {
         background: linear-gradient(135deg, #0284c7, #0ea5e9) !important;
     }
-    /* Force dark theme on ALL form elements - global override for Jellyfin custom elements */
-    #UpscalerConfigurationPage input,
+    /* Force dark theme on ALL form elements */
+    #UpscalerConfigurationPage input[type="text"],
+    #UpscalerConfigurationPage input[type="number"],
+    #UpscalerConfigurationPage input[type="url"],
+    #UpscalerConfigurationPage input[type="password"],
+    #UpscalerConfigurationPage input:not([type]),
     #UpscalerConfigurationPage select,
-    #UpscalerConfigurationPage textarea,
-    #UpscalerConfigurationPage .emby-input,
-    #UpscalerConfigurationPage .emby-select,
-    #UpscalerConfigurationPage .selectContainer select {
+    #UpscalerConfigurationPage textarea {
         background: #1e293b !important;
         background-color: #1e293b !important;
         color: #e2e8f0 !important;
         border: 1px solid #334155 !important;
+        border-bottom: 1px solid #334155 !important;
         border-radius: 4px !important;
         padding: 0.5rem !important;
-        -webkit-appearance: none;
-        -moz-appearance: none;
-        appearance: none;
-    }
-    /* Restore checkbox appearance */
-    #UpscalerConfigurationPage input[type="checkbox"],
-    #UpscalerConfigurationPage .emby-checkbox {
-        -webkit-appearance: checkbox !important;
-        -moz-appearance: checkbox !important;
-        appearance: checkbox !important;
-        background: transparent !important;
-        border: none !important;
-        padding: 0 !important;
-    }
-    /* Override Jellyfin's internal emby-input/emby-select styling */
-    #UpscalerConfigurationPage .inputContainer,
-    #UpscalerConfigurationPage .selectContainer {
-        margin-bottom: 0;
-    }
-    #UpscalerConfigurationPage .emby-input,
-    #UpscalerConfigurationPage .emby-select {
-        border-bottom: none !important;
-        height: auto !important;
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 0.9rem;
+        outline: none;
     }
     #UpscalerConfigurationPage input:focus,
-    #UpscalerConfigurationPage select:focus {
+    #UpscalerConfigurationPage select:focus,
+    #UpscalerConfigurationPage textarea:focus {
         border-color: #00d4ff !important;
         outline: none !important;
         box-shadow: 0 0 0 2px rgba(0,212,255,0.15) !important;
     }
-    /* Select dropdown arrow */
     #UpscalerConfigurationPage select option {
         background: #1e293b !important;
         color: #e2e8f0 !important;
+    }
+    /* Override any Jellyfin container styling */
+    #UpscalerConfigurationPage .inputContainer,
+    #UpscalerConfigurationPage .selectContainer {
+        margin-bottom: 0;
     }
     /* Checkbox styling */
     #UpscalerConfigurationPage .checkboxContainer {
@@ -85,15 +73,19 @@
         align-items: center;
         gap: 0.5rem;
     }
-    #UpscalerConfigurationPage input[type="checkbox"],
-    #UpscalerConfigurationPage .emby-checkbox {
+    #UpscalerConfigurationPage input[type="checkbox"] {
+        -webkit-appearance: checkbox !important;
+        appearance: checkbox !important;
         accent-color: #00d4ff;
         width: 18px !important;
         height: 18px !important;
         cursor: pointer;
         min-width: 18px;
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
     }
-    /* Jellyfin emby-checkbox: hide the custom checkmark span if it exists */
+    /* Hide Jellyfin custom checkmark overlay if it exists */
     #UpscalerConfigurationPage .checkboxIcon,
     #UpscalerConfigurationPage .checkboxOutline {
         display: none !important;
@@ -216,7 +208,7 @@
                             </div>
                         </div>
                         <div style="margin-top:1rem;display:flex;flex-direction:column;gap:0.5rem;">
-                            <button is="emby-button" type="button" id="btn-refresh-status" class="raised" style="width:100%;">Refresh</button>
+                            <button type="button" id="btn-refresh-status" class="raised" style="width:100%;">Refresh</button>
                         </div>
                     </div>
                 </div>
@@ -230,11 +222,11 @@
                         <h3 style="color:#7dd3fc;margin-top:0;">Docker AI Service</h3>
                         <div class="inputContainer">
                             <label class="inputLabel" for="AiServiceUrl">AI Service URL:</label>
-                            <input is="emby-input" type="text" id="AiServiceUrl" name="AiServiceUrl" placeholder="http://localhost:5000" />
+                            <input type="text" id="AiServiceUrl" name="AiServiceUrl" placeholder="http://localhost:5000" />
                             <div class="fieldDescription">URL to Docker AI Container</div>
                         </div>
                         <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.5rem;">
-                            <button is="emby-button" type="button" id="btn-test-connection" class="raised">Test Connection</button>
+                            <button type="button" id="btn-test-connection" class="raised">Test Connection</button>
                             <span id="connection-status" style="font-size:0.85rem;"></span>
                         </div>
                     </div>
@@ -243,57 +235,57 @@
                     <div class="verticalSection" style="background:linear-gradient(135deg,#1e3a5f,#0f1f3a);padding:1rem;border-radius:8px;margin-bottom:1rem;">
                         <h3 style="color:#7dd3fc;margin-top:0;">Remote Transcoding (SSH)</h3>
                         <div class="checkboxContainer">
-                            <label><input is="emby-checkbox" type="checkbox" id="EnableRemoteTranscoding" /> Enable Remote Transcoding</label>
+                            <label><input type="checkbox" id="EnableRemoteTranscoding" /> Enable Remote Transcoding</label>
                         </div>
                         <div id="ssh-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:0.75rem;">
-                            <div class="inputContainer"><label class="inputLabel" for="RemoteHost">Host:</label><input is="emby-input" type="text" id="RemoteHost" /></div>
-                            <div class="inputContainer"><label class="inputLabel" for="RemoteSshPort">SSH Port:</label><input is="emby-input" type="number" id="RemoteSshPort" /></div>
-                            <div class="inputContainer"><label class="inputLabel" for="RemoteUser">User:</label><input is="emby-input" type="text" id="RemoteUser" /></div>
-                            <div class="inputContainer"><label class="inputLabel" for="RemoteSshKeyFile">SSH Key:</label><input is="emby-input" type="text" id="RemoteSshKeyFile" /></div>
-                            <div class="inputContainer"><label class="inputLabel" for="LocalMediaMountPoint">Local Media Path:</label><input is="emby-input" type="text" id="LocalMediaMountPoint" /></div>
-                            <div class="inputContainer"><label class="inputLabel" for="RemoteMediaMountPoint">Remote Media Path:</label><input is="emby-input" type="text" id="RemoteMediaMountPoint" /></div>
-                            <div class="inputContainer" style="grid-column:span 2;"><label class="inputLabel" for="RemoteTranscodePath">Remote Transcode Path:</label><input is="emby-input" type="text" id="RemoteTranscodePath" /></div>
+                            <div class="inputContainer"><label class="inputLabel" for="RemoteHost">Host:</label><input type="text" id="RemoteHost" /></div>
+                            <div class="inputContainer"><label class="inputLabel" for="RemoteSshPort">SSH Port:</label><input type="number" id="RemoteSshPort" /></div>
+                            <div class="inputContainer"><label class="inputLabel" for="RemoteUser">User:</label><input type="text" id="RemoteUser" /></div>
+                            <div class="inputContainer"><label class="inputLabel" for="RemoteSshKeyFile">SSH Key:</label><input type="text" id="RemoteSshKeyFile" /></div>
+                            <div class="inputContainer"><label class="inputLabel" for="LocalMediaMountPoint">Local Media Path:</label><input type="text" id="LocalMediaMountPoint" /></div>
+                            <div class="inputContainer"><label class="inputLabel" for="RemoteMediaMountPoint">Remote Media Path:</label><input type="text" id="RemoteMediaMountPoint" /></div>
+                            <div class="inputContainer" style="grid-column:span 2;"><label class="inputLabel" for="RemoteTranscodePath">Remote Transcode Path:</label><input type="text" id="RemoteTranscodePath" /></div>
                         </div>
-                        <button is="emby-button" type="button" id="btn-test-ssh" class="raised" style="margin-top:0.5rem;">SSH Test</button>
+                        <button type="button" id="btn-test-ssh" class="raised" style="margin-top:0.5rem;">SSH Test</button>
                         <span id="ssh-status" style="font-size:0.85rem;margin-left:0.5rem;"></span>
                     </div>
 
                     <!-- Upscaling Settings -->
                     <div class="verticalSection">
                         <h3 class="sectionTitle">Upscaling Settings</h3>
-                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="EnablePlugin" /> Plugin enabled</label></div>
-                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="PlayerButton" /> Show Player Button</label></div>
+                        <div class="checkboxContainer"><label><input type="checkbox" id="EnablePlugin" /> Plugin enabled</label></div>
+                        <div class="checkboxContainer"><label><input type="checkbox" id="PlayerButton" /> Show Player Button</label></div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:0.75rem;">
-                            <div class="selectContainer"><label class="selectLabel" for="Model">Model:</label><select is="emby-select" id="Model"></select></div>
-                            <div class="selectContainer"><label class="selectLabel" for="ScaleFactor">Scale:</label><select is="emby-select" id="ScaleFactor"></select></div>
+                            <div class="selectContainer"><label class="selectLabel" for="Model">Model:</label><select id="Model"></select></div>
+                            <div class="selectContainer"><label class="selectLabel" for="ScaleFactor">Scale:</label><select id="ScaleFactor"></select></div>
                             <div class="selectContainer"><label class="selectLabel" for="QualityLevel">Quality:</label>
-                                <select is="emby-select" id="QualityLevel">
+                                <select id="QualityLevel">
                                     <option value="high">High</option>
                                     <option value="medium">Medium</option>
                                     <option value="low">Low</option>
                                 </select>
                             </div>
-                            <div class="inputContainer"><label class="inputLabel" for="MaxConcurrentStreams">Max Concurrent Streams:</label><input is="emby-input" type="number" id="MaxConcurrentStreams" min="1" max="8" /></div>
+                            <div class="inputContainer"><label class="inputLabel" for="MaxConcurrentStreams">Max Concurrent Streams:</label><input type="number" id="MaxConcurrentStreams" min="1" max="8" /></div>
                         </div>
                     </div>
 
                     <!-- Hardware Settings -->
                     <div class="verticalSection">
                         <h3 class="sectionTitle">Hardware</h3>
-                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="HardwareAcceleration" /> Hardware Acceleration</label></div>
+                        <div class="checkboxContainer"><label><input type="checkbox" id="HardwareAcceleration" /> Hardware Acceleration</label></div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:0.75rem;">
-                            <div class="inputContainer"><label class="inputLabel" for="MaxVRAMUsage">Max VRAM (MB):</label><input is="emby-input" type="number" id="MaxVRAMUsage" min="512" max="32768" /></div>
-                            <div class="inputContainer"><label class="inputLabel" for="CpuThreads">CPU Threads:</label><input is="emby-input" type="number" id="CpuThreads" min="1" max="64" /></div>
+                            <div class="inputContainer"><label class="inputLabel" for="MaxVRAMUsage">Max VRAM (MB):</label><input type="number" id="MaxVRAMUsage" min="512" max="32768" /></div>
+                            <div class="inputContainer"><label class="inputLabel" for="CpuThreads">CPU Threads:</label><input type="number" id="CpuThreads" min="1" max="64" /></div>
                         </div>
                     </div>
 
                     <!-- Player Integration -->
                     <div class="verticalSection">
                         <h3 class="sectionTitle">Player Integration</h3>
-                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="Notifications" /> Notifications</label></div>
-                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="AutoRetryButton" /> Auto-Retry Button</label></div>
+                        <div class="checkboxContainer"><label><input type="checkbox" id="Notifications" /> Notifications</label></div>
+                        <div class="checkboxContainer"><label><input type="checkbox" id="AutoRetryButton" /> Auto-Retry Button</label></div>
                         <div class="selectContainer"><label class="selectLabel" for="ButtonPosition">Button Position:</label>
-                            <select is="emby-select" id="ButtonPosition">
+                            <select id="ButtonPosition">
                                 <option value="right">Right</option>
                                 <option value="left">Left</option>
                                 <option value="center">Center</option>
@@ -304,9 +296,9 @@
                     <!-- Features -->
                     <div class="verticalSection">
                         <h3 class="sectionTitle">Features</h3>
-                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="EnableComparisonView" /> Comparison View</label></div>
-                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="EnablePerformanceMetrics" /> Performance Metrics</label></div>
-                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="EnableAutoBenchmarking" /> Auto-Benchmarking</label></div>
+                        <div class="checkboxContainer"><label><input type="checkbox" id="EnableComparisonView" /> Comparison View</label></div>
+                        <div class="checkboxContainer"><label><input type="checkbox" id="EnablePerformanceMetrics" /> Performance Metrics</label></div>
+                        <div class="checkboxContainer"><label><input type="checkbox" id="EnableAutoBenchmarking" /> Auto-Benchmarking</label></div>
                     </div>
 
                     <!-- FFmpeg Wrapper -->
@@ -320,9 +312,9 @@
                             Path: <code id="wrapper-path"></code>
                         </div>
                         <div style="display:flex;gap:0.5rem;">
-                            <button is="emby-button" type="button" id="btn-install-wrapper" class="raised">Install</button>
-                            <button is="emby-button" type="button" id="btn-uninstall-wrapper" class="raised">Uninstall</button>
-                            <button is="emby-button" type="button" id="btn-regenerate-wrapper" class="raised">Regenerate</button>
+                            <button type="button" id="btn-install-wrapper" class="raised">Install</button>
+                            <button type="button" id="btn-uninstall-wrapper" class="raised">Uninstall</button>
+                            <button type="button" id="btn-regenerate-wrapper" class="raised">Regenerate</button>
                         </div>
                     </div>
 
@@ -331,15 +323,15 @@
                         <h3 style="margin-top:0;color:#7dd3fc;">Settings Backup</h3>
                         <p style="font-size:0.8rem;opacity:0.6;margin:0 0 0.75rem;">Export your settings as a file to restore them on another device.</p>
                         <div style="display:flex;gap:0.5rem;align-items:center;">
-                            <button is="emby-button" type="button" id="btn-export-settings" class="raised">Export Settings</button>
-                            <button is="emby-button" type="button" id="btn-import-settings" class="raised">Import Settings</button>
+                            <button type="button" id="btn-export-settings" class="raised">Export Settings</button>
+                            <button type="button" id="btn-import-settings" class="raised">Import Settings</button>
                             <input type="file" id="settings-file-input" accept=".json,.txt" style="display:none;" />
                         </div>
                         <div id="settings-backup-status" style="font-size:0.85rem;margin-top:0.5rem;"></div>
                     </div>
 
                     <div style="margin-top:1rem;">
-                        <button is="emby-button" type="button" id="btn-save" class="raised button-submit block">Save Settings</button>
+                        <button type="button" id="btn-save" class="raised button-submit block">Save Settings</button>
                     </div>
                 </form>
             </div>
@@ -348,7 +340,7 @@
             <div id="tab-jobs" class="tab-content" style="display:none;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
                     <h3 style="margin:0;">Processing Jobs</h3>
-                    <button is="emby-button" type="button" id="btn-refresh-jobs" class="raised">Refresh</button>
+                    <button type="button" id="btn-refresh-jobs" class="raised">Refresh</button>
                 </div>
                 <div id="jobs-table-container" style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;">
                     <table style="width:100%;border-collapse:collapse;font-size:0.85rem;" id="jobs-table">
@@ -394,14 +386,14 @@
                 <!-- Cache Config -->
                 <div class="verticalSection" style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;">
                     <h3 style="margin-top:0;">Cache Settings</h3>
-                    <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="EnablePreProcessingCache" /> Cache enabled</label></div>
+                    <div class="checkboxContainer"><label><input type="checkbox" id="EnablePreProcessingCache" /> Cache enabled</label></div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:0.75rem;">
-                        <div class="inputContainer"><label class="inputLabel" for="MaxCacheAgeDays">Max Age (Days):</label><input is="emby-input" type="number" id="MaxCacheAgeDays" min="1" max="365" /></div>
-                        <div class="inputContainer"><label class="inputLabel" for="CacheSizeMB">Max Size (MB):</label><input is="emby-input" type="number" id="CacheSizeMB" min="128" max="1048576" /></div>
+                        <div class="inputContainer"><label class="inputLabel" for="MaxCacheAgeDays">Max Age (Days):</label><input type="number" id="MaxCacheAgeDays" min="1" max="365" /></div>
+                        <div class="inputContainer"><label class="inputLabel" for="CacheSizeMB">Max Size (MB):</label><input type="number" id="CacheSizeMB" min="128" max="1048576" /></div>
                     </div>
                     <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
-                        <button is="emby-button" type="button" id="btn-clear-cache" class="raised">Clear Cache</button>
-                        <button is="emby-button" type="button" id="btn-refresh-cache" class="raised">Refresh</button>
+                        <button type="button" id="btn-clear-cache" class="raised">Clear Cache</button>
+                        <button type="button" id="btn-refresh-cache" class="raised">Refresh</button>
                     </div>
                 </div>
             </div>
@@ -427,7 +419,7 @@
                         <div id="benchmark-result" style="font-size:0.85rem;margin-bottom:0.75rem;">
                             <div style="opacity:0.5;">No benchmark run yet</div>
                         </div>
-                        <button is="emby-button" type="button" id="btn-run-benchmark" class="raised" style="width:100%;">Run Benchmark</button>
+                        <button type="button" id="btn-run-benchmark" class="raised" style="width:100%;">Run Benchmark</button>
                     </div>
                 </div>
 
@@ -435,8 +427,8 @@
                 <div class="verticalSection" style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;margin-top:1rem;">
                     <h3 style="margin-top:0;color:#00d4ff;">AI Comparison View</h3>
                     <div style="display:flex;gap:0.75rem;align-items:flex-end;margin-bottom:1rem;">
-                        <div class="selectContainer" style="flex:1;"><label class="selectLabel" for="comparison-item">Media Item:</label><select is="emby-select" id="comparison-item"></select></div>
-                        <button is="emby-button" type="button" id="btn-compare" class="raised">Generate Comparison</button>
+                        <div class="selectContainer" style="flex:1;"><label class="selectLabel" for="comparison-item">Media Item:</label><select id="comparison-item"></select></div>
+                        <button type="button" id="btn-compare" class="raised">Generate Comparison</button>
                     </div>
                     <div id="comparison-container" style="display:none;">
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
