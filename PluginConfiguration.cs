@@ -5,7 +5,7 @@ using MediaBrowser.Model.Plugins;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// Plugin Configuration - v1.5.2.3 (Docker-based AI Service)
+    /// Plugin Configuration - v1.5.2.4 (Docker-based AI Service)
     /// </summary>
     public class PluginConfiguration : BasePluginConfiguration
     {
@@ -52,8 +52,7 @@ namespace JellyfinUpscalerPlugin
         public string RemoteTranscodePath { get; set; } = "/transcode"; // Shared transcode dir on remote
         
         // Version tracking
-        public string PluginVersion { get; set; } = "1.5.2.3";
-        public DateTime LastConfigUpdate { get; set; } = DateTime.UtcNow;
+        public string PluginVersion { get; set; } = "1.5.2.4";
 
         public PluginConfiguration()
         {

@@ -11,24 +11,42 @@ namespace JellyfinUpscalerPlugin.Services
 {
     /// <summary>
     /// HTTP-based upscaler service that communicates with the AI Upscaler Docker container.
-    /// This replaces local ONNX processing to avoid native DLL issues in Jellyfin plugins.
+    /// v1.5.2.4 - Uses IHttpClientFactory pattern to avoid DNS/socket issues.
     /// </summary>
     public class HttpUpscalerService : IDisposable
     {
-        private readonly HttpClient _httpClient;
+        private readonly IHttpClientFactory? _httpClientFactory;
+        private readonly HttpClient _fallbackClient;
         private readonly ILogger<HttpUpscalerService> _logger;
         private bool _disposed;
 
-        public HttpUpscalerService(ILogger<HttpUpscalerService> logger)
+        public HttpUpscalerService(ILogger<HttpUpscalerService> logger, IHttpClientFactory? httpClientFactory = null)
         {
             _logger = logger;
-            
-            _httpClient = new HttpClient
+            _httpClientFactory = httpClientFactory;
+
+            // Fallback HttpClient if IHttpClientFactory is not available
+            _fallbackClient = new HttpClient(new SocketsHttpHandler
             {
-                Timeout = TimeSpan.FromMinutes(5) // Long timeout for upscaling
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5), // DNS refresh
+                MaxConnectionsPerServer = 10
+            })
+            {
+                Timeout = TimeSpan.FromMinutes(5)
             };
-            
-            _logger.LogInformation("HttpUpscalerService initialized");
+
+            _logger.LogInformation("HttpUpscalerService v1.5.2.4 initialized");
+        }
+
+        private HttpClient GetClient()
+        {
+            if (_httpClientFactory != null)
+            {
+                var client = _httpClientFactory.CreateClient("AiUpscaler");
+                client.Timeout = TimeSpan.FromMinutes(5);
+                return client;
+            }
+            return _fallbackClient;
         }
 
         private string GetServiceUrl()
@@ -46,11 +64,12 @@ namespace JellyfinUpscalerPlugin.Services
             var baseUrl = GetServiceUrl();
             try
             {
-                var response = await _httpClient.GetAsync($"{baseUrl}/health", cancellationToken);
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                cts.CancelAfter(TimeSpan.FromSeconds(10));
+                var response = await GetClient().GetAsync($"{baseUrl}/health", cts.Token);
                 if (response.IsSuccessStatusCode)
                 {
-                    var content = await response.Content.ReadAsStringAsync(cancellationToken);
-                    _logger.LogDebug("AI Service health check [at {Url}]: {Response}", baseUrl, content);
+                    _logger.LogDebug("AI Service health check OK at {Url}", baseUrl);
                     return true;
                 }
             }
@@ -69,10 +88,12 @@ namespace JellyfinUpscalerPlugin.Services
             var baseUrl = GetServiceUrl();
             try
             {
-                var response = await _httpClient.GetAsync($"{baseUrl}/status", cancellationToken);
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                cts.CancelAfter(TimeSpan.FromSeconds(10));
+                var response = await GetClient().GetAsync($"{baseUrl}/status", cts.Token);
                 if (response.IsSuccessStatusCode)
                 {
-                    var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                    var content = await response.Content.ReadAsStringAsync(cts.Token);
                     return JsonSerializer.Deserialize<ServiceStatus>(content, new JsonSerializerOptions
                     {
                         PropertyNameCaseInsensitive = true
@@ -102,19 +123,15 @@ namespace JellyfinUpscalerPlugin.Services
             try
             {
                 using var content = new MultipartFormDataContent();
-                
-                // Add image file
+
                 using var imageContent = new ByteArrayContent(imageData);
                 imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
                 content.Add(imageContent, "file", "frame.png");
-                
-                // Add scale parameter
                 content.Add(new StringContent(scale.ToString()), "scale");
 
-                _logger.LogDebug("Sending image ({Size} bytes) to AI service at {Url} for {Scale}x upscaling", 
-                    imageData.Length, baseUrl, scale);
+                _logger.LogDebug("Sending image ({Size} bytes) to AI service for {Scale}x upscaling", imageData.Length, scale);
 
-                var response = await _httpClient.PostAsync($"{baseUrl}/upscale", content, cancellationToken);
+                var response = await GetClient().PostAsync($"{baseUrl}/upscale", content, cancellationToken);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -125,8 +142,7 @@ namespace JellyfinUpscalerPlugin.Services
                 else
                 {
                     var error = await response.Content.ReadAsStringAsync(cancellationToken);
-                    _logger.LogError("AI service upscaling failed: {StatusCode} - {Error}", 
-                        response.StatusCode, error);
+                    _logger.LogError("AI service upscaling failed: {StatusCode} - {Error}", response.StatusCode, error);
                 }
             }
             catch (TaskCanceledException)
@@ -155,13 +171,12 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 using var content = new MultipartFormDataContent();
                 content.Add(new StringContent(modelName), "model_name");
-
-                var response = await _httpClient.PostAsync($"{baseUrl}/models/download", content, cancellationToken);
+                var response = await GetClient().PostAsync($"{baseUrl}/models/download", content, cancellationToken);
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to download model {Model} from {Url}", modelName, baseUrl);
+                _logger.LogError(ex, "Failed to download model {Model}", modelName);
                 return false;
             }
         }
@@ -177,13 +192,12 @@ namespace JellyfinUpscalerPlugin.Services
                 using var content = new MultipartFormDataContent();
                 content.Add(new StringContent(modelName), "model_name");
                 content.Add(new StringContent(useGpu.ToString().ToLower()), "use_gpu");
-
-                var response = await _httpClient.PostAsync($"{baseUrl}/models/load", content, cancellationToken);
+                var response = await GetClient().PostAsync($"{baseUrl}/models/load", content, cancellationToken);
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load model {Model} on {Url}", modelName, baseUrl);
+                _logger.LogError(ex, "Failed to load model {Model}", modelName);
                 return false;
             }
         }
@@ -192,7 +206,7 @@ namespace JellyfinUpscalerPlugin.Services
         {
             if (!_disposed)
             {
-                _httpClient?.Dispose();
+                _fallbackClient?.Dispose();
                 _disposed = true;
             }
             GC.SuppressFinalize(this);

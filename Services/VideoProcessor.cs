@@ -136,11 +136,13 @@ namespace JellyfinUpscalerPlugin.Services
             
             _activeJobs[jobId] = job;
             
+            var semaphoreAcquired = false;
             try
             {
                 await _processingSemaphore.WaitAsync(cancellationToken);
+                semaphoreAcquired = true;
                 _logger.LogInformation($"🚀 Starting video processing: {Path.GetFileName(inputPath)}");
-                
+
                 // 1. Analyze input video
                 var inputInfo = await AnalyzeVideoAsync(inputPath);
                 job.InputInfo = inputInfo;
@@ -195,11 +197,16 @@ namespace JellyfinUpscalerPlugin.Services
             }
             finally
             {
-                _processingSemaphore.Release();
+                if (semaphoreAcquired)
+                {
+                    _processingSemaphore.Release();
+                }
                 _activeJobs.TryRemove(jobId, out _);
-                _jobCancellationTokens.TryRemove(jobId, out _);
+                if (_jobCancellationTokens.TryRemove(jobId, out var removedCts))
+                {
+                    removedCts.Dispose();
+                }
                 _pausedJobs.TryRemove(jobId, out _);
-                cts.Dispose();
             }
         }
 
@@ -636,7 +643,7 @@ namespace JellyfinUpscalerPlugin.Services
 
             var processedFrames = 0;
             var startTime = DateTime.Now;
-            var lastProgressUpdate = DateTime.Now;
+            long lastProgressTicks = DateTime.Now.Ticks;
 
             for (int i = 0; i < totalFrames; i++)
             {
@@ -663,22 +670,25 @@ namespace JellyfinUpscalerPlugin.Services
                         
                         Interlocked.Increment(ref processedFrames);
                         
-                        var now = DateTime.Now;
-                        if ((now - lastProgressUpdate).TotalSeconds >= 2 || index == totalFrames - 1)
+                        var nowTicks = DateTime.Now.Ticks;
+                        var prevTicks = Interlocked.Read(ref lastProgressTicks);
+                        if ((nowTicks - prevTicks) >= TimeSpan.TicksPerSecond * 2 || index == totalFrames - 1)
                         {
-                            var elapsed = (now - startTime).TotalSeconds;
-                            var fps = processedFrames / elapsed;
-                            
-                            await _progressHub.SendFrameProgress(
-                                processingJobId,
-                                Path.GetFileName(frameFile),
-                                processedFrames,
-                                totalFrames,
-                                fps
-                            );
-                            
-                            lastProgressUpdate = now;
-                            _logger.LogInformation($"📸 Processed {processedFrames}/{totalFrames} frames ({fps:F1} FPS)");
+                            if (Interlocked.CompareExchange(ref lastProgressTicks, nowTicks, prevTicks) == prevTicks)
+                            {
+                                var elapsed = (DateTime.Now - startTime).TotalSeconds;
+                                var fps = elapsed > 0 ? processedFrames / elapsed : 0;
+
+                                await _progressHub.SendFrameProgress(
+                                    processingJobId,
+                                    Path.GetFileName(frameFile),
+                                    processedFrames,
+                                    totalFrames,
+                                    fps
+                                );
+
+                                _logger.LogInformation($"📸 Processed {processedFrames}/{totalFrames} frames ({fps:F1} FPS)");
+                            }
                         }
                     }
                     catch (Exception ex)
@@ -919,8 +929,10 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         private VideoQuality EstimateVideoQuality(VideoInfo info)
         {
-            var bitRatePerPixel = info.BitRate / (info.Width * info.Height * info.FrameRate);
-            
+            var pixelRate = (double)info.Width * info.Height * info.FrameRate;
+            if (pixelRate <= 0) return VideoQuality.VeryLow;
+            var bitRatePerPixel = info.BitRate / pixelRate;
+
             return bitRatePerPixel switch
             {
                 > 0.1 => VideoQuality.High,
@@ -945,12 +957,16 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         private void UpdatePerformanceHistory(ProcessingJob job)
         {
+            var inputW = job.InputInfo?.Width ?? 0;
+            var inputH = job.InputInfo?.Height ?? 0;
+            var scale = job.OptimizedOptions?.ScaleFactor ?? 1;
+
             var metrics = new VideoProcessingMetrics
             {
                 JobId = job.Id,
                 ProcessingTime = job.ProcessingDuration,
-                InputResolution = $"{job.InputInfo.Width}x{job.InputInfo.Height}",
-                OutputResolution = $"{job.InputInfo.Width * job.OptimizedOptions.ScaleFactor}x{job.InputInfo.Height * job.OptimizedOptions.ScaleFactor}",
+                InputResolution = $"{inputW}x{inputH}",
+                OutputResolution = $"{inputW * scale}x{inputH * scale}",
                 Model = job.OptimizedOptions.Model,
                 Scale = job.OptimizedOptions.ScaleFactor,
                 Method = job.ProcessingMethod,
@@ -992,20 +1008,25 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         public void Dispose()
         {
-            _processingSemaphore?.Dispose();
             _statisticsTimer?.Dispose();
-            
-            // Dispose all job cancellation tokens to prevent memory leaks
+
+            // Cancel all active jobs and give them time to wind down
             foreach (var kvp in _jobCancellationTokens)
             {
-                try
-                {
-                    kvp.Value?.Cancel();
-                    kvp.Value?.Dispose();
-                }
+                try { kvp.Value?.Cancel(); }
+                catch { /* Ignore cancellation errors */ }
+            }
+
+            // Brief wait for tasks to observe cancellation
+            Thread.Sleep(500);
+
+            foreach (var kvp in _jobCancellationTokens)
+            {
+                try { kvp.Value?.Dispose(); }
                 catch { /* Ignore disposal errors */ }
             }
             _jobCancellationTokens.Clear();
+            _processingSemaphore?.Dispose();
         }
     }
 }

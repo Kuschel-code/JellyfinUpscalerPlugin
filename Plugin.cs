@@ -11,8 +11,8 @@ using Microsoft.Extensions.Logging;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// AI Upscaler Plugin for Jellyfin v1.5.2.3 - Docker Microservice Architecture
-    /// v1.5.2.3 - Player button injection fix (global script like Intro Skipper)
+    /// AI Upscaler Plugin for Jellyfin v1.5.2.4 - Docker Microservice Architecture
+    /// v1.5.2.4 - Major bug fixes, security hardening, dashboard redesign
     /// </summary>
     public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     {
@@ -92,9 +92,9 @@ namespace JellyfinUpscalerPlugin
                 return;
             }
 
-            // Remove old versions of our script tag (if version changed)
+            // Remove old versions of our script tag (if version changed) - Singleline so .*? matches across newlines
             var pattern = @"<script src=""configurationpage\?name=UPSCALERPlayerIntegration.*?</script>";
-            contents = Regex.Replace(contents, pattern, string.Empty, RegexOptions.IgnoreCase);
+            contents = Regex.Replace(contents, pattern, string.Empty, RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
             // Inject before </head>
             var headEndRegex = new Regex(@"</head>", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));

@@ -159,34 +159,42 @@ namespace JellyfinUpscalerPlugin.Services
         private void ValidateCacheEntries()
         {
             var invalidEntries = new List<string>();
-            
+            long validSize = 0;
+
             foreach (var kvp in _cacheIndex)
             {
                 var entry = kvp.Value;
-                
+
                 // Check if files exist
                 if (!File.Exists(entry.FilePath))
                 {
                     invalidEntries.Add(kvp.Key);
                     continue;
                 }
-                
+
                 // Check if entry is expired
                 if (IsEntryExpired(entry))
                 {
                     invalidEntries.Add(kvp.Key);
                     continue;
                 }
-                
-                // Update total cache size
-                _totalCacheSize += entry.FileSize;
+
+                // Accumulate valid cache size
+                validSize += entry.FileSize;
             }
-            
-            // Remove invalid entries
+
+            // Remove invalid entries and clean up files
             foreach (var key in invalidEntries)
             {
-                _cacheIndex.TryRemove(key, out _);
+                if (_cacheIndex.TryRemove(key, out var removed))
+                {
+                    try { if (File.Exists(removed.FilePath)) File.Delete(removed.FilePath); }
+                    catch { /* best effort cleanup */ }
+                }
             }
+
+            // Set total from validated entries (thread-safe)
+            Interlocked.Exchange(ref _totalCacheSize, validSize);
             
             if (invalidEntries.Count > 0)
             {
@@ -217,7 +225,7 @@ namespace JellyfinUpscalerPlugin.Services
         /// <summary>
         /// Check if content is cached
         /// </summary>
-        public async Task<CacheResult> GetCachedContentAsync(string inputPath, string model, int scale, string quality)
+        public Task<CacheResult> GetCachedContentAsync(string inputPath, string model, int scale, string quality)
         {
             var cacheKey = GenerateCacheKey(inputPath, model, scale, quality);
             
@@ -237,12 +245,12 @@ namespace JellyfinUpscalerPlugin.Services
                     
                     _logger.LogDebug($"🎯 Cache hit: {Path.GetFileName(inputPath)}");
                     
-                    return new CacheResult
+                    return Task.FromResult(new CacheResult
                     {
                         Hit = true,
                         FilePath = entry.FilePath,
                         Entry = entry
-                    };
+                    });
                 }
                 else
                 {
@@ -250,15 +258,15 @@ namespace JellyfinUpscalerPlugin.Services
                     _cacheIndex.TryRemove(cacheKey, out _);
                 }
             }
-            
+
             lock (_statsLock)
             {
                 _cacheMisses++;
             }
-            
+
             _logger.LogDebug($"❌ Cache miss: {Path.GetFileName(inputPath)}");
-            
-            return new CacheResult { Hit = false };
+
+            return Task.FromResult(new CacheResult { Hit = false });
         }
 
         /// <summary>
@@ -278,7 +286,7 @@ namespace JellyfinUpscalerPlugin.Services
                 var cacheKey = GenerateCacheKey(inputPath, model, scale, quality);
                 
                 // Check cache size limit
-                if (!await CheckCacheSizeLimitAsync())
+                if (!CheckCacheSizeLimit())
                 {
                     _logger.LogWarning("⚠️ Cache size limit exceeded, cleaning up");
                     await CleanupOldEntriesAsync();
@@ -308,9 +316,9 @@ namespace JellyfinUpscalerPlugin.Services
                 };
                 
                 _cacheIndex[cacheKey] = entry;
-                
-                // Update total cache size
-                _totalCacheSize += entry.FileSize;
+
+                // Update total cache size (thread-safe)
+                Interlocked.Add(ref _totalCacheSize, entry.FileSize);
                 
                 // Save index
                 await SaveCacheIndexAsync();
@@ -329,10 +337,10 @@ namespace JellyfinUpscalerPlugin.Services
         /// <summary>
         /// Check cache size limit
         /// </summary>
-        private async Task<bool> CheckCacheSizeLimitAsync()
+        private bool CheckCacheSizeLimit()
         {
             var maxCacheSize = (long)Config.CacheSizeMB * 1024 * 1024;
-            return _totalCacheSize < maxCacheSize;
+            return Interlocked.Read(ref _totalCacheSize) < maxCacheSize;
         }
 
         /// <summary>
@@ -412,7 +420,7 @@ namespace JellyfinUpscalerPlugin.Services
             try
             {
                 var maxCacheSize = (long)Config.CacheSizeMB * 1024 * 1024;
-                var currentSize = _totalCacheSize;
+                var currentSize = Interlocked.Read(ref _totalCacheSize);
                 
                 if (currentSize <= maxCacheSize)
                 {
@@ -450,7 +458,7 @@ namespace JellyfinUpscalerPlugin.Services
                     removedCount++;
                 }
                 
-                _totalCacheSize = currentSize;
+                Interlocked.Exchange(ref _totalCacheSize, currentSize);
                 
                 if (removedCount > 0)
                 {

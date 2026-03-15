@@ -45,8 +45,8 @@ namespace JellyfinUpscalerPlugin.Services
         {
             _logger.LogInformation("AI Upscaler Service: Starting background service");
 
-            // Start timer for periodic tasks (every 30 seconds)
-            _timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+            // Start timer for periodic tasks (delay 10s to let other services start)
+            _timer = new Timer(DoWork, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30));
 
             return Task.CompletedTask;
         }

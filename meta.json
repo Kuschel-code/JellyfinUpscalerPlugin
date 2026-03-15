@@ -3,10 +3,10 @@
     "name": "AI Upscaler Plugin",
     "overview": "AI-Powered Video Upscaling Plugin with Docker Microservice Architecture",
     "description": "Revolutionary AI upscaling plugin with Docker-based AI processing. Supports NVIDIA CUDA/TensorRT, Intel OpenVINO, AMD ROCm, and CPU. Features automated hardware benchmarking, intelligent fallback system, pre-processing cache, and sidebar integration.",
-    "version": "1.5.2.3",
+    "version": "1.5.2.4",
     "targetAbi": "10.11.0.0",
     "framework": "net9.0",
     "owner": "Kuschel-code",
     "category": "Video Enhancement",
-    "changelog": "v1.5.2.3: Fixed NotSupported plugin status — lowered targetAbi to 10.11.0.0 for broad Jellyfin 10.11.x compatibility."
+    "changelog": "v1.5.2.4: Major update - 30+ bug fixes, security hardening, dashboard redesign with tabs, fixed JS components, correct model names, thread safety fixes."
 }

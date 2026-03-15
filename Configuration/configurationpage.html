@@ -1,970 +1,834 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage">
     <div data-role="content">
         <div class="content-primary">
-            <div class="verticalSection">
-                <div class="sectionTitleContainer flex align-items-center">
-                    <h2 class="sectionTitle">🎮 AI Upscaler Plugin</h2>
-                    <span class="bubble ml-1">v1.5.2.3</span>
+            <!-- Header -->
+            <div class="verticalSection" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+                <div>
+                    <h1 style="margin:0;font-size:1.6rem;">AI Upscaler Plugin</h1>
+                    <p style="margin:0.2rem 0 0;opacity:0.7;font-size:0.9rem;">Docker Microservice Architecture</p>
                 </div>
-                <p class="sectionDescription">Professional AI Video Enhancement for Jellyfin - Docker Microservice
-                    Architecture</p>
+                <div style="display:flex;align-items:center;gap:0.75rem;">
+                    <span id="service-badge" style="padding:0.25rem 0.75rem;border-radius:12px;font-size:0.8rem;background:#333;">Checking...</span>
+                    <span class="bubble">v1.5.2.4</span>
+                </div>
             </div>
 
-            <form id="UpscalerConfigForm">
-                <!-- Docker AI Service Section -->
-                <div class="verticalSection"
-                    style="background: linear-gradient(135deg, #1e3a5f 0%, #0f1f3a 100%); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                    <h2 class="sectionTitle" style="color: #7dd3fc;">🐳 Docker AI Service</h2>
+            <!-- Tab Navigation -->
+            <div id="tab-nav" style="display:flex;gap:0;border-bottom:2px solid #333;margin-bottom:1rem;">
+                <button type="button" class="tab-btn active" data-tab="dashboard" style="padding:0.6rem 1.2rem;background:none;border:none;border-bottom:2px solid #00d4ff;color:#00d4ff;cursor:pointer;font-size:0.9rem;margin-bottom:-2px;">Dashboard</button>
+                <button type="button" class="tab-btn" data-tab="settings" style="padding:0.6rem 1.2rem;background:none;border:none;border-bottom:2px solid transparent;color:#aaa;cursor:pointer;font-size:0.9rem;margin-bottom:-2px;">Einstellungen</button>
+                <button type="button" class="tab-btn" data-tab="jobs" style="padding:0.6rem 1.2rem;background:none;border:none;border-bottom:2px solid transparent;color:#aaa;cursor:pointer;font-size:0.9rem;margin-bottom:-2px;">Jobs</button>
+                <button type="button" class="tab-btn" data-tab="cache" style="padding:0.6rem 1.2rem;background:none;border:none;border-bottom:2px solid transparent;color:#aaa;cursor:pointer;font-size:0.9rem;margin-bottom:-2px;">Cache</button>
+                <button type="button" class="tab-btn" data-tab="system" style="padding:0.6rem 1.2rem;background:none;border:none;border-bottom:2px solid transparent;color:#aaa;cursor:pointer;font-size:0.9rem;margin-bottom:-2px;">System</button>
+            </div>
 
-                    <div class="inputContainer">
-                        <label class="inputLabel" for="AiServiceUrl">AI Service URL:</label>
-                        <input is="emby-input" type="text" id="AiServiceUrl" name="AiServiceUrl"
-                            placeholder="http://localhost:5000" />
-                        <div class="fieldDescription" style="color: #94a3b8;">URL to Docker AI Container (Default:
-                            http://localhost:5000)</div>
+            <!-- ==================== TAB: DASHBOARD ==================== -->
+            <div id="tab-dashboard" class="tab-content">
+                <!-- Stats Cards -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;margin-bottom:1rem;">
+                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
+                        <div style="font-size:1.8rem;font-weight:bold;color:#00d4ff;" id="stat-active">0</div>
+                        <div style="font-size:0.8rem;opacity:0.7;">Aktive Jobs</div>
                     </div>
-
-                    <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
-                        <button is="emby-button" type="button" id="btn-test-connection" class="raised">
-                            <span>🔗 Test Connection</span>
-                        </button>
-                        <div id="serviceStatus"
-                            style="flex: 1; padding: 0.5rem; border-radius: 4px; background: rgba(0,0,0,0.3);">
-                            <span id="serviceStatusText">Click 'Test Connection' to verify</span>
-                        </div>
+                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
+                        <div style="font-size:1.8rem;font-weight:bold;color:#4ade80;" id="stat-completed">0</div>
+                        <div style="font-size:0.8rem;opacity:0.7;">Abgeschlossen</div>
                     </div>
-                </div>
-
-                <!-- Remote Transcoding Section (SSH) -->
-                <div class="verticalSection"
-                    style="background: linear-gradient(135deg, #1e3a5f 0%, #0f1f3a 100%); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                    <h2 class="sectionTitle" style="color: #7dd3fc;">🔌 Remote Connection (Transcoding)</h2>
-                    <p class="sectionDescription">Configure SSH tunnel for true hardware-accelerated remote transcoding.
-                    </p>
-
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label>
-                            <input type="checkbox" is="emby-checkbox" id="EnableRemoteTranscoding"
-                                name="EnableRemoteTranscoding" />
-                            <span>Enable Remote Transcoding (SSH)</span>
-                        </label>
-                        <div class="fieldDescription">Offloads FFmpeg processing to the Docker container via SSH.</div>
+                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
+                        <div style="font-size:1.8rem;font-weight:bold;color:#f87171;" id="stat-failed">0</div>
+                        <div style="font-size:0.8rem;opacity:0.7;">Fehlgeschlagen</div>
                     </div>
-
-                    <div class="inputContainer">
-                        <div class="flex align-items-center flex-wrap-wrap">
-                            <div class="flex-grow-1 mr-1" style="min-width: 200px;">
-                                <label class="inputLabel" for="RemoteHost">Remote Host:</label>
-                                <input is="emby-input" type="text" id="RemoteHost" name="RemoteHost"
-                                    placeholder="localhost" />
-                            </div>
-                            <div style="width: 100px;">
-                                <label class="inputLabel" for="RemoteSshPort">SSH Port:</label>
-                                <input is="emby-input" type="number" id="RemoteSshPort" name="RemoteSshPort"
-                                    placeholder="2222" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label class="inputLabel" for="RemoteUser">SSH User:</label>
-                        <input is="emby-input" type="text" id="RemoteUser" name="RemoteUser" placeholder="root" />
-                    </div>
-
-                    <div class="inputContainer">
-                        <label class="inputLabel" for="RemoteSshKeyFile">SSH Key File Path (Private Key):</label>
-                        <input is="emby-input" type="text" id="RemoteSshKeyFile" name="RemoteSshKeyFile" />
-                        <div class="fieldDescription">Absolute path to your private SSH key (e.g.,
-                            C:\Users\Admin\.ssh\id_rsa).</div>
-                    </div>
-
-                    <h3 class="sectionTitle" style="font-size: 1.1em; margin-top: 1.5em; color: #bae6fd;">📂 Path
-                        Mapping</h3>
-
-                    <div class="inputContainer">
-                        <label class="inputLabel" for="LocalMediaMountPoint">Local Media Path (Jellyfin):</label>
-                        <input is="emby-input" type="text" id="LocalMediaMountPoint" name="LocalMediaMountPoint"
-                            placeholder="C:\Media" />
-                        <div class="fieldDescription">The path where media files are stored on this Jellyfin server.
-                        </div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label class="inputLabel" for="RemoteMediaMountPoint">Remote Media Path (Docker):</label>
-                        <input is="emby-input" type="text" id="RemoteMediaMountPoint" name="RemoteMediaMountPoint"
-                            placeholder="/media" />
-                        <div class="fieldDescription">The corresponding path where media files are mounted inside the
-                            Docker container.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label class="inputLabel" for="RemoteTranscodePath">Remote Transcode Directory:</label>
-                        <input is="emby-input" type="text" id="RemoteTranscodePath" name="RemoteTranscodePath"
-                            placeholder="/transcode" />
-                        <div class="fieldDescription">Shared directory for temporary transcoding files (must be
-                            accessible by both).</div>
-                    </div>
-
-                    <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
-                        <button is="emby-button" type="button" id="btn-test-ssh" class="raised">
-                            <span>🔑 Test SSH Connection</span>
-                        </button>
-                        <div id="sshStatus"
-                            style="flex: 1; padding: 0.5rem; border-radius: 4px; background: rgba(0,0,0,0.3);">
-                            <span id="sshStatusText">Click 'Test SSH Connection' to verify</span>
-                        </div>
+                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
+                        <div style="font-size:1.8rem;font-weight:bold;color:#fbbf24;" id="stat-cache-hit">-</div>
+                        <div style="font-size:0.8rem;opacity:0.7;">Cache Hit Rate</div>
                     </div>
                 </div>
 
-                <div class="verticalSection">
-                    <h2 class="sectionTitle">⚙️ Basic Settings</h2>
-
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label>
-                            <input type="checkbox" is="emby-checkbox" id="EnablePlugin" name="EnablePlugin" />
-                            <span>Enable AI Upscaler Plugin</span>
-                        </label>
-                        <div class="fieldDescription">Master switch to enable or disable the plugin</div>
+                <div style="display:grid;grid-template-columns:1fr 300px;gap:1rem;">
+                    <!-- Active Jobs List -->
+                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;">
+                        <h3 style="margin:0 0 0.75rem;font-size:1rem;color:#00d4ff;">Aktive Jobs</h3>
+                        <div id="active-jobs-list" style="font-size:0.85rem;">
+                            <div style="opacity:0.5;text-align:center;padding:2rem;">Keine aktiven Jobs</div>
+                        </div>
                     </div>
 
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label>
-                            <input type="checkbox" is="emby-checkbox" id="PlayerButton" name="PlayerButton" />
-                            <span>Show AI Button in Video Player</span>
-                        </label>
-                        <div class="fieldDescription">Adds the AI upscaling button to video player controls</div>
+                    <!-- Service Status -->
+                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;">
+                        <h3 style="margin:0 0 0.75rem;font-size:1rem;color:#00d4ff;">Service Status</h3>
+                        <div style="font-size:0.85rem;">
+                            <div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid #333;">
+                                <span>Docker Service</span>
+                                <span id="svc-docker" style="color:#666;">...</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid #333;">
+                                <span>GPU</span>
+                                <span id="svc-gpu" style="color:#666;">...</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid #333;">
+                                <span>Latenz</span>
+                                <span id="svc-latency" style="color:#666;">...</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid #333;">
+                                <span>Model</span>
+                                <span id="svc-model" style="color:#666;">...</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;padding:0.4rem 0;">
+                                <span>Verarbeitung</span>
+                                <span id="svc-processing" style="color:#666;">...</span>
+                            </div>
+                        </div>
+                        <div style="margin-top:1rem;display:flex;flex-direction:column;gap:0.5rem;">
+                            <button is="emby-button" type="button" id="btn-refresh-status" class="raised" style="width:100%;">Aktualisieren</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== TAB: EINSTELLUNGEN ==================== -->
+            <div id="tab-settings" class="tab-content" style="display:none;">
+                <form id="UpscalerConfigForm">
+                    <!-- Docker AI Service -->
+                    <div class="verticalSection" style="background:linear-gradient(135deg,#1e3a5f,#0f1f3a);padding:1rem;border-radius:8px;margin-bottom:1rem;">
+                        <h3 style="color:#7dd3fc;margin-top:0;">Docker AI Service</h3>
+                        <div class="inputContainer">
+                            <label class="inputLabel" for="AiServiceUrl">AI Service URL:</label>
+                            <input is="emby-input" type="text" id="AiServiceUrl" name="AiServiceUrl" placeholder="http://localhost:5000" />
+                            <div class="fieldDescription">URL zum Docker AI Container</div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.5rem;">
+                            <button is="emby-button" type="button" id="btn-test-connection" class="raised">Test Connection</button>
+                            <span id="connection-status" style="font-size:0.85rem;"></span>
+                        </div>
                     </div>
 
-                    <div class="selectContainer">
-                        <label class="selectLabel" for="Model">Default AI Model:</label>
-                        <select is="emby-select" id="Model" name="Model">
-                            <!-- Models will be loaded dynamically -->
-                        </select>
-                        <div class="fieldDescription">Select the primary AI model for video upscaling</div>
+                    <!-- Remote SSH -->
+                    <div class="verticalSection" style="background:linear-gradient(135deg,#1e3a5f,#0f1f3a);padding:1rem;border-radius:8px;margin-bottom:1rem;">
+                        <h3 style="color:#7dd3fc;margin-top:0;">Remote Transcoding (SSH)</h3>
+                        <div class="checkboxContainer">
+                            <label><input is="emby-checkbox" type="checkbox" id="EnableRemoteTranscoding" /> Remote Transcoding aktivieren</label>
+                        </div>
+                        <div id="ssh-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:0.75rem;">
+                            <div class="inputContainer"><label class="inputLabel" for="RemoteHost">Host:</label><input is="emby-input" type="text" id="RemoteHost" /></div>
+                            <div class="inputContainer"><label class="inputLabel" for="RemoteSshPort">SSH Port:</label><input is="emby-input" type="number" id="RemoteSshPort" /></div>
+                            <div class="inputContainer"><label class="inputLabel" for="RemoteUser">User:</label><input is="emby-input" type="text" id="RemoteUser" /></div>
+                            <div class="inputContainer"><label class="inputLabel" for="RemoteSshKeyFile">SSH Key:</label><input is="emby-input" type="text" id="RemoteSshKeyFile" /></div>
+                            <div class="inputContainer"><label class="inputLabel" for="LocalMediaMountPoint">Lokaler Media Pfad:</label><input is="emby-input" type="text" id="LocalMediaMountPoint" /></div>
+                            <div class="inputContainer"><label class="inputLabel" for="RemoteMediaMountPoint">Remote Media Pfad:</label><input is="emby-input" type="text" id="RemoteMediaMountPoint" /></div>
+                            <div class="inputContainer" style="grid-column:span 2;"><label class="inputLabel" for="RemoteTranscodePath">Remote Transcode Pfad:</label><input is="emby-input" type="text" id="RemoteTranscodePath" /></div>
+                        </div>
+                        <button is="emby-button" type="button" id="btn-test-ssh" class="raised" style="margin-top:0.5rem;">SSH Test</button>
+                        <span id="ssh-status" style="font-size:0.85rem;margin-left:0.5rem;"></span>
                     </div>
 
-                    <div class="flex align-items-center justify-content-center flex-wrap-wrap">
-                        <div class="selectContainer flex-grow-1 mr-1">
-                            <label class="selectLabel" for="ScaleFactor">Scale Factor:</label>
-                            <select is="emby-select" id="ScaleFactor" name="ScaleFactor">
-                                <option value="2">2x Upscaling</option>
-                                <option value="3">3x Upscaling</option>
-                                <option value="4">4x Upscaling</option>
+                    <!-- Upscaling Settings -->
+                    <div class="verticalSection">
+                        <h3 class="sectionTitle">Upscaling Einstellungen</h3>
+                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="EnablePlugin" /> Plugin aktiviert</label></div>
+                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="PlayerButton" /> Player Button anzeigen</label></div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:0.75rem;">
+                            <div class="selectContainer"><label class="selectLabel" for="Model">Model:</label><select is="emby-select" id="Model"></select></div>
+                            <div class="selectContainer"><label class="selectLabel" for="ScaleFactor">Scale:</label><select is="emby-select" id="ScaleFactor"></select></div>
+                            <div class="selectContainer"><label class="selectLabel" for="QualityLevel">Quality:</label>
+                                <select is="emby-select" id="QualityLevel">
+                                    <option value="high">High</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="low">Low</option>
+                                </select>
+                            </div>
+                            <div class="inputContainer"><label class="inputLabel" for="MaxConcurrentStreams">Max Parallele Streams:</label><input is="emby-input" type="number" id="MaxConcurrentStreams" min="1" max="8" /></div>
+                        </div>
+                    </div>
+
+                    <!-- Hardware Settings -->
+                    <div class="verticalSection">
+                        <h3 class="sectionTitle">Hardware</h3>
+                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="HardwareAcceleration" /> Hardware Beschleunigung</label></div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:0.75rem;">
+                            <div class="inputContainer"><label class="inputLabel" for="MaxVRAMUsage">Max VRAM (MB):</label><input is="emby-input" type="number" id="MaxVRAMUsage" min="512" max="32768" /></div>
+                            <div class="inputContainer"><label class="inputLabel" for="CpuThreads">CPU Threads:</label><input is="emby-input" type="number" id="CpuThreads" min="1" max="64" /></div>
+                        </div>
+                    </div>
+
+                    <!-- Player Integration -->
+                    <div class="verticalSection">
+                        <h3 class="sectionTitle">Player Integration</h3>
+                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="Notifications" /> Benachrichtigungen</label></div>
+                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="AutoRetryButton" /> Auto-Retry Button</label></div>
+                        <div class="selectContainer"><label class="selectLabel" for="ButtonPosition">Button Position:</label>
+                            <select is="emby-select" id="ButtonPosition">
+                                <option value="right">Rechts</option>
+                                <option value="left">Links</option>
+                                <option value="center">Mitte</option>
                             </select>
                         </div>
-                        <div class="selectContainer flex-grow-1 ml-1">
-                            <label class="selectLabel" for="QualityLevel">Quality Level:</label>
-                            <select is="emby-select" id="QualityLevel" name="QualityLevel">
-                                <option value="high">High Quality (Best Results)</option>
-                                <option value="medium">Medium Quality (Balanced)</option>
-                                <option value="low">Low Quality (Fastest)</option>
-                            </select>
+                    </div>
+
+                    <!-- Features -->
+                    <div class="verticalSection">
+                        <h3 class="sectionTitle">Features</h3>
+                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="EnableComparisonView" /> Vergleichsansicht</label></div>
+                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="EnablePerformanceMetrics" /> Performance Metriken</label></div>
+                        <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="EnableAutoBenchmarking" /> Auto-Benchmarking</label></div>
+                    </div>
+
+                    <!-- FFmpeg Wrapper -->
+                    <div class="verticalSection" style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;">
+                        <h3 style="margin-top:0;">FFmpeg Wrapper</h3>
+                        <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
+                            <span>Status:</span> <span id="wrapper-status" style="font-weight:bold;">...</span>
+                            <span id="wrapper-platform" style="opacity:0.6;font-size:0.8rem;"></span>
                         </div>
-                    </div>
-                </div>
-
-                <div class="verticalSection">
-                    <h2 class="sectionTitle">🔧 Hardware Settings</h2>
-
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label>
-                            <input type="checkbox" is="emby-checkbox" id="HardwareAcceleration"
-                                name="HardwareAcceleration" />
-                            <span>Enable Hardware Acceleration</span>
-                        </label>
-                        <div class="fieldDescription">Use GPU for faster processing when available</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label class="inputLabel" for="MaxVRAMUsage">Max VRAM Usage (MB):</label>
-                        <input is="emby-input" type="number" id="MaxVRAMUsage" name="MaxVRAMUsage" min="512"
-                            max="32768" />
-                        <div class="fieldDescription">Maximum VRAM to use for upscaling</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label class="inputLabel" for="CpuThreads">CPU Threads:</label>
-                        <input is="emby-input" type="number" id="CpuThreads" name="CpuThreads" min="1" max="64" />
-                        <div class="fieldDescription">Number of CPU threads for processing</div>
-                    </div>
-                </div>
-
-                <div class="verticalSection">
-                    <h2 class="sectionTitle">🎮 Player Integration</h2>
-
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label>
-                            <input type="checkbox" is="emby-checkbox" id="Notifications" name="Notifications" />
-                            <span>Enable Progress Notifications</span>
-                        </label>
-                    </div>
-
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label>
-                            <input type="checkbox" is="emby-checkbox" id="AutoRetryButton" name="AutoRetryButton" />
-                            <span>Auto-Retry Button Injection</span>
-                        </label>
-                    </div>
-
-                    <div class="selectContainer">
-                        <label class="selectLabel" for="ButtonPosition">Button Position:</label>
-                        <select is="emby-select" id="ButtonPosition" name="ButtonPosition">
-                            <option value="right">Right Side</option>
-                            <option value="left">Left Side</option>
-                            <option value="center">Center</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="verticalSection">
-                    <h2 class="sectionTitle">🛠️ Advanced Features</h2>
-
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label>
-                            <input type="checkbox" is="emby-checkbox" id="EnableComparisonView"
-                                name="EnableComparisonView" />
-                            <span>Enable Comparison View</span>
-                        </label>
-                        <div class="fieldDescription">Show side-by-side comparison tools in the dashboard</div>
-                    </div>
-
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label>
-                            <input type="checkbox" is="emby-checkbox" id="EnablePerformanceMetrics"
-                                name="EnablePerformanceMetrics" />
-                            <span>Enable Performance Metrics</span>
-                        </label>
-                        <div class="fieldDescription">Collect and display processing performance data</div>
-                    </div>
-                </div>
-
-                <div class="verticalSection">
-                    <h2 class="sectionTitle">💾 Cache Settings</h2>
-
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label>
-                            <input type="checkbox" is="emby-checkbox" id="EnablePreProcessingCache"
-                                name="EnablePreProcessingCache" />
-                            <span>Enable Pre-Processing Cache</span>
-                        </label>
-                        <div class="fieldDescription">Cache upscaled frames to improve repeat playback performance</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label class="inputLabel" for="MaxCacheAgeDays">Max Cache Age (Days):</label>
-                        <input is="emby-input" type="number" id="MaxCacheAgeDays" name="MaxCacheAgeDays" min="1"
-                            max="365" />
-                        <div class="fieldDescription">Automatically remove cached items older than this</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label class="inputLabel" for="CacheSizeMB">Cache Size Limit (MB):</label>
-                        <input is="emby-input" type="number" id="CacheSizeMB" name="CacheSizeMB" min="128"
-                            max="1048576" />
-                        <div class="fieldDescription">Maximum storage space to use for the AI cache</div>
-                    </div>
-                </div>
-
-                <div class="verticalSection">
-                    <h2 class="sectionTitle">🎬 FFmpeg Live-Transcoding Wrapper</h2>
-                    <p class="sectionDescription">Inject AI upscaling filters into live FFmpeg transcoding streams</p>
-
-                    <div class="paperList">
-                        <div class="listItem">
-                            <div class="listItemBody two-line">
-                                <h3 class="listItemBodyText">Wrapper Status</h3>
-                                <div id="wrapper-status" class="listItemBodyText secondary">Checking...</div>
-                            </div>
+                        <div id="wrapper-path-container" style="display:none;margin-bottom:0.75rem;font-size:0.8rem;opacity:0.7;">
+                            Pfad: <code id="wrapper-path"></code>
                         </div>
-                        <div class="listItem">
-                            <div class="listItemBody two-line">
-                                <h3 class="listItemBodyText">Platform</h3>
-                                <div id="wrapper-platform" class="listItemBodyText secondary">Unknown</div>
-                            </div>
-                        </div>
-                        <div class="listItem" id="wrapper-path-container" style="display:none;">
-                            <div class="listItemBody two-line">
-                                <h3 class="listItemBodyText">Wrapper Path</h3>
-                                <div id="wrapper-path" class="listItemBodyText secondary"
-                                    style="word-break: break-all;"></div>
-                            </div>
+                        <div style="display:flex;gap:0.5rem;">
+                            <button is="emby-button" type="button" id="btn-install-wrapper" class="raised">Installieren</button>
+                            <button is="emby-button" type="button" id="btn-uninstall-wrapper" class="raised">Deinstallieren</button>
+                            <button is="emby-button" type="button" id="btn-regenerate-wrapper" class="raised">Regenerieren</button>
                         </div>
                     </div>
 
-                    <div class="fieldDescription" style="margin-top: 1em;">
-                        <strong>⚠️ How it works:</strong> The wrapper script intercepts FFmpeg calls from Jellyfin and
-                        injects hardware upscaling filters.
-                        After installation, you must manually update Jellyfin's FFmpeg path in Dashboard → Playback →
-                        Transcoding.
+                    <div style="margin-top:1rem;">
+                        <button is="emby-button" type="button" id="btn-save" class="raised button-submit block">Einstellungen speichern</button>
                     </div>
+                </form>
+            </div>
 
-                    <div class="flex align-items-center justify-content-center flex-wrap-wrap"
-                        style="margin-top: 1em; gap: 0.5em;">
-                        <button is="emby-button" type="button" id="btn-install-wrapper"
-                            class="raised button-submit block">
-                            <span>Install Wrapper</span>
-                        </button>
-                        <button is="emby-button" type="button" id="btn-uninstall-wrapper" class="raised block"
-                            style="background: #d32f2f;">
-                            <span>Uninstall Wrapper</span>
-                        </button>
-                        <button is="emby-button" type="button" id="btn-regenerate-wrapper" class="raised block">
-                            <span>Regenerate Script</span>
-                        </button>
-                    </div>
-
-                    <div id="wrapper-message" class="fieldDescription"
-                        style="margin-top: 1em; padding: 1em; border-radius: 4px; display: none;"></div>
+            <!-- ==================== TAB: JOBS ==================== -->
+            <div id="tab-jobs" class="tab-content" style="display:none;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                    <h3 style="margin:0;">Verarbeitungs-Jobs</h3>
+                    <button is="emby-button" type="button" id="btn-refresh-jobs" class="raised">Aktualisieren</button>
                 </div>
-
-                <div class="verticalSection">
-                    <h2 class="sectionTitle">📊 Live Hardware Status</h2>
-                    <div id="hardwareStatusContainer"
-                        class="flex align-items-center justify-content-center flex-wrap-wrap">
-                        <div class="card p-1 m-0-5 flex-grow-1" style="background: rgba(0, 164, 220, 0.1);">
-                            <h3 style="color: #00a4dc; margin: 0;">CPU</h3>
-                            <p id="cpu-status-text">Detecting...</p>
-                        </div>
-                        <div class="card p-1 m-0-5 flex-grow-1" style="background: rgba(0, 164, 220, 0.1);">
-                            <h3 style="color: #00a4dc; margin: 0;">GPU</h3>
-                            <p id="gpu-status-text">Detecting...</p>
-                        </div>
-                    </div>
+                <div id="jobs-table-container" style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;">
+                    <table style="width:100%;border-collapse:collapse;font-size:0.85rem;" id="jobs-table">
+                        <thead>
+                            <tr style="border-bottom:1px solid #333;">
+                                <th style="text-align:left;padding:0.5rem;">Datei</th>
+                                <th style="text-align:left;padding:0.5rem;">Status</th>
+                                <th style="text-align:left;padding:0.5rem;">Fortschritt</th>
+                                <th style="text-align:left;padding:0.5rem;">Methode</th>
+                                <th style="text-align:left;padding:0.5rem;">Dauer</th>
+                                <th style="text-align:center;padding:0.5rem;">Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="jobs-tbody">
+                            <tr><td colspan="6" style="text-align:center;padding:2rem;opacity:0.5;">Keine Jobs vorhanden</td></tr>
+                        </tbody>
+                    </table>
                 </div>
+            </div>
 
-                <div class="verticalSection">
-                    <h2 class="sectionTitle">🔍 AI Comparison Preview</h2>
-                    <div class="selectContainer">
-                        <label class="selectLabel" for="comparison-item">Select Media Item:</label>
-                        <div class="flex align-items-center">
-                            <select is="emby-select" id="comparison-item" class="flex-grow-1">
-                                <option value="">Loading items...</option>
-                            </select>
-                            <button is="emby-button" type="button" class="raised button-submit ml-1" id="btn-compare">
-                                ✨ Generate Preview
-                            </button>
-                        </div>
+            <!-- ==================== TAB: CACHE ==================== -->
+            <div id="tab-cache" class="tab-content" style="display:none;">
+                <!-- Cache Stats -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;margin-bottom:1rem;">
+                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
+                        <div style="font-size:1.5rem;font-weight:bold;color:#00d4ff;" id="cache-size">-</div>
+                        <div style="font-size:0.8rem;opacity:0.7;">Groesse</div>
                     </div>
-
-                    <div id="comparison-result" class="hide mt-1">
-                        <div class="flex align-items-center justify-content-center flex-wrap-wrap">
-                            <div class="p-0-5 flex-grow-1" style="max-width: 50%;">
-                                <h4 style="text-align: center;">Original</h4>
-                                <img id="img-original" style="width: 100%; border-radius: 4px;" />
-                            </div>
-                            <div class="p-0-5 flex-grow-1" style="max-width: 50%;">
-                                <h4 style="text-align: center;">AI Upscaled (x<span id="display-scale"></span>)</h4>
-                                <img id="img-upscaled"
-                                    style="width: 100%; border-radius: 4px; border: 2px solid #00a4dc;" />
-                            </div>
-                        </div>
+                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
+                        <div style="font-size:1.5rem;font-weight:bold;color:#4ade80;" id="cache-entries">0</div>
+                        <div style="font-size:0.8rem;opacity:0.7;">Eintraege</div>
+                    </div>
+                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
+                        <div style="font-size:1.5rem;font-weight:bold;color:#fbbf24;" id="cache-hitrate">-</div>
+                        <div style="font-size:0.8rem;opacity:0.7;">Hit Rate</div>
+                    </div>
+                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;text-align:center;">
+                        <div style="font-size:1.5rem;font-weight:bold;color:#f87171;" id="cache-usage">-</div>
+                        <div style="font-size:0.8rem;opacity:0.7;">Auslastung</div>
                     </div>
                 </div>
 
-                <div class="formSubmitContainer">
-                    <button is="emby-button" type="submit" class="raised button-submit block">
-                        <span>💾 Save Configuration</span>
-                    </button>
+                <!-- Cache Config -->
+                <div class="verticalSection" style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;">
+                    <h3 style="margin-top:0;">Cache Einstellungen</h3>
+                    <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="EnablePreProcessingCache" /> Cache aktiviert</label></div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:0.75rem;">
+                        <div class="inputContainer"><label class="inputLabel" for="MaxCacheAgeDays">Max Alter (Tage):</label><input is="emby-input" type="number" id="MaxCacheAgeDays" min="1" max="365" /></div>
+                        <div class="inputContainer"><label class="inputLabel" for="CacheSizeMB">Max Groesse (MB):</label><input is="emby-input" type="number" id="CacheSizeMB" min="128" max="1048576" /></div>
+                    </div>
+                    <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
+                        <button is="emby-button" type="button" id="btn-clear-cache" class="raised">Cache leeren</button>
+                        <button is="emby-button" type="button" id="btn-refresh-cache" class="raised">Aktualisieren</button>
+                    </div>
                 </div>
-            </form>
+            </div>
+
+            <!-- ==================== TAB: SYSTEM ==================== -->
+            <div id="tab-system" class="tab-content" style="display:none;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                    <!-- Hardware Info -->
+                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;">
+                        <h3 style="margin-top:0;color:#00d4ff;">Hardware Info</h3>
+                        <div style="font-size:0.85rem;" id="hw-info">
+                            <div style="padding:0.3rem 0;border-bottom:1px solid #333;"><span style="opacity:0.7;">CPU:</span> <span id="hw-cpu">Detecting...</span></div>
+                            <div style="padding:0.3rem 0;border-bottom:1px solid #333;"><span style="opacity:0.7;">GPU:</span> <span id="hw-gpu">Detecting...</span></div>
+                            <div style="padding:0.3rem 0;border-bottom:1px solid #333;"><span style="opacity:0.7;">Platform:</span> <span id="hw-platform">-</span></div>
+                            <div style="padding:0.3rem 0;border-bottom:1px solid #333;"><span style="opacity:0.7;">Providers:</span> <span id="hw-providers">-</span></div>
+                            <div style="padding:0.3rem 0;"><span style="opacity:0.7;">Container:</span> <span id="hw-container">-</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Benchmark -->
+                    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;">
+                        <h3 style="margin-top:0;color:#00d4ff;">Benchmark</h3>
+                        <div id="benchmark-result" style="font-size:0.85rem;margin-bottom:0.75rem;">
+                            <div style="opacity:0.5;">Noch kein Benchmark ausgefuehrt</div>
+                        </div>
+                        <button is="emby-button" type="button" id="btn-run-benchmark" class="raised" style="width:100%;">Benchmark starten</button>
+                    </div>
+                </div>
+
+                <!-- AI Comparison -->
+                <div class="verticalSection" style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;margin-top:1rem;">
+                    <h3 style="margin-top:0;color:#00d4ff;">AI Vergleichsansicht</h3>
+                    <div style="display:flex;gap:0.75rem;align-items:flex-end;margin-bottom:1rem;">
+                        <div class="selectContainer" style="flex:1;"><label class="selectLabel" for="comparison-item">Medien-Item:</label><select is="emby-select" id="comparison-item"></select></div>
+                        <button is="emby-button" type="button" id="btn-compare" class="raised">Vergleich generieren</button>
+                    </div>
+                    <div id="comparison-container" style="display:none;">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                            <div style="text-align:center;"><div style="font-size:0.8rem;opacity:0.7;margin-bottom:0.3rem;">Original</div><img id="img-original" style="max-width:100%;border-radius:4px;" /></div>
+                            <div style="text-align:center;"><div style="font-size:0.8rem;opacity:0.7;margin-bottom:0.3rem;">Upscaled</div><img id="img-upscaled" style="max-width:100%;border-radius:4px;" /></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script type="text/javascript">
-        (function () {
-            'use strict';
+    (function() {
+        'use strict';
+        var pluginId = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
+        var modelsData = [];
+        var refreshInterval = null;
 
-            const pluginId = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-            let initialized = false;
+        // ===== TAB SYSTEM =====
+        function initTabs(page) {
+            var btns = page.querySelectorAll('.tab-btn');
+            btns.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var tabId = btn.getAttribute('data-tab');
+                    btns.forEach(function(b) {
+                        b.style.borderBottomColor = 'transparent';
+                        b.style.color = '#aaa';
+                        b.classList.remove('active');
+                    });
+                    btn.style.borderBottomColor = '#00d4ff';
+                    btn.style.color = '#00d4ff';
+                    btn.classList.add('active');
 
-            // Helper functions for Jellyfin API compatibility
-            function showLoading() {
-                if (typeof Dashboard.showLoadingMsg === 'function') {
-                    Dashboard.showLoadingMsg();
-                } else if (typeof Dashboard.showLoading === 'function') {
-                    Dashboard.showLoading();
-                }
-            }
+                    page.querySelectorAll('.tab-content').forEach(function(c) { c.style.display = 'none'; });
+                    var target = page.querySelector('#tab-' + tabId);
+                    if (target) target.style.display = '';
 
-            function hideLoading() {
-                if (typeof Dashboard.hideLoadingMsg === 'function') {
-                    Dashboard.hideLoadingMsg();
-                } else if (typeof Dashboard.hideLoading === 'function') {
-                    Dashboard.hideLoading();
-                }
-            }
-
-            function loadConfig(page) {
-                showLoading();
-                ApiClient.getPluginConfiguration(pluginId).then(function (config) {
-                    console.log('AI Upscaler: Config loaded', config);
-
-                    // AI Service URL (Docker)
-                    page.querySelector('#AiServiceUrl').value = config.AiServiceUrl || 'http://localhost:5000';
-
-                    page.querySelector('#EnablePlugin').checked = config.EnablePlugin;
-                    page.querySelector('#PlayerButton').checked = config.PlayerButton;
-                    page.querySelector('#Model').value = config.Model || 'realesrgan';
-                    page.querySelector('#ScaleFactor').value = config.ScaleFactor || 2;
-                    page.querySelector('#QualityLevel').value = config.QualityLevel || 'medium';
-                    page.querySelector('#HardwareAcceleration').checked = config.HardwareAcceleration;
-                    page.querySelector('#MaxVRAMUsage').value = config.MaxVRAMUsage || 2048;
-                    page.querySelector('#CpuThreads').value = config.CpuThreads || 4;
-                    page.querySelector('#Notifications').checked = config.Notifications;
-                    page.querySelector('#AutoRetryButton').checked = config.AutoRetryButton;
-                    page.querySelector('#ButtonPosition').value = config.ButtonPosition || 'right';
-
-                    // Advanced & Features
-                    page.querySelector('#EnableComparisonView').checked = config.EnableComparisonView;
-                    page.querySelector('#EnablePerformanceMetrics').checked = config.EnablePerformanceMetrics;
-
-                    // Cache
-                    page.querySelector('#EnablePreProcessingCache').checked = config.EnablePreProcessingCache;
-                    page.querySelector('#MaxCacheAgeDays').value = config.MaxCacheAgeDays || 30;
-                    page.querySelector('#CacheSizeMB').value = config.CacheSizeMB || 5120;
-
-                    // Remote Transcoding (SSH)
-                    page.querySelector('#EnableRemoteTranscoding').checked = config.EnableRemoteTranscoding || false;
-                    page.querySelector('#RemoteHost').value = config.RemoteHost || 'localhost';
-                    page.querySelector('#RemoteSshPort').value = config.RemoteSshPort || 2222;
-                    page.querySelector('#RemoteUser').value = config.RemoteUser || 'root';
-                    page.querySelector('#RemoteSshKeyFile').value = config.RemoteSshKeyFile || '';
-                    page.querySelector('#LocalMediaMountPoint').value = config.LocalMediaMountPoint || '';
-                    page.querySelector('#RemoteMediaMountPoint').value = config.RemoteMediaMountPoint || '';
-                    page.querySelector('#RemoteTranscodePath').value = config.RemoteTranscodePath || '/transcode';
-
-                    Dashboard.hideLoadingMsg();
-
-                    //call check serverstatus
-                    checkServiceStatus(page, config.AiServiceUrl || 'http://localhost:5000');
-
-                }).catch(function (err) {
-                    console.error('AI Upscaler: Failed to load config', err);
-                    Dashboard.hideLoadingMsg();
+                    // Refresh data when switching tabs
+                    if (tabId === 'dashboard') { refreshDashboard(page); }
+                    else if (tabId === 'jobs') { refreshJobs(page); }
+                    else if (tabId === 'cache') { refreshCache(page); }
+                    else if (tabId === 'system') { refreshSystem(page); }
                 });
-            }
+            });
+        }
 
+        // ===== SERVICE HEALTH (Backend Proxy) =====
+        function checkServiceHealth(page) {
+            var apiUrl = ApiClient.getUrl('Upscaler/service-health');
+            ApiClient.ajax({ type: 'GET', url: apiUrl, dataType: 'json' }).then(function(data) {
+                var badge = page.querySelector('#service-badge');
+                if (data.available) {
+                    badge.textContent = 'Online';
+                    badge.style.background = '#065f46';
+                    badge.style.color = '#4ade80';
+                    page.querySelector('#svc-docker').textContent = 'Online';
+                    page.querySelector('#svc-docker').style.color = '#4ade80';
+                    page.querySelector('#svc-gpu').textContent = data.usingGpu ? 'Aktiv' : 'CPU Mode';
+                    page.querySelector('#svc-gpu').style.color = data.usingGpu ? '#4ade80' : '#fbbf24';
+                    page.querySelector('#svc-latency').textContent = data.latencyMs + 'ms';
+                    page.querySelector('#svc-latency').style.color = data.latencyMs < 100 ? '#4ade80' : '#fbbf24';
+                    page.querySelector('#svc-model').textContent = data.currentModel || '-';
+                    page.querySelector('#svc-model').style.color = '#e2e8f0';
+                    page.querySelector('#svc-processing').textContent = data.processingCount + '/' + data.maxConcurrent;
+                    page.querySelector('#svc-processing').style.color = '#e2e8f0';
+                } else {
+                    badge.textContent = 'Offline';
+                    badge.style.background = '#7f1d1d';
+                    badge.style.color = '#f87171';
+                    page.querySelector('#svc-docker').textContent = 'Offline';
+                    page.querySelector('#svc-docker').style.color = '#f87171';
+                }
+            }).catch(function() {
+                var badge = page.querySelector('#service-badge');
+                badge.textContent = 'Fehler';
+                badge.style.background = '#7f1d1d';
+                badge.style.color = '#f87171';
+            });
+        }
 
-            function loadModels(page) {
-                return ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/models')).then(function (data) {
-                    // Handle both { items: [] } and direct [] responses
-                    const models = Array.isArray(data) ? data : (data.items || []);
-                    window.upscalerModels = models;
+        // ===== DASHBOARD =====
+        function refreshDashboard(page) {
+            checkServiceHealth(page);
+            // Load jobs for stats
+            ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/jobs'), dataType: 'json' }).then(function(data) {
+                if (data && data.jobs) {
+                    var active = 0, completed = 0, failed = 0;
+                    var jobsHtml = '';
+                    data.jobs.forEach(function(j) {
+                        if (j.status === 'Processing' || j.status === 'Starting' || j.status === 'Analyzing') active++;
+                        else if (j.status === 'Completed') completed++;
+                        else if (j.status === 'Failed') failed++;
 
-                    const select = page.querySelector('#Model');
-                    let html = '';
-
-                    if (models.length > 0) {
-                        for (var i = 0; i < models.length; i++) {
-                            var m = models[i];
-                            // Use || to handle different C# serialization casings (Id vs id)
-                            var id = m.Id || m.id || '';
-                            var name = m.Name || m.name || 'Unknown Model';
-                            var description = m.Description || m.description || '';
-                            html += '<option value="' + id + '">' + name + "-" + description + '</option>';
+                        if (j.status === 'Processing' || j.status === 'Starting') {
+                            var prog = Math.round(j.progress || 0);
+                            jobsHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid #333;">' +
+                                '<span>' + (j.inputPath || 'Unknown') + '</span>' +
+                                '<div style="display:flex;align-items:center;gap:0.5rem;">' +
+                                '<div style="width:80px;height:6px;background:#333;border-radius:3px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:#00d4ff;border-radius:3px;"></div></div>' +
+                                '<span style="font-size:0.75rem;">' + prog + '%</span>' +
+                                '</div></div>';
                         }
+                    });
+                    page.querySelector('#stat-active').textContent = active;
+                    page.querySelector('#stat-completed').textContent = completed;
+                    page.querySelector('#stat-failed').textContent = failed;
+                    if (jobsHtml) {
+                        page.querySelector('#active-jobs-list').innerHTML = jobsHtml;
                     } else {
-                        html = '<option value="">No Models Found</option>';
+                        page.querySelector('#active-jobs-list').innerHTML = '<div style="opacity:0.5;text-align:center;padding:2rem;">Keine aktiven Jobs</div>';
                     }
-
-                    select.innerHTML = html;
-
-                    // Trigger the scale factor update for the first model
-                    if (models.length > 0) {
-                        updateScaleFactors(page, select.value);
-                    }
-                }).catch(function (err) {
-                    console.error('Failed to load models:', err);
-                    page.querySelector('#Model').innerHTML = '<option value="">Error loading models</option>';
-                });
-            }
-
-            function updateScaleFactors(page, modelId) {
-                // If we haven't loaded models into the window global yet, exit
-                if (!window.upscalerModels) return;
-
-                // Find the specific model data from our stored list
-                const model = window.upscalerModels.find(m => (m.Id || m.id) === modelId);
-                if (!model) return;
-
-                const scaleSelect = page.querySelector('#ScaleFactor');
-                const currentValue = scaleSelect.value;
-
-                // Build options based on what the specific model supports (e.g., [2, 4])
-                const scales = model.Scale || model.scale || [2, 4];
-
-                let html = '';
-                scales.forEach(s => {
-                    html += '<option value="' + s + '">' + s + 'x Upscaling</option>';
-                });
-
-                scaleSelect.innerHTML = html;
-
-                // Restore the previous selection if it's still a valid option for this model
-                if (scales.includes(parseInt(currentValue))) {
-                    scaleSelect.value = currentValue;
                 }
-            }
+            }).catch(function() {});
 
-            // 2. AUTHENTICATED LOADER (Fixed the 401 Unauthorized error)
-            function loadJavaScriptComponents() {
-                const components = [
-                    { id: 'aiupscaler-sidebar', name: 'sidebar-upscaler.js' },
-                    { id: 'aiupscaler-quickmenu', name: 'quick-menu.js' },
-                    { id: 'aiupscaler-player', name: 'player-integration.js' }
-                ];
+            // Load cache stats for hit rate
+            ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/cache/stats'), dataType: 'json' }).then(function(data) {
+                if (data) {
+                    page.querySelector('#stat-cache-hit').textContent = data.HitRate ? data.HitRate.toFixed(1) + '%' : '0%';
+                }
+            }).catch(function() {});
+        }
 
-                components.forEach(component => {
-                    const url = ApiClient.getUrl('api/Upscaler/js/' + component.name);
+        // ===== JOBS =====
+        function refreshJobs(page) {
+            ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/jobs'), dataType: 'json' }).then(function(data) {
+                var tbody = page.querySelector('#jobs-tbody');
+                if (!data || !data.jobs || data.jobs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;opacity:0.5;">Keine Jobs vorhanden</td></tr>';
+                    return;
+                }
+                var html = '';
+                data.jobs.forEach(function(j) {
+                    var prog = Math.round(j.progress || 0);
+                    var dur = j.duration ? j.duration.toFixed(1) + 's' : '-';
+                    var statusColor = j.status === 'Completed' ? '#4ade80' : j.status === 'Failed' ? '#f87171' : j.status === 'Processing' ? '#00d4ff' : '#fbbf24';
+                    var actions = '';
+                    if (j.status === 'Processing' || j.status === 'Starting') {
+                        if (j.isPaused) {
+                            actions = '<button type="button" onclick="window._upscalerResumeJob(\'' + j.jobId + '\')" style="background:#065f46;border:none;color:#4ade80;padding:0.2rem 0.5rem;border-radius:4px;cursor:pointer;font-size:0.75rem;">Resume</button>';
+                        } else {
+                            actions = '<button type="button" onclick="window._upscalerPauseJob(\'' + j.jobId + '\')" style="background:#1e3a5f;border:none;color:#7dd3fc;padding:0.2rem 0.5rem;border-radius:4px;cursor:pointer;font-size:0.75rem;">Pause</button> ' +
+                                      '<button type="button" onclick="window._upscalerCancelJob(\'' + j.jobId + '\')" style="background:#7f1d1d;border:none;color:#f87171;padding:0.2rem 0.5rem;border-radius:4px;cursor:pointer;font-size:0.75rem;">Stop</button>';
+                        }
+                    }
+                    html += '<tr style="border-bottom:1px solid #333;">' +
+                        '<td style="padding:0.5rem;">' + (j.inputPath || '-') + '</td>' +
+                        '<td style="padding:0.5rem;color:' + statusColor + ';">' + (j.status || '-') + '</td>' +
+                        '<td style="padding:0.5rem;"><div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:60px;height:5px;background:#333;border-radius:3px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:#00d4ff;"></div></div><span style="font-size:0.75rem;">' + prog + '%</span></div></td>' +
+                        '<td style="padding:0.5rem;">' + (j.method || '-') + '</td>' +
+                        '<td style="padding:0.5rem;">' + dur + '</td>' +
+                        '<td style="padding:0.5rem;text-align:center;">' + actions + '</td>' +
+                        '</tr>';
+                });
+                tbody.innerHTML = html;
+            }).catch(function() {
+                page.querySelector('#jobs-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:#f87171;">Fehler beim Laden</td></tr>';
+            });
+        }
 
-                    // Use ApiClient.ajax to automatically include the auth token
-                    ApiClient.ajax({
-                        type: 'GET',
-                        url: url,
-                        dataType: 'text'
-                    }).then(script => {
-                        const existing = document.getElementById(component.id);
-                        if (existing) existing.remove();
+        // Global job control functions
+        window._upscalerPauseJob = function(jobId) {
+            ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/jobs/' + jobId + '/pause') }).then(function() {
+                var page = document.querySelector('#UpscalerConfigurationPage');
+                if (page) refreshJobs(page);
+            });
+        };
+        window._upscalerResumeJob = function(jobId) {
+            ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/jobs/' + jobId + '/resume') }).then(function() {
+                var page = document.querySelector('#UpscalerConfigurationPage');
+                if (page) refreshJobs(page);
+            });
+        };
+        window._upscalerCancelJob = function(jobId) {
+            ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/jobs/' + jobId + '/cancel') }).then(function() {
+                var page = document.querySelector('#UpscalerConfigurationPage');
+                if (page) refreshJobs(page);
+            });
+        };
 
-                        const scriptElement = document.createElement('script');
-                        scriptElement.id = component.id;
-                        scriptElement.textContent = script;
-                        document.head.appendChild(scriptElement);
-                        console.log('AI Upscaler: Component ' + component.name + ' injected');
-                    }).catch(err => console.error('AI Upscaler Auth: Failed to inject ' + component.name, err));
+        // ===== CACHE =====
+        function refreshCache(page) {
+            ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/cache/stats'), dataType: 'json' }).then(function(data) {
+                if (data) {
+                    var sizeMB = (data.TotalSize || 0) / 1024 / 1024;
+                    var maxMB = (data.MaxSize || 1) / 1024 / 1024;
+                    page.querySelector('#cache-size').textContent = sizeMB.toFixed(1) + ' / ' + maxMB.toFixed(0) + ' MB';
+                    page.querySelector('#cache-entries').textContent = data.TotalEntries || 0;
+                    page.querySelector('#cache-hitrate').textContent = (data.HitRate || 0).toFixed(1) + '%';
+                    page.querySelector('#cache-usage').textContent = (data.UsagePercentage || 0).toFixed(1) + '%';
+                }
+            }).catch(function() {});
+        }
+
+        // ===== SYSTEM =====
+        function refreshSystem(page) {
+            ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/recommendations'), dataType: 'json' }).then(function(data) {
+                if (data && data.system) {
+                    page.querySelector('#hw-cpu').textContent = data.system.ProcessorCount + ' Cores (' + data.system.Architecture + ')';
+                    page.querySelector('#hw-platform').textContent = data.system.Platform || '-';
+                    page.querySelector('#hw-container').textContent = data.system.IsContainer ? 'Ja' : 'Nein';
+                }
+                if (data && data.hardware) {
+                    var gpu = data.hardware.CudaAvailable ? 'NVIDIA (CUDA)' : data.hardware.DirectMlAvailable ? 'AMD/Intel (DirectML)' : 'CPU only';
+                    page.querySelector('#hw-gpu').textContent = gpu;
+                    page.querySelector('#hw-providers').textContent = (data.hardware.AvailableProviders || []).join(', ') || '-';
+                }
+            }).catch(function() {});
+        }
+
+        // ===== MODELS =====
+        function loadModels(page) {
+            return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/models'), dataType: 'json' }).then(function(data) {
+                modelsData = data || [];
+                var select = page.querySelector('#Model');
+                select.innerHTML = '';
+                modelsData.forEach(function(m) {
+                    var opt = document.createElement('option');
+                    opt.value = m.id;
+                    opt.textContent = m.name;
+                    select.appendChild(opt);
+                });
+                select.addEventListener('change', function() { updateScaleOptions(page); });
+            });
+        }
+
+        function updateScaleOptions(page) {
+            var modelId = page.querySelector('#Model').value;
+            var model = modelsData.find(function(m) { return m.id === modelId; });
+            var select = page.querySelector('#ScaleFactor');
+            var currentVal = select.value;
+            select.innerHTML = '';
+            if (model && model.scale) {
+                model.scale.forEach(function(s) {
+                    var opt = document.createElement('option');
+                    opt.value = s;
+                    opt.textContent = s + 'x';
+                    select.appendChild(opt);
+                });
+            } else {
+                [2,3,4].forEach(function(s) {
+                    var opt = document.createElement('option');
+                    opt.value = s;
+                    opt.textContent = s + 'x';
+                    select.appendChild(opt);
                 });
             }
+            if (currentVal) select.value = currentVal;
+        }
 
-            function loadMediaItems(page) {
+        // ===== MEDIA ITEMS for Comparison =====
+        function loadMediaItems(page) {
+            try {
                 ApiClient.getItems(ApiClient.getCurrentUserId(), {
-                    IncludeItemTypes: "Movie,Episode",
-                    Recursive: true,
-                    Limit: 20,
-                    SortBy: "DateCreated",
-                    SortOrder: "Descending",
-                    ImageTypes: "Primary"
-                }).then(function (result) {
-                    const select = page.querySelector('#comparison-item');
+                    IncludeItemTypes: 'Movie,Episode',
+                    Limit: 30,
+                    SortBy: 'DateCreated',
+                    SortOrder: 'Descending',
+                    Fields: 'PrimaryImageAspectRatio',
+                    ImageTypeLimit: 1,
+                    EnableImageTypes: 'Primary'
+                }).then(function(result) {
+                    var select = page.querySelector('#comparison-item');
+                    select.innerHTML = '<option value="">-- Item auswaehlen --</option>';
+                    if (result && result.Items) {
+                        result.Items.forEach(function(item) {
+                            if (item.ImageTags && item.ImageTags.Primary) {
+                                var opt = document.createElement('option');
+                                opt.value = item.Id;
+                                opt.textContent = item.Name + (item.ProductionYear ? ' (' + item.ProductionYear + ')' : '');
+                                select.appendChild(opt);
+                            }
+                        });
+                    }
+                });
+            } catch(e) {}
+        }
 
-                    if (result.Items && result.Items.length > 0) {
-                        select.innerHTML = result.Items.map(item => {
-                            // Escape name to prevent XSS and ensure year is handled as a string
-                            const name = item.Name || 'Unknown Title';
-                            const year = item.ProductionYear ? ` (${item.ProductionYear})` : '';
-                            return `<option value="${item.Id}">${name}${year}</option>`;
-                        }).join('');
+        // ===== CONFIG LOAD/SAVE =====
+        function loadConfig(page) {
+            ApiClient.getPluginConfiguration(pluginId).then(function(config) {
+                var fields = ['AiServiceUrl','RemoteHost','RemoteSshPort','RemoteUser','RemoteSshKeyFile',
+                    'LocalMediaMountPoint','RemoteMediaMountPoint','RemoteTranscodePath',
+                    'MaxVRAMUsage','CpuThreads','MaxConcurrentStreams','MaxCacheAgeDays','CacheSizeMB'];
+                fields.forEach(function(f) {
+                    var el = page.querySelector('#' + f);
+                    if (el && config[f] !== undefined) el.value = config[f];
+                });
+
+                var checks = ['EnablePlugin','PlayerButton','HardwareAcceleration','Notifications','AutoRetryButton',
+                    'EnableComparisonView','EnablePerformanceMetrics','EnableAutoBenchmarking',
+                    'EnablePreProcessingCache','EnableRemoteTranscoding'];
+                checks.forEach(function(f) {
+                    var el = page.querySelector('#' + f);
+                    if (el) el.checked = !!config[f];
+                });
+
+                var selects = ['Model','QualityLevel','ButtonPosition'];
+                selects.forEach(function(f) {
+                    var el = page.querySelector('#' + f);
+                    if (el && config[f]) el.value = config[f];
+                });
+
+                if (config.ScaleFactor) {
+                    updateScaleOptions(page);
+                    page.querySelector('#ScaleFactor').value = config.ScaleFactor;
+                }
+            });
+        }
+
+        function saveConfig(page) {
+            ApiClient.getPluginConfiguration(pluginId).then(function(config) {
+                var fields = ['AiServiceUrl','RemoteHost','RemoteSshKeyFile','LocalMediaMountPoint',
+                    'RemoteMediaMountPoint','RemoteTranscodePath'];
+                fields.forEach(function(f) {
+                    var el = page.querySelector('#' + f);
+                    if (el) config[f] = el.value;
+                });
+
+                var nums = ['RemoteSshPort','MaxVRAMUsage','CpuThreads','MaxConcurrentStreams','MaxCacheAgeDays','CacheSizeMB','ScaleFactor'];
+                nums.forEach(function(f) {
+                    var el = page.querySelector('#' + f);
+                    if (el) config[f] = parseInt(el.value, 10) || config[f];
+                });
+
+                var checks = ['EnablePlugin','PlayerButton','HardwareAcceleration','Notifications','AutoRetryButton',
+                    'EnableComparisonView','EnablePerformanceMetrics','EnableAutoBenchmarking',
+                    'EnablePreProcessingCache','EnableRemoteTranscoding'];
+                checks.forEach(function(f) {
+                    var el = page.querySelector('#' + f);
+                    if (el) config[f] = el.checked;
+                });
+
+                config.Model = page.querySelector('#Model').value;
+                config.QualityLevel = page.querySelector('#QualityLevel').value;
+                config.ButtonPosition = page.querySelector('#ButtonPosition').value;
+                config.RemoteUser = page.querySelector('#RemoteUser').value;
+                config.PluginVersion = '1.5.2.4';
+
+                ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
+                    if (typeof Dashboard !== 'undefined' && Dashboard.processPluginConfigurationUpdateResult) {
+                        Dashboard.processPluginConfigurationUpdateResult();
+                    }
+                    alert('Einstellungen gespeichert!');
+                });
+            });
+        }
+
+        // ===== WRAPPER =====
+        function loadWrapperStatus(page) {
+            ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('upscaler/wrapper/status'), dataType: 'json' }).then(function(data) {
+                var status = page.querySelector('#wrapper-status');
+                if (data.IsInstalled) {
+                    status.textContent = 'Installiert & Aktiv';
+                    status.style.color = '#4ade80';
+                    page.querySelector('#wrapper-path-container').style.display = '';
+                    page.querySelector('#wrapper-path').textContent = data.WrapperPath;
+                } else {
+                    status.textContent = 'Nicht installiert';
+                    status.style.color = '#f87171';
+                    page.querySelector('#wrapper-path-container').style.display = 'none';
+                }
+                page.querySelector('#wrapper-platform').textContent = (data.Platform || '') + ' ' + (data.RuntimeIdentifier || '');
+            }).catch(function() {
+                page.querySelector('#wrapper-status').textContent = 'Fehler';
+                page.querySelector('#wrapper-status').style.color = '#f87171';
+            });
+        }
+
+        // ===== EVENT HANDLERS =====
+        function attachEvents(page) {
+            // Save
+            page.querySelector('#btn-save').addEventListener('click', function() { saveConfig(page); });
+
+            // Connection Test (via backend proxy)
+            page.querySelector('#btn-test-connection').addEventListener('click', function() {
+                var status = page.querySelector('#connection-status');
+                status.textContent = 'Teste...';
+                status.style.color = '#fbbf24';
+                checkServiceHealth(page);
+                ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/service-health'), dataType: 'json' }).then(function(data) {
+                    if (data.available) {
+                        status.textContent = 'Verbunden (' + data.latencyMs + 'ms)';
+                        status.style.color = '#4ade80';
                     } else {
-                        // FIX: We use a placeholder that doesn't trigger Jellyfin's auto-translation lookup
-                        // Adding a non-breaking space or a specific character usually bypasses the "Key Missing" warning
-                        select.innerHTML = '<option value="">(No media items found)</option>';
+                        status.textContent = 'Nicht erreichbar';
+                        status.style.color = '#f87171';
                     }
-                }).catch(err => {
-                    console.error('AI Upscaler: Error loading media items', err);
-                    const select = page.querySelector('#comparison-item');
-                    if (select) select.innerHTML = '<option value="">Error loading items</option>';
+                }).catch(function() {
+                    status.textContent = 'Fehler';
+                    status.style.color = '#f87171';
                 });
-            }
+            });
 
-            function updateHardwareStatus(page) {
-                ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/recommendations')).then(function (data) {
-                    if (data && data.hardwareInfo) {
-                        page.querySelector('#cpu-status-text').textContent = data.hardwareInfo.detectedCPU;
-                        page.querySelector('#gpu-status-text').textContent = data.hardwareInfo.detectedGPU;
-                    }
+            // SSH Test
+            page.querySelector('#btn-test-ssh').addEventListener('click', function() {
+                var status = page.querySelector('#ssh-status');
+                status.textContent = 'Teste...';
+                status.style.color = '#fbbf24';
+                var body = JSON.stringify({
+                    Host: page.querySelector('#RemoteHost').value,
+                    Port: parseInt(page.querySelector('#RemoteSshPort').value) || 22,
+                    User: page.querySelector('#RemoteUser').value,
+                    KeyFile: page.querySelector('#RemoteSshKeyFile').value
                 });
-            }
+                ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/ssh/test'), data: body, contentType: 'application/json', dataType: 'json' }).then(function(data) {
+                    status.textContent = data.success ? 'Verbunden!' : data.message || 'Fehlgeschlagen';
+                    status.style.color = data.success ? '#4ade80' : '#f87171';
+                }).catch(function() { status.textContent = 'Fehler'; status.style.color = '#f87171'; });
+            });
 
-            function generateComparison(page) {
-                const itemId = page.querySelector('#comparison-item').value;
-                if (!itemId) return;
-
-                const btn = page.querySelector('#btn-compare');
-                btn.disabled = true;
-                btn.textContent = '⌛ Processing...';
-
-                const model = page.querySelector('#Model').value;
-                const scale = page.querySelector('#ScaleFactor').value;
-                page.querySelector('#display-scale').textContent = scale;
-
-                const url = ApiClient.getUrl('api/Upscaler/compare/' + itemId, {
-                    model: model,
-                    scale: scale
-                });
-
-                ApiClient.getJSON(url).then(function (data) {
-                    if (data && data.upscaledBase64) {
-                        page.querySelector('#img-original').src = data.originalBase64;
-                        page.querySelector('#img-upscaled').src = data.upscaledBase64;
-                        page.querySelector('#comparison-result').classList.remove('hide');
-                    }
-                    btn.disabled = false;
-                    btn.textContent = '✨ Generate Preview';
-                }).catch(function () {
-                    btn.disabled = false;
-                    btn.textContent = '✨ Generate Preview';
-                    Dashboard.alert('Comparison failed. Check logs.');
-                });
-            }
-
-            function loadWrapperStatus(page) {
-                ApiClient.getJSON(ApiClient.getUrl('api/upscaler/wrapper/status')).then(function (data) {
-                    const statusEl = page.querySelector('#wrapper-status');
-                    const platformEl = page.querySelector('#wrapper-platform');
-                    const pathEl = page.querySelector('#wrapper-path');
-                    const pathContainer = page.querySelector('#wrapper-path-container');
-
-                    statusEl.textContent = data.IsInstalled ? '✅ Installed & Active' : '❌ Not Installed';
-                    platformEl.textContent = data.Platform + ' (' + data.RuntimeIdentifier + ')';
-
-                    if (data.IsInstalled) {
-                        pathEl.textContent = data.WrapperPath;
-                        pathContainer.style.display = 'block';
-                    } else {
-                        pathContainer.style.display = 'none';
-                    }
-                }).catch(function () {
-                    page.querySelector('#wrapper-status').textContent = '⚠️ Error loading status';
-                });
-            }
-
-            function installWrapper(page) {
-                const btn = page.querySelector('#btn-install-wrapper');
-                const msgEl = page.querySelector('#wrapper-message');
-                btn.disabled = true;
-
-                ApiClient.ajax({
-                    type: 'POST',
-                    url: ApiClient.getUrl('api/upscaler/wrapper/install')
-                }).then(function (data) {
-                    msgEl.textContent = data.Message;
-                    msgEl.style.background = 'rgba(76, 175, 80, 0.2)';
-                    msgEl.style.display = 'block';
+            // Wrapper buttons
+            page.querySelector('#btn-install-wrapper').addEventListener('click', function() {
+                ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('upscaler/wrapper/install'), dataType: 'json' }).then(function(data) {
+                    alert(data.Message || 'Installiert');
                     loadWrapperStatus(page);
-                    btn.disabled = false;
-                }).catch(function () {
-                    msgEl.textContent = 'Installation failed. Check server logs.';
-                    msgEl.style.background = 'rgba(244, 67, 54, 0.2)';
-                    msgEl.style.display = 'block';
-                    btn.disabled = false;
                 });
-            }
-
-            function uninstallWrapper(page) {
-                const btn = page.querySelector('#btn-uninstall-wrapper');
-                const msgEl = page.querySelector('#wrapper-message');
-                btn.disabled = true;
-
-                ApiClient.ajax({
-                    type: 'POST',
-                    url: ApiClient.getUrl('api/upscaler/wrapper/uninstall')
-                }).then(function (data) {
-                    msgEl.textContent = data.Message;
-                    msgEl.style.background = 'rgba(255, 152, 0, 0.2)';
-                    msgEl.style.display = 'block';
+            });
+            page.querySelector('#btn-uninstall-wrapper').addEventListener('click', function() {
+                ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('upscaler/wrapper/uninstall'), dataType: 'json' }).then(function(data) {
+                    alert(data.Message || 'Deinstalliert');
                     loadWrapperStatus(page);
-                    btn.disabled = false;
-                }).catch(function () {
-                    msgEl.textContent = 'Uninstallation failed. Check server logs.';
-                    msgEl.style.background = 'rgba(244, 67, 54, 0.2)';
-                    msgEl.style.display = 'block';
-                    btn.disabled = false;
                 });
-            }
-
-            function regenerateWrapper(page) {
-                const btn = page.querySelector('#btn-regenerate-wrapper');
-                const msgEl = page.querySelector('#wrapper-message');
-                btn.disabled = true;
-
-                ApiClient.ajax({
-                    type: 'POST',
-                    url: ApiClient.getUrl('api/upscaler/wrapper/regenerate')
-                }).then(function (data) {
-                    msgEl.textContent = data.Message;
-                    msgEl.style.background = 'rgba(33, 150, 243, 0.2)';
-                    msgEl.style.display = 'block';
+            });
+            page.querySelector('#btn-regenerate-wrapper').addEventListener('click', function() {
+                ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('upscaler/wrapper/regenerate'), dataType: 'json' }).then(function(data) {
+                    alert(data.Message || 'Regeneriert');
                     loadWrapperStatus(page);
-                    btn.disabled = false;
-                }).catch(function () {
-                    msgEl.textContent = 'Regeneration failed. Check server logs.';
-                    msgEl.style.background = 'rgba(244, 67, 54, 0.2)';
-                    msgEl.style.display = 'block';
-                    btn.disabled = false;
                 });
-            }
+            });
 
-            function checkServiceStatus(page) {
-                const statusText = page.querySelector('#serviceStatusText');
-                const serviceUrl = page.querySelector('#AiServiceUrl').value.trim().replace(/\/$/, '');
+            // Dashboard refresh
+            page.querySelector('#btn-refresh-status').addEventListener('click', function() { refreshDashboard(page); });
+            page.querySelector('#btn-refresh-jobs').addEventListener('click', function() { refreshJobs(page); });
+            page.querySelector('#btn-refresh-cache').addEventListener('click', function() { refreshCache(page); });
 
-                if (!serviceUrl) {
-                    statusText.textContent = '❌ No AI Service URL set';
-                    statusText.style.color = '#f44336';
-                    return;
-                }
-
-                statusText.textContent = 'Checking Docker AI Service...';
-                statusText.style.color = '#eab308';
-
-                // THE FIX: Use 'no-cors' mode. 
-                // This tells the browser to send the request without demanding CORS headers.
-                // Note: You won't be able to read the JSON body, but a successful 
-                // opaque response confirms the server is alive.
-                fetch(serviceUrl + '/health', {
-                    method: 'GET',
-                    mode: 'no-cors',
-                    cache: 'no-cache'
-                })
-                    .then(() => {
-                        // In no-cors mode, if the fetch doesn't throw an error, 
-                        // the server responded (even if we can't see the status code).
-                        statusText.textContent = '✅ AI Service Reachable (Local/Tunnel)';
-                        statusText.style.color = '#4caf50';
-                    })
-                    .catch(err => {
-                        console.error('Docker service unreachable:', err);
-                        statusText.textContent = '❌ Cannot reach Docker AI Service';
-                        statusText.style.color = '#f44336';
-                    });
-            }
-
-            function testConnection(page) {
-                const btn = page.querySelector('#btn-test-connection');
-                const statusEl = page.querySelector('#serviceStatusText');
-                const statusContainer = page.querySelector('#serviceStatus');
-                const url = page.querySelector('#AiServiceUrl').value || 'http://localhost:5000';
-
-                btn.disabled = true;
-                statusEl.textContent = 'Testing...';
-                statusContainer.style.background = 'rgba(255, 193, 7, 0.2)';
-
-                fetch(url + '/health', {
-                    method: 'GET',
-                    mode: 'no-cors', // Bypasses CORS policy for the connection test
-                    cache: 'no-cache'
-                }).then(function () {
-                    btn.disabled = false;
-                    statusEl.innerHTML = '✅ Connection successful!';
-                    statusContainer.style.background = 'rgba(76, 175, 80, 0.2)';
-                }).catch(function (err) {
-                    btn.disabled = false;
-                    statusEl.innerHTML = '❌ Connection refused (Check Docker)';
-                    statusContainer.style.background = 'rgba(244, 67, 54, 0.2)';
-                });
-            }
-
-            function testSshConnection(page) {
-                const btn = page.querySelector('#btn-test-ssh');
-                const statusEl = page.querySelector('#sshStatusText');
-                const statusContainer = page.querySelector('#sshStatus');
-
-                btn.disabled = true;
-                statusEl.textContent = 'Testing SSH connection...';
-                statusContainer.style.background = 'rgba(255, 193, 7, 0.2)';
-
-                // Call the backend API to test SSH (we need to implement this endpoint too)
-                ApiClient.ajax({
-                    type: 'POST',
-                    url: ApiClient.getUrl('api/upscaler/ssh/test'),
-                    contentType: 'application/json',
-                    data: JSON.stringify({
-                        Host: page.querySelector('#RemoteHost').value || 'localhost',
-                        Port: parseInt(page.querySelector('#RemoteSshPort').value) || 2222,
-                        User: page.querySelector('#RemoteUser').value || 'root',
-                        KeyFile: page.querySelector('#RemoteSshKeyFile').value || ''
-                    })
-                }).then(function (response) {
-                    btn.disabled = false;
-                    statusEl.innerHTML = '✅ SSH Connection successful!';
-                    statusContainer.style.background = 'rgba(76, 175, 80, 0.2)';
-                }).catch(function (err) {
-                    btn.disabled = false;
-                    statusEl.innerHTML = '❌ SSH Connection failed (Check settings)';
-                    statusContainer.style.background = 'rgba(244, 67, 54, 0.2)';
-                    console.error('SSH Test Error:', err);
-                });
-            }
-
-            // ===== CRITICAL: Save Configuration Handler =====
-            function saveConfiguration(page) {
-                console.log('AI Upscaler: Saving configuration...');
-                showLoading();
-
-                const config = {
-                    // AI Service URL (Docker) - CRITICAL for plugin-container connection
-                    AiServiceUrl: page.querySelector('#AiServiceUrl').value || 'http://localhost:5000',
-
-                    EnablePlugin: page.querySelector('#EnablePlugin').checked,
-                    PlayerButton: page.querySelector('#PlayerButton').checked,
-                    Model: page.querySelector('#Model').value,
-                    ScaleFactor: parseInt(page.querySelector('#ScaleFactor').value) || 2,
-                    QualityLevel: page.querySelector('#QualityLevel').value,
-                    HardwareAcceleration: page.querySelector('#HardwareAcceleration').checked,
-                    MaxVRAMUsage: parseInt(page.querySelector('#MaxVRAMUsage').value) || 2048,
-                    CpuThreads: parseInt(page.querySelector('#CpuThreads').value) || 4,
-                    Notifications: page.querySelector('#Notifications').checked,
-                    AutoRetryButton: page.querySelector('#AutoRetryButton').checked,
-                    ButtonPosition: page.querySelector('#ButtonPosition').value,
-                    EnableComparisonView: page.querySelector('#EnableComparisonView').checked,
-                    EnablePerformanceMetrics: page.querySelector('#EnablePerformanceMetrics').checked,
-                    EnablePreProcessingCache: page.querySelector('#EnablePreProcessingCache').checked,
-                    MaxCacheAgeDays: parseInt(page.querySelector('#MaxCacheAgeDays').value) || 30,
-                    CacheSizeMB: parseInt(page.querySelector('#CacheSizeMB').value) || 5120,
-
-                    // Remote Transcoding (SSH)
-                    EnableRemoteTranscoding: page.querySelector('#EnableRemoteTranscoding').checked,
-                    RemoteHost: page.querySelector('#RemoteHost').value || 'localhost',
-                    RemoteSshPort: parseInt(page.querySelector('#RemoteSshPort').value) || 2222,
-                    RemoteUser: page.querySelector('#RemoteUser').value || 'root',
-                    RemoteSshKeyFile: page.querySelector('#RemoteSshKeyFile').value || '',
-                    LocalMediaMountPoint: page.querySelector('#LocalMediaMountPoint').value || '',
-                    RemoteMediaMountPoint: page.querySelector('#RemoteMediaMountPoint').value || '',
-                    RemoteTranscodePath: page.querySelector('#RemoteTranscodePath').value || '/transcode'
-                };
-
-                console.log('AI Upscaler: Config to save:', config);
-
-                ApiClient.updatePluginConfiguration(pluginId, config).then(function () {
-                    console.log('AI Upscaler: Configuration saved successfully');
-                    hideLoading();
-                    // Dashboard.processPluginConfigurationUpdateResult();
-                    Dashboard.alert('Settings saved successfully!');
-                }).catch(function (err) {
-                    console.error('AI Upscaler: Failed to save configuration', err);
-                    hideLoading();
-                    Dashboard.alert('Failed to save configuration: ' + (err.message || 'Unknown error'));
-                });
-            }
-
-            function initializePage(page) {
-                if (initialized) {
-                    console.log('AI Upscaler: Page already initialized, skipping');
-                    return;
-                }
-                initialized = true;
-                console.log('AI Upscaler: Initializing configuration page');
-
-                // ===== FORM SUBMIT HANDLER =====
-                const form = page.querySelector('#UpscalerConfigForm');
-                if (form && !form.dataset.handlerAttached) {
-                    form.dataset.handlerAttached = 'true';
-
-                    form.addEventListener('submit', function (e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        console.log('AI Upscaler: Form submit triggered');
-                        saveConfiguration(document.querySelector('#UpscalerConfigurationPage'));
-                        return false;
-                    });
-                    console.log('AI Upscaler: Form submit handler attached');
-                }
-
-                // Model change handler
-                const modelSelect = page.querySelector('#Model');
-                if (modelSelect) {
-                    modelSelect.addEventListener('change', function () {
-                        updateScaleFactors(page, this.value);
+            // Clear cache
+            page.querySelector('#btn-clear-cache').addEventListener('click', function() {
+                if (confirm('Cache wirklich leeren?')) {
+                    ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/cache/clear') }).then(function() {
+                        alert('Cache geleert');
+                        refreshCache(page);
                     });
                 }
+            });
 
-                // Test Connection button
-                const btnTestConnection = page.querySelector('#btn-test-connection');
-                if (btnTestConnection) {
-                    btnTestConnection.addEventListener('click', function () {
-                        testConnection(page);
-                    });
-                }
-
-                // Test SSH Connection button
-                const btnTestSsh = page.querySelector('#btn-test-ssh');
-                if (btnTestSsh) {
-                    btnTestSsh.addEventListener('click', function () {
-                        testSshConnection(page);
-                    });
-                }
-
-                // Compare button
-                const btnCompare = page.querySelector('#btn-compare');
-                if (btnCompare) {
-                    btnCompare.addEventListener('click', function () {
-                        generateComparison(page);
-                    });
-                }
-
-                // Wrapper buttons
-                const btnInstall = page.querySelector('#btn-install-wrapper');
-                if (btnInstall) {
-                    btnInstall.addEventListener('click', function () {
-                        installWrapper(page);
-                    });
-                }
-
-                const btnUninstall = page.querySelector('#btn-uninstall-wrapper');
-                if (btnUninstall) {
-                    btnUninstall.addEventListener('click', function () {
-                        uninstallWrapper(page);
-                    });
-                }
-
-                const btnRegenerate = page.querySelector('#btn-regenerate-wrapper');
-                if (btnRegenerate) {
-                    btnRegenerate.addEventListener('click', function () {
-                        regenerateWrapper(page);
-                    });
-                }
-            }
-
-            function onPageShow(page) {
-                console.log('AI Upscaler: Page show event');
-
-                // Initialize immediately
-                initializePage(page);
-
-                // Chain loading to avoid race conditions
-                loadModels(page).then(() => {
-                    loadConfig(page);
-                }).catch(() => {
-                    loadConfig(page);
-                });
-
-                loadMediaItems(page);
-                updateHardwareStatus(page);
-                loadJavaScriptComponents();
-                loadWrapperStatus(page);
-            }
-
-            // ===== EVENT BINDING =====
-            const pageId = '#UpscalerConfigurationPage';
-            const pageElement = document.querySelector(pageId);
-
-            if (pageElement) {
-                // Immediate initialization if page is already visible
-                console.log('AI Upscaler: Page element found, binding events');
-
-                // Try multiple event types for compatibility
-                pageElement.addEventListener('pageshow', function () {
-                    console.log('AI Upscaler: pageshow event');
-                    onPageShow(this);
-                });
-
-                pageElement.addEventListener('viewshow', function () {
-                    console.log('AI Upscaler: viewshow event');
-                    onPageShow(this);
-                });
-
-                pageElement.addEventListener('pageinit', function () {
-                    console.log('AI Upscaler: pageinit event');
-                    initializePage(this);
-                });
-
-                // Fallback: Initialize immediately if events don't fire
-                setTimeout(function () {
-                    if (!initialized) {
-                        console.log('AI Upscaler: Fallback initialization');
-                        onPageShow(pageElement);
+            // Benchmark
+            page.querySelector('#btn-run-benchmark').addEventListener('click', function() {
+                var result = page.querySelector('#benchmark-result');
+                result.innerHTML = '<div style="color:#fbbf24;">Benchmark laeuft...</div>';
+                ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/benchmark'), dataType: 'json' }).then(function(data) {
+                    if (data.success && data.results) {
+                        var r = data.results;
+                        var html = '<div style="padding:0.3rem 0;border-bottom:1px solid #333;">Dauer: ' + (r.duration || 0).toFixed(1) + 's</div>';
+                        if (r.optimalSettings) {
+                            html += '<div style="padding:0.3rem 0;border-bottom:1px solid #333;">Empf. Model: <strong>' + (r.optimalSettings.RecommendedModel || '-') + '</strong></div>';
+                            html += '<div style="padding:0.3rem 0;border-bottom:1px solid #333;">Max Resolution: ' + (r.optimalSettings.RecommendedMaxResolution || '-') + '</div>';
+                            html += '<div style="padding:0.3rem 0;border-bottom:1px solid #333;">Quality: ' + (r.optimalSettings.RecommendedQuality || '-') + '</div>';
+                            html += '<div style="padding:0.3rem 0;">Max Streams: ' + (r.optimalSettings.MaxConcurrentStreams || 1) + '</div>';
+                        }
+                        result.innerHTML = html;
                     }
-                }, 500);
+                }).catch(function() {
+                    result.innerHTML = '<div style="color:#f87171;">Benchmark fehlgeschlagen</div>';
+                });
+            });
+
+            // Comparison
+            page.querySelector('#btn-compare').addEventListener('click', function() {
+                var itemId = page.querySelector('#comparison-item').value;
+                if (!itemId) { alert('Bitte Item auswaehlen'); return; }
+                var model = page.querySelector('#Model').value || 'realesrgan-x4';
+                var scale = page.querySelector('#ScaleFactor').value || 2;
+                page.querySelector('#comparison-container').style.display = 'none';
+                page.querySelector('#btn-compare').textContent = 'Generiere...';
+                ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/compare/' + itemId + '?model=' + model + '&scale=' + scale), dataType: 'json' }).then(function(data) {
+                    page.querySelector('#img-original').src = data.originalBase64;
+                    page.querySelector('#img-upscaled').src = data.upscaledBase64;
+                    page.querySelector('#comparison-container').style.display = '';
+                    page.querySelector('#btn-compare').textContent = 'Vergleich generieren';
+                }).catch(function() {
+                    alert('Vergleich fehlgeschlagen');
+                    page.querySelector('#btn-compare').textContent = 'Vergleich generieren';
+                });
+            });
+        }
+
+        // ===== INITIALIZATION =====
+        function onPageShow() {
+            var page = document.querySelector('#UpscalerConfigurationPage');
+            if (!page) return;
+
+            initTabs(page);
+            attachEvents(page);
+
+            loadModels(page).then(function() {
+                loadConfig(page);
+            });
+            loadWrapperStatus(page);
+            loadMediaItems(page);
+            refreshDashboard(page);
+
+            // Auto-refresh every 15 seconds
+            if (refreshInterval) clearInterval(refreshInterval);
+            refreshInterval = setInterval(function() {
+                var activeTab = page.querySelector('.tab-btn.active');
+                if (activeTab) {
+                    var tab = activeTab.getAttribute('data-tab');
+                    if (tab === 'dashboard') refreshDashboard(page);
+                    else if (tab === 'jobs') refreshJobs(page);
+                }
+            }, 15000);
+        }
+
+        // Jellyfin SPA page lifecycle
+        var events = ['pageshow', 'viewshow'];
+        events.forEach(function(evt) {
+            document.addEventListener(evt, function(e) {
+                var page = e.target;
+                if (page && page.id === 'UpscalerConfigurationPage') {
+                    onPageShow();
+                }
+            });
+        });
+
+        // Fallback
+        setTimeout(function() {
+            if (document.querySelector('#UpscalerConfigurationPage')) {
+                onPageShow();
             }
-        })();
+        }, 500);
+
+        // Cleanup on leave
+        document.addEventListener('viewbeforehide', function(e) {
+            if (e.target && e.target.id === 'UpscalerConfigurationPage') {
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = null;
+                }
+            }
+        });
+    })();
     </script>
 </div>

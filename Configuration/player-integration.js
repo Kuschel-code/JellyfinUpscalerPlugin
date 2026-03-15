@@ -1,4 +1,4 @@
-// AI Upscaler Plugin - Player Integration v1.5.2.3
+// AI Upscaler Plugin - Player Integration v1.5.2.4
 // Global script injection (loaded via index.html like Intro Skipper)
 // Compatible with Jellyfin 10.11+
 
@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.5.2.3';
+    const PLUGIN_VERSION = '1.5.2.4';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -178,17 +178,17 @@
                             <span class="menu-icon">🎨</span>
                             <span>Real-ESRGAN x4 (Best Quality)</span>
                         </div>
-                        <div class="menu-item" onclick="PlayerIntegration.quickSetModel('realesrgan-x2')">
+                        <div class="menu-item" onclick="PlayerIntegration.quickSetModel('edsr-x4')">
                             <span class="menu-icon">⚡</span>
-                            <span>Real-ESRGAN x2 (Fast)</span>
+                            <span>EDSR x4 (Best OpenCV)</span>
                         </div>
-                        <div class="menu-item" onclick="PlayerIntegration.quickSetModel('realesrgan-x4-anime')">
-                            <span class="menu-icon">🎭</span>
-                            <span>Real-ESRGAN Anime</span>
-                        </div>
-                        <div class="menu-item" onclick="PlayerIntegration.quickSetModel('FSRCNN-small')">
+                        <div class="menu-item" onclick="PlayerIntegration.quickSetModel('fsrcnn-x2')">
                             <span class="menu-icon">🔧</span>
-                            <span>FSRCNN (Lightweight)</span>
+                            <span>FSRCNN x2 (Fast)</span>
+                        </div>
+                        <div class="menu-item" onclick="PlayerIntegration.quickSetModel('espcn-x2')">
+                            <span class="menu-icon">🚀</span>
+                            <span>ESPCN x2 (Fastest)</span>
                         </div>
                     </div>
                     <div class="menu-section">

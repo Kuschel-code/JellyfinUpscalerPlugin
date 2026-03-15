@@ -638,9 +638,44 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
-        /// Test SSH connection to remote transcoding host
+        /// Server-side health check proxy for the Docker AI service (avoids CORS issues)
+        /// </summary>
+        [HttpGet("service-health")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult<object>> CheckServiceHealth()
+        {
+            try
+            {
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                var isAvailable = await _benchmarkService.IsServiceAvailableAsync();
+                stopwatch.Stop();
+
+                var status = isAvailable ? await _benchmarkService.GetServiceStatusAsync() : null;
+
+                return Ok(new
+                {
+                    success = true,
+                    available = isAvailable,
+                    latencyMs = stopwatch.ElapsedMilliseconds,
+                    currentModel = status?.CurrentModel,
+                    usingGpu = status?.UsingGpu ?? false,
+                    processingCount = status?.ProcessingCount ?? 0,
+                    maxConcurrent = status?.MaxConcurrent ?? 0,
+                    providers = status?.AvailableProviders ?? Array.Empty<string>()
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Service health check failed");
+                return Ok(new { success = false, available = false, error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Test SSH connection to remote transcoding host (admin only)
         /// </summary>
         [HttpPost("ssh/test")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> TestSshConnection([FromBody] SshTestRequest request)
         {

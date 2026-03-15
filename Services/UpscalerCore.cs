@@ -27,12 +27,10 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly IApplicationPaths _appPaths;
         private readonly HttpUpscalerService _httpUpscaler;
         
-        // Hardware detection cache with thread safety
-        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, object> _hardwareCache = new();
+        // Hardware detection cache (avoid repeated HTTP calls)
+        private static HardwareProfile? _cachedHardwareProfile;
         private static DateTime _lastHardwareCheck = DateTime.MinValue;
-        
-        // Performance monitoring
-        private readonly Dictionary<string, PerformanceMetrics> _performanceMetrics = new();
+        private static readonly object _hwCacheLock = new();
         
         private PluginConfiguration Config => Plugin.Instance?.Configuration ?? new PluginConfiguration();
         private bool _disposed;
@@ -50,7 +48,7 @@ namespace JellyfinUpscalerPlugin.Services
             _appPaths = appPaths;
             _httpUpscaler = httpUpscaler;
             
-            _logger.LogInformation("UpscalerCore v1.5.2.1 initialized - Docker-based AI processing");
+            _logger.LogInformation("UpscalerCore v1.5.2.4 initialized - Docker-based AI processing");
         }
 
         /// <summary>
@@ -127,6 +125,15 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         public async Task<HardwareProfile> DetectHardwareAsync()
         {
+            // Return cached profile if fresh (cache for 60 seconds)
+            lock (_hwCacheLock)
+            {
+                if (_cachedHardwareProfile != null && (DateTime.UtcNow - _lastHardwareCheck).TotalSeconds < 60)
+                {
+                    return _cachedHardwareProfile;
+                }
+            }
+
             var profile = new HardwareProfile
             {
                 DetectionTime = DateTime.UtcNow
@@ -135,17 +142,21 @@ namespace JellyfinUpscalerPlugin.Services
             try
             {
                 var status = await _httpUpscaler.GetServiceStatusAsync();
-                
+
                 if (status != null)
                 {
-                    profile.CudaAvailable = status.AvailableProviders.Any(p => 
+                    profile.CudaAvailable = status.AvailableProviders.Any(p =>
                         p.Contains("CUDA", StringComparison.OrdinalIgnoreCase) ||
                         p.Contains("TensorRT", StringComparison.OrdinalIgnoreCase));
-                    
-                    profile.DirectMlAvailable = status.AvailableProviders.Any(p => 
+
+                    profile.DirectMlAvailable = status.AvailableProviders.Any(p =>
                         p.Contains("DirectML", StringComparison.OrdinalIgnoreCase));
-                    
+
+                    profile.SupportsCUDA = profile.CudaAvailable;
+                    profile.SupportsDirectML = profile.DirectMlAvailable;
                     profile.ServiceAvailable = true;
+                    profile.AvailableProviders = new List<string>(status.AvailableProviders);
+                    profile.MaxConcurrentStreams = status.MaxConcurrent;
                 }
                 else
                 {
@@ -160,6 +171,14 @@ namespace JellyfinUpscalerPlugin.Services
             }
 
             profile.CpuCores = Environment.ProcessorCount;
+
+            // Cache the result
+            lock (_hwCacheLock)
+            {
+                _cachedHardwareProfile = profile;
+                _lastHardwareCheck = DateTime.UtcNow;
+            }
+
             return profile;
         }
 
@@ -179,7 +198,7 @@ namespace JellyfinUpscalerPlugin.Services
             return new Dictionary<string, object>
             {
                 ["service_url"] = Config.AiServiceUrl,
-                ["metrics_count"] = _performanceMetrics.Count
+                ["hardware_cached"] = _cachedHardwareProfile != null
             };
         }
 
@@ -194,14 +213,5 @@ namespace JellyfinUpscalerPlugin.Services
         }
     }
 
-    /// <summary>
-    /// Performance metrics for upscaling operations.
-    /// </summary>
-    public class PerformanceMetrics
-    {
-        public int TotalOperations { get; set; }
-        public double AverageTimeMs { get; set; }
-        public double TotalTimeMs { get; set; }
-        public DateTime LastOperation { get; set; }
-    }
+    // PerformanceMetrics class moved to Models/UpscalerModels.cs to avoid duplication
 }

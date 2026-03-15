@@ -119,7 +119,7 @@ namespace JellyfinUpscalerPlugin.Services
                         SupportsCUDA = HasProvider(status.AvailableProviders, "CUDA", "Tensorrt"),
                         SupportsDirectML = HasProvider(status.AvailableProviders, "DirectML"),
                         DetectionTime = DateTime.UtcNow,
-                        RecommendedModel = status.CurrentModel ?? "realesrgan-x2",
+                        RecommendedModel = status.CurrentModel ?? "realesrgan-x4",
                         RecommendedScale = 2,
                         MaxConcurrentStreams = status.MaxConcurrent
                     };
@@ -226,14 +226,14 @@ namespace JellyfinUpscalerPlugin.Services
 
             if (hw.CudaAvailable)
             {
-                settings.RecommendedModel = "realesrgan-x2";
+                settings.RecommendedModel = "realesrgan-x4";
                 settings.RecommendedQuality = "high";
                 settings.MaxConcurrentStreams = Math.Min(4, hw.CpuCores / 2);
                 settings.FallbackModel = "fsrcnn-x2";
             }
             else if (hw.DirectMlAvailable)
             {
-                settings.RecommendedModel = "realesrgan-x2";
+                settings.RecommendedModel = "realesrgan-x4";
                 settings.RecommendedQuality = "medium";
                 settings.MaxConcurrentStreams = 2;
                 settings.FallbackModel = "fsrcnn-x2";
