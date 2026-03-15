@@ -1,3 +1,55 @@
+<style>
+    #UpscalerConfigurationPage .raised {
+        background: #1e293b !important;
+        color: #e2e8f0 !important;
+        border: 1px solid #334155 !important;
+        border-radius: 6px !important;
+        padding: 0.5rem 1.2rem !important;
+        cursor: pointer !important;
+        transition: all 0.2s !important;
+        font-size: 0.85rem !important;
+    }
+    #UpscalerConfigurationPage .raised:hover {
+        background: #334155 !important;
+        border-color: #00d4ff !important;
+        color: #00d4ff !important;
+    }
+    #UpscalerConfigurationPage .raised:active {
+        background: #0f172a !important;
+    }
+    #UpscalerConfigurationPage .button-submit {
+        background: linear-gradient(135deg, #0369a1, #0284c7) !important;
+        color: #fff !important;
+        border: none !important;
+        font-weight: bold !important;
+    }
+    #UpscalerConfigurationPage .button-submit:hover {
+        background: linear-gradient(135deg, #0284c7, #0ea5e9) !important;
+    }
+    #UpscalerConfigurationPage .selectContainer select,
+    #UpscalerConfigurationPage .inputContainer input {
+        background: #0f172a !important;
+        color: #e2e8f0 !important;
+        border: 1px solid #334155 !important;
+        border-radius: 4px !important;
+    }
+    #UpscalerConfigurationPage .sectionTitle {
+        color: #7dd3fc;
+        border-bottom: 1px solid #1e3a5f;
+        padding-bottom: 0.5rem;
+    }
+    #UpscalerConfigurationPage .checkboxContainer label {
+        color: #cbd5e1;
+    }
+    #UpscalerConfigurationPage .inputLabel,
+    #UpscalerConfigurationPage .selectLabel {
+        color: #94a3b8 !important;
+    }
+    #UpscalerConfigurationPage .fieldDescription {
+        color: #64748b !important;
+        font-size: 0.8rem;
+    }
+</style>
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage">
     <div data-role="content">
         <div class="content-primary">
@@ -286,7 +338,7 @@
                 <div class="verticalSection" style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:1rem;border-radius:8px;margin-top:1rem;">
                     <h3 style="margin-top:0;color:#00d4ff;">AI Comparison View</h3>
                     <div style="display:flex;gap:0.75rem;align-items:flex-end;margin-bottom:1rem;">
-                        <div class="selectContainer" style="flex:1;"><label class="selectLabel" for="comparison-item">Medien-Item:</label><select is="emby-select" id="comparison-item"></select></div>
+                        <div class="selectContainer" style="flex:1;"><label class="selectLabel" for="comparison-item">Media Item:</label><select is="emby-select" id="comparison-item"></select></div>
                         <button is="emby-button" type="button" id="btn-compare" class="raised">Generate Comparison</button>
                     </div>
                     <div id="comparison-container" style="display:none;">
@@ -346,7 +398,7 @@
                     badge.style.color = '#4ade80';
                     page.querySelector('#svc-docker').textContent = 'Online';
                     page.querySelector('#svc-docker').style.color = '#4ade80';
-                    page.querySelector('#svc-gpu').textContent = data.usingGpu ? 'Aktiv' : 'CPU Mode';
+                    page.querySelector('#svc-gpu').textContent = data.usingGpu ? 'Active' : 'CPU Mode';
                     page.querySelector('#svc-gpu').style.color = data.usingGpu ? '#4ade80' : '#fbbf24';
                     page.querySelector('#svc-latency').textContent = data.latencyMs + 'ms';
                     page.querySelector('#svc-latency').style.color = data.latencyMs < 100 ? '#4ade80' : '#fbbf24';
@@ -641,12 +693,12 @@
             ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('upscaler/wrapper/status'), dataType: 'json' }).then(function(data) {
                 var status = page.querySelector('#wrapper-status');
                 if (data.IsInstalled) {
-                    status.textContent = 'Installiert & Aktiv';
+                    status.textContent = 'Installed & Active';
                     status.style.color = '#4ade80';
                     page.querySelector('#wrapper-path-container').style.display = '';
                     page.querySelector('#wrapper-path').textContent = data.WrapperPath;
                 } else {
-                    status.textContent = 'Nicht installiert';
+                    status.textContent = 'Not installed';
                     status.style.color = '#f87171';
                     page.querySelector('#wrapper-path-container').style.display = 'none';
                 }
@@ -702,19 +754,19 @@
             // Wrapper buttons
             page.querySelector('#btn-install-wrapper').addEventListener('click', function() {
                 ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('upscaler/wrapper/install'), dataType: 'json' }).then(function(data) {
-                    alert(data.Message || 'Installiert');
+                    alert(data.Message || 'Installed');
                     loadWrapperStatus(page);
                 });
             });
             page.querySelector('#btn-uninstall-wrapper').addEventListener('click', function() {
                 ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('upscaler/wrapper/uninstall'), dataType: 'json' }).then(function(data) {
-                    alert(data.Message || 'Deinstalliert');
+                    alert(data.Message || 'Uninstalled');
                     loadWrapperStatus(page);
                 });
             });
             page.querySelector('#btn-regenerate-wrapper').addEventListener('click', function() {
                 ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('upscaler/wrapper/regenerate'), dataType: 'json' }).then(function(data) {
-                    alert(data.Message || 'Regeneriert');
+                    alert(data.Message || 'Regenerated');
                     loadWrapperStatus(page);
                 });
             });
