@@ -83,6 +83,10 @@ class AppState:
 
 state = AppState()
 
+# Concurrency semaphore for upscaling requests (thread-safe)
+import asyncio as _asyncio
+_upscale_semaphore = _asyncio.Semaphore(state.max_concurrent)
+
 # Available models with download URLs from PUBLIC sources
 # Note: Real-ESRGAN ONNX models need to be converted, using pre-converted from community
 AVAILABLE_MODELS = {
@@ -455,6 +459,7 @@ async def lifespan(app: FastAPI):
     
     state.use_gpu = os.getenv("USE_GPU", "true").lower() == "true"
     state.max_concurrent = int(os.getenv("MAX_CONCURRENT_REQUESTS", "4"))
+    state.gpu_device_id = int(os.getenv("GPU_DEVICE_ID", "0"))
     
     logger.info(f"GPU Enabled: {state.use_gpu}")
     logger.info(f"ONNX Runtime Available: {ONNX_AVAILABLE}")
@@ -563,22 +568,21 @@ def _probe_tensorrt_subprocess(model_path_str: str, device_id: int) -> bool:
     """Test TensorRT in an isolated subprocess to avoid poisoning the CUDA context.
     Returns True if TensorRT works, False otherwise."""
     try:
-        result = subprocess.run(
-            [
-                "python3", "-c",
-                f"""
+        probe_code = """
 import onnxruntime as ort
 import sys
 try:
+    model_path = sys.argv[1]
+    dev_id = sys.argv[2]
     opts = ort.SessionOptions()
     opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
     providers = ['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider']
     provider_options = [
-        {{'device_id': '{device_id}', 'trt_max_workspace_size': '2147483648'}},
-        {{'device_id': '{device_id}'}},
-        {{}}
+        {'device_id': dev_id, 'trt_max_workspace_size': '2147483648'},
+        {'device_id': dev_id},
+        {}
     ]
-    sess = ort.InferenceSession('{model_path_str}', opts, providers=providers, provider_options=provider_options)
+    sess = ort.InferenceSession(model_path, opts, providers=providers, provider_options=provider_options)
     actual = sess.get_providers()
     if 'TensorrtExecutionProvider' in actual:
         print('OK')
@@ -587,10 +591,11 @@ try:
         print('NO_TRT')
         sys.exit(1)
 except Exception as e:
-    print(f'FAIL:{{e}}')
+    print(f'FAIL:{e}')
     sys.exit(1)
 """
-            ],
+        result = subprocess.run(
+            ["python3", "-c", probe_code, model_path_str, str(device_id)],
             capture_output=True, text=True, timeout=60
         )
         if result.returncode == 0 and 'OK' in result.stdout:
@@ -640,7 +645,7 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
 
             # Chain 2: OpenVINO GPU (Intel GPUs)
             if 'OpenVINOExecutionProvider' in available_providers:
-                openvino_device = f'GPU.{device_id}' if device_id > 0 else 'GPU_FP32'
+                openvino_device = f'GPU.{device_id}' if device_id > 0 else 'GPU'
                 provider_chains.append({
                     'providers': ['OpenVINOExecutionProvider', 'CPUExecutionProvider'],
                     'options': [{'device_type': openvino_device, 'precision': 'FP32'}, {}],
@@ -1234,28 +1239,29 @@ async def upscale_endpoint(
     if scale != model_scale:
         logger.warning(f"Requested scale={scale} differs from loaded model scale={model_scale}. Using model's native scale={model_scale}.")
 
-    if state.processing_count >= state.max_concurrent:
+    # Use semaphore for thread-safe concurrency limiting
+    if _upscale_semaphore.locked():
         raise HTTPException(status_code=429, detail="Too many concurrent requests")
 
-    state.processing_count += 1
+    async with _upscale_semaphore:
+        state.processing_count += 1
+        try:
+            # Read image
+            image_bytes = await file.read()
 
-    try:
-        # Read image
-        image_bytes = await file.read()
+            # Upscale in thread pool to not block async
+            loop = asyncio.get_running_loop()
+            result = await loop.run_in_executor(None, upscale_image, image_bytes)
 
-        # Upscale in thread pool to not block async
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, upscale_image, image_bytes)
-        
-        return Response(content=result, media_type="image/png")
-        
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"Upscale failed: {e}")
-        raise HTTPException(status_code=500, detail="Upscaling failed")
-    finally:
-        state.processing_count -= 1
+            return Response(content=result, media_type="image/png")
+
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            logger.error(f"Upscale failed: {e}")
+            raise HTTPException(status_code=500, detail="Upscaling failed")
+        finally:
+            state.processing_count -= 1
 
 
 @app.get("/benchmark")

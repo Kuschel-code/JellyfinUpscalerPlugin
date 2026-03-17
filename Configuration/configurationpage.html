@@ -659,7 +659,7 @@
                                     </div>
                                     <div class="selectContainer" style="margin-top:0.75rem;">
                                         <label class="selectLabel" for="GpuDeviceIndex">GPU Device:</label>
-                                        <select id="GpuDeviceIndex">
+                                        <select id="GpuDeviceIndex" name="GpuDeviceIndex">
                                             <option value="0">GPU 0 (Default)</option>
                                         </select>
                                         <div class="fieldDescription">Select GPU for AI processing (multi-GPU systems)</div>
@@ -1047,6 +1047,12 @@
                             select.appendChild(opt);
                         });
                     }
+                    // Restore saved GPU selection
+                    ApiClient.getPluginConfiguration(pluginId).then(function(cfg) {
+                        if (cfg && cfg.GpuDeviceIndex != null) {
+                            select.value = cfg.GpuDeviceIndex.toString();
+                        }
+                    }).catch(function() {});
                 }).catch(function() {});
             }).catch(function() {});
         }
@@ -1286,7 +1292,7 @@
 
         function saveConfig(page) {
             ApiClient.getPluginConfiguration(pluginId).then(function(config) {
-                var fields = ['AiServiceUrl','RemoteHost','RemoteSshKeyFile','LocalMediaMountPoint',
+                var fields = ['AiServiceUrl','RemoteHost','RemoteUser','RemoteSshKeyFile','LocalMediaMountPoint',
                     'RemoteMediaMountPoint','RemoteTranscodePath'];
                 fields.forEach(function(f) {
                     var el = page.querySelector('#' + f);
@@ -1310,7 +1316,6 @@
                 config.Model = page.querySelector('#Model').value;
                 config.QualityLevel = page.querySelector('#QualityLevel').value;
                 config.ButtonPosition = page.querySelector('#ButtonPosition').value;
-                config.RemoteUser = page.querySelector('#RemoteUser').value;
                 config.PluginVersion = '1.5.2.7';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {

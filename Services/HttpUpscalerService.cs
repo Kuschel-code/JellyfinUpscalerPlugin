@@ -20,10 +20,11 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly ILogger<HttpUpscalerService> _logger;
         private bool _disposed;
 
-        // Health check cache (30 seconds)
+        // Health check cache (30 seconds) with thread-safety lock
         private bool? _cachedHealthResult;
         private DateTime _healthCacheExpiry = DateTime.MinValue;
         private static readonly TimeSpan HealthCacheDuration = TimeSpan.FromSeconds(30);
+        private readonly object _healthLock = new();
 
         public HttpUpscalerService(ILogger<HttpUpscalerService> logger, IHttpClientFactory? httpClientFactory = null)
         {
@@ -47,9 +48,7 @@ namespace JellyfinUpscalerPlugin.Services
         {
             if (_httpClientFactory != null)
             {
-                var client = _httpClientFactory.CreateClient("AiUpscaler");
-                client.Timeout = TimeSpan.FromMinutes(5);
-                return client;
+                return _httpClientFactory.CreateClient("AiUpscaler");
             }
             return _fallbackClient;
         }
@@ -66,13 +65,17 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         public async Task<bool> IsServiceAvailableAsync(CancellationToken cancellationToken = default)
         {
-            // Return cached result if still valid
-            if (_cachedHealthResult.HasValue && DateTime.UtcNow < _healthCacheExpiry)
+            // Return cached result if still valid (thread-safe read)
+            lock (_healthLock)
             {
-                return _cachedHealthResult.Value;
+                if (_cachedHealthResult.HasValue && DateTime.UtcNow < _healthCacheExpiry)
+                {
+                    return _cachedHealthResult.Value;
+                }
             }
 
             var baseUrl = GetServiceUrl();
+            bool result = false;
             try
             {
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -81,9 +84,7 @@ namespace JellyfinUpscalerPlugin.Services
                 if (response.IsSuccessStatusCode)
                 {
                     _logger.LogDebug("AI Service health check OK at {Url}", baseUrl);
-                    _cachedHealthResult = true;
-                    _healthCacheExpiry = DateTime.UtcNow + HealthCacheDuration;
-                    return true;
+                    result = true;
                 }
             }
             catch (Exception ex)
@@ -91,9 +92,12 @@ namespace JellyfinUpscalerPlugin.Services
                 _logger.LogDebug("AI Service health check failed at {Url}: {Message}", baseUrl, ex.Message);
             }
 
-            _cachedHealthResult = false;
-            _healthCacheExpiry = DateTime.UtcNow + HealthCacheDuration;
-            return false;
+            lock (_healthLock)
+            {
+                _cachedHealthResult = result;
+                _healthCacheExpiry = DateTime.UtcNow + HealthCacheDuration;
+            }
+            return result;
         }
 
         /// <summary>

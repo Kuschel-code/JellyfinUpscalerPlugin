@@ -36,10 +36,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install Intel GPU compute runtime (NEO) from Intel's compute-runtime PPA
 # The oneapi repo does NOT contain the GPU compute runtime needed for OpenCL/Level-Zero.
 # We need packages from repositories.intel.com/gpu for Arc A310/A380/A770 and iGPU support.
-# Note: Intel's repo uses a certificate chain that some base images don't trust,
-# so we update ca-certificates first and use --insecure as fallback for key download.
+# Note: Intel's repo cert chain requires up-to-date ca-certificates.
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/* && \
-    curl -fsSL --insecure https://repositories.intel.com/gpu/intel-graphics.key | \
+    curl -fsSL https://repositories.intel.com/gpu/intel-graphics.key | \
     gpg --dearmor -o /usr/share/keyrings/intel-graphics.gpg && \
     echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/gpu/ubuntu jammy/lts/2350 unified" > \
        /etc/apt/sources.list.d/intel-gpu.list && \

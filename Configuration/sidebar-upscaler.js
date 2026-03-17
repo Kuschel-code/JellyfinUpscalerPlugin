@@ -217,7 +217,11 @@
 
         // Add command to console
         var commandLine = document.createElement('div');
-        commandLine.innerHTML = '<span style="color: #ffff00;">upscaler@jellyfin:~$</span> ' + command;
+        var prompt = document.createElement('span');
+        prompt.style.color = '#ffff00';
+        prompt.textContent = 'upscaler@jellyfin:~$ ';
+        commandLine.appendChild(prompt);
+        commandLine.appendChild(document.createTextNode(command));
         consoleEl.appendChild(commandLine);
 
         var response = document.createElement('div');
@@ -262,7 +266,7 @@
                 consoleEl.appendChild(response);
                 break;
             default:
-                response.innerHTML = 'Unknown command: ' + command + '<br>Type \'help\' for available commands';
+                response.textContent = 'Unknown command: ' + command + ". Type 'help' for available commands";
                 consoleEl.appendChild(response);
         }
 
@@ -380,8 +384,7 @@
             type: 'POST',
             url: ApiClient.getUrl('api/Upscaler/benchmark'),
             contentType: 'application/json'
-        }).then(function(response) {
-            var data = JSON.parse(response);
+        }).then(function(data) {
             if (data && data.success) {
                 var hw = data.hardware || {};
                 var rec = data.recommendations || {};

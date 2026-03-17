@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Session;
 using MediaBrowser.Controller.Net;
+using System.Net.Http;
 using System.Net.Mime;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -299,6 +300,11 @@ namespace JellyfinUpscalerPlugin.Controllers
                 }
 
                 var upscaledData = await _upscalerCore.UpscaleImageAsync(originalData, model, scale);
+
+                if (upscaledData == null)
+                {
+                    return StatusCode(503, new { message = "AI upscaling service unavailable" });
+                }
 
                 return Ok(new
                 {
@@ -596,6 +602,10 @@ namespace JellyfinUpscalerPlugin.Controllers
                 
                 var inputImage = memoryStream.ToArray();
                 var upscaledImage = await _upscalerCore.UpscaleImageAsync(inputImage, model, scale);
+                if (upscaledImage == null)
+                {
+                    return StatusCode(503, new { error = "AI upscaling service unavailable" });
+                }
                 return File(upscaledImage, "image/jpeg");
             }
             catch (Exception ex)
@@ -807,6 +817,34 @@ namespace JellyfinUpscalerPlugin.Controllers
             {
                 _logger.LogError(ex, "Service health check failed");
                 return Ok(new { success = false, available = false, error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get available GPUs from the AI Docker service (proxy to /gpus).
+        /// </summary>
+        [HttpGet("gpus")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult<object>> GetGpuList()
+        {
+            try
+            {
+                var config = Plugin.Instance?.Configuration;
+                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+                var response = await client.GetAsync($"{serviceUrl}/gpus");
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    return Content(content, "application/json");
+                }
+                return StatusCode((int)response.StatusCode, new { error = "Failed to get GPU list from AI service" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get GPU list");
+                return Ok(new { gpus = Array.Empty<object>() });
             }
         }
 

@@ -289,7 +289,6 @@
         // Open full configuration
         openFullConfig: function() {
             // Navigate within Jellyfin SPA
-            var configUrl = ApiClient.getUrl('web/configurationpage') + '?name=' + encodeURIComponent('AI Upscaler Plugin');
             window.location.hash = '/configurationpage?name=' + encodeURIComponent('AI Upscaler Plugin');
             const menu = document.querySelector('#aiUpscalerQuickMenu');
             if (menu) menu.remove();
