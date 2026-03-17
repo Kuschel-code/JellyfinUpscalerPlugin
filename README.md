@@ -9,7 +9,7 @@
 > [!CAUTION]
 > **TEST PHASE - v1.5.2.8 (Bug Fixes + Dark Theme + Migration)**
 >
-> 17 bug fixes: **XSS**, **race conditions**, **null refs**, **shell injection**. Improved **export/import** with validation for server migration. **Dark theme hardening** — no white elements in Jellyfin 10.11+. New **/gpus proxy endpoint**, **GPU_DEVICE_ID** env var support.
+> 30+ bug fixes: **XSS hardening** (innerHTML→textContent across all JS files), **race conditions**, **null refs**, **shell injection**, **ApiClient crash guards**, **MutationObserver leak fix**. Improved **export/import** with validation for server migration. **Dark theme hardening** — explicit backgrounds on all layout elements, custom dark checkboxes, no white elements in Jellyfin 10.11+. New **/gpus proxy endpoint**, **GPU_DEVICE_ID** env var support. Removed external Google Fonts dependency for air-gapped installs.
 >
 > **Docker Images (docker4 / v1.5.5):**
 > *   `kuscheltier/jellyfin-ai-upscaler:docker4` (NVIDIA CUDA + cuDNN 9)

@@ -8,5 +8,5 @@
     "framework": "net9.0",
     "owner": "Kuschel-code",
     "category": "Video Enhancement",
-    "changelog": "v1.5.2.8: 17 bug fixes (XSS, race conditions, null refs, shell injection), improved export/import with validation, dark theme hardening, /gpus proxy endpoint, GPU_DEVICE_ID env var support."
+    "changelog": "v1.5.2.8: 30+ bug fixes (XSS hardening, race conditions, null refs, shell injection, ApiClient guards, observer leaks), improved export/import, full dark theme hardening, /gpus proxy endpoint, GPU_DEVICE_ID env var, removed external font dependency."
 }
