@@ -147,10 +147,10 @@
         border-bottom: 1px solid rgba(255,255,255,0.1) !important;
         border-radius: 6px !important;
         padding: 0.5rem !important;
-        width: 100%;
-        box-sizing: border-box;
-        font-size: 0.9rem;
-        outline: none;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        font-size: 0.9rem !important;
+        outline: none !important;
     }
     #UpscalerConfigurationPage input:focus,
     #UpscalerConfigurationPage select:focus,
@@ -227,184 +227,196 @@
 
     /* ===== LAYOUT: Sidebar + Main ===== */
     #UpscalerConfigurationPage .upscaler-layout {
-        display: flex;
-        min-height: 600px;
-        gap: 0;
-        background: var(--bg-primary);
-        border-radius: var(--radius);
+        display: flex !important;
+        min-height: 600px !important;
+        gap: 0 !important;
+        background: var(--bg-primary) !important;
+        border-radius: var(--radius) !important;
+        position: relative !important;
     }
     #UpscalerConfigurationPage .upscaler-sidebar {
-        width: 220px;
-        min-width: 220px;
-        background: var(--bg-sidebar);
-        border-right: 1px solid var(--border);
-        border-radius: var(--radius) 0 0 var(--radius);
-        display: flex;
-        flex-direction: column;
-        padding: 1.25rem 0;
+        width: 220px !important;
+        min-width: 220px !important;
+        max-width: 220px !important;
+        background: var(--bg-sidebar) !important;
+        border-right: 1px solid var(--border) !important;
+        border-radius: var(--radius) 0 0 var(--radius) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        padding: 1.25rem 0 !important;
+        flex-shrink: 0 !important;
     }
     #UpscalerConfigurationPage .sidebar-brand {
-        padding: 0 1.25rem 1.25rem;
-        border-bottom: 1px solid var(--border);
-        margin-bottom: 0.75rem;
+        padding: 0 1.25rem 1.25rem !important;
+        border-bottom: 1px solid var(--border) !important;
+        margin-bottom: 0.75rem !important;
     }
     #UpscalerConfigurationPage .sidebar-brand h2 {
-        margin: 0;
-        font-size: 1.1rem;
-        color: var(--text-primary);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
+        margin: 0 !important;
+        font-size: 1.1rem !important;
+        color: var(--text-primary) !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
     }
-    #UpscalerConfigurationPage .sidebar-brand h2 .material-icons { color: var(--accent); font-size: 22px; }
+    #UpscalerConfigurationPage .sidebar-brand h2 .material-icons { color: var(--accent) !important; font-size: 22px !important; }
     #UpscalerConfigurationPage .sidebar-brand .brand-sub {
-        font-size: 0.72rem;
-        color: var(--text-muted);
-        margin-top: 0.2rem;
+        font-size: 0.72rem !important;
+        color: var(--text-muted) !important;
+        margin-top: 0.2rem !important;
     }
-    #UpscalerConfigurationPage .sidebar-nav { flex: 1; }
+    #UpscalerConfigurationPage .sidebar-nav { flex: 1 !important; }
     #UpscalerConfigurationPage .nav-item {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.65rem 1.25rem;
-        color: var(--text-secondary);
-        cursor: pointer;
-        border-left: 2px solid transparent;
-        transition: all 0.15s;
-        font-size: 0.88rem;
-        user-select: none;
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.75rem !important;
+        padding: 0.65rem 1.25rem !important;
+        color: var(--text-secondary) !important;
+        cursor: pointer !important;
+        border-left: 2px solid transparent !important;
+        transition: all 0.15s !important;
+        font-size: 0.88rem !important;
+        user-select: none !important;
+        background: transparent !important;
+        border-right: none !important;
+        border-top: none !important;
+        border-bottom: none !important;
+        border-radius: 0 !important;
+        text-align: left !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
     #UpscalerConfigurationPage .nav-item:hover {
-        color: var(--text-primary);
-        background: rgba(255,255,255,0.03);
+        color: var(--text-primary) !important;
+        background: rgba(255,255,255,0.03) !important;
     }
     #UpscalerConfigurationPage .nav-item.active {
-        color: var(--accent);
-        border-left-color: var(--accent);
-        background: var(--accent-glow);
+        color: var(--accent) !important;
+        border-left-color: var(--accent) !important;
+        background: var(--accent-glow) !important;
     }
-    #UpscalerConfigurationPage .nav-item .material-icons { font-size: 20px; }
+    #UpscalerConfigurationPage .nav-item .material-icons { font-size: 20px !important; }
     #UpscalerConfigurationPage .sidebar-footer {
-        padding: 1rem 1.25rem 0;
-        border-top: 1px solid var(--border);
-        margin-top: auto;
+        padding: 1rem 1.25rem 0 !important;
+        border-top: 1px solid var(--border) !important;
+        margin-top: auto !important;
     }
     #UpscalerConfigurationPage .sidebar-footer .version-badge {
-        font-size: 0.72rem;
-        color: var(--text-muted);
+        font-size: 0.72rem !important;
+        color: var(--text-muted) !important;
     }
     #UpscalerConfigurationPage .sidebar-footer .status-dot {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 0.75rem;
-        margin-top: 0.4rem;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        font-size: 0.75rem !important;
+        margin-top: 0.4rem !important;
     }
     #UpscalerConfigurationPage .sidebar-footer .status-dot::before {
-        content: '';
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        display: inline-block;
+        content: '' !important;
+        width: 7px !important;
+        height: 7px !important;
+        border-radius: 50% !important;
+        display: inline-block !important;
     }
-    #UpscalerConfigurationPage .sidebar-footer .status-dot.online::before { background: var(--success); }
-    #UpscalerConfigurationPage .sidebar-footer .status-dot.offline::before { background: var(--danger); }
-    #UpscalerConfigurationPage .sidebar-footer .status-dot.checking::before { background: var(--warning); }
+    #UpscalerConfigurationPage .sidebar-footer .status-dot.online::before { background: var(--success) !important; }
+    #UpscalerConfigurationPage .sidebar-footer .status-dot.offline::before { background: var(--danger) !important; }
+    #UpscalerConfigurationPage .sidebar-footer .status-dot.checking::before { background: var(--warning) !important; }
 
     #UpscalerConfigurationPage .upscaler-main {
-        flex: 1;
-        padding: 1.5rem;
-        min-width: 0;
-        background: var(--bg-primary);
+        flex: 1 !important;
+        padding: 1.5rem !important;
+        min-width: 0 !important;
+        background: var(--bg-primary) !important;
     }
     #UpscalerConfigurationPage .page-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 1.5rem;
-        flex-wrap: wrap;
-        gap: 0.75rem;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        margin-bottom: 1.5rem !important;
+        flex-wrap: wrap !important;
+        gap: 0.75rem !important;
     }
     #UpscalerConfigurationPage .page-header h1 {
-        margin: 0;
-        font-size: 1.4rem;
-        color: var(--text-primary);
+        margin: 0 !important;
+        font-size: 1.4rem !important;
+        color: var(--text-primary) !important;
     }
 
     /* ===== STATUS PILLS ===== */
     #UpscalerConfigurationPage .status-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 3px 10px;
-        border-radius: 100px;
-        font-size: 0.75rem;
-        font-weight: 500;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        padding: 3px 10px !important;
+        border-radius: 100px !important;
+        font-size: 0.75rem !important;
+        font-weight: 500 !important;
     }
-    #UpscalerConfigurationPage .status-pill--online { background: rgba(74,222,128,0.15); color: var(--success); }
-    #UpscalerConfigurationPage .status-pill--offline { background: rgba(248,113,113,0.15); color: var(--danger); }
-    #UpscalerConfigurationPage .status-pill--processing { background: rgba(0,212,255,0.15); color: var(--accent); }
-    #UpscalerConfigurationPage .status-pill--warning { background: rgba(251,191,36,0.15); color: var(--warning); }
+    #UpscalerConfigurationPage .status-pill--online { background: rgba(74,222,128,0.15) !important; color: var(--success) !important; }
+    #UpscalerConfigurationPage .status-pill--offline { background: rgba(248,113,113,0.15) !important; color: var(--danger) !important; }
+    #UpscalerConfigurationPage .status-pill--processing { background: rgba(0,212,255,0.15) !important; color: var(--accent) !important; }
+    #UpscalerConfigurationPage .status-pill--warning { background: rgba(251,191,36,0.15) !important; color: var(--warning) !important; }
 
     /* ===== GLASSMORPHISM CARDS ===== */
     #UpscalerConfigurationPage .upscaler-card {
-        background: var(--bg-card);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 1.25rem;
-        transition: border-color 0.2s;
+        background: var(--bg-card) !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius) !important;
+        padding: 1.25rem !important;
+        transition: border-color 0.2s !important;
     }
-    #UpscalerConfigurationPage .upscaler-card:hover { border-color: var(--border-hover); }
+    #UpscalerConfigurationPage .upscaler-card:hover { border-color: var(--border-hover) !important; }
     #UpscalerConfigurationPage .upscaler-card h3 {
-        margin: 0 0 1rem;
-        font-size: 0.95rem;
-        color: var(--accent);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
+        margin: 0 0 1rem !important;
+        font-size: 0.95rem !important;
+        color: var(--accent) !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
     }
-    #UpscalerConfigurationPage .upscaler-card h3 .material-icons { font-size: 18px; }
+    #UpscalerConfigurationPage .upscaler-card h3 .material-icons { font-size: 18px !important; }
 
     /* ===== STAT CARDS ===== */
     #UpscalerConfigurationPage .stat-card {
-        background: var(--bg-card);
-        backdrop-filter: blur(16px);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 1rem 1.25rem;
-        text-align: center;
-        position: relative;
-        overflow: hidden;
+        background: var(--bg-card) !important;
+        backdrop-filter: blur(16px) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius) !important;
+        padding: 1rem 1.25rem !important;
+        text-align: center !important;
+        position: relative !important;
+        overflow: hidden !important;
     }
     #UpscalerConfigurationPage .stat-card .stat-icon {
-        position: absolute;
-        right: 10px;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 48px;
-        opacity: 0.05;
-        color: var(--text-primary);
+        position: absolute !important;
+        right: 10px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        font-size: 48px !important;
+        opacity: 0.05 !important;
+        color: var(--text-primary) !important;
     }
     #UpscalerConfigurationPage .stat-card .stat-value {
-        font-size: 1.8rem;
-        font-weight: bold;
-        line-height: 1.2;
+        font-size: 1.8rem !important;
+        font-weight: bold !important;
+        line-height: 1.2 !important;
+        color: var(--text-primary) !important;
     }
     #UpscalerConfigurationPage .stat-card .stat-label {
-        font-size: 0.78rem;
-        color: var(--text-secondary);
-        margin-top: 0.2rem;
+        font-size: 0.78rem !important;
+        color: var(--text-secondary) !important;
+        margin-top: 0.2rem !important;
     }
 
     /* ===== SKELETON LOADERS ===== */
     #UpscalerConfigurationPage .skeleton {
-        background: linear-gradient(90deg, var(--bg-input) 25%, #2d3a4f 50%, var(--bg-input) 75%);
-        background-size: 200% 100%;
-        animation: shimmer 1.5s infinite;
-        border-radius: 4px;
+        background: linear-gradient(90deg, var(--bg-input) 25%, #2d3a4f 50%, var(--bg-input) 75%) !important;
+        background-size: 200% 100% !important;
+        animation: shimmer 1.5s infinite !important;
+        border-radius: 4px !important;
     }
     @keyframes shimmer {
         0% { background-position: 200% 0; }
@@ -413,88 +425,95 @@
 
     /* ===== ACCORDION SECTIONS ===== */
     #UpscalerConfigurationPage .accordion-section {
-        border: 1px solid var(--border);
-        border-radius: var(--radius-sm);
-        margin-bottom: 0.5rem;
-        overflow: hidden;
-        background: var(--bg-primary);
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius-sm) !important;
+        margin-bottom: 0.5rem !important;
+        overflow: hidden !important;
+        background: var(--bg-primary) !important;
     }
     #UpscalerConfigurationPage .accordion-header {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.85rem 1rem;
-        cursor: pointer;
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.75rem !important;
+        padding: 0.85rem 1rem !important;
+        cursor: pointer !important;
         background: rgba(255,255,255,0.02) !important;
         color: var(--text-primary) !important;
-        font-size: 0.9rem;
-        font-weight: 500;
-        user-select: none;
-        transition: background 0.15s;
+        font-size: 0.9rem !important;
+        font-weight: 500 !important;
+        user-select: none !important;
+        transition: background 0.15s !important;
         border: none !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        text-align: left !important;
+        border-radius: 0 !important;
     }
     #UpscalerConfigurationPage .accordion-header:hover { background: rgba(255,255,255,0.04) !important; }
-    #UpscalerConfigurationPage .accordion-header .material-icons { font-size: 18px; color: var(--accent); }
+    #UpscalerConfigurationPage .accordion-header .material-icons { font-size: 18px !important; color: var(--accent) !important; }
     #UpscalerConfigurationPage .accordion-header .chevron {
-        margin-left: auto;
-        font-size: 18px;
-        color: var(--text-muted);
-        transition: transform 0.2s;
+        margin-left: auto !important;
+        font-size: 18px !important;
+        color: var(--text-muted) !important;
+        transition: transform 0.2s !important;
     }
-    #UpscalerConfigurationPage .accordion-section.open .accordion-header .chevron { transform: rotate(180deg); }
+    #UpscalerConfigurationPage .accordion-section.open .accordion-header .chevron { transform: rotate(180deg) !important; }
     #UpscalerConfigurationPage .accordion-body {
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.3s ease;
-        background: transparent;
+        max-height: 0 !important;
+        overflow: hidden !important;
+        transition: max-height 0.3s ease !important;
+        background: transparent !important;
     }
-    #UpscalerConfigurationPage .accordion-section.open .accordion-body { max-height: 2000px; }
+    #UpscalerConfigurationPage .accordion-section.open .accordion-body { max-height: 2000px !important; }
     #UpscalerConfigurationPage .accordion-body-inner {
-        padding: 0 1rem 1rem;
+        padding: 0 1rem 1rem !important;
     }
 
     /* ===== JOBS TABLE ===== */
     #UpscalerConfigurationPage .jobs-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.85rem;
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 0.85rem !important;
     }
     #UpscalerConfigurationPage .jobs-table th {
-        text-align: left;
-        padding: 0.6rem 0.75rem;
-        color: var(--text-secondary);
-        font-weight: 500;
-        border-bottom: 1px solid var(--border);
-        cursor: pointer;
-        user-select: none;
+        text-align: left !important;
+        padding: 0.6rem 0.75rem !important;
+        color: var(--text-secondary) !important;
+        font-weight: 500 !important;
+        border-bottom: 1px solid var(--border) !important;
+        cursor: pointer !important;
+        user-select: none !important;
+        background: transparent !important;
     }
-    #UpscalerConfigurationPage .jobs-table th:hover { color: var(--accent); }
+    #UpscalerConfigurationPage .jobs-table th:hover { color: var(--accent) !important; }
     #UpscalerConfigurationPage .jobs-table td {
-        padding: 0.6rem 0.75rem;
-        border-bottom: 1px solid var(--border);
-        color: var(--text-primary);
+        padding: 0.6rem 0.75rem !important;
+        border-bottom: 1px solid var(--border) !important;
+        color: var(--text-primary) !important;
+        background: transparent !important;
     }
     #UpscalerConfigurationPage .jobs-table .file-path {
-        max-width: 200px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        max-width: 200px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
     }
 
     /* ===== TOAST ===== */
     #UpscalerConfigurationPage .upscaler-toast {
-        position: fixed;
-        bottom: 2rem;
-        left: 50%;
-        transform: translateX(-50%);
-        background: var(--bg-input);
-        padding: 0.75rem 1.5rem;
-        border-radius: var(--radius-sm);
-        border: 1px solid var(--border);
-        z-index: 99999;
-        font-size: 0.9rem;
-        box-shadow: 0 4px 24px rgba(0,0,0,0.5);
-        animation: toastFadeIn 0.3s ease;
+        position: fixed !important;
+        bottom: 2rem !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        background: var(--bg-input) !important;
+        padding: 0.75rem 1.5rem !important;
+        border-radius: var(--radius-sm) !important;
+        border: 1px solid var(--border) !important;
+        z-index: 99999 !important;
+        font-size: 0.9rem !important;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.5) !important;
+        animation: toastFadeIn 0.3s ease !important;
+        color: var(--text-primary) !important;
     }
     @keyframes toastFadeIn {
         from { opacity: 0; transform: translateX(-50%) translateY(1rem); }
@@ -503,15 +522,15 @@
 
     /* ===== QUICK ACTIONS ===== */
     #UpscalerConfigurationPage .quick-actions {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
+        display: flex !important;
+        gap: 0.5rem !important;
+        flex-wrap: wrap !important;
     }
     #UpscalerConfigurationPage button.quick-action-btn,
     #UpscalerConfigurationPage .quick-action-btn {
         display: inline-flex !important;
-        align-items: center;
-        gap: 0.4rem;
+        align-items: center !important;
+        gap: 0.4rem !important;
         padding: 0.4rem 0.85rem !important;
         background: var(--bg-card) !important;
         border: 1px solid var(--border) !important;
@@ -519,7 +538,7 @@
         color: var(--text-secondary) !important;
         font-size: 0.8rem !important;
         cursor: pointer !important;
-        transition: all 0.15s;
+        transition: all 0.15s !important;
     }
     #UpscalerConfigurationPage button.quick-action-btn:hover,
     #UpscalerConfigurationPage .quick-action-btn:hover {
@@ -527,97 +546,106 @@
         color: var(--accent) !important;
         background: rgba(0,212,255,0.08) !important;
     }
-    #UpscalerConfigurationPage .quick-action-btn .material-icons { font-size: 16px; }
+    #UpscalerConfigurationPage .quick-action-btn .material-icons { font-size: 16px !important; }
 
     /* ===== SERVICE BANNER ===== */
     #UpscalerConfigurationPage .service-banner {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 0.85rem 1.25rem;
-        border-radius: var(--radius);
-        margin-bottom: 1.25rem;
-        font-size: 0.88rem;
+        display: flex !important;
+        align-items: center !important;
+        gap: 1rem !important;
+        padding: 0.85rem 1.25rem !important;
+        border-radius: var(--radius) !important;
+        margin-bottom: 1.25rem !important;
+        font-size: 0.88rem !important;
     }
     #UpscalerConfigurationPage .service-banner.online {
-        background: rgba(74,222,128,0.08);
-        border: 1px solid rgba(74,222,128,0.2);
-        color: var(--success);
+        background: rgba(74,222,128,0.08) !important;
+        border: 1px solid rgba(74,222,128,0.2) !important;
+        color: var(--success) !important;
     }
     #UpscalerConfigurationPage .service-banner.offline {
-        background: rgba(248,113,113,0.08);
-        border: 1px solid rgba(248,113,113,0.2);
-        color: var(--danger);
+        background: rgba(248,113,113,0.08) !important;
+        border: 1px solid rgba(248,113,113,0.2) !important;
+        color: var(--danger) !important;
     }
     #UpscalerConfigurationPage .service-banner.checking {
-        background: rgba(251,191,36,0.08);
-        border: 1px solid rgba(251,191,36,0.2);
-        color: var(--warning);
+        background: rgba(251,191,36,0.08) !important;
+        border: 1px solid rgba(251,191,36,0.2) !important;
+        color: var(--warning) !important;
     }
-    #UpscalerConfigurationPage .service-banner .material-icons { font-size: 20px; }
+    #UpscalerConfigurationPage .service-banner .material-icons { font-size: 20px !important; }
     #UpscalerConfigurationPage .service-banner .banner-details {
-        margin-left: auto;
-        font-size: 0.78rem;
-        color: var(--text-secondary);
+        margin-left: auto !important;
+        font-size: 0.78rem !important;
+        color: var(--text-secondary) !important;
     }
 
     /* ===== GRID HELPERS ===== */
-    #UpscalerConfigurationPage .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-    #UpscalerConfigurationPage .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; }
+    #UpscalerConfigurationPage .grid-2 { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 0.75rem !important; }
+    #UpscalerConfigurationPage .grid-4 { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important; gap: 0.75rem !important; }
 
     /* ===== INFO ROWS ===== */
     #UpscalerConfigurationPage .info-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.4rem 0;
-        border-bottom: 1px solid var(--border);
-        font-size: 0.85rem;
+        display: flex !important;
+        justify-content: space-between !important;
+        padding: 0.4rem 0 !important;
+        border-bottom: 1px solid var(--border) !important;
+        font-size: 0.85rem !important;
     }
-    #UpscalerConfigurationPage .info-row:last-child { border-bottom: none; }
-    #UpscalerConfigurationPage .info-row .label { color: var(--text-secondary); }
-    #UpscalerConfigurationPage .info-row .value { color: var(--text-primary); }
+    #UpscalerConfigurationPage .info-row:last-child { border-bottom: none !important; }
+    #UpscalerConfigurationPage .info-row .label { color: var(--text-secondary) !important; }
+    #UpscalerConfigurationPage .info-row .value { color: var(--text-primary) !important; }
+
+    /* ===== SECTION HEADINGS ===== */
+    #UpscalerConfigurationPage h3 {
+        color: var(--text-primary) !important;
+    }
+    #UpscalerConfigurationPage p {
+        color: var(--text-secondary) !important;
+    }
 
     /* ===== MOBILE RESPONSIVE ===== */
     @media (max-width: 768px) {
         #UpscalerConfigurationPage .upscaler-layout {
-            flex-direction: column;
+            flex-direction: column !important;
         }
         #UpscalerConfigurationPage .upscaler-sidebar {
-            width: 100%;
-            min-width: unset;
-            flex-direction: row;
-            padding: 0;
-            border-right: none;
-            border-bottom: 1px solid var(--border);
-            border-radius: var(--radius) var(--radius) 0 0;
-            overflow-x: auto;
+            width: 100% !important;
+            min-width: unset !important;
+            max-width: 100% !important;
+            flex-direction: row !important;
+            padding: 0 !important;
+            border-right: none !important;
+            border-bottom: 1px solid var(--border) !important;
+            border-radius: var(--radius) var(--radius) 0 0 !important;
+            overflow-x: auto !important;
         }
-        #UpscalerConfigurationPage .sidebar-brand { display: none; }
-        #UpscalerConfigurationPage .sidebar-footer { display: none; }
+        #UpscalerConfigurationPage .sidebar-brand { display: none !important; }
+        #UpscalerConfigurationPage .sidebar-footer { display: none !important; }
         #UpscalerConfigurationPage .sidebar-nav {
-            display: flex;
-            flex-direction: row;
-            width: 100%;
+            display: flex !important;
+            flex-direction: row !important;
+            width: 100% !important;
         }
         #UpscalerConfigurationPage .nav-item {
-            border-left: none;
-            border-bottom: 2px solid transparent;
-            padding: 0.65rem 1rem;
-            white-space: nowrap;
-            flex-direction: column;
-            gap: 0.2rem;
-            font-size: 0.75rem;
+            border-left: none !important;
+            border-bottom: 2px solid transparent !important;
+            padding: 0.65rem 1rem !important;
+            white-space: nowrap !important;
+            flex-direction: column !important;
+            gap: 0.2rem !important;
+            font-size: 0.75rem !important;
         }
         #UpscalerConfigurationPage .nav-item.active {
-            border-bottom-color: var(--accent);
-            border-left-color: transparent;
+            border-bottom-color: var(--accent) !important;
+            border-left-color: transparent !important;
         }
-        #UpscalerConfigurationPage .grid-2 { grid-template-columns: 1fr; }
-        #UpscalerConfigurationPage .jobs-table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        #UpscalerConfigurationPage .grid-2 { grid-template-columns: 1fr !important; }
+        #UpscalerConfigurationPage .jobs-table-wrapper { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
     }
     @media (max-width: 480px) {
-        #UpscalerConfigurationPage .grid-4 { grid-template-columns: 1fr 1fr; }
-        #UpscalerConfigurationPage .page-header { flex-direction: column; align-items: flex-start; }
+        #UpscalerConfigurationPage .grid-4 { grid-template-columns: 1fr 1fr !important; }
+        #UpscalerConfigurationPage .page-header { flex-direction: column !important; align-items: flex-start !important; }
     }
 </style>
 <!-- Material Icons already bundled by Jellyfin — no external link needed -->

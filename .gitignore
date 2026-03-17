@@ -45,3 +45,6 @@ JellyfinUpscalerPlugin_Backup_*/
 JellyfinUpscalerPlugin-v*/
 apps/
 apps-fork/
+
+# Local Netlify folder
+.netlify
