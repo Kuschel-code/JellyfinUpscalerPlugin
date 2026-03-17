@@ -652,9 +652,9 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage">
     <div data-role="content">
         <div class="content-primary">
-            <div class="upscaler-layout">
+            <div class="upscaler-layout" style="display:flex !important;min-height:600px;gap:0;background:#0f172a;border-radius:12px">
                 <!-- ===== SIDEBAR ===== -->
-                <div class="upscaler-sidebar">
+                <div class="upscaler-sidebar" style="display:flex !important;flex-direction:column;width:220px;min-width:220px;max-width:220px;flex-shrink:0;background:rgba(15,23,42,0.98);border-right:1px solid rgba(255,255,255,0.06);border-radius:12px 0 0 12px;padding:1.25rem 0">
                     <div class="sidebar-brand">
                         <h2><span class="material-icons">auto_awesome</span> AI Upscaler</h2>
                         <div class="brand-sub">Docker Microservice Architecture</div>
@@ -673,7 +673,7 @@
                 </div>
 
                 <!-- ===== MAIN CONTENT ===== -->
-                <div class="upscaler-main">
+                <div class="upscaler-main" style="flex:1;padding:1.5rem;min-width:0;background:#0f172a">
 
                     <!-- ==================== TAB: DASHBOARD ==================== -->
                     <div id="tab-dashboard" class="tab-content">
@@ -690,8 +690,8 @@
                         </div>
 
                         <!-- Stats Cards -->
-                        <div class="grid-4" style="margin-bottom:1.25rem;">
-                            <div class="stat-card">
+                        <div class="grid-4" style="display:grid !important;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;margin-bottom:1.25rem;">
+                            <div class="stat-card" style="background:rgba(30,41,59,0.6);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:1rem 1.25rem;text-align:center;position:relative;overflow:hidden">
                                 <span class="material-icons stat-icon">play_circle</span>
                                 <div class="stat-value" style="color:var(--accent);" id="stat-active">
                                     <div class="skeleton" style="width:40px;height:28px;margin:0 auto;"></div>
@@ -721,18 +721,18 @@
                             </div>
                         </div>
 
-                        <div class="grid-2" style="margin-bottom:1.25rem;">
+                        <div class="grid-2" style="display:grid !important;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1.25rem;">
                             <!-- Active Jobs List -->
-                            <div class="upscaler-card">
-                                <h3><span class="material-icons">pending_actions</span> Active Jobs</h3>
+                            <div class="upscaler-card" style="background:rgba(30,41,59,0.6);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:1.25rem">
+                                <h3 style="color:#00d4ff;display:flex;align-items:center;gap:0.5rem;margin:0 0 1rem"><span class="material-icons">pending_actions</span> Active Jobs</h3>
                                 <div id="active-jobs-list" style="font-size:0.85rem;">
                                     <div style="opacity:0.5;text-align:center;padding:2rem;">No active jobs</div>
                                 </div>
                             </div>
 
                             <!-- Service Status -->
-                            <div class="upscaler-card">
-                                <h3><span class="material-icons">monitor_heart</span> Service Status</h3>
+                            <div class="upscaler-card" style="background:rgba(30,41,59,0.6);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:1.25rem">
+                                <h3 style="color:#00d4ff;display:flex;align-items:center;gap:0.5rem;margin:0 0 1rem"><span class="material-icons">monitor_heart</span> Service Status</h3>
                                 <div>
                                     <div class="info-row"><span class="label">Docker Service</span><span class="value" id="svc-docker"><span class="skeleton" style="display:inline-block;width:60px;height:16px;"></span></span></div>
                                     <div class="info-row"><span class="label">GPU</span><span class="value" id="svc-gpu"><span class="skeleton" style="display:inline-block;width:60px;height:16px;"></span></span></div>
