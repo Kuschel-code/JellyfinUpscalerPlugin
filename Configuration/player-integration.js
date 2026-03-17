@@ -337,6 +337,8 @@
         // Keyboard shortcuts
         addKeyboardShortcuts: function() {
             document.addEventListener('keydown', (e) => {
+                // Skip shortcuts when typing in form inputs
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
                 if (e.altKey && e.key === 'u') {
                     e.preventDefault();
                     this.toggleUpscaling();

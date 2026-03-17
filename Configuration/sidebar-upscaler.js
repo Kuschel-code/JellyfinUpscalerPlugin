@@ -4,29 +4,39 @@
     'use strict';
 
     const PLUGIN_VERSION = '1.5.2.8';
+    var _observer = null;
+    var _observerAttached = false;
+
+    // Text escaping helper for safe innerHTML (matches configurationpage.html esc())
+    function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
 
     // Add sidebar menu item for AI Upscaler Plugin
     function addSidebarItem() {
-        const navDrawer = document.querySelector('.navDrawer-scrollContainer');
+        var navDrawer = document.querySelector('.navDrawer-scrollContainer');
         if (!navDrawer || document.querySelector('#aiUpscalerSidebarItem')) {
             return;
         }
 
         // Create the sidebar item
-        const sidebarItem = document.createElement('a');
+        var sidebarItem = document.createElement('a');
         sidebarItem.id = 'aiUpscalerSidebarItem';
         sidebarItem.className = 'navMenuOption lnkMediaFolder';
         sidebarItem.href = '#';
         sidebarItem.setAttribute('data-itemid', 'aiupscaler');
 
-        sidebarItem.innerHTML = `
-            <span class="navMenuOptionIcon material-icons">smart_display</span>
-            <span class="navMenuOptionText">AI Upscaler</span>
-        `;
+        var iconSpan = document.createElement('span');
+        iconSpan.className = 'navMenuOptionIcon material-icons';
+        iconSpan.textContent = 'smart_display';
+        sidebarItem.appendChild(iconSpan);
+
+        var textSpan = document.createElement('span');
+        textSpan.className = 'navMenuOptionText';
+        textSpan.textContent = 'AI Upscaler';
+        sidebarItem.appendChild(textSpan);
 
         // Find the right position (after Dashboard, before other plugins)
-        const dashboardItem = navDrawer.querySelector('a[href="#/dashboard.html"]');
-        const parentNode = dashboardItem ? dashboardItem.parentNode : navDrawer;
+        var dashboardItem = navDrawer.querySelector('a[href="#/dashboard.html"]');
+        var parentNode = dashboardItem ? dashboardItem.parentNode : navDrawer;
 
         if (dashboardItem && dashboardItem.nextSibling) {
             parentNode.insertBefore(sidebarItem, dashboardItem.nextSibling);
@@ -46,144 +56,133 @@
     // Show the AI Upscaler settings panel
     function showUpscalerPanel() {
         // Remove existing panel if present
-        const existingPanel = document.querySelector('#aiUpscalerPanel');
+        var existingPanel = document.querySelector('#aiUpscalerPanel');
         if (existingPanel) {
             existingPanel.remove();
         }
 
         // Create main panel
-        const panel = document.createElement('div');
+        var panel = document.createElement('div');
         panel.id = 'aiUpscalerPanel';
         panel.className = 'page libraryPage backdropPage pageWithAbsoluteTabs withTabs';
-        panel.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: var(--theme-body-bg);
-            z-index: 1000;
-            overflow-y: auto;
-        `;
+        panel.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:var(--theme-body-bg);z-index:1000;overflow-y:auto;';
 
-        panel.innerHTML = `
-            <div class="pageHeader">
-                <div class="pageHeaderContent">
-                    <button type="button" class="headerBackButton" id="aiUpscalerBack">
-                        <span class="material-icons">arrow_back</span>
-                    </button>
-                    <h1 class="pageTitle">AI Upscaler Plugin v${PLUGIN_VERSION}</h1>
-                </div>
-            </div>
+        panel.innerHTML = '<div class="pageHeader">' +
+            '<div class="pageHeaderContent">' +
+            '<button type="button" class="headerBackButton" id="aiUpscalerBack">' +
+            '<span class="material-icons">arrow_back</span>' +
+            '</button>' +
+            '<h1 class="pageTitle">AI Upscaler Plugin v' + esc(PLUGIN_VERSION) + '</h1>' +
+            '</div></div>' +
+            '<div class="pageContainer"><div class="content-primary">' +
 
-            <div class="pageContainer">
-                <div class="content-primary">
+            '<!-- System Status -->' +
+            '<div class="verticalSection">' +
+            '<h2 class="sectionTitle">System Status</h2>' +
+            '<div class="cardBox visualCardBox" style="margin:1em 0;">' +
+            '<div class="cardText" id="systemStatus">' +
+            '<div>Status: <span id="pluginStatus" style="color:#00d4ff;">Loading...</span></div>' +
+            '<div>Version: ' + esc(PLUGIN_VERSION) + '</div>' +
+            '<div>Hardware: <span id="hardwareInfo">Detecting...</span></div>' +
+            '<div>AI Service: <span id="serviceInfo">Checking...</span></div>' +
+            '</div></div></div>' +
 
-                    <!-- System Status -->
-                    <div class="verticalSection">
-                        <h2 class="sectionTitle">System Status</h2>
-                        <div class="cardBox visualCardBox" style="margin: 1em 0;">
-                            <div class="cardText" id="systemStatus">
-                                <div>Status: <span id="pluginStatus" style="color: #00a4dc;">Loading...</span></div>
-                                <div>Version: ${PLUGIN_VERSION}</div>
-                                <div>Hardware: <span id="hardwareInfo">Detecting...</span></div>
-                                <div>AI Service: <span id="serviceInfo">Checking...</span></div>
-                            </div>
-                        </div>
-                    </div>
+            '<!-- Quick Actions -->' +
+            '<div class="verticalSection">' +
+            '<h2 class="sectionTitle">Quick Actions</h2>' +
+            '<div style="display:flex;gap:1em;flex-wrap:wrap;margin:1em 0;">' +
+            '<button type="button" class="raised button-submit" id="runBenchmarkBtn"><span>Run Hardware Test</span></button>' +
+            '<button type="button" class="raised button-submit" id="autoOptimizeBtn"><span>Auto-Optimize</span></button>' +
+            '<button type="button" class="raised button-submit" id="clearCacheBtn"><span>Clear Cache</span></button>' +
+            '<button type="button" class="raised button-submit" id="openSettingsBtn"><span>Open Settings</span></button>' +
+            '</div></div>' +
 
-                    <!-- Quick Actions -->
-                    <div class="verticalSection">
-                        <h2 class="sectionTitle">Quick Actions</h2>
-                        <div style="display: flex; gap: 1em; flex-wrap: wrap; margin: 1em 0;">
-                            <button type="button" class="raised button-submit" id="runBenchmarkBtn">
-                                <span>Run Hardware Test</span>
-                            </button>
-                            <button type="button" class="raised button-submit" id="autoOptimizeBtn">
-                                <span>Auto-Optimize</span>
-                            </button>
-                            <button type="button" class="raised button-submit" id="clearCacheBtn">
-                                <span>Clear Cache</span>
-                            </button>
-                            <button type="button" class="raised button-submit" id="openSettingsBtn">
-                                <span>Open Settings</span>
-                            </button>
-                        </div>
-                    </div>
+            '<!-- Benchmark Console -->' +
+            '<div class="verticalSection">' +
+            '<h2 class="sectionTitle">Benchmark Console</h2>' +
+            '<div class="cardBox visualCardBox" style="margin:1em 0;">' +
+            '<div style="background:#1a1a1a;color:#00ff00;font-family:Courier New,monospace;padding:1em;border-radius:4px;height:300px;overflow-y:auto;font-size:12px;" id="benchmarkConsole">' +
+            '</div>' +
+            '<div style="margin-top:0.5em;">' +
+            '<input type="text" class="emby-input" id="consoleCommandInput" placeholder="Enter command (benchmark, status, optimize, clear, help)" style="width:100%;">' +
+            '</div></div></div>' +
 
-                    <!-- Benchmark Console -->
-                    <div class="verticalSection">
-                        <h2 class="sectionTitle">Benchmark Console</h2>
-                        <div class="cardBox visualCardBox" style="margin: 1em 0;">
-                            <div style="background: #1a1a1a; color: #00ff00; font-family: 'Courier New', monospace; padding: 1em; border-radius: 4px; height: 300px; overflow-y: auto; font-size: 12px;" id="benchmarkConsole">
-                                <div>AI Upscaler Plugin v${PLUGIN_VERSION} - Benchmark Console</div>
-                                <div>Ready for hardware testing...</div>
-                                <div>Type 'help' for available commands</div>
-                                <div style="margin-top: 1em;">
-                                    <span style="color: #ffff00;">upscaler@jellyfin:~$</span> <span id="consoleInput"></span>
-                                </div>
-                            </div>
-                            <div style="margin-top: 0.5em;">
-                                <input type="text" class="emby-input" id="consoleCommandInput" placeholder="Enter command (benchmark, status, optimize, clear, help)" style="width: 100%;">
-                            </div>
-                        </div>
-                    </div>
+            '<!-- Hardware Information -->' +
+            '<div class="verticalSection">' +
+            '<h2 class="sectionTitle">Hardware Information</h2>' +
+            '<div class="cardBox visualCardBox" style="margin:1em 0;">' +
+            '<div class="cardText" id="hardwareDetails">' +
+            '<div><strong>CPU Cores:</strong> <span id="cpuInfo">Detecting...</span></div>' +
+            '<div><strong>GPU:</strong> <span id="gpuInfo">Detecting...</span></div>' +
+            '<div><strong>Platform:</strong> <span id="platformInfo">Detecting...</span></div>' +
+            '<div><strong>Providers:</strong> <span id="providersInfo">Detecting...</span></div>' +
+            '<div><strong>Recommended Model:</strong> <span id="recommendedModel">Analyzing...</span></div>' +
+            '</div></div></div>' +
 
-                    <!-- Hardware Information -->
-                    <div class="verticalSection">
-                        <h2 class="sectionTitle">Hardware Information</h2>
-                        <div class="cardBox visualCardBox" style="margin: 1em 0;">
-                            <div class="cardText" id="hardwareDetails">
-                                <div><strong>CPU Cores:</strong> <span id="cpuInfo">Detecting...</span></div>
-                                <div><strong>GPU:</strong> <span id="gpuInfo">Detecting...</span></div>
-                                <div><strong>Platform:</strong> <span id="platformInfo">Detecting...</span></div>
-                                <div><strong>Providers:</strong> <span id="providersInfo">Detecting...</span></div>
-                                <div><strong>Recommended Model:</strong> <span id="recommendedModel">Analyzing...</span></div>
-                            </div>
-                        </div>
-                    </div>
+            '<!-- Cache & Jobs -->' +
+            '<div class="verticalSection">' +
+            '<h2 class="sectionTitle">Live Stats</h2>' +
+            '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1em;margin:1em 0;">' +
+            '<div class="cardBox visualCardBox"><div class="cardText">' +
+            '<div><strong>Active Jobs</strong></div>' +
+            '<div style="font-size:24px;color:#00d4ff;" id="activeJobs">--</div>' +
+            '</div></div>' +
+            '<div class="cardBox visualCardBox"><div class="cardText">' +
+            '<div><strong>Service Status</strong></div>' +
+            '<div style="font-size:24px;color:#00d4ff;" id="serviceStatus">--</div>' +
+            '</div></div>' +
+            '<div class="cardBox visualCardBox"><div class="cardText">' +
+            '<div><strong>GPU Active</strong></div>' +
+            '<div style="font-size:24px;color:#00d4ff;" id="gpuActive">--</div>' +
+            '</div></div>' +
+            '<div class="cardBox visualCardBox"><div class="cardText">' +
+            '<div><strong>Cache Size</strong></div>' +
+            '<div style="font-size:24px;color:#00d4ff;" id="cacheSize">--</div>' +
+            '</div></div>' +
+            '</div></div>' +
 
-                    <!-- Cache & Jobs -->
-                    <div class="verticalSection">
-                        <h2 class="sectionTitle">Live Stats</h2>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1em; margin: 1em 0;">
-                            <div class="cardBox visualCardBox">
-                                <div class="cardText">
-                                    <div><strong>Active Jobs</strong></div>
-                                    <div style="font-size: 24px; color: #00a4dc;" id="activeJobs">--</div>
-                                </div>
-                            </div>
-                            <div class="cardBox visualCardBox">
-                                <div class="cardText">
-                                    <div><strong>Service Status</strong></div>
-                                    <div style="font-size: 24px; color: #00a4dc;" id="serviceStatus">--</div>
-                                </div>
-                            </div>
-                            <div class="cardBox visualCardBox">
-                                <div class="cardText">
-                                    <div><strong>GPU Active</strong></div>
-                                    <div style="font-size: 24px; color: #00a4dc;" id="gpuActive">--</div>
-                                </div>
-                            </div>
-                            <div class="cardBox visualCardBox">
-                                <div class="cardText">
-                                    <div><strong>Cache Size</strong></div>
-                                    <div style="font-size: 24px; color: #00a4dc;" id="cacheSize">--</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        `;
+            '</div></div>';
 
         document.body.appendChild(panel);
+
+        // Initialize console with safe DOM
+        resetConsole();
 
         // Add event handlers
         setupPanelHandlers();
         loadSystemInfo();
         startLiveMonitoring();
+    }
+
+    // Reset console to initial state (safe DOM, no innerHTML)
+    function resetConsole() {
+        var consoleEl = document.getElementById('benchmarkConsole');
+        if (!consoleEl) return;
+        consoleEl.textContent = '';
+        appendConsoleLine(consoleEl, 'AI Upscaler Plugin v' + PLUGIN_VERSION + ' - Benchmark Console');
+        appendConsoleLine(consoleEl, 'Ready for hardware testing...');
+        appendConsoleLine(consoleEl, "Type 'help' for available commands");
+        appendConsolePrompt(consoleEl);
+    }
+
+    function appendConsoleLine(consoleEl, text, color) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        if (color) div.style.color = color;
+        consoleEl.appendChild(div);
+    }
+
+    function appendConsolePrompt(consoleEl) {
+        var div = document.createElement('div');
+        div.style.marginTop = '1em';
+        var prompt = document.createElement('span');
+        prompt.style.color = '#ffff00';
+        prompt.textContent = 'upscaler@jellyfin:~$ ';
+        div.appendChild(prompt);
+        var input = document.createElement('span');
+        input.id = 'consoleInput';
+        div.appendChild(input);
+        consoleEl.appendChild(div);
     }
 
     // Setup event handlers for the panel
@@ -215,7 +214,7 @@
         var consoleEl = document.getElementById('benchmarkConsole');
         var cmd = command.toLowerCase().trim();
 
-        // Add command to console
+        // Add command to console (safe DOM)
         var commandLine = document.createElement('div');
         var prompt = document.createElement('span');
         prompt.style.color = '#ffff00';
@@ -224,50 +223,38 @@
         commandLine.appendChild(document.createTextNode(command));
         consoleEl.appendChild(commandLine);
 
-        var response = document.createElement('div');
-
         switch(cmd) {
             case 'benchmark':
-                response.textContent = 'Starting hardware benchmark...';
-                consoleEl.appendChild(response);
+                appendConsoleLine(consoleEl, 'Starting hardware benchmark...');
                 runBenchmark();
                 break;
             case 'status':
-                response.textContent = 'Fetching status...';
-                consoleEl.appendChild(response);
+                appendConsoleLine(consoleEl, 'Fetching status...');
+                if (!window.ApiClient) { appendConsoleLine(consoleEl, 'Error: ApiClient not available', '#ff0000'); break; }
                 ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/status')).then(function(data) {
-                    var statusDiv = document.createElement('div');
-                    statusDiv.innerHTML = 'Plugin Status: ' + (data.status || 'Active') + '<br>' +
-                        'Version: ' + PLUGIN_VERSION + '<br>' +
-                        'Processing: ' + (data.isProcessing ? 'Yes' : 'No');
-                    consoleEl.appendChild(statusDiv);
+                    appendConsoleLine(consoleEl, 'Plugin Status: ' + (data.status || 'Active'));
+                    appendConsoleLine(consoleEl, 'Version: ' + PLUGIN_VERSION);
+                    appendConsoleLine(consoleEl, 'Processing: ' + (data.isProcessing ? 'Yes' : 'No'));
                     consoleEl.scrollTop = consoleEl.scrollHeight;
                 });
                 break;
             case 'optimize':
-                response.textContent = 'Running auto-optimization...';
-                consoleEl.appendChild(response);
+                appendConsoleLine(consoleEl, 'Running auto-optimization...');
                 autoOptimize();
                 break;
             case 'clear':
-                consoleEl.innerHTML = '<div>AI Upscaler Plugin v' + PLUGIN_VERSION + ' - Benchmark Console</div>' +
-                    '<div>Console cleared</div>' +
-                    '<div style="margin-top: 1em;">' +
-                    '<span style="color: #ffff00;">upscaler@jellyfin:~$</span>' +
-                    '</div>';
+                resetConsole();
                 return;
             case 'help':
-                response.innerHTML = 'Available commands:<br>' +
-                    '- benchmark: Run hardware test<br>' +
-                    '- status: Show plugin status<br>' +
-                    '- optimize: Auto-optimize settings<br>' +
-                    '- clear: Clear console<br>' +
-                    '- help: Show this help';
-                consoleEl.appendChild(response);
+                appendConsoleLine(consoleEl, 'Available commands:');
+                appendConsoleLine(consoleEl, '- benchmark: Run hardware test');
+                appendConsoleLine(consoleEl, '- status: Show plugin status');
+                appendConsoleLine(consoleEl, '- optimize: Auto-optimize settings');
+                appendConsoleLine(consoleEl, '- clear: Clear console');
+                appendConsoleLine(consoleEl, '- help: Show this help');
                 break;
             default:
-                response.textContent = 'Unknown command: ' + command + ". Type 'help' for available commands";
-                consoleEl.appendChild(response);
+                appendConsoleLine(consoleEl, "Unknown command: " + command + ". Type 'help' for available commands");
         }
 
         // Auto-scroll to bottom
@@ -276,46 +263,59 @@
 
     // Load system information from real API endpoints
     function loadSystemInfo() {
+        if (!window.ApiClient) {
+            console.warn('AI Upscaler: ApiClient not available yet');
+            return;
+        }
+
         // Fetch hardware info
         ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/recommendations')).then(function(data) {
             if (data && data.success) {
-                document.getElementById('pluginStatus').textContent = 'Active';
-                document.getElementById('pluginStatus').style.color = '#00c853';
+                var statusEl = document.getElementById('pluginStatus');
+                if (statusEl) { statusEl.textContent = 'Active'; statusEl.style.color = '#00c853'; }
 
                 var hw = data.hardware;
                 if (hw) {
-                    document.getElementById('cpuInfo').textContent = hw.cpuCores + ' Cores';
-                    document.getElementById('gpuInfo').textContent = hw.cudaAvailable ? 'NVIDIA (CUDA)' :
+                    var cpuEl = document.getElementById('cpuInfo');
+                    if (cpuEl) cpuEl.textContent = hw.cpuCores + ' Cores';
+                    var gpuEl = document.getElementById('gpuInfo');
+                    if (gpuEl) gpuEl.textContent = hw.cudaAvailable ? 'NVIDIA (CUDA)' :
                         hw.directMlAvailable ? 'AMD/Intel (DirectML)' : 'CPU Only';
-                    document.getElementById('platformInfo').textContent = data.system ? data.system.platform : 'Unknown';
-                    document.getElementById('providersInfo').textContent =
+                    var platEl = document.getElementById('platformInfo');
+                    if (platEl) platEl.textContent = data.system ? String(data.system.platform) : 'Unknown';
+                    var provEl = document.getElementById('providersInfo');
+                    if (provEl) provEl.textContent =
                         (hw.availableProviders && hw.availableProviders.length > 0) ?
                         hw.availableProviders.join(', ') : 'CPU';
                 }
 
                 var rec = data.recommendations;
                 if (rec) {
-                    document.getElementById('recommendedModel').textContent = rec.recommendedModel || 'fsrcnn-x2';
+                    var recEl = document.getElementById('recommendedModel');
+                    if (recEl) recEl.textContent = rec.recommendedModel || 'fsrcnn-x2';
                 }
             }
         }).catch(function(error) {
             console.error('Failed to load system info:', error);
-            document.getElementById('pluginStatus').textContent = 'Error';
-            document.getElementById('pluginStatus').style.color = '#ff5252';
+            var statusEl = document.getElementById('pluginStatus');
+            if (statusEl) { statusEl.textContent = 'Error'; statusEl.style.color = '#ff5252'; }
         });
 
         // Check AI service health via backend proxy
         ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/service-health')).then(function(data) {
-            if (data && data.success) {
-                document.getElementById('serviceInfo').textContent = 'Connected';
-                document.getElementById('serviceInfo').style.color = '#00c853';
-            } else {
-                document.getElementById('serviceInfo').textContent = 'Unavailable';
-                document.getElementById('serviceInfo').style.color = '#ff5252';
+            var svcEl = document.getElementById('serviceInfo');
+            if (svcEl) {
+                if (data && data.success) {
+                    svcEl.textContent = 'Connected';
+                    svcEl.style.color = '#00c853';
+                } else {
+                    svcEl.textContent = 'Unavailable';
+                    svcEl.style.color = '#ff5252';
+                }
             }
         }).catch(function() {
-            document.getElementById('serviceInfo').textContent = 'Unreachable';
-            document.getElementById('serviceInfo').style.color = '#ff5252';
+            var svcEl = document.getElementById('serviceInfo');
+            if (svcEl) { svcEl.textContent = 'Unreachable'; svcEl.style.color = '#ff5252'; }
         });
     }
 
@@ -335,6 +335,8 @@
     }
 
     function updateLiveStats() {
+        if (!window.ApiClient) return;
+
         // Jobs
         ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/jobs')).then(function(data) {
             if (data && data.jobs) {
@@ -374,11 +376,10 @@
 
     // Quick action functions
     function runBenchmark() {
+        if (!window.ApiClient) return;
         var consoleEl = document.getElementById('benchmarkConsole');
 
-        var startMsg = document.createElement('div');
-        startMsg.textContent = 'Starting hardware benchmark via API...';
-        if (consoleEl) consoleEl.appendChild(startMsg);
+        if (consoleEl) appendConsoleLine(consoleEl, 'Starting hardware benchmark via API...');
 
         ApiClient.ajax({
             type: 'POST',
@@ -389,33 +390,27 @@
                 var hw = data.hardware || {};
                 var rec = data.recommendations || {};
                 var sys = data.system || {};
-                var resultDiv = document.createElement('div');
-                resultDiv.innerHTML = '<div style="color: #00ff00; margin-top: 1em;">' +
-                    'Benchmark Results:<br>' +
-                    '- Platform: ' + (sys.platform || 'Unknown') + '<br>' +
-                    '- CPU Cores: ' + (hw.cpuCores || '?') + '<br>' +
-                    '- GPU: ' + (hw.cudaAvailable ? 'NVIDIA CUDA' : hw.directMlAvailable ? 'DirectML' : 'CPU') + '<br>' +
-                    '- Recommended Model: ' + (rec.recommendedModel || 'fsrcnn-x2') + '<br>' +
-                    '- Recommended Quality: ' + (rec.recommendedQuality || 'medium') +
-                    '</div>';
-                if (consoleEl) consoleEl.appendChild(resultDiv);
+                if (consoleEl) {
+                    appendConsoleLine(consoleEl, '');
+                    appendConsoleLine(consoleEl, 'Benchmark Results:', '#00ff00');
+                    appendConsoleLine(consoleEl, '- Platform: ' + String(sys.platform || 'Unknown'), '#00ff00');
+                    appendConsoleLine(consoleEl, '- CPU Cores: ' + String(hw.cpuCores || '?'), '#00ff00');
+                    appendConsoleLine(consoleEl, '- GPU: ' + (hw.cudaAvailable ? 'NVIDIA CUDA' : hw.directMlAvailable ? 'DirectML' : 'CPU'), '#00ff00');
+                    appendConsoleLine(consoleEl, '- Recommended Model: ' + String(rec.recommendedModel || 'fsrcnn-x2'), '#00ff00');
+                    appendConsoleLine(consoleEl, '- Recommended Quality: ' + String(rec.recommendedQuality || 'medium'), '#00ff00');
+                }
             } else {
-                var errorDiv = document.createElement('div');
-                errorDiv.textContent = 'Benchmark returned no data';
-                errorDiv.style.color = '#ff0000';
-                if (consoleEl) consoleEl.appendChild(errorDiv);
+                if (consoleEl) appendConsoleLine(consoleEl, 'Benchmark returned no data', '#ff0000');
             }
             if (consoleEl) consoleEl.scrollTop = consoleEl.scrollHeight;
         }).catch(function(error) {
-            var errorDiv = document.createElement('div');
-            errorDiv.textContent = 'API Error: ' + error;
-            errorDiv.style.color = '#ff0000';
-            if (consoleEl) consoleEl.appendChild(errorDiv);
+            if (consoleEl) appendConsoleLine(consoleEl, 'API Error: ' + error, '#ff0000');
             if (consoleEl) consoleEl.scrollTop = consoleEl.scrollHeight;
         });
     }
 
     function autoOptimize() {
+        if (!window.ApiClient) { showToast('ApiClient not available'); return; }
         // Call recommendations endpoint, then apply optimal settings
         ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/recommendations')).then(function(data) {
             if (data && data.success && data.recommendations) {
@@ -427,7 +422,7 @@
                     config.MaxConcurrentStreams = rec.maxConcurrentStreams || config.MaxConcurrentStreams;
                     config.HardwareAcceleration = rec.hardwareAcceleration !== undefined ? rec.hardwareAcceleration : config.HardwareAcceleration;
                     ApiClient.updatePluginConfiguration('f87f700e-679d-43e6-9c7c-b3a410dc3f22', config).then(function() {
-                        showToast('Settings auto-optimized: ' + (rec.recommendedModel || 'default') + ' / ' + (rec.recommendedQuality || 'medium'));
+                        showToast('Settings auto-optimized: ' + String(rec.recommendedModel || 'default') + ' / ' + String(rec.recommendedQuality || 'medium'));
                     });
                 });
             } else {
@@ -439,6 +434,7 @@
     }
 
     function clearCache() {
+        if (!window.ApiClient) { showToast('ApiClient not available'); return; }
         ApiClient.ajax({
             type: 'POST',
             url: ApiClient.getUrl('api/Upscaler/cache/clear'),
@@ -479,18 +475,21 @@
 
         addSidebarItem();
 
-        // Re-add item when navigation changes
-        var observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (mutation.type === 'childList' && !document.querySelector('#aiUpscalerSidebarItem')) {
-                    setTimeout(addSidebarItem, 500);
-                }
+        // Re-add item when navigation changes (with guard against duplicate observers)
+        if (!_observerAttached) {
+            _observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList' && !document.querySelector('#aiUpscalerSidebarItem')) {
+                        setTimeout(addSidebarItem, 500);
+                    }
+                });
             });
-        });
 
-        var navDrawer = document.querySelector('.navDrawer-scrollContainer');
-        if (navDrawer) {
-            observer.observe(navDrawer, { childList: true, subtree: true });
+            var navDrawer = document.querySelector('.navDrawer-scrollContainer');
+            if (navDrawer) {
+                _observer.observe(navDrawer, { childList: true, subtree: true });
+                _observerAttached = true;
+            }
         }
     }
 

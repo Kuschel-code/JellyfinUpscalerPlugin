@@ -182,33 +182,41 @@
             };
 
             var diagWindow = window.open('', '_blank', 'width=800,height=600');
-            diagWindow.document.write(
-                '<!DOCTYPE html>' +
-                '<html><head><title>AI Upscaler - System Diagnostics</title>' +
+            if (!diagWindow) { this.showNotification('Popup blocked. Please allow popups.', 'warning'); return; }
+            var doc = diagWindow.document;
+            doc.open();
+            doc.write('<!DOCTYPE html><html><head><title>AI Upscaler - System Diagnostics</title>' +
                 '<style>' +
-                'body { font-family: monospace; background: #1a1a1a; color: #00ff00; padding: 20px; }' +
-                '.header { color: #00d4ff; font-size: 1.5em; margin-bottom: 20px; }' +
-                '.section { margin-bottom: 20px; padding: 15px; background: #2a2a2a; border-radius: 8px; }' +
-                '.key { color: #ffd700; font-weight: bold; }' +
-                '.value { color: #ffffff; }' +
-                '.good { color: #00ff00; }' +
-                '</style></head><body>' +
-                '<div class="header">AI Upscaler Plugin - System Diagnostics v' + PLUGIN_VERSION + '</div>' +
-                '<div class="section">' +
-                '<div><span class="key">Platform:</span> <span class="value">' + diagnostics.platform + '</span></div>' +
-                '<div><span class="key">Timestamp:</span> <span class="value">' + diagnostics.timestamp + '</span></div>' +
-                '</div>' +
-                '<div class="section">' +
-                '<div><span class="key">Memory:</span> <span class="value">' + JSON.stringify(diagnostics.memory) + '</span></div>' +
-                '<div><span class="key">GPU:</span> <span class="value">' + JSON.stringify(diagnostics.gpu) + '</span></div>' +
-                '<div><span class="key">Network:</span> <span class="value">' + JSON.stringify(diagnostics.network) + '</span></div>' +
-                '</div>' +
-                '<div class="section">' +
-                '<div><span class="key">Status:</span> <span class="good">System Ready</span></div>' +
-                '<div><span class="key">Plugin Version:</span> <span class="value">' + PLUGIN_VERSION + '</span></div>' +
-                '</div>' +
-                '</body></html>'
-            );
+                'body{font-family:monospace;background:#1a1a1a;color:#00ff00;padding:20px;}' +
+                '.header{color:#00d4ff;font-size:1.5em;margin-bottom:20px;}' +
+                '.section{margin-bottom:20px;padding:15px;background:#2a2a2a;border-radius:8px;}' +
+                '.key{color:#ffd700;font-weight:bold;}.value{color:#ffffff;}.good{color:#00ff00;}' +
+                '</style></head><body><div id="diag-root"></div></body></html>');
+            doc.close();
+            // Build content safely via DOM
+            var root = doc.getElementById('diag-root');
+            function addRow(parent, key, value, valueClass) {
+                var row = doc.createElement('div');
+                var k = doc.createElement('span'); k.className = 'key'; k.textContent = key + ': ';
+                var v = doc.createElement('span'); v.className = valueClass || 'value'; v.textContent = String(value);
+                row.appendChild(k); row.appendChild(v); parent.appendChild(row);
+            }
+            var header = doc.createElement('div'); header.className = 'header';
+            header.textContent = 'AI Upscaler Plugin - System Diagnostics v' + PLUGIN_VERSION;
+            root.appendChild(header);
+            var sec1 = doc.createElement('div'); sec1.className = 'section';
+            addRow(sec1, 'Platform', diagnostics.platform);
+            addRow(sec1, 'Timestamp', diagnostics.timestamp);
+            root.appendChild(sec1);
+            var sec2 = doc.createElement('div'); sec2.className = 'section';
+            addRow(sec2, 'Memory', JSON.stringify(diagnostics.memory));
+            addRow(sec2, 'GPU', JSON.stringify(diagnostics.gpu));
+            addRow(sec2, 'Network', JSON.stringify(diagnostics.network));
+            root.appendChild(sec2);
+            var sec3 = doc.createElement('div'); sec3.className = 'section';
+            addRow(sec3, 'Status', 'System Ready', 'good');
+            addRow(sec3, 'Plugin Version', PLUGIN_VERSION);
+            root.appendChild(sec3);
 
             this.showNotification('System diagnostics opened in new window.', 'info');
         },
@@ -336,7 +344,7 @@
         // Form manipulation
         updateFormFields: function(settings) {
             Object.keys(settings).forEach(function(key) {
-                var field = document.querySelector('[name="' + key + '"]');
+                var field = document.querySelector('[name="' + key + '"]') || document.getElementById(key);
                 if (field) {
                     if (field.type === 'checkbox') {
                         field.checked = settings[key];
@@ -371,11 +379,22 @@
             type = type || 'info';
             var notification = document.createElement('div');
             notification.className = 'notification notification-' + type;
-            notification.innerHTML =
-                '<div class="notification-content">' +
-                '<span class="notification-message">' + message + '</span>' +
-                '<button class="notification-close" onclick="this.parentElement.parentElement.remove()">x</button>' +
-                '</div>';
+
+            var content = document.createElement('div');
+            content.className = 'notification-content';
+
+            var msgSpan = document.createElement('span');
+            msgSpan.className = 'notification-message';
+            msgSpan.textContent = message;
+            content.appendChild(msgSpan);
+
+            var closeBtn = document.createElement('button');
+            closeBtn.className = 'notification-close';
+            closeBtn.textContent = 'x';
+            closeBtn.addEventListener('click', function() { notification.remove(); });
+            content.appendChild(closeBtn);
+
+            notification.appendChild(content);
 
             // Add styles if not already present
             if (!document.querySelector('#aiupscaler-notification-styles')) {

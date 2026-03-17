@@ -620,7 +620,7 @@
         #UpscalerConfigurationPage .page-header { flex-direction: column; align-items: flex-start; }
     }
 </style>
-<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<!-- Material Icons already bundled by Jellyfin — no external link needed -->
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage">
     <div data-role="content">
         <div class="content-primary">
@@ -1527,12 +1527,12 @@
                 ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/benchmark'), dataType: 'json' }).then(function(data) {
                     if (data.success && data.results) {
                         var r = data.results;
-                        var html = '<div class="info-row"><span class="label">Duration</span><span class="value">' + (r.duration || 0).toFixed(1) + 's</span></div>';
+                        var html = '<div class="info-row"><span class="label">Duration</span><span class="value">' + esc((r.duration || 0).toFixed(1)) + 's</span></div>';
                         if (r.optimalSettings) {
-                            html += '<div class="info-row"><span class="label">Recommended Model</span><span class="value">' + (r.optimalSettings.RecommendedModel || '-') + '</span></div>';
-                            html += '<div class="info-row"><span class="label">Max Resolution</span><span class="value">' + (r.optimalSettings.RecommendedMaxResolution || '-') + '</span></div>';
-                            html += '<div class="info-row"><span class="label">Quality</span><span class="value">' + (r.optimalSettings.RecommendedQuality || '-') + '</span></div>';
-                            html += '<div class="info-row"><span class="label">Max Streams</span><span class="value">' + (r.optimalSettings.MaxConcurrentStreams || 1) + '</span></div>';
+                            html += '<div class="info-row"><span class="label">Recommended Model</span><span class="value">' + esc(r.optimalSettings.RecommendedModel || '-') + '</span></div>';
+                            html += '<div class="info-row"><span class="label">Max Resolution</span><span class="value">' + esc(r.optimalSettings.RecommendedMaxResolution || '-') + '</span></div>';
+                            html += '<div class="info-row"><span class="label">Quality</span><span class="value">' + esc(r.optimalSettings.RecommendedQuality || '-') + '</span></div>';
+                            html += '<div class="info-row"><span class="label">Max Streams</span><span class="value">' + esc(String(r.optimalSettings.MaxConcurrentStreams || 1)) + '</span></div>';
                         }
                         result.innerHTML = html;
                     }
@@ -1657,10 +1657,8 @@
 
             loadModels(page).then(function() {
                 loadConfig(page);
-                setTimeout(function() { loadConfig(page); }, 500);
             }).catch(function() {
                 loadConfig(page);
-                setTimeout(function() { loadConfig(page); }, 500);
             });
             loadWrapperStatus(page);
             loadMediaItems(page);
@@ -1700,7 +1698,6 @@
                     clearInterval(refreshInterval);
                     refreshInterval = null;
                 }
-                _initialized = false;
             }
         });
     })();
