@@ -11,8 +11,8 @@
         "version": "1.5.2.8",
         "changelog": "v1.5.2.8: 30+ bug fixes, improved export/import, dark theme hardening, /gpus proxy endpoint.",
         "targetAbi": "10.11.0.0",
-        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.2.8/JellyfinUpscalerPlugin-v1.5.2.8.zip",
-        "checksum": "eb28c69952ce733b3ff49b70f9dc5d6e",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.2.8/JellyfinUpscalerPlugin_v1.5.2.8.zip",
+        "checksum": "c39c24a5a6811d60d1b4c1f62da885fa",
         "timestamp": "2026-03-17T10:06:43.000Z"
       },
       {
