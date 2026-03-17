@@ -1,616 +1,4 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage">
-    <style>
-    /* ===== CSS DESIGN SYSTEM v1.5.2.8 ===== */
-    #UpscalerConfigurationPage {
-        --bg-primary: #0f172a;
-        --bg-card: rgba(30, 41, 59, 0.6);
-        --bg-input: #1e293b;
-        --bg-sidebar: rgba(15, 23, 42, 0.98);
-        --border: rgba(255, 255, 255, 0.06);
-        --border-hover: rgba(255, 255, 255, 0.12);
-        --accent: #00d4ff;
-        --accent-glow: rgba(0, 212, 255, 0.15);
-        --success: #4ade80;
-        --warning: #fbbf24;
-        --danger: #f87171;
-        --text-primary: #e2e8f0;
-        --text-secondary: #94a3b8;
-        --text-muted: #64748b;
-        --radius: 12px;
-        --radius-sm: 8px;
-    }
-
-    /* ===== JELLYFIN 10.11+ OVERRIDES ===== */
-    /* Force dark theme on everything — prevent Jellyfin from injecting white backgrounds */
-    #UpscalerConfigurationPage,
-    #UpscalerConfigurationPage * {
-        color-scheme: dark !important;
-    }
-    #UpscalerConfigurationPage .content-primary {
-        background: transparent !important;
-    }
-    /* Override ALL button styles Jellyfin might inject */
-    #UpscalerConfigurationPage button,
-    #UpscalerConfigurationPage [type="button"],
-    #UpscalerConfigurationPage .btnSubmit,
-    #UpscalerConfigurationPage .emby-button,
-    #UpscalerConfigurationPage .paper-icon-button-light {
-        background: var(--bg-input) !important;
-        color: var(--text-primary) !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
-        -webkit-appearance: none !important;
-        appearance: none !important;
-    }
-    #UpscalerConfigurationPage button:hover,
-    #UpscalerConfigurationPage [type="button"]:hover {
-        background: rgba(255,255,255,0.08) !important;
-        border-color: var(--accent) !important;
-        color: var(--accent) !important;
-    }
-    /* Override Jellyfin's default white block button style */
-    #UpscalerConfigurationPage .block {
-        display: block !important;
-        width: 100% !important;
-    }
-    /* Ensure verticalSection from Jellyfin has no white bg */
-    #UpscalerConfigurationPage .verticalSection {
-        background: transparent !important;
-    }
-    /* Override Jellyfin page-level backgrounds */
-    #UpscalerConfigurationPage[data-role="page"] {
-        background: transparent !important;
-    }
-    /* Extra dark theme hardening for Jellyfin 10.11+ — catch ALL white surfaces */
-    #UpscalerConfigurationPage .formDialogContent,
-    #UpscalerConfigurationPage .dialogContent,
-    #UpscalerConfigurationPage .paperList,
-    #UpscalerConfigurationPage .listItem,
-    #UpscalerConfigurationPage .card,
-    #UpscalerConfigurationPage .cardBox,
-    #UpscalerConfigurationPage .cardContent,
-    #UpscalerConfigurationPage .fieldDescription,
-    #UpscalerConfigurationPage .readOnlyContent,
-    #UpscalerConfigurationPage .detailSection,
-    #UpscalerConfigurationPage .formDialogFooter,
-    #UpscalerConfigurationPage .formDialogHeader,
-    #UpscalerConfigurationPage .dialog,
-    #UpscalerConfigurationPage .skinBody,
-    #UpscalerConfigurationPage .mainDrawer-scrollContainer,
-    #UpscalerConfigurationPage .backgroundContainer,
-    #UpscalerConfigurationPage .skinHeader,
-    #UpscalerConfigurationPage .emby-input,
-    #UpscalerConfigurationPage .emby-textarea,
-    #UpscalerConfigurationPage .emby-select,
-    #UpscalerConfigurationPage .inputLabel {
-        background: transparent !important;
-        background-color: transparent !important;
-        color: var(--text-primary) !important;
-    }
-    /* Override any Jellyfin white text on dark backgrounds */
-    #UpscalerConfigurationPage .emby-input,
-    #UpscalerConfigurationPage .emby-textarea,
-    #UpscalerConfigurationPage .emby-select {
-        background: var(--bg-input) !important;
-        background-color: var(--bg-input) !important;
-        color: var(--text-primary) !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
-        border-radius: 6px !important;
-    }
-    /* Prevent Jellyfin tooltip/dialog white backgrounds */
-    #UpscalerConfigurationPage .tooltip,
-    #UpscalerConfigurationPage [role="dialog"],
-    #UpscalerConfigurationPage .actionSheet {
-        background: var(--bg-card) !important;
-        color: var(--text-primary) !important;
-    }
-
-    /* Raised buttons */
-    #UpscalerConfigurationPage .raised {
-        background: var(--bg-input) !important;
-        color: var(--text-primary) !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
-        border-radius: var(--radius-sm) !important;
-        padding: 0.5rem 1.2rem !important;
-        cursor: pointer !important;
-        transition: all 0.2s !important;
-        font-size: 0.85rem !important;
-    }
-    #UpscalerConfigurationPage .raised:hover {
-        background: rgba(255,255,255,0.08) !important;
-        border-color: var(--accent) !important;
-        color: var(--accent) !important;
-    }
-    #UpscalerConfigurationPage button.button-submit,
-    #UpscalerConfigurationPage .button-submit {
-        background: linear-gradient(135deg, #0369a1, #0284c7) !important;
-        color: #fff !important;
-        border: none !important;
-        font-weight: bold !important;
-    }
-    #UpscalerConfigurationPage button.button-submit:hover,
-    #UpscalerConfigurationPage .button-submit:hover {
-        background: linear-gradient(135deg, #0284c7, #0ea5e9) !important;
-        color: #fff !important;
-    }
-
-    /* Force dark theme on ALL form elements */
-    #UpscalerConfigurationPage input[type="text"],
-    #UpscalerConfigurationPage input[type="number"],
-    #UpscalerConfigurationPage input[type="url"],
-    #UpscalerConfigurationPage input[type="password"],
-    #UpscalerConfigurationPage input:not([type]),
-    #UpscalerConfigurationPage select,
-    #UpscalerConfigurationPage textarea {
-        background: var(--bg-input) !important;
-        background-color: var(--bg-input) !important;
-        color: var(--text-primary) !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
-        border-bottom: 1px solid rgba(255,255,255,0.1) !important;
-        border-radius: 6px !important;
-        padding: 0.5rem !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-        font-size: 0.9rem !important;
-        outline: none !important;
-    }
-    #UpscalerConfigurationPage input:focus,
-    #UpscalerConfigurationPage select:focus,
-    #UpscalerConfigurationPage textarea:focus {
-        border-color: var(--accent) !important;
-        outline: none !important;
-        box-shadow: 0 0 0 2px var(--accent-glow) !important;
-    }
-    #UpscalerConfigurationPage select option {
-        background: var(--bg-input) !important;
-        color: var(--text-primary) !important;
-    }
-    #UpscalerConfigurationPage .inputContainer,
-    #UpscalerConfigurationPage .selectContainer { margin-bottom: 0; }
-
-    /* Checkbox styling */
-    #UpscalerConfigurationPage .checkboxContainer { margin: 0.5rem 0; }
-    #UpscalerConfigurationPage .checkboxContainer label {
-        color: #cbd5e1 !important;
-        cursor: pointer;
-        display: flex !important;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    #UpscalerConfigurationPage input[type="checkbox"] {
-        -webkit-appearance: none !important;
-        appearance: none !important;
-        width: 18px !important;
-        height: 18px !important;
-        min-width: 18px;
-        cursor: pointer;
-        background: var(--bg-input) !important;
-        border: 1px solid rgba(255,255,255,0.2) !important;
-        border-radius: 3px;
-        padding: 0 !important;
-        position: relative;
-        transition: background 0.15s, border-color 0.15s;
-    }
-    #UpscalerConfigurationPage input[type="checkbox"]:checked {
-        background: var(--accent) !important;
-        border-color: var(--accent) !important;
-    }
-    #UpscalerConfigurationPage input[type="checkbox"]:checked::after {
-        content: '';
-        position: absolute;
-        left: 5px;
-        top: 1px;
-        width: 5px;
-        height: 10px;
-        border: 2px solid #0f172a;
-        border-top: none;
-        border-left: none;
-        transform: rotate(45deg);
-    }
-    #UpscalerConfigurationPage .checkboxIcon,
-    #UpscalerConfigurationPage .checkboxOutline { display: none !important; }
-    #UpscalerConfigurationPage label { color: #cbd5e1 !important; }
-    #UpscalerConfigurationPage .inputLabel,
-    #UpscalerConfigurationPage .selectLabel { color: var(--text-secondary) !important; }
-    #UpscalerConfigurationPage .fieldDescription { color: var(--text-muted) !important; font-size: 0.8rem; }
-    /* Code elements — prevent white background from browser/Jellyfin resets */
-    #UpscalerConfigurationPage code {
-        background: rgba(255,255,255,0.06) !important;
-        color: var(--accent) !important;
-        padding: 0.1rem 0.4rem;
-        border-radius: 4px;
-        font-size: 0.85em;
-        font-family: 'Consolas', 'Monaco', monospace;
-    }
-    /* Hidden file input — ensure it stays hidden even with Jellyfin overrides */
-    #UpscalerConfigurationPage input[type="file"] {
-        display: none !important;
-    }
-
-    /* ===== LAYOUT: Top Header + Tab Bar + Main ===== */
-    #UpscalerConfigurationPage .upscaler-layout {
-        display: block !important;
-        min-height: 600px !important;
-        background: var(--bg-primary) !important;
-        border-radius: var(--radius) !important;
-        position: relative !important;
-    }
-    #UpscalerConfigurationPage .upscaler-header {
-        display: flex !important;
-        align-items: center !important;
-        gap: 0.75rem !important;
-        padding: 0.75rem 1.25rem !important;
-        border-bottom: 1px solid var(--border) !important;
-    }
-    #UpscalerConfigurationPage .upscaler-header h2 {
-        margin: 0 !important;
-        font-size: 1rem !important;
-        color: var(--text-primary) !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: 0.5rem !important;
-    }
-    #UpscalerConfigurationPage .upscaler-header h2 .material-icons { color: var(--accent) !important; font-size: 22px !important; }
-    #UpscalerConfigurationPage .upscaler-header .brand-sub {
-        font-size: 0.72rem !important;
-        color: var(--text-muted) !important;
-    }
-    #UpscalerConfigurationPage .upscaler-header .header-right {
-        margin-left: auto !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: 0.75rem !important;
-    }
-    #UpscalerConfigurationPage .upscaler-header .version-badge {
-        font-size: 0.72rem !important;
-        color: var(--text-muted) !important;
-    }
-    #UpscalerConfigurationPage .upscaler-header .status-dot {
-        display: inline-flex !important;
-        align-items: center !important;
-        gap: 6px !important;
-        font-size: 0.75rem !important;
-    }
-    #UpscalerConfigurationPage .upscaler-header .status-dot::before {
-        content: '' !important;
-        width: 7px !important;
-        height: 7px !important;
-        border-radius: 50% !important;
-        display: inline-block !important;
-    }
-    #UpscalerConfigurationPage .upscaler-header .status-dot.online::before { background: var(--success) !important; }
-    #UpscalerConfigurationPage .upscaler-header .status-dot.offline::before { background: var(--danger) !important; }
-    #UpscalerConfigurationPage .upscaler-header .status-dot.checking::before { background: var(--warning) !important; }
-
-    #UpscalerConfigurationPage .tab-bar {
-        display: flex !important;
-        border-bottom: 1px solid var(--border) !important;
-        background: rgba(255,255,255,0.02) !important;
-        overflow-x: auto !important;
-    }
-    #UpscalerConfigurationPage .nav-item {
-        display: flex !important;
-        align-items: center !important;
-        gap: 0.5rem !important;
-        padding: 0.7rem 1.25rem !important;
-        color: var(--text-secondary) !important;
-        cursor: pointer !important;
-        border-bottom: 2px solid transparent !important;
-        transition: all 0.15s !important;
-        font-size: 0.85rem !important;
-        user-select: none !important;
-        background: transparent !important;
-        border-top: none !important;
-        border-left: none !important;
-        border-right: none !important;
-        border-radius: 0 !important;
-        text-align: center !important;
-        white-space: nowrap !important;
-        box-sizing: border-box !important;
-    }
-    #UpscalerConfigurationPage .nav-item:hover {
-        color: var(--text-primary) !important;
-        background: rgba(255,255,255,0.03) !important;
-    }
-    #UpscalerConfigurationPage .nav-item.active {
-        color: var(--accent) !important;
-        border-bottom-color: var(--accent) !important;
-        background: transparent !important;
-    }
-    #UpscalerConfigurationPage .nav-item .material-icons { font-size: 18px !important; }
-
-    #UpscalerConfigurationPage .upscaler-main {
-        padding: 1.25rem !important;
-        min-width: 0 !important;
-        background: var(--bg-primary) !important;
-    }
-    #UpscalerConfigurationPage .page-header {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        margin-bottom: 1.5rem !important;
-        flex-wrap: wrap !important;
-        gap: 0.75rem !important;
-    }
-    #UpscalerConfigurationPage .page-header h1 {
-        margin: 0 !important;
-        font-size: 1.4rem !important;
-        color: var(--text-primary) !important;
-    }
-
-    /* ===== STATUS PILLS ===== */
-    #UpscalerConfigurationPage .status-pill {
-        display: inline-flex !important;
-        align-items: center !important;
-        gap: 6px !important;
-        padding: 3px 10px !important;
-        border-radius: 100px !important;
-        font-size: 0.75rem !important;
-        font-weight: 500 !important;
-    }
-    #UpscalerConfigurationPage .status-pill--online { background: rgba(74,222,128,0.15) !important; color: var(--success) !important; }
-    #UpscalerConfigurationPage .status-pill--offline { background: rgba(248,113,113,0.15) !important; color: var(--danger) !important; }
-    #UpscalerConfigurationPage .status-pill--processing { background: rgba(0,212,255,0.15) !important; color: var(--accent) !important; }
-    #UpscalerConfigurationPage .status-pill--warning { background: rgba(251,191,36,0.15) !important; color: var(--warning) !important; }
-
-    /* ===== GLASSMORPHISM CARDS ===== */
-    #UpscalerConfigurationPage .upscaler-card {
-        background: var(--bg-card) !important;
-        backdrop-filter: blur(16px) !important;
-        -webkit-backdrop-filter: blur(16px) !important;
-        border: 1px solid var(--border) !important;
-        border-radius: var(--radius) !important;
-        padding: 1.25rem !important;
-        transition: border-color 0.2s !important;
-    }
-    #UpscalerConfigurationPage .upscaler-card:hover { border-color: var(--border-hover) !important; }
-    #UpscalerConfigurationPage .upscaler-card h3 {
-        margin: 0 0 1rem !important;
-        font-size: 0.95rem !important;
-        color: var(--accent) !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: 0.5rem !important;
-    }
-    #UpscalerConfigurationPage .upscaler-card h3 .material-icons { font-size: 18px !important; }
-
-    /* ===== STAT CARDS ===== */
-    #UpscalerConfigurationPage .stat-card {
-        background: var(--bg-card) !important;
-        backdrop-filter: blur(16px) !important;
-        border: 1px solid var(--border) !important;
-        border-radius: var(--radius) !important;
-        padding: 1rem 1.25rem !important;
-        text-align: center !important;
-        position: relative !important;
-        overflow: hidden !important;
-    }
-    #UpscalerConfigurationPage .stat-card .stat-icon {
-        position: absolute !important;
-        right: 10px !important;
-        top: 50% !important;
-        transform: translateY(-50%) !important;
-        font-size: 48px !important;
-        opacity: 0.05 !important;
-        color: var(--text-primary) !important;
-    }
-    #UpscalerConfigurationPage .stat-card .stat-value {
-        font-size: 1.8rem !important;
-        font-weight: bold !important;
-        line-height: 1.2 !important;
-        color: var(--text-primary) !important;
-    }
-    #UpscalerConfigurationPage .stat-card .stat-label {
-        font-size: 0.78rem !important;
-        color: var(--text-secondary) !important;
-        margin-top: 0.2rem !important;
-    }
-
-    /* ===== SKELETON LOADERS ===== */
-    #UpscalerConfigurationPage .skeleton {
-        background: linear-gradient(90deg, var(--bg-input) 25%, #2d3a4f 50%, var(--bg-input) 75%) !important;
-        background-size: 200% 100% !important;
-        animation: shimmer 1.5s infinite !important;
-        border-radius: 4px !important;
-    }
-    @keyframes shimmer {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
-    }
-
-    /* ===== ACCORDION SECTIONS ===== */
-    #UpscalerConfigurationPage .accordion-section {
-        border: 1px solid var(--border) !important;
-        border-radius: var(--radius-sm) !important;
-        margin-bottom: 0.5rem !important;
-        overflow: hidden !important;
-        background: var(--bg-primary) !important;
-    }
-    #UpscalerConfigurationPage .accordion-header {
-        display: flex !important;
-        align-items: center !important;
-        gap: 0.75rem !important;
-        padding: 0.85rem 1rem !important;
-        cursor: pointer !important;
-        background: rgba(255,255,255,0.02) !important;
-        color: var(--text-primary) !important;
-        font-size: 0.9rem !important;
-        font-weight: 500 !important;
-        user-select: none !important;
-        transition: background 0.15s !important;
-        border: none !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-        text-align: left !important;
-        border-radius: 0 !important;
-    }
-    #UpscalerConfigurationPage .accordion-header:hover { background: rgba(255,255,255,0.04) !important; }
-    #UpscalerConfigurationPage .accordion-header .material-icons { font-size: 18px !important; color: var(--accent) !important; }
-    #UpscalerConfigurationPage .accordion-header .chevron {
-        margin-left: auto !important;
-        font-size: 18px !important;
-        color: var(--text-muted) !important;
-        transition: transform 0.2s !important;
-    }
-    #UpscalerConfigurationPage .accordion-section.open .accordion-header .chevron { transform: rotate(180deg) !important; }
-    #UpscalerConfigurationPage .accordion-body {
-        max-height: 0 !important;
-        overflow: hidden !important;
-        transition: max-height 0.3s ease !important;
-        background: transparent !important;
-    }
-    #UpscalerConfigurationPage .accordion-section.open .accordion-body { max-height: 2000px !important; }
-    #UpscalerConfigurationPage .accordion-body-inner {
-        padding: 0 1rem 1rem !important;
-    }
-
-    /* ===== JOBS TABLE ===== */
-    #UpscalerConfigurationPage .jobs-table {
-        width: 100% !important;
-        border-collapse: collapse !important;
-        font-size: 0.85rem !important;
-    }
-    #UpscalerConfigurationPage .jobs-table th {
-        text-align: left !important;
-        padding: 0.6rem 0.75rem !important;
-        color: var(--text-secondary) !important;
-        font-weight: 500 !important;
-        border-bottom: 1px solid var(--border) !important;
-        cursor: pointer !important;
-        user-select: none !important;
-        background: transparent !important;
-    }
-    #UpscalerConfigurationPage .jobs-table th:hover { color: var(--accent) !important; }
-    #UpscalerConfigurationPage .jobs-table td {
-        padding: 0.6rem 0.75rem !important;
-        border-bottom: 1px solid var(--border) !important;
-        color: var(--text-primary) !important;
-        background: transparent !important;
-    }
-    #UpscalerConfigurationPage .jobs-table .file-path {
-        max-width: 200px !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        white-space: nowrap !important;
-    }
-
-    /* ===== TOAST ===== */
-    #UpscalerConfigurationPage .upscaler-toast {
-        position: fixed !important;
-        bottom: 2rem !important;
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        background: var(--bg-input) !important;
-        padding: 0.75rem 1.5rem !important;
-        border-radius: var(--radius-sm) !important;
-        border: 1px solid var(--border) !important;
-        z-index: 99999 !important;
-        font-size: 0.9rem !important;
-        box-shadow: 0 4px 24px rgba(0,0,0,0.5) !important;
-        animation: toastFadeIn 0.3s ease !important;
-        color: var(--text-primary) !important;
-    }
-    @keyframes toastFadeIn {
-        from { opacity: 0; transform: translateX(-50%) translateY(1rem); }
-        to { opacity: 1; transform: translateX(-50%) translateY(0); }
-    }
-
-    /* ===== QUICK ACTIONS ===== */
-    #UpscalerConfigurationPage .quick-actions {
-        display: flex !important;
-        gap: 0.5rem !important;
-        flex-wrap: wrap !important;
-    }
-    #UpscalerConfigurationPage button.quick-action-btn,
-    #UpscalerConfigurationPage .quick-action-btn {
-        display: inline-flex !important;
-        align-items: center !important;
-        gap: 0.4rem !important;
-        padding: 0.4rem 0.85rem !important;
-        background: var(--bg-card) !important;
-        border: 1px solid var(--border) !important;
-        border-radius: var(--radius-sm) !important;
-        color: var(--text-secondary) !important;
-        font-size: 0.8rem !important;
-        cursor: pointer !important;
-        transition: all 0.15s !important;
-    }
-    #UpscalerConfigurationPage button.quick-action-btn:hover,
-    #UpscalerConfigurationPage .quick-action-btn:hover {
-        border-color: var(--accent) !important;
-        color: var(--accent) !important;
-        background: rgba(0,212,255,0.08) !important;
-    }
-    #UpscalerConfigurationPage .quick-action-btn .material-icons { font-size: 16px !important; }
-
-    /* ===== SERVICE BANNER ===== */
-    #UpscalerConfigurationPage .service-banner {
-        display: flex !important;
-        align-items: center !important;
-        gap: 1rem !important;
-        padding: 0.85rem 1.25rem !important;
-        border-radius: var(--radius) !important;
-        margin-bottom: 1.25rem !important;
-        font-size: 0.88rem !important;
-    }
-    #UpscalerConfigurationPage .service-banner.online {
-        background: rgba(74,222,128,0.08) !important;
-        border: 1px solid rgba(74,222,128,0.2) !important;
-        color: var(--success) !important;
-    }
-    #UpscalerConfigurationPage .service-banner.offline {
-        background: rgba(248,113,113,0.08) !important;
-        border: 1px solid rgba(248,113,113,0.2) !important;
-        color: var(--danger) !important;
-    }
-    #UpscalerConfigurationPage .service-banner.checking {
-        background: rgba(251,191,36,0.08) !important;
-        border: 1px solid rgba(251,191,36,0.2) !important;
-        color: var(--warning) !important;
-    }
-    #UpscalerConfigurationPage .service-banner .material-icons { font-size: 20px !important; }
-    #UpscalerConfigurationPage .service-banner .banner-details {
-        margin-left: auto !important;
-        font-size: 0.78rem !important;
-        color: var(--text-secondary) !important;
-    }
-
-    /* ===== GRID HELPERS ===== */
-    #UpscalerConfigurationPage .grid-2 { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 0.75rem !important; }
-    #UpscalerConfigurationPage .grid-4 { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important; gap: 0.75rem !important; }
-
-    /* ===== INFO ROWS ===== */
-    #UpscalerConfigurationPage .info-row {
-        display: flex !important;
-        justify-content: space-between !important;
-        padding: 0.4rem 0 !important;
-        border-bottom: 1px solid var(--border) !important;
-        font-size: 0.85rem !important;
-    }
-    #UpscalerConfigurationPage .info-row:last-child { border-bottom: none !important; }
-    #UpscalerConfigurationPage .info-row .label { color: var(--text-secondary) !important; }
-    #UpscalerConfigurationPage .info-row .value { color: var(--text-primary) !important; }
-
-    /* ===== SECTION HEADINGS ===== */
-    #UpscalerConfigurationPage h3 {
-        color: var(--text-primary) !important;
-    }
-    #UpscalerConfigurationPage p {
-        color: var(--text-secondary) !important;
-    }
-
-    /* ===== MOBILE RESPONSIVE ===== */
-    @media (max-width: 768px) {
-        #UpscalerConfigurationPage .tab-bar { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
-        #UpscalerConfigurationPage .nav-item { padding: 0.6rem 0.85rem !important; font-size: 0.78rem !important; }
-        #UpscalerConfigurationPage .grid-2 { grid-template-columns: 1fr !important; }
-        #UpscalerConfigurationPage .jobs-table-wrapper { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
-        #UpscalerConfigurationPage .upscaler-header { flex-wrap: wrap !important; }
-    }
-        @media (max-width: 480px) {
-        #UpscalerConfigurationPage .grid-4 { grid-template-columns: 1fr 1fr !important; }
-        #UpscalerConfigurationPage .page-header { flex-direction: column !important; align-items: flex-start !important; }
-    }
-    </style>
     <div data-role="content">
         <div class="content-primary">
             <div class="upscaler-layout">
@@ -650,55 +38,55 @@
                         </div>
 
                         <!-- Stats Cards -->
-                        <div class="grid-4" style="display:grid !important;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;margin-bottom:1.25rem;">
-                            <div class="stat-card" style="background:rgba(30,41,59,0.6);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:1rem 1.25rem;text-align:center;position:relative;overflow:hidden">
+                        <div class="grid-4">
+                            <div class="stat-card">
                                 <span class="material-icons stat-icon">play_circle</span>
-                                <div class="stat-value" style="color:var(--accent);" id="stat-active">
-                                    <div class="skeleton" style="width:40px;height:28px;margin:0 auto;"></div>
+                                <div class="stat-value" id="stat-active">
+                                    <div class="skeleton" data-skeleton="1"></div>
                                 </div>
                                 <div class="stat-label">Active Jobs</div>
                             </div>
                             <div class="stat-card">
                                 <span class="material-icons stat-icon">check_circle</span>
-                                <div class="stat-value" style="color:var(--success);" id="stat-completed">
-                                    <div class="skeleton" style="width:40px;height:28px;margin:0 auto;"></div>
+                                <div class="stat-value" id="stat-completed">
+                                    <div class="skeleton" data-skeleton="1"></div>
                                 </div>
                                 <div class="stat-label">Completed</div>
                             </div>
                             <div class="stat-card">
                                 <span class="material-icons stat-icon">error</span>
-                                <div class="stat-value" style="color:var(--danger);" id="stat-failed">
-                                    <div class="skeleton" style="width:40px;height:28px;margin:0 auto;"></div>
+                                <div class="stat-value" id="stat-failed">
+                                    <div class="skeleton" data-skeleton="1"></div>
                                 </div>
                                 <div class="stat-label">Failed</div>
                             </div>
                             <div class="stat-card">
                                 <span class="material-icons stat-icon">speed</span>
-                                <div class="stat-value" style="color:var(--warning);" id="stat-cache-hit">
-                                    <div class="skeleton" style="width:40px;height:28px;margin:0 auto;"></div>
+                                <div class="stat-value" id="stat-cache-hit">
+                                    <div class="skeleton" data-skeleton="1"></div>
                                 </div>
                                 <div class="stat-label">Cache Hit Rate</div>
                             </div>
                         </div>
 
-                        <div class="grid-2" style="display:grid !important;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1.25rem;">
+                        <div class="grid-2">
                             <!-- Active Jobs List -->
-                            <div class="upscaler-card" style="background:rgba(30,41,59,0.6);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:1.25rem">
-                                <h3 style="color:#00d4ff;display:flex;align-items:center;gap:0.5rem;margin:0 0 1rem"><span class="material-icons">pending_actions</span> Active Jobs</h3>
-                                <div id="active-jobs-list" style="font-size:0.85rem;">
-                                    <div style="opacity:0.5;text-align:center;padding:2rem;">No active jobs</div>
+                            <div class="upscaler-card">
+                                <h3><span class="material-icons">pending_actions</span> Active Jobs</h3>
+                                <div id="active-jobs-list">
+                                    <div class="empty-placeholder">No active jobs</div>
                                 </div>
                             </div>
 
                             <!-- Service Status -->
-                            <div class="upscaler-card" style="background:rgba(30,41,59,0.6);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:1.25rem">
-                                <h3 style="color:#00d4ff;display:flex;align-items:center;gap:0.5rem;margin:0 0 1rem"><span class="material-icons">monitor_heart</span> Service Status</h3>
+                            <div class="upscaler-card">
+                                <h3><span class="material-icons">monitor_heart</span> Service Status</h3>
                                 <div>
-                                    <div class="info-row"><span class="label">Docker Service</span><span class="value" id="svc-docker"><span class="skeleton" style="display:inline-block;width:60px;height:16px;"></span></span></div>
-                                    <div class="info-row"><span class="label">GPU</span><span class="value" id="svc-gpu"><span class="skeleton" style="display:inline-block;width:60px;height:16px;"></span></span></div>
-                                    <div class="info-row"><span class="label">Latency</span><span class="value" id="svc-latency"><span class="skeleton" style="display:inline-block;width:50px;height:16px;"></span></span></div>
-                                    <div class="info-row"><span class="label">Model</span><span class="value" id="svc-model"><span class="skeleton" style="display:inline-block;width:80px;height:16px;"></span></span></div>
-                                    <div class="info-row"><span class="label">Processing</span><span class="value" id="svc-processing"><span class="skeleton" style="display:inline-block;width:40px;height:16px;"></span></span></div>
+                                    <div class="info-row"><span class="label">Docker Service</span><span class="value" id="svc-docker"><span class="skeleton" data-skeleton="1"></span></span></div>
+                                    <div class="info-row"><span class="label">GPU</span><span class="value" id="svc-gpu"><span class="skeleton" data-skeleton="1"></span></span></div>
+                                    <div class="info-row"><span class="label">Latency</span><span class="value" id="svc-latency"><span class="skeleton" data-skeleton="1"></span></span></div>
+                                    <div class="info-row"><span class="label">Model</span><span class="value" id="svc-model"><span class="skeleton" data-skeleton="1"></span></span></div>
+                                    <div class="info-row"><span class="label">Processing</span><span class="value" id="svc-processing"><span class="skeleton" data-skeleton="1"></span></span></div>
                                 </div>
                             </div>
                         </div>
@@ -728,16 +116,16 @@
                                         <input type="text" id="AiServiceUrl" name="AiServiceUrl" placeholder="http://localhost:5000" />
                                         <div class="fieldDescription">URL to Docker AI Container</div>
                                     </div>
-                                    <div class="selectContainer" style="margin-top:0.75rem;">
+                                    <div class="selectContainer">
                                         <label class="selectLabel" for="GpuDeviceIndex">GPU Device:</label>
                                         <select id="GpuDeviceIndex" name="GpuDeviceIndex">
                                             <option value="0">GPU 0 (Default)</option>
                                         </select>
                                         <div class="fieldDescription">Select GPU for AI processing (multi-GPU systems)</div>
                                     </div>
-                                    <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.75rem;">
+                                    <div class="btn-row">
                                         <button type="button" id="btn-test-connection" class="raised">Test Connection</button>
-                                        <span id="connection-status" style="font-size:0.85rem;"></span>
+                                        <span id="connection-status"></span>
                                     </div>
                                 </div></div>
                             </div>
@@ -752,18 +140,18 @@
                                     <div class="checkboxContainer">
                                         <label><input type="checkbox" id="EnableRemoteTranscoding" /> Enable Remote Transcoding</label>
                                     </div>
-                                    <div id="ssh-fields" class="grid-2" style="margin-top:0.75rem;">
+                                    <div id="ssh-fields" class="grid-2">
                                         <div class="inputContainer"><label class="inputLabel" for="RemoteHost">Host:</label><input type="text" id="RemoteHost" /></div>
                                         <div class="inputContainer"><label class="inputLabel" for="RemoteSshPort">SSH Port:</label><input type="number" id="RemoteSshPort" /></div>
                                         <div class="inputContainer"><label class="inputLabel" for="RemoteUser">User:</label><input type="text" id="RemoteUser" /></div>
                                         <div class="inputContainer"><label class="inputLabel" for="RemoteSshKeyFile">SSH Key:</label><input type="text" id="RemoteSshKeyFile" /></div>
                                         <div class="inputContainer"><label class="inputLabel" for="LocalMediaMountPoint">Local Media Path:</label><input type="text" id="LocalMediaMountPoint" /></div>
                                         <div class="inputContainer"><label class="inputLabel" for="RemoteMediaMountPoint">Remote Media Path:</label><input type="text" id="RemoteMediaMountPoint" /></div>
-                                        <div class="inputContainer" style="grid-column:span 2;"><label class="inputLabel" for="RemoteTranscodePath">Remote Transcode Path:</label><input type="text" id="RemoteTranscodePath" /></div>
+                                        <div class="inputContainer input-span-2"><label class="inputLabel" for="RemoteTranscodePath">Remote Transcode Path:</label><input type="text" id="RemoteTranscodePath" /></div>
                                     </div>
-                                    <div style="margin-top:0.5rem;">
+                                    <div class="btn-row">
                                         <button type="button" id="btn-test-ssh" class="raised">SSH Test</button>
-                                        <span id="ssh-status" style="font-size:0.85rem;margin-left:0.5rem;"></span>
+                                        <span id="ssh-status"></span>
                                     </div>
                                 </div></div>
                             </div>
@@ -776,7 +164,7 @@
                                 </div>
                                 <div class="accordion-body"><div class="accordion-body-inner">
                                     <div class="checkboxContainer"><label><input type="checkbox" id="EnablePlugin" /> Plugin enabled</label></div>
-                                    <div class="grid-2" style="margin-top:0.75rem;">
+                                    <div class="grid-2">
                                         <div class="selectContainer"><label class="selectLabel" for="Model">Model:</label><select id="Model"></select></div>
                                         <div class="selectContainer"><label class="selectLabel" for="ScaleFactor">Scale:</label><select id="ScaleFactor"></select></div>
                                         <div class="selectContainer"><label class="selectLabel" for="QualityLevel">Quality:</label>
@@ -799,7 +187,7 @@
                                 </div>
                                 <div class="accordion-body"><div class="accordion-body-inner">
                                     <div class="checkboxContainer"><label><input type="checkbox" id="HardwareAcceleration" /> Hardware Acceleration</label></div>
-                                    <div class="grid-2" style="margin-top:0.75rem;">
+                                    <div class="grid-2">
                                         <div class="inputContainer"><label class="inputLabel" for="MaxVRAMUsage">Max VRAM (MB):</label><input type="number" id="MaxVRAMUsage" min="512" max="32768" /></div>
                                         <div class="inputContainer"><label class="inputLabel" for="CpuThreads">CPU Threads:</label><input type="number" id="CpuThreads" min="1" max="64" /></div>
                                     </div>
@@ -816,7 +204,7 @@
                                     <div class="checkboxContainer"><label><input type="checkbox" id="PlayerButton" /> Show Player Button</label></div>
                                     <div class="checkboxContainer"><label><input type="checkbox" id="Notifications" /> Notifications</label></div>
                                     <div class="checkboxContainer"><label><input type="checkbox" id="AutoRetryButton" /> Auto-Retry Button</label></div>
-                                    <div class="selectContainer" style="margin-top:0.75rem;"><label class="selectLabel" for="ButtonPosition">Button Position:</label>
+                                    <div class="selectContainer"><label class="selectLabel" for="ButtonPosition">Button Position:</label>
                                         <select id="ButtonPosition">
                                             <option value="right">Right</option>
                                             <option value="left">Left</option>
@@ -846,15 +234,15 @@
                                     <span class="material-icons chevron">expand_more</span>
                                 </div>
                                 <div class="accordion-body"><div class="accordion-body-inner">
-                                    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
-                                        <span style="color:var(--text-secondary);">Status:</span>
-                                        <span id="wrapper-status" style="font-weight:bold;">...</span>
-                                        <span id="wrapper-platform" style="color:var(--text-muted);font-size:0.8rem;"></span>
+                                    <div class="btn-row">
+                                        <span id="wrapper-status-label">Status:</span>
+                                        <span id="wrapper-status">...</span>
+                                        <span id="wrapper-platform"></span>
                                     </div>
-                                    <div id="wrapper-path-container" style="display:none;margin-bottom:0.75rem;font-size:0.8rem;color:var(--text-muted);">
+                                    <div id="wrapper-path-container" style="display:none;">
                                         Path: <code id="wrapper-path"></code>
                                     </div>
-                                    <div style="display:flex;gap:0.5rem;">
+                                    <div class="btn-group">
                                         <button type="button" id="btn-install-wrapper" class="raised">Install</button>
                                         <button type="button" id="btn-uninstall-wrapper" class="raised">Uninstall</button>
                                         <button type="button" id="btn-regenerate-wrapper" class="raised">Regenerate</button>
@@ -869,19 +257,19 @@
                                     <span class="material-icons chevron">expand_more</span>
                                 </div>
                                 <div class="accordion-body"><div class="accordion-body-inner">
-                                    <p style="font-size:0.8rem;color:var(--text-muted);margin:0 0 0.75rem;">Export settings to transfer to another Jellyfin server or create a backup.</p>
-                                    <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
-                                        <button type="button" id="btn-export-settings" class="raised" style="display:inline-flex;align-items:center;gap:0.4rem;">
-                                            <span class="material-icons" style="font-size:1rem;">download</span> Export Settings
+                                    <p class="section-desc">Export settings to transfer to another Jellyfin server or create a backup.</p>
+                                    <div class="btn-group">
+                                        <button type="button" id="btn-export-settings" class="raised btn-with-icon">
+                                            <span class="material-icons">download</span> Export Settings
                                         </button>
-                                        <button type="button" id="btn-import-settings" class="raised" style="display:inline-flex;align-items:center;gap:0.4rem;">
-                                            <span class="material-icons" style="font-size:1rem;">upload</span> Import Settings
+                                        <button type="button" id="btn-import-settings" class="raised btn-with-icon">
+                                            <span class="material-icons">upload</span> Import Settings
                                         </button>
-                                        <input type="file" id="settings-file-input" accept=".json,.txt" style="display:none;" />
+                                        <input type="file" id="settings-file-input" accept=".json,.txt" />
                                     </div>
-                                    <div id="settings-backup-status" style="font-size:0.85rem;margin-top:0.5rem;"></div>
-                                    <div style="margin-top:0.75rem;padding:0.6rem;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.78rem;color:var(--text-muted);">
-                                        <strong style="color:var(--text-secondary);">Migration guide:</strong><br>
+                                    <div id="settings-backup-status"></div>
+                                    <div class="migration-guide">
+                                        <strong class="migration-guide-title">Migration guide:</strong><br>
                                         1. Export settings on old server<br>
                                         2. Install plugin on new server<br>
                                         3. Import the JSON file<br>
@@ -890,8 +278,8 @@
                                 </div></div>
                             </div>
 
-                            <div style="margin-top:1rem;">
-                                <button type="button" id="btn-save" class="raised button-submit" style="width:100%;padding:0.7rem !important;font-size:0.95rem !important;">Save Settings</button>
+                            <div class="save-btn-wrapper">
+                                <button type="button" id="btn-save" class="raised button-submit">Save Settings</button>
                             </div>
                         </form>
                     </div>
@@ -911,11 +299,11 @@
                                         <th>Progress</th>
                                         <th>Method</th>
                                         <th>Duration</th>
-                                        <th style="text-align:center;">Action</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="jobs-tbody">
-                                    <tr><td colspan="6" style="text-align:center;padding:2rem;opacity:0.5;">No jobs found</td></tr>
+                                    <tr><td colspan="6" class="empty-placeholder">No jobs found</td></tr>
                                 </tbody>
                             </table>
                         </div></div>
@@ -925,25 +313,25 @@
                     <div id="tab-cache" class="tab-content" style="display:none;">
                         <div class="page-header"><h1>Cache</h1></div>
 
-                        <div class="grid-4" style="margin-bottom:1.25rem;">
+                        <div class="grid-4">
                             <div class="stat-card">
                                 <span class="material-icons stat-icon">storage</span>
-                                <div class="stat-value" style="color:var(--accent);" id="cache-size"><div class="skeleton" style="width:60px;height:24px;margin:0 auto;"></div></div>
+                                <div class="stat-value" id="cache-size"><div class="skeleton" data-skeleton="1"></div></div>
                                 <div class="stat-label">Size</div>
                             </div>
                             <div class="stat-card">
                                 <span class="material-icons stat-icon">folder</span>
-                                <div class="stat-value" style="color:var(--success);" id="cache-entries"><div class="skeleton" style="width:40px;height:24px;margin:0 auto;"></div></div>
+                                <div class="stat-value" id="cache-entries"><div class="skeleton" data-skeleton="1"></div></div>
                                 <div class="stat-label">Entries</div>
                             </div>
                             <div class="stat-card">
                                 <span class="material-icons stat-icon">trending_up</span>
-                                <div class="stat-value" style="color:var(--warning);" id="cache-hitrate"><div class="skeleton" style="width:50px;height:24px;margin:0 auto;"></div></div>
+                                <div class="stat-value" id="cache-hitrate"><div class="skeleton" data-skeleton="1"></div></div>
                                 <div class="stat-label">Hit Rate</div>
                             </div>
                             <div class="stat-card">
                                 <span class="material-icons stat-icon">data_usage</span>
-                                <div class="stat-value" style="color:var(--danger);" id="cache-usage"><div class="skeleton" style="width:50px;height:24px;margin:0 auto;"></div></div>
+                                <div class="stat-value" id="cache-usage"><div class="skeleton" data-skeleton="1"></div></div>
                                 <div class="stat-label">Usage</div>
                             </div>
                         </div>
@@ -951,11 +339,11 @@
                         <div class="upscaler-card">
                             <h3><span class="material-icons">settings</span> Cache Settings</h3>
                             <div class="checkboxContainer"><label><input type="checkbox" id="EnablePreProcessingCache" /> Cache enabled</label></div>
-                            <div class="grid-2" style="margin-top:0.75rem;">
+                            <div class="grid-2">
                                 <div class="inputContainer"><label class="inputLabel" for="MaxCacheAgeDays">Max Age (Days):</label><input type="number" id="MaxCacheAgeDays" min="1" max="365" /></div>
                                 <div class="inputContainer"><label class="inputLabel" for="CacheSizeMB">Max Size (MB):</label><input type="number" id="CacheSizeMB" min="128" max="1048576" /></div>
                             </div>
-                            <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
+                            <div class="btn-group">
                                 <button type="button" id="btn-clear-cache" class="raised">Clear Cache</button>
                                 <button type="button" id="btn-refresh-cache" class="raised">Refresh</button>
                             </div>
@@ -966,37 +354,37 @@
                     <div id="tab-system" class="tab-content" style="display:none;">
                         <div class="page-header"><h1>System</h1></div>
 
-                        <div class="grid-2" style="margin-bottom:1.25rem;">
+                        <div class="grid-2">
                             <div class="upscaler-card">
                                 <h3><span class="material-icons">developer_board</span> Hardware Info</h3>
                                 <div id="hw-info">
-                                    <div class="info-row"><span class="label">CPU</span><span class="value" id="hw-cpu"><span class="skeleton" style="display:inline-block;width:120px;height:16px;"></span></span></div>
-                                    <div class="info-row"><span class="label">GPU</span><span class="value" id="hw-gpu"><span class="skeleton" style="display:inline-block;width:120px;height:16px;"></span></span></div>
-                                    <div class="info-row"><span class="label">Platform</span><span class="value" id="hw-platform"><span class="skeleton" style="display:inline-block;width:80px;height:16px;"></span></span></div>
-                                    <div class="info-row"><span class="label">Providers</span><span class="value" id="hw-providers"><span class="skeleton" style="display:inline-block;width:100px;height:16px;"></span></span></div>
-                                    <div class="info-row"><span class="label">Container</span><span class="value" id="hw-container"><span class="skeleton" style="display:inline-block;width:40px;height:16px;"></span></span></div>
+                                    <div class="info-row"><span class="label">CPU</span><span class="value" id="hw-cpu"><span class="skeleton" data-skeleton="1"></span></span></div>
+                                    <div class="info-row"><span class="label">GPU</span><span class="value" id="hw-gpu"><span class="skeleton" data-skeleton="1"></span></span></div>
+                                    <div class="info-row"><span class="label">Platform</span><span class="value" id="hw-platform"><span class="skeleton" data-skeleton="1"></span></span></div>
+                                    <div class="info-row"><span class="label">Providers</span><span class="value" id="hw-providers"><span class="skeleton" data-skeleton="1"></span></span></div>
+                                    <div class="info-row"><span class="label">Container</span><span class="value" id="hw-container"><span class="skeleton" data-skeleton="1"></span></span></div>
                                 </div>
                             </div>
 
                             <div class="upscaler-card">
                                 <h3><span class="material-icons">speed</span> Benchmark</h3>
-                                <div id="benchmark-result" style="font-size:0.85rem;margin-bottom:0.75rem;">
-                                    <div style="opacity:0.5;">No benchmark run yet</div>
+                                <div id="benchmark-result">
+                                    <div class="empty-placeholder">No benchmark run yet</div>
                                 </div>
-                                <button type="button" id="btn-run-benchmark" class="raised" style="width:100%;">Run Benchmark</button>
+                                <button type="button" id="btn-run-benchmark" class="raised btn-full-width">Run Benchmark</button>
                             </div>
                         </div>
 
                         <div class="upscaler-card">
                             <h3><span class="material-icons">compare</span> AI Comparison View</h3>
-                            <div style="display:flex;gap:0.75rem;align-items:flex-end;margin-bottom:1rem;">
-                                <div class="selectContainer" style="flex:1;"><label class="selectLabel" for="comparison-item">Media Item:</label><select id="comparison-item"></select></div>
+                            <div class="comparison-controls">
+                                <div class="selectContainer comparison-select"><label class="selectLabel" for="comparison-item">Media Item:</label><select id="comparison-item"></select></div>
                                 <button type="button" id="btn-compare" class="raised">Generate Comparison</button>
                             </div>
                             <div id="comparison-container" style="display:none;">
                                 <div class="grid-2">
-                                    <div style="text-align:center;"><div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.3rem;">Original</div><img id="img-original" style="max-width:100%;border-radius:6px;" /></div>
-                                    <div style="text-align:center;"><div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.3rem;">Upscaled</div><img id="img-upscaled" style="max-width:100%;border-radius:6px;" /></div>
+                                    <div class="comparison-img-wrap"><div class="comparison-img-label">Original</div><img id="img-original" /></div>
+                                    <div class="comparison-img-wrap"><div class="comparison-img-label">Upscaled</div><img id="img-upscaled" /></div>
                                 </div>
                             </div>
                         </div>
@@ -1014,6 +402,500 @@
         var modelsData = [];
         var refreshInterval = null;
         var _initialized = false;
+        var _stylesApplied = false;
+
+        // ===== COLOR TOKENS =====
+        var C = {
+            bgPrimary: '#0f172a',
+            bgCard: 'rgba(30, 41, 59, 0.6)',
+            bgInput: '#1e293b',
+            border: 'rgba(255, 255, 255, 0.06)',
+            borderHover: 'rgba(255, 255, 255, 0.12)',
+            accent: '#00d4ff',
+            accentGlow: 'rgba(0, 212, 255, 0.15)',
+            success: '#4ade80',
+            warning: '#fbbf24',
+            danger: '#f87171',
+            textPrimary: '#e2e8f0',
+            textSecondary: '#94a3b8',
+            textMuted: '#64748b',
+            radius: '12px',
+            radiusSm: '8px'
+        };
+
+        // ===== INJECT KEYFRAMES (only CSS that truly cannot be done inline) =====
+        function injectKeyframes() {
+            if (document.getElementById('upscaler-keyframes')) return;
+            var style = document.createElement('style');
+            style.id = 'upscaler-keyframes';
+            style.textContent =
+                '@keyframes upscaler-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }' +
+                '@keyframes upscaler-toast-in { from { opacity:0; transform:translateX(-50%) translateY(1rem); } to { opacity:1; transform:translateX(-50%) translateY(0); } }';
+            document.head.appendChild(style);
+        }
+
+        // ===== FORCE STYLE (adds !important to every property) =====
+        function S(cssText) {
+            return cssText.replace(/;/g, ' !important;');
+        }
+
+        // ===== APPLY ALL STYLES VIA JS =====
+        function applyStyles(page) {
+            injectKeyframes();
+
+            // --- Page and layout ---
+            page.style.cssText = S('background: transparent; color: ' + C.textPrimary + '; color-scheme: dark;');
+
+            var cp = page.querySelector('.content-primary');
+            if (cp) cp.style.cssText = S('background: transparent; padding: 0; max-width: 100%;');
+
+            var layout = page.querySelector('.upscaler-layout');
+            if (layout) layout.style.cssText = S('display: block; min-height: 600px; background: ' + C.bgPrimary + '; border-radius: ' + C.radius + '; position: relative;');
+
+            // --- Header ---
+            var header = page.querySelector('.upscaler-header');
+            if (header) header.style.cssText = S('display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.25rem; border-bottom: 1px solid ' + C.border + '; flex-wrap: wrap;');
+
+            var h2 = header ? header.querySelector('h2') : null;
+            if (h2) h2.style.cssText = S('margin: 0; font-size: 1rem; color: ' + C.textPrimary + '; display: flex; align-items: center; gap: 0.5rem;');
+            var h2icon = h2 ? h2.querySelector('.material-icons') : null;
+            if (h2icon) h2icon.style.cssText = S('color: ' + C.accent + '; font-size: 22px;');
+
+            var brandSub = header ? header.querySelector('.brand-sub') : null;
+            if (brandSub) brandSub.style.cssText = S('font-size: 0.72rem; color: ' + C.textMuted + ';');
+
+            var headerRight = header ? header.querySelector('.header-right') : null;
+            if (headerRight) headerRight.style.cssText = S('margin-left: auto; display: flex; align-items: center; gap: 0.75rem;');
+
+            var versionBadge = header ? header.querySelector('.version-badge') : null;
+            if (versionBadge) versionBadge.style.cssText = S('font-size: 0.72rem; color: ' + C.textMuted + ';');
+
+            styleStatusDot(page.querySelector('#sidebar-status'));
+
+            // --- Tab bar ---
+            var tabBar = page.querySelector('.tab-bar');
+            if (tabBar) tabBar.style.cssText = S('display: flex; border-bottom: 1px solid ' + C.border + '; background: rgba(255,255,255,0.02); overflow-x: auto;');
+
+            page.querySelectorAll('.nav-item').forEach(function(item) {
+                styleNavItem(item);
+            });
+
+            // --- Main content area ---
+            var main = page.querySelector('.upscaler-main');
+            if (main) main.style.cssText = S('padding: 1.25rem; min-width: 0; background: ' + C.bgPrimary + ';');
+
+            // --- Page headers ---
+            page.querySelectorAll('.page-header').forEach(function(ph) {
+                ph.style.cssText = S('display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.75rem;');
+                var h1 = ph.querySelector('h1');
+                if (h1) h1.style.cssText = S('margin: 0; font-size: 1.4rem; color: ' + C.textPrimary + ';');
+            });
+
+            // --- Status pills ---
+            page.querySelectorAll('.status-pill').forEach(function(pill) {
+                var base = 'display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 100px; font-size: 0.75rem; font-weight: 500;';
+                if (pill.classList.contains('status-pill--online')) base += 'background: rgba(74,222,128,0.15); color: ' + C.success + ';';
+                else if (pill.classList.contains('status-pill--offline')) base += 'background: rgba(248,113,113,0.15); color: ' + C.danger + ';';
+                else if (pill.classList.contains('status-pill--processing')) base += 'background: rgba(0,212,255,0.15); color: ' + C.accent + ';';
+                else if (pill.classList.contains('status-pill--warning')) base += 'background: rgba(251,191,36,0.15); color: ' + C.warning + ';';
+                pill.style.cssText = base;
+            });
+
+            // --- Service banner ---
+            styleServiceBanner(page.querySelector('#service-banner'));
+
+            // --- Stat cards (grid-4) ---
+            page.querySelectorAll('.grid-4').forEach(function(g) {
+                g.style.cssText = S('display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem;');
+            });
+            page.querySelectorAll('.stat-card').forEach(function(card) {
+                card.style.cssText = S('background: ' + C.bgCard + '; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid ' + C.border + '; border-radius: ' + C.radius + '; padding: 1rem 1.25rem; text-align: center; position: relative; overflow: hidden;');
+            });
+            page.querySelectorAll('.stat-icon').forEach(function(icon) {
+                icon.style.cssText = S('position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 48px; opacity: 0.05; color: ' + C.textPrimary + ';');
+            });
+            page.querySelectorAll('.stat-value').forEach(function(sv) {
+                var col = C.textPrimary;
+                // Color based on id
+                var id = sv.id;
+                if (id === 'stat-active' || id === 'cache-size') col = C.accent;
+                else if (id === 'stat-completed' || id === 'cache-entries') col = C.success;
+                else if (id === 'stat-failed' || id === 'cache-usage') col = C.danger;
+                else if (id === 'stat-cache-hit' || id === 'cache-hitrate') col = C.warning;
+                sv.style.cssText = S('font-size: 1.8rem; font-weight: bold; line-height: 1.2; color: ' + col + ';');
+            });
+            page.querySelectorAll('.stat-label').forEach(function(sl) {
+                sl.style.cssText = S('font-size: 0.78rem; color: ' + C.textSecondary + '; margin-top: 0.2rem;');
+            });
+
+            // --- Grid-2 ---
+            page.querySelectorAll('.grid-2').forEach(function(g) {
+                g.style.cssText = S('display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.25rem;');
+            });
+
+            // --- Cards ---
+            page.querySelectorAll('.upscaler-card').forEach(function(card) {
+                card.style.cssText = S('background: ' + C.bgCard + '; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid ' + C.border + '; border-radius: ' + C.radius + '; padding: 1.25rem; transition: border-color 0.2s;');
+            });
+            page.querySelectorAll('.upscaler-card > h3').forEach(function(h3) {
+                h3.style.cssText = S('margin: 0 0 1rem; font-size: 0.95rem; color: ' + C.accent + '; display: flex; align-items: center; gap: 0.5rem;');
+                var icon = h3.querySelector('.material-icons');
+                if (icon) icon.style.cssText = S('font-size: 18px;');
+            });
+
+            // --- Info rows ---
+            page.querySelectorAll('.info-row').forEach(function(row) {
+                row.style.cssText = S('display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid ' + C.border + '; font-size: 0.85rem;');
+                var lbl = row.querySelector('.label');
+                if (lbl) lbl.style.cssText = S('color: ' + C.textSecondary + ';');
+                var val = row.querySelector('.value');
+                if (val) val.style.cssText = S('color: ' + C.textPrimary + ';');
+            });
+            // Remove border from last info-row in each group
+            page.querySelectorAll('.upscaler-card > div, #hw-info').forEach(function(container) {
+                var rows = container.querySelectorAll('.info-row');
+                if (rows.length > 0) rows[rows.length - 1].style.borderBottom = 'none';
+            });
+
+            // --- Quick actions ---
+            page.querySelectorAll('.quick-actions').forEach(function(qa) {
+                qa.style.cssText = S('display: flex; gap: 0.5rem; flex-wrap: wrap;');
+            });
+            page.querySelectorAll('.quick-action-btn').forEach(function(btn) {
+                styleQuickActionBtn(btn);
+            });
+
+            // --- Skeleton loaders ---
+            page.querySelectorAll('.skeleton').forEach(function(sk) {
+                var isInline = sk.parentElement && sk.parentElement.classList.contains('value');
+                if (isInline) {
+                    sk.style.cssText = S('display: inline-block; width: 60px; height: 16px; background: linear-gradient(90deg, ' + C.bgInput + ' 25%, #2d3a4f 50%, ' + C.bgInput + ' 75%); background-size: 200% 100%; animation: upscaler-shimmer 1.5s infinite; border-radius: 4px;');
+                } else {
+                    sk.style.cssText = S('width: 40px; height: 28px; margin: 0 auto; background: linear-gradient(90deg, ' + C.bgInput + ' 25%, #2d3a4f 50%, ' + C.bgInput + ' 75%); background-size: 200% 100%; animation: upscaler-shimmer 1.5s infinite; border-radius: 4px;');
+                }
+            });
+
+            // --- Empty placeholders ---
+            page.querySelectorAll('.empty-placeholder').forEach(function(ep) {
+                ep.style.cssText = S('opacity: 0.5; text-align: center; padding: 2rem; color: ' + C.textSecondary + '; font-size: 0.85rem;');
+            });
+
+            // --- Accordion sections ---
+            page.querySelectorAll('.accordion-section').forEach(function(section) {
+                section.style.cssText = S('border: 1px solid ' + C.border + '; border-radius: ' + C.radiusSm + '; margin-bottom: 0.5rem; overflow: hidden; background: ' + C.bgPrimary + ';');
+                styleAccordion(section);
+            });
+
+            // --- Form inputs ---
+            styleFormElements(page);
+
+            // --- Checkbox styling ---
+            styleCheckboxes(page);
+
+            // --- Buttons ---
+            page.querySelectorAll('.raised').forEach(function(btn) {
+                styleRaisedBtn(btn);
+            });
+
+            // --- Button rows ---
+            page.querySelectorAll('.btn-row').forEach(function(br) {
+                br.style.cssText = S('display: flex; align-items: center; gap: 0.75rem; margin-top: 0.75rem;');
+                var statusSpan = br.querySelector('#connection-status, #ssh-status');
+                if (statusSpan) statusSpan.style.cssText = S('font-size: 0.85rem;');
+                var wrapperLabel = br.querySelector('#wrapper-status-label');
+                if (wrapperLabel) wrapperLabel.style.cssText = S('color: ' + C.textSecondary + ';');
+                var wrapperPlatform = br.querySelector('#wrapper-platform');
+                if (wrapperPlatform) wrapperPlatform.style.cssText = S('color: ' + C.textMuted + '; font-size: 0.8rem;');
+            });
+
+            // --- Button groups ---
+            page.querySelectorAll('.btn-group').forEach(function(bg) {
+                bg.style.cssText = S('display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.75rem;');
+            });
+
+            // --- Buttons with icons ---
+            page.querySelectorAll('.btn-with-icon').forEach(function(btn) {
+                btn.style.display = 'inline-flex';
+                btn.style.alignItems = 'center';
+                btn.style.gap = '0.4rem';
+                var icon = btn.querySelector('.material-icons');
+                if (icon) icon.style.fontSize = '1rem';
+            });
+
+            // --- Save button ---
+            var saveWrap = page.querySelector('.save-btn-wrapper');
+            if (saveWrap) saveWrap.style.cssText = S('margin-top: 1rem;');
+            var saveBtn = page.querySelector('#btn-save');
+            if (saveBtn) {
+                saveBtn.style.cssText = S('width: 100%; padding: 0.7rem; font-size: 0.95rem; background: linear-gradient(135deg, #0369a1, #0284c7); color: #fff; border: none; border-radius: ' + C.radiusSm + '; cursor: pointer; font-weight: bold;');
+            }
+
+            // --- Full width buttons ---
+            page.querySelectorAll('.btn-full-width').forEach(function(btn) {
+                btn.style.width = '100%';
+            });
+
+            // --- File input hidden ---
+            var fileInput = page.querySelector('#settings-file-input');
+            if (fileInput) fileInput.style.cssText = S('display: none;');
+
+            // --- Section desc ---
+            page.querySelectorAll('.section-desc').forEach(function(p) {
+                p.style.cssText = S('font-size: 0.8rem; color: ' + C.textMuted + '; margin: 0 0 0.75rem;');
+            });
+
+            // --- Settings backup status ---
+            var backupStatus = page.querySelector('#settings-backup-status');
+            if (backupStatus) backupStatus.style.cssText = S('font-size: 0.85rem; margin-top: 0.5rem;');
+
+            // --- Migration guide ---
+            page.querySelectorAll('.migration-guide').forEach(function(mg) {
+                mg.style.cssText = S('margin-top: 0.75rem; padding: 0.6rem; background: rgba(255,255,255,0.03); border: 1px solid ' + C.border + '; border-radius: ' + C.radiusSm + '; font-size: 0.78rem; color: ' + C.textMuted + ';');
+                var title = mg.querySelector('.migration-guide-title');
+                if (title) title.style.cssText = S('color: ' + C.textSecondary + ';');
+            });
+
+            // --- Wrapper path container ---
+            var wpc = page.querySelector('#wrapper-path-container');
+            if (wpc) {
+                wpc.style.marginBottom = '0.75rem';
+                wpc.style.fontSize = '0.8rem';
+                wpc.style.color = C.textMuted;
+            }
+            // --- Code elements ---
+            page.querySelectorAll('code').forEach(function(el) {
+                el.style.cssText = S('background: rgba(255,255,255,0.06); color: ' + C.accent + '; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.85em; font-family: Consolas, Monaco, monospace;');
+            });
+
+            // --- Jobs table ---
+            page.querySelectorAll('.jobs-table-wrapper').forEach(function(w) {
+                w.style.cssText = S('overflow-x: auto; -webkit-overflow-scrolling: touch;');
+            });
+            page.querySelectorAll('.jobs-table').forEach(function(t) {
+                t.style.cssText = S('width: 100%; border-collapse: collapse; font-size: 0.85rem;');
+            });
+            page.querySelectorAll('.jobs-table th').forEach(function(th) {
+                th.style.cssText = S('text-align: left; padding: 0.6rem 0.75rem; color: ' + C.textSecondary + '; font-weight: 500; border-bottom: 1px solid ' + C.border + '; cursor: pointer; user-select: none; background: transparent;');
+            });
+            page.querySelectorAll('.jobs-table td').forEach(function(td) {
+                td.style.cssText = S('padding: 0.6rem 0.75rem; border-bottom: 1px solid ' + C.border + '; color: ' + C.textPrimary + '; background: transparent;');
+            });
+            page.querySelectorAll('.file-path').forEach(function(fp) {
+                fp.style.cssText += S('max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;');
+            });
+
+            // --- Input span 2 (remote transcode path) ---
+            page.querySelectorAll('.input-span-2').forEach(function(el) {
+                el.style.gridColumn = 'span 2';
+            });
+
+            // --- Comparison controls ---
+            page.querySelectorAll('.comparison-controls').forEach(function(cc) {
+                cc.style.cssText = S('display: flex; gap: 0.75rem; align-items: flex-end; margin-bottom: 1rem;');
+            });
+            page.querySelectorAll('.comparison-select').forEach(function(cs) {
+                cs.style.cssText += S('flex: 1;');
+            });
+            page.querySelectorAll('.comparison-img-wrap').forEach(function(w) {
+                w.style.cssText = S('text-align: center;');
+            });
+            page.querySelectorAll('.comparison-img-label').forEach(function(lbl) {
+                lbl.style.cssText = S('font-size: 0.8rem; color: ' + C.textSecondary + '; margin-bottom: 0.3rem;');
+            });
+            page.querySelectorAll('#img-original, #img-upscaled').forEach(function(img) {
+                img.style.cssText = S('max-width: 100%; border-radius: 6px;');
+            });
+
+            // --- Benchmark result ---
+            var br = page.querySelector('#benchmark-result');
+            if (br) br.style.cssText = S('font-size: 0.85rem; margin-bottom: 0.75rem;');
+
+            // --- All h3 / p defaults ---
+            page.querySelectorAll('h3').forEach(function(h3) {
+                if (!h3.style.color) h3.style.color = C.textPrimary;
+            });
+            page.querySelectorAll('p').forEach(function(p) {
+                if (!p.style.color) p.style.color = C.textSecondary;
+            });
+            page.querySelectorAll('label').forEach(function(lbl) {
+                if (!lbl.style.color) lbl.style.color = '#cbd5e1';
+            });
+
+            _stylesApplied = true;
+        }
+
+        // --- Style helpers ---
+        function styleStatusDot(el) {
+            if (!el) return;
+            var base = 'display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;';
+            el.style.cssText = base;
+            // Pseudo-element dot can't be done inline, we prepend a span
+            if (!el.querySelector('.dot-indicator')) {
+                var dot = document.createElement('span');
+                dot.className = 'dot-indicator';
+                el.insertBefore(dot, el.firstChild);
+            }
+            var dot = el.querySelector('.dot-indicator');
+            var dotColor = C.warning;
+            if (el.classList.contains('online')) dotColor = C.success;
+            else if (el.classList.contains('offline')) dotColor = C.danger;
+            dot.style.cssText = S('width: 7px; height: 7px; border-radius: 50%; display: inline-block; background: ' + dotColor + ';');
+        }
+
+        function styleNavItem(item) {
+            var isActive = item.classList.contains('active');
+            item.style.cssText = S('display: flex; align-items: center; gap: 0.5rem; padding: 0.7rem 1.25rem; color: ' +
+                (isActive ? C.accent : C.textSecondary) +
+                '; cursor: pointer; border-bottom: 2px solid ' +
+                (isActive ? C.accent : 'transparent') +
+                '; transition: all 0.15s; font-size: 0.85rem; user-select: none; background: transparent; border-top: none; border-left: none; border-right: none; border-radius: 0; text-align: center; white-space: nowrap; box-sizing: border-box;');
+            var icon = item.querySelector('.material-icons');
+            if (icon) icon.style.cssText = S('font-size: 18px;');
+        }
+
+        function styleServiceBanner(banner) {
+            if (!banner) return;
+            var base = 'display: flex; align-items: center; gap: 1rem; padding: 0.85rem 1.25rem; border-radius: ' + C.radius + '; margin-bottom: 1.25rem; font-size: 0.88rem;';
+            if (banner.classList.contains('online')) {
+                base += 'background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.2); color: ' + C.success + ';';
+            } else if (banner.classList.contains('offline')) {
+                base += 'background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2); color: ' + C.danger + ';';
+            } else {
+                base += 'background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.2); color: ' + C.warning + ';';
+            }
+            banner.style.cssText = base;
+            var icon = banner.querySelector('.material-icons');
+            if (icon) icon.style.cssText = S('font-size: 20px;');
+            var details = banner.querySelector('.banner-details');
+            if (details) details.style.cssText = S('margin-left: auto; font-size: 0.78rem; color: ' + C.textSecondary + ';');
+        }
+
+        function styleAccordion(section) {
+            var header = section.querySelector('.accordion-header');
+            if (header) {
+                header.style.cssText = S('display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem; cursor: pointer; background: rgba(255,255,255,0.02); color: ' + C.textPrimary + '; font-size: 0.9rem; font-weight: 500; user-select: none; transition: background 0.15s; border: none; width: 100%; box-sizing: border-box; text-align: left; border-radius: 0;');
+                var icon = header.querySelector('.material-icons:not(.chevron)');
+                if (icon) icon.style.cssText = S('font-size: 18px; color: ' + C.accent + ';');
+                var chevron = header.querySelector('.chevron');
+                if (chevron) {
+                    chevron.style.cssText = S('margin-left: auto; font-size: 18px; color: ' + C.textMuted + '; transition: transform 0.2s;');
+                    if (section.classList.contains('open')) chevron.style.transform = 'rotate(180deg)';
+                    else chevron.style.transform = 'rotate(0deg)';
+                }
+            }
+            var body = section.querySelector('.accordion-body');
+            if (body) {
+                if (section.classList.contains('open')) {
+                    body.style.cssText = S('max-height: 2000px; overflow: hidden; transition: max-height 0.3s ease; background: transparent;');
+                } else {
+                    body.style.cssText = S('max-height: 0; overflow: hidden; transition: max-height 0.3s ease; background: transparent;');
+                }
+            }
+            var inner = section.querySelector('.accordion-body-inner');
+            if (inner) inner.style.cssText = S('padding: 0 1rem 1rem;');
+        }
+
+        function styleFormElements(page) {
+            var selectors = 'input[type="text"], input[type="number"], input[type="url"], input[type="password"], select, textarea';
+            page.querySelectorAll(selectors).forEach(function(el) {
+                if (el.type === 'checkbox' || el.type === 'file') return;
+                el.style.cssText = S('background: ' + C.bgInput + '; color: ' + C.textPrimary + '; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0.5rem; width: 100%; box-sizing: border-box; font-size: 0.9rem; outline: none;');
+                el.addEventListener('focus', function() {
+                    el.style.borderColor = C.accent;
+                    el.style.boxShadow = '0 0 0 2px ' + C.accentGlow;
+                });
+                el.addEventListener('blur', function() {
+                    el.style.borderColor = 'rgba(255,255,255,0.1)';
+                    el.style.boxShadow = 'none';
+                });
+            });
+            page.querySelectorAll('select option').forEach(function(opt) {
+                opt.style.cssText = S('background: ' + C.bgInput + '; color: ' + C.textPrimary + ';');
+            });
+            page.querySelectorAll('.inputContainer, .selectContainer').forEach(function(c) {
+                c.style.marginBottom = '0';
+            });
+            page.querySelectorAll('.inputLabel, .selectLabel').forEach(function(lbl) {
+                lbl.style.cssText = S('color: ' + C.textSecondary + '; display: block; margin-bottom: 0.25rem; font-size: 0.85rem;');
+            });
+            page.querySelectorAll('.fieldDescription').forEach(function(fd) {
+                fd.style.cssText = S('color: ' + C.textMuted + '; font-size: 0.8rem; margin-top: 0.2rem;');
+            });
+        }
+
+        function styleCheckboxes(page) {
+            page.querySelectorAll('.checkboxContainer').forEach(function(cc) {
+                cc.style.cssText = S('margin: 0.5rem 0;');
+                var label = cc.querySelector('label');
+                if (label) label.style.cssText = S('color: #cbd5e1; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;');
+            });
+            page.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+                // We create a visual replacement since inline styling of checkbox appearance is limited
+                cb.style.cssText = S('width: 18px; height: 18px; min-width: 18px; cursor: pointer; accent-color: ' + C.accent + '; margin: 0;');
+            });
+            // Hide Jellyfin checkbox overlays
+            page.querySelectorAll('.checkboxIcon, .checkboxOutline').forEach(function(el) {
+                el.style.cssText = S('display: none;');
+            });
+        }
+
+        function styleRaisedBtn(btn) {
+            if (btn.classList.contains('button-submit')) return; // handled separately
+            btn.style.cssText = S('background: ' + C.bgInput + '; color: ' + C.textPrimary + '; border: 1px solid rgba(255,255,255,0.1); border-radius: ' + C.radiusSm + '; padding: 0.5rem 1.2rem; cursor: pointer; transition: all 0.2s; font-size: 0.85rem;');
+            btn.addEventListener('mouseenter', function() {
+                btn.style.background = 'rgba(255,255,255,0.08)';
+                btn.style.borderColor = C.accent;
+                btn.style.color = C.accent;
+            });
+            btn.addEventListener('mouseleave', function() {
+                if (btn.classList.contains('button-submit')) return;
+                btn.style.background = C.bgInput;
+                btn.style.borderColor = 'rgba(255,255,255,0.1)';
+                btn.style.color = C.textPrimary;
+            });
+        }
+
+        function styleQuickActionBtn(btn) {
+            btn.style.cssText = S('display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.85rem; background: ' + C.bgCard + '; border: 1px solid ' + C.border + '; border-radius: ' + C.radiusSm + '; color: ' + C.textSecondary + '; font-size: 0.8rem; cursor: pointer; transition: all 0.15s;');
+            var icon = btn.querySelector('.material-icons');
+            if (icon) icon.style.cssText = S('font-size: 16px;');
+            btn.addEventListener('mouseenter', function() {
+                btn.style.borderColor = C.accent;
+                btn.style.color = C.accent;
+                btn.style.background = 'rgba(0,212,255,0.08)';
+            });
+            btn.addEventListener('mouseleave', function() {
+                btn.style.borderColor = C.border;
+                btn.style.color = C.textSecondary;
+                btn.style.background = C.bgCard;
+            });
+        }
+
+        // Restyle dynamic elements after data loads (status pills, banners, etc)
+        function restyleDynamic(page) {
+            if (!_stylesApplied) return;
+            styleStatusDot(page.querySelector('#sidebar-status'));
+            styleServiceBanner(page.querySelector('#service-banner'));
+            page.querySelectorAll('.status-pill').forEach(function(pill) {
+                var base = 'display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 100px; font-size: 0.75rem; font-weight: 500;';
+                if (pill.classList.contains('status-pill--online')) base += 'background: rgba(74,222,128,0.15); color: ' + C.success + ';';
+                else if (pill.classList.contains('status-pill--offline')) base += 'background: rgba(248,113,113,0.15); color: ' + C.danger + ';';
+                else if (pill.classList.contains('status-pill--processing')) base += 'background: rgba(0,212,255,0.15); color: ' + C.accent + ';';
+                else if (pill.classList.contains('status-pill--warning')) base += 'background: rgba(251,191,36,0.15); color: ' + C.warning + ';';
+                pill.style.cssText = base;
+            });
+            // Restyle any new info-rows, table cells, quick-action-btns
+            page.querySelectorAll('.info-row').forEach(function(row) {
+                row.style.cssText = S('display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid ' + C.border + '; font-size: 0.85rem;');
+                var lbl = row.querySelector('.label');
+                if (lbl) lbl.style.cssText = S('color: ' + C.textSecondary + ';');
+                var val = row.querySelector('.value');
+                if (val && !val.style.color) val.style.color = C.textPrimary;
+            });
+            page.querySelectorAll('.jobs-table td').forEach(function(td) {
+                td.style.cssText = S('padding: 0.6rem 0.75rem; border-bottom: 1px solid ' + C.border + '; color: ' + C.textPrimary + '; background: transparent;');
+            });
+        }
 
         function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
 
@@ -1021,7 +903,7 @@
             var t = document.createElement('div');
             t.className = 'upscaler-toast';
             t.textContent = msg;
-            t.style.color = color || '#4ade80';
+            t.style.cssText = S('position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); background: ' + C.bgInput + '; padding: 0.75rem 1.5rem; border-radius: ' + C.radiusSm + '; border: 1px solid ' + C.border + '; z-index: 99999; font-size: 0.9rem; box-shadow: 0 4px 24px rgba(0,0,0,0.5); animation: upscaler-toast-in 0.3s ease; color: ' + (color || C.success) + ';');
             var page = document.querySelector('#UpscalerConfigurationPage');
             (page || document.body).appendChild(t);
             setTimeout(function() { if (t.parentNode) t.remove(); }, 3000);
@@ -1033,8 +915,12 @@
             items.forEach(function(item) {
                 item.addEventListener('click', function() {
                     var tabId = item.getAttribute('data-tab');
-                    items.forEach(function(i) { i.classList.remove('active'); });
+                    items.forEach(function(i) {
+                        i.classList.remove('active');
+                        styleNavItem(i);
+                    });
                     item.classList.add('active');
+                    styleNavItem(item);
 
                     page.querySelectorAll('.tab-content').forEach(function(c) { c.style.display = 'none'; });
                     var target = page.querySelector('#tab-' + tabId);
@@ -1045,6 +931,16 @@
                     else if (tabId === 'cache') refreshCache(page);
                     else if (tabId === 'system') refreshSystem(page);
                 });
+                // Hover effects
+                item.addEventListener('mouseenter', function() {
+                    if (!item.classList.contains('active')) {
+                        item.style.color = C.textPrimary;
+                        item.style.background = 'rgba(255,255,255,0.03)';
+                    }
+                });
+                item.addEventListener('mouseleave', function() {
+                    styleNavItem(item);
+                });
             });
 
             // Accordion toggle
@@ -1052,6 +948,14 @@
                 header.addEventListener('click', function() {
                     var section = header.parentElement;
                     section.classList.toggle('open');
+                    styleAccordion(section);
+                });
+                // Hover effect
+                header.addEventListener('mouseenter', function() {
+                    header.style.background = 'rgba(255,255,255,0.04)';
+                });
+                header.addEventListener('mouseleave', function() {
+                    header.style.background = 'rgba(255,255,255,0.02)';
                 });
             });
         }
@@ -1097,6 +1001,7 @@
                     page.querySelector('#svc-docker').textContent = 'Offline';
                     page.querySelector('#svc-docker').style.color = '#f87171';
                 }
+                restyleDynamic(page);
             }).catch(function() {
                 var badge = page.querySelector('#service-badge');
                 badge.className = 'status-pill status-pill--offline';
@@ -1104,6 +1009,7 @@
                 var sidebarStatus = page.querySelector('#sidebar-status');
                 sidebarStatus.className = 'status-dot offline';
                 sidebarStatus.textContent = 'Error';
+                restyleDynamic(page);
             });
         }
 
@@ -1112,7 +1018,6 @@
             ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/service-health'), dataType: 'json' }).then(function(data) {
                 if (!data.available) return;
                 var serviceUrl = page.querySelector('#AiServiceUrl').value || 'http://localhost:5000';
-                // Try to fetch GPU list from the Docker service directly through proxy
                 ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/gpus'), dataType: 'json' }).then(function(gpuData) {
                     var select = page.querySelector('#GpuDeviceIndex');
                     if (!select || !gpuData || !gpuData.gpus) return;
@@ -1130,7 +1035,6 @@
                             select.appendChild(opt);
                         });
                     }
-                    // Restore saved GPU selection
                     ApiClient.getPluginConfiguration(pluginId).then(function(cfg) {
                         if (cfg && cfg.GpuDeviceIndex != null) {
                             select.value = cfg.GpuDeviceIndex.toString();
@@ -1155,20 +1059,23 @@
                         if (j.status === 'Processing' || j.status === 'Starting') {
                             var prog = Math.min(Math.max(Math.round(j.progress || 0), 0), 100);
                             jobsHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid rgba(255,255,255,0.06);">' +
-                                '<span style="font-size:0.85rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(j.inputPath || 'Unknown') + '</span>' +
+                                '<span style="font-size:0.85rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:' + C.textPrimary + ';">' + esc(j.inputPath || 'Unknown') + '</span>' +
                                 '<div style="display:flex;align-items:center;gap:0.5rem;">' +
-                                '<div style="width:80px;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:var(--accent);border-radius:3px;"></div></div>' +
-                                '<span style="font-size:0.75rem;color:var(--text-secondary);">' + prog + '%</span>' +
+                                '<div style="width:80px;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:' + C.accent + ';border-radius:3px;"></div></div>' +
+                                '<span style="font-size:0.75rem;color:' + C.textSecondary + ';">' + prog + '%</span>' +
                                 '</div></div>';
                         }
                     });
                     page.querySelector('#stat-active').textContent = active;
+                    page.querySelector('#stat-active').style.cssText = S('font-size:1.8rem;font-weight:bold;line-height:1.2;color:' + C.accent + ';');
                     page.querySelector('#stat-completed').textContent = completed;
+                    page.querySelector('#stat-completed').style.cssText = S('font-size:1.8rem;font-weight:bold;line-height:1.2;color:' + C.success + ';');
                     page.querySelector('#stat-failed').textContent = failed;
+                    page.querySelector('#stat-failed').style.cssText = S('font-size:1.8rem;font-weight:bold;line-height:1.2;color:' + C.danger + ';');
                     if (jobsHtml) {
                         page.querySelector('#active-jobs-list').innerHTML = jobsHtml;
                     } else {
-                        page.querySelector('#active-jobs-list').innerHTML = '<div style="opacity:0.5;text-align:center;padding:2rem;">No active jobs</div>';
+                        page.querySelector('#active-jobs-list').innerHTML = '<div style="opacity:0.5;text-align:center;padding:2rem;color:' + C.textSecondary + ';">No active jobs</div>';
                     }
                 }
             }).catch(function() {});
@@ -1176,6 +1083,7 @@
             ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/cache/stats'), dataType: 'json' }).then(function(data) {
                 if (data) {
                     page.querySelector('#stat-cache-hit').textContent = data.HitRate ? data.HitRate.toFixed(1) + '%' : '0%';
+                    page.querySelector('#stat-cache-hit').style.cssText = S('font-size:1.8rem;font-weight:bold;line-height:1.2;color:' + C.warning + ';');
                 }
             }).catch(function() {});
         }
@@ -1185,37 +1093,39 @@
             ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/jobs'), dataType: 'json' }).then(function(data) {
                 var tbody = page.querySelector('#jobs-tbody');
                 if (!data || !data.jobs || data.jobs.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;opacity:0.5;">No jobs found</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;opacity:0.5;color:' + C.textSecondary + ';">No jobs found</td></tr>';
                     return;
                 }
                 var html = '';
                 data.jobs.forEach(function(j) {
                     var prog = Math.min(Math.max(Math.round(j.progress || 0), 0), 100);
                     var dur = j.duration ? j.duration.toFixed(1) + 's' : '-';
-                    var statusColor = j.status === 'Completed' ? 'var(--success)' : j.status === 'Failed' ? 'var(--danger)' : j.status === 'Processing' ? 'var(--accent)' : 'var(--warning)';
                     var statusIcon = j.status === 'Completed' ? 'check_circle' : j.status === 'Failed' ? 'error' : j.status === 'Processing' ? 'play_circle' : 'pending';
+                    var pillClass = j.status === 'Completed' ? 'online' : j.status === 'Failed' ? 'offline' : j.status === 'Processing' ? 'processing' : 'warning';
+                    var pillColor = pillClass === 'online' ? C.success : pillClass === 'offline' ? C.danger : pillClass === 'processing' ? C.accent : C.warning;
+                    var pillBg = pillClass === 'online' ? 'rgba(74,222,128,0.15)' : pillClass === 'offline' ? 'rgba(248,113,113,0.15)' : pillClass === 'processing' ? 'rgba(0,212,255,0.15)' : 'rgba(251,191,36,0.15)';
                     var safeJobId = esc(j.jobId || '');
                     var actions = '';
                     if (j.status === 'Processing' || j.status === 'Starting') {
                         if (j.isPaused) {
-                            actions = '<button type="button" data-action="resume" data-jobid="' + safeJobId + '" class="quick-action-btn" style="padding:0.2rem 0.5rem;"><span class="material-icons" style="font-size:14px;">play_arrow</span></button>';
+                            actions = '<button type="button" data-action="resume" data-jobid="' + safeJobId + '" style="display:inline-flex;align-items:center;padding:0.2rem 0.5rem;background:' + C.bgCard + ';border:1px solid ' + C.border + ';border-radius:' + C.radiusSm + ';color:' + C.textSecondary + ';cursor:pointer;font-size:0.8rem;"><span class="material-icons" style="font-size:14px;">play_arrow</span></button>';
                         } else {
-                            actions = '<button type="button" data-action="pause" data-jobid="' + safeJobId + '" class="quick-action-btn" style="padding:0.2rem 0.5rem;"><span class="material-icons" style="font-size:14px;">pause</span></button> ' +
-                                      '<button type="button" data-action="cancel" data-jobid="' + safeJobId + '" class="quick-action-btn" style="padding:0.2rem 0.5rem;border-color:rgba(248,113,113,0.3);color:var(--danger);"><span class="material-icons" style="font-size:14px;">stop</span></button>';
+                            actions = '<button type="button" data-action="pause" data-jobid="' + safeJobId + '" style="display:inline-flex;align-items:center;padding:0.2rem 0.5rem;background:' + C.bgCard + ';border:1px solid ' + C.border + ';border-radius:' + C.radiusSm + ';color:' + C.textSecondary + ';cursor:pointer;font-size:0.8rem;"><span class="material-icons" style="font-size:14px;">pause</span></button> ' +
+                                      '<button type="button" data-action="cancel" data-jobid="' + safeJobId + '" style="display:inline-flex;align-items:center;padding:0.2rem 0.5rem;background:' + C.bgCard + ';border:1px solid rgba(248,113,113,0.3);border-radius:' + C.radiusSm + ';color:' + C.danger + ';cursor:pointer;font-size:0.8rem;"><span class="material-icons" style="font-size:14px;">stop</span></button>';
                         }
                     }
                     html += '<tr>' +
-                        '<td class="file-path" title="' + esc(j.inputPath || '') + '">' + esc(j.inputPath || '-') + '</td>' +
-                        '<td><span class="status-pill status-pill--' + (j.status === 'Completed' ? 'online' : j.status === 'Failed' ? 'offline' : j.status === 'Processing' ? 'processing' : 'warning') + '"><span class="material-icons" style="font-size:14px;">' + statusIcon + '</span> ' + esc(j.status || '-') + '</span></td>' +
-                        '<td><div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:60px;height:5px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:var(--accent);"></div></div><span style="font-size:0.75rem;">' + prog + '%</span></div></td>' +
-                        '<td>' + esc(j.method || '-') + '</td>' +
-                        '<td>' + dur + '</td>' +
-                        '<td style="text-align:center;">' + actions + '</td>' +
+                        '<td style="padding:0.6rem 0.75rem;border-bottom:1px solid ' + C.border + ';color:' + C.textPrimary + ';background:transparent;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(j.inputPath || '') + '">' + esc(j.inputPath || '-') + '</td>' +
+                        '<td style="padding:0.6rem 0.75rem;border-bottom:1px solid ' + C.border + ';background:transparent;"><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:100px;font-size:0.75rem;font-weight:500;background:' + pillBg + ';color:' + pillColor + ';"><span class="material-icons" style="font-size:14px;">' + statusIcon + '</span> ' + esc(j.status || '-') + '</span></td>' +
+                        '<td style="padding:0.6rem 0.75rem;border-bottom:1px solid ' + C.border + ';color:' + C.textPrimary + ';background:transparent;"><div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:60px;height:5px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:' + C.accent + ';"></div></div><span style="font-size:0.75rem;">' + prog + '%</span></div></td>' +
+                        '<td style="padding:0.6rem 0.75rem;border-bottom:1px solid ' + C.border + ';color:' + C.textPrimary + ';background:transparent;">' + esc(j.method || '-') + '</td>' +
+                        '<td style="padding:0.6rem 0.75rem;border-bottom:1px solid ' + C.border + ';color:' + C.textPrimary + ';background:transparent;">' + dur + '</td>' +
+                        '<td style="padding:0.6rem 0.75rem;border-bottom:1px solid ' + C.border + ';text-align:center;background:transparent;">' + actions + '</td>' +
                         '</tr>';
                 });
                 tbody.innerHTML = html;
             }).catch(function() {
-                page.querySelector('#jobs-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--danger);">Error loading jobs</td></tr>';
+                page.querySelector('#jobs-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:' + C.danger + ';">Error loading jobs</td></tr>';
             });
         }
 
@@ -1240,9 +1150,13 @@
                     var sizeMB = (data.TotalSize || 0) / 1024 / 1024;
                     var maxMB = (data.MaxSize || 1) / 1024 / 1024;
                     page.querySelector('#cache-size').textContent = sizeMB.toFixed(1) + ' / ' + maxMB.toFixed(0) + ' MB';
+                    page.querySelector('#cache-size').style.cssText = S('font-size:1.8rem;font-weight:bold;line-height:1.2;color:' + C.accent + ';');
                     page.querySelector('#cache-entries').textContent = data.TotalEntries || 0;
+                    page.querySelector('#cache-entries').style.cssText = S('font-size:1.8rem;font-weight:bold;line-height:1.2;color:' + C.success + ';');
                     page.querySelector('#cache-hitrate').textContent = (data.HitRate || 0).toFixed(1) + '%';
+                    page.querySelector('#cache-hitrate').style.cssText = S('font-size:1.8rem;font-weight:bold;line-height:1.2;color:' + C.warning + ';');
                     page.querySelector('#cache-usage').textContent = (data.UsagePercentage || 0).toFixed(1) + '%';
+                    page.querySelector('#cache-usage').style.cssText = S('font-size:1.8rem;font-weight:bold;line-height:1.2;color:' + C.danger + ';');
                 }
             }).catch(function() {});
         }
@@ -1365,7 +1279,6 @@
                     page.querySelector('#ScaleFactor').value = config.ScaleFactor;
                 }
 
-                // GPU device index
                 if (config.GpuDeviceIndex !== undefined) {
                     var gpuSel = page.querySelector('#GpuDeviceIndex');
                     if (gpuSel) gpuSel.value = config.GpuDeviceIndex;
@@ -1511,21 +1424,21 @@
 
             page.querySelector('#btn-run-benchmark').addEventListener('click', function() {
                 var result = page.querySelector('#benchmark-result');
-                result.innerHTML = '<div style="color:var(--warning);">Running benchmark...</div>';
+                result.innerHTML = '<div style="color:' + C.warning + ';">Running benchmark...</div>';
                 ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/benchmark'), dataType: 'json' }).then(function(data) {
                     if (data.success && data.results) {
                         var r = data.results;
-                        var html = '<div class="info-row"><span class="label">Duration</span><span class="value">' + esc((r.duration || 0).toFixed(1)) + 's</span></div>';
+                        var html = '<div class="info-row" style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid ' + C.border + ';font-size:0.85rem;"><span style="color:' + C.textSecondary + ';">Duration</span><span style="color:' + C.textPrimary + ';">' + esc((r.duration || 0).toFixed(1)) + 's</span></div>';
                         if (r.optimalSettings) {
-                            html += '<div class="info-row"><span class="label">Recommended Model</span><span class="value">' + esc(r.optimalSettings.RecommendedModel || '-') + '</span></div>';
-                            html += '<div class="info-row"><span class="label">Max Resolution</span><span class="value">' + esc(r.optimalSettings.RecommendedMaxResolution || '-') + '</span></div>';
-                            html += '<div class="info-row"><span class="label">Quality</span><span class="value">' + esc(r.optimalSettings.RecommendedQuality || '-') + '</span></div>';
-                            html += '<div class="info-row"><span class="label">Max Streams</span><span class="value">' + esc(String(r.optimalSettings.MaxConcurrentStreams || 1)) + '</span></div>';
+                            html += '<div class="info-row" style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid ' + C.border + ';font-size:0.85rem;"><span style="color:' + C.textSecondary + ';">Recommended Model</span><span style="color:' + C.textPrimary + ';">' + esc(r.optimalSettings.RecommendedModel || '-') + '</span></div>';
+                            html += '<div class="info-row" style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid ' + C.border + ';font-size:0.85rem;"><span style="color:' + C.textSecondary + ';">Max Resolution</span><span style="color:' + C.textPrimary + ';">' + esc(r.optimalSettings.RecommendedMaxResolution || '-') + '</span></div>';
+                            html += '<div class="info-row" style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid ' + C.border + ';font-size:0.85rem;"><span style="color:' + C.textSecondary + ';">Quality</span><span style="color:' + C.textPrimary + ';">' + esc(r.optimalSettings.RecommendedQuality || '-') + '</span></div>';
+                            html += '<div class="info-row" style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:none;font-size:0.85rem;"><span style="color:' + C.textSecondary + ';">Max Streams</span><span style="color:' + C.textPrimary + ';">' + esc(String(r.optimalSettings.MaxConcurrentStreams || 1)) + '</span></div>';
                         }
                         result.innerHTML = html;
                     }
                 }).catch(function() {
-                    result.innerHTML = '<div style="color:var(--danger);">Benchmark failed</div>';
+                    result.innerHTML = '<div style="color:' + C.danger + ';">Benchmark failed</div>';
                 });
             });
 
@@ -1590,21 +1503,18 @@
                     try {
                         var imported = JSON.parse(e.target.result);
                         var payload = imported.settings ? imported : { settings: imported };
-                        // Validate the import file
                         var settingsObj = payload.settings;
                         if (!settingsObj || typeof settingsObj !== 'object') {
                             statusEl.textContent = 'Invalid file: no settings found';
                             statusEl.style.color = '#f87171';
                             return;
                         }
-                        // Show version info if available
                         var versionInfo = imported.pluginVersion ? ' (from v' + imported.pluginVersion + ')' : '';
                         var dateInfo = imported.exportDate ? ' exported ' + new Date(imported.exportDate).toLocaleDateString() : '';
                         var settingsCount = Object.keys(settingsObj).length;
-                        // Confirm before importing
                         if (!confirm('Import ' + settingsCount + ' settings' + versionInfo + dateInfo + '?\n\nThis will overwrite your current configuration.')) {
                             statusEl.textContent = 'Import cancelled';
-                            statusEl.style.color = 'var(--text-muted)';
+                            statusEl.style.color = C.textMuted;
                             return;
                         }
                         statusEl.textContent = 'Importing ' + settingsCount + ' settings...';
@@ -1636,6 +1546,9 @@
         function onPageShow() {
             var page = document.querySelector('#UpscalerConfigurationPage');
             if (!page) return;
+
+            // Apply all styles via JS FIRST
+            applyStyles(page);
 
             if (!_initialized) {
                 initNav(page);
