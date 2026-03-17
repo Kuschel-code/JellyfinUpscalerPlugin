@@ -674,7 +674,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 return Ok(new
                 {
                     success = true,
-                    pluginVersion = "1.5.2.8",
+                    pluginVersion = config.PluginVersion,
                     exportDate = DateTime.UtcNow.ToString("o"),
                     settings = new
                     {

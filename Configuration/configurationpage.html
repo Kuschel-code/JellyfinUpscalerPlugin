@@ -1587,7 +1587,8 @@
                             contentType: 'application/json',
                             dataType: 'json'
                         }).then(function(data) {
-                            statusEl.innerHTML = '<span style="color:#4ade80;">Settings imported successfully!</span> Reloading...';
+                            statusEl.textContent = 'Settings imported successfully! Reloading...';
+                            statusEl.style.color = '#4ade80';
                             setTimeout(function() { location.reload(); }, 1500);
                         }).catch(function() {
                             statusEl.textContent = 'Import failed — server error';
