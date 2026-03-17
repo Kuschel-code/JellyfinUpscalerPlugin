@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.5.2.7
+# Jellyfin AI Upscaler Plugin v1.5.2.8
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -7,9 +7,9 @@
 [![Project Website](https://img.shields.io/badge/Website-Visit-blueviolet)](https://transcendent-blancmange-824967.netlify.app)
 
 > [!CAUTION]
-> **TEST PHASE - v1.5.2.7 (Docker Fixes + Premium Dashboard)**
+> **TEST PHASE - v1.5.2.8 (Bug Fixes + Dark Theme + Migration)**
 >
-> Major update: fixes **TensorRT poisoning CUDA fallback** (Issue #46), **Intel OpenVINO GPU not using GPU** (Issue #45), adds **multi-GPU selection**, **premium sidebar dashboard**, and **robust player button injection** with MutationObserver.
+> 17 bug fixes: **XSS**, **race conditions**, **null refs**, **shell injection**. Improved **export/import** with validation for server migration. **Dark theme hardening** — no white elements in Jellyfin 10.11+. New **/gpus proxy endpoint**, **GPU_DEVICE_ID** env var support.
 >
 > **Docker Images (docker4 / v1.5.5):**
 > *   `kuscheltier/jellyfin-ai-upscaler:docker4` (NVIDIA CUDA + cuDNN 9)

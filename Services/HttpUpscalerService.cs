@@ -11,7 +11,7 @@ namespace JellyfinUpscalerPlugin.Services
 {
     /// <summary>
     /// HTTP-based upscaler service that communicates with the AI Upscaler Docker container.
-    /// v1.5.2.7 - Health caching, retry logic, multi-GPU support.
+    /// v1.5.2.8 - Health caching, retry logic, multi-GPU support.
     /// </summary>
     public class HttpUpscalerService : IDisposable
     {
@@ -41,7 +41,7 @@ namespace JellyfinUpscalerPlugin.Services
                 Timeout = TimeSpan.FromMinutes(5)
             };
 
-            _logger.LogInformation("HttpUpscalerService v1.5.2.7 initialized");
+            _logger.LogInformation("HttpUpscalerService v1.5.2.8 initialized");
         }
 
         private HttpClient GetClient()

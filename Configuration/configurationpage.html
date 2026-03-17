@@ -1,5 +1,5 @@
 <style>
-    /* ===== CSS DESIGN SYSTEM v1.5.2.7 ===== */
+    /* ===== CSS DESIGN SYSTEM v1.5.2.8 ===== */
     #UpscalerConfigurationPage {
         --bg-primary: #0f172a;
         --bg-card: rgba(30, 41, 59, 0.6);
@@ -59,6 +59,49 @@
     /* Override Jellyfin page-level backgrounds */
     #UpscalerConfigurationPage[data-role="page"] {
         background: transparent !important;
+    }
+    /* Extra dark theme hardening for Jellyfin 10.11+ — catch ALL white surfaces */
+    #UpscalerConfigurationPage .formDialogContent,
+    #UpscalerConfigurationPage .dialogContent,
+    #UpscalerConfigurationPage .paperList,
+    #UpscalerConfigurationPage .listItem,
+    #UpscalerConfigurationPage .card,
+    #UpscalerConfigurationPage .cardBox,
+    #UpscalerConfigurationPage .cardContent,
+    #UpscalerConfigurationPage .fieldDescription,
+    #UpscalerConfigurationPage .readOnlyContent,
+    #UpscalerConfigurationPage .detailSection,
+    #UpscalerConfigurationPage .formDialogFooter,
+    #UpscalerConfigurationPage .formDialogHeader,
+    #UpscalerConfigurationPage .dialog,
+    #UpscalerConfigurationPage .skinBody,
+    #UpscalerConfigurationPage .mainDrawer-scrollContainer,
+    #UpscalerConfigurationPage .backgroundContainer,
+    #UpscalerConfigurationPage .skinHeader,
+    #UpscalerConfigurationPage .emby-input,
+    #UpscalerConfigurationPage .emby-textarea,
+    #UpscalerConfigurationPage .emby-select,
+    #UpscalerConfigurationPage .inputLabel {
+        background: transparent !important;
+        background-color: transparent !important;
+        color: var(--text-primary) !important;
+    }
+    /* Override any Jellyfin white text on dark backgrounds */
+    #UpscalerConfigurationPage .emby-input,
+    #UpscalerConfigurationPage .emby-textarea,
+    #UpscalerConfigurationPage .emby-select {
+        background: var(--bg-input) !important;
+        background-color: var(--bg-input) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        border-radius: 6px !important;
+    }
+    /* Prevent Jellyfin tooltip/dialog white backgrounds */
+    #UpscalerConfigurationPage .tooltip,
+    #UpscalerConfigurationPage [role="dialog"],
+    #UpscalerConfigurationPage .actionSheet {
+        background: var(--bg-card) !important;
+        color: var(--text-primary) !important;
     }
 
     /* Raised buttons */
@@ -556,7 +599,7 @@
                         <div class="nav-item" data-tab="system"><span class="material-icons">memory</span> System</div>
                     </div>
                     <div class="sidebar-footer">
-                        <div class="version-badge">v1.5.2.7</div>
+                        <div class="version-badge">v1.5.2.8</div>
                         <div class="status-dot checking" id="sidebar-status">Checking...</div>
                     </div>
                 </div>
@@ -791,20 +834,31 @@
                                 </div></div>
                             </div>
 
-                            <!-- Section: Backup -->
+                            <!-- Section: Backup & Migration -->
                             <div class="accordion-section">
                                 <div class="accordion-header">
-                                    <span class="material-icons">backup</span> Backup
+                                    <span class="material-icons">backup</span> Backup & Migration
                                     <span class="material-icons chevron">expand_more</span>
                                 </div>
                                 <div class="accordion-body"><div class="accordion-body-inner">
-                                    <p style="font-size:0.8rem;color:var(--text-muted);margin:0 0 0.75rem;">Export your settings to restore them on another device.</p>
-                                    <div style="display:flex;gap:0.5rem;align-items:center;">
-                                        <button type="button" id="btn-export-settings" class="raised">Export Settings</button>
-                                        <button type="button" id="btn-import-settings" class="raised">Import Settings</button>
+                                    <p style="font-size:0.8rem;color:var(--text-muted);margin:0 0 0.75rem;">Export settings to transfer to another Jellyfin server or create a backup.</p>
+                                    <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+                                        <button type="button" id="btn-export-settings" class="raised" style="display:inline-flex;align-items:center;gap:0.4rem;">
+                                            <span class="material-icons" style="font-size:1rem;">download</span> Export Settings
+                                        </button>
+                                        <button type="button" id="btn-import-settings" class="raised" style="display:inline-flex;align-items:center;gap:0.4rem;">
+                                            <span class="material-icons" style="font-size:1rem;">upload</span> Import Settings
+                                        </button>
                                         <input type="file" id="settings-file-input" accept=".json,.txt" style="display:none;" />
                                     </div>
                                     <div id="settings-backup-status" style="font-size:0.85rem;margin-top:0.5rem;"></div>
+                                    <div style="margin-top:0.75rem;padding:0.6rem;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.78rem;color:var(--text-muted);">
+                                        <strong style="color:var(--text-secondary);">Migration guide:</strong><br>
+                                        1. Export settings on old server<br>
+                                        2. Install plugin on new server<br>
+                                        3. Import the JSON file<br>
+                                        4. Update Docker AI Service URL if needed
+                                    </div>
                                 </div></div>
                             </div>
 
@@ -1316,7 +1370,7 @@
                 config.Model = page.querySelector('#Model').value;
                 config.QualityLevel = page.querySelector('#QualityLevel').value;
                 config.ButtonPosition = page.querySelector('#ButtonPosition').value;
-                config.PluginVersion = '1.5.2.7';
+                config.PluginVersion = '1.5.2.8';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -1500,13 +1554,32 @@
             fileInput.addEventListener('change', function() {
                 if (!fileInput.files || !fileInput.files[0]) return;
                 var statusEl = page.querySelector('#settings-backup-status');
-                statusEl.textContent = 'Importing...';
+                statusEl.textContent = 'Reading file...';
                 statusEl.style.color = '#fbbf24';
                 var reader = new FileReader();
                 reader.onload = function(e) {
                     try {
                         var imported = JSON.parse(e.target.result);
                         var payload = imported.settings ? imported : { settings: imported };
+                        // Validate the import file
+                        var settingsObj = payload.settings;
+                        if (!settingsObj || typeof settingsObj !== 'object') {
+                            statusEl.textContent = 'Invalid file: no settings found';
+                            statusEl.style.color = '#f87171';
+                            return;
+                        }
+                        // Show version info if available
+                        var versionInfo = imported.pluginVersion ? ' (from v' + imported.pluginVersion + ')' : '';
+                        var dateInfo = imported.exportDate ? ' exported ' + new Date(imported.exportDate).toLocaleDateString() : '';
+                        var settingsCount = Object.keys(settingsObj).length;
+                        // Confirm before importing
+                        if (!confirm('Import ' + settingsCount + ' settings' + versionInfo + dateInfo + '?\n\nThis will overwrite your current configuration.')) {
+                            statusEl.textContent = 'Import cancelled';
+                            statusEl.style.color = 'var(--text-muted)';
+                            return;
+                        }
+                        statusEl.textContent = 'Importing ' + settingsCount + ' settings...';
+                        statusEl.style.color = '#fbbf24';
                         ApiClient.ajax({
                             type: 'POST',
                             url: ApiClient.getUrl('Upscaler/settings/import'),
@@ -1514,15 +1587,14 @@
                             contentType: 'application/json',
                             dataType: 'json'
                         }).then(function(data) {
-                            statusEl.textContent = 'Settings imported! Reloading...';
-                            statusEl.style.color = '#4ade80';
+                            statusEl.innerHTML = '<span style="color:#4ade80;">Settings imported successfully!</span> Reloading...';
                             setTimeout(function() { location.reload(); }, 1500);
                         }).catch(function() {
-                            statusEl.textContent = 'Import failed';
+                            statusEl.textContent = 'Import failed — server error';
                             statusEl.style.color = '#f87171';
                         });
                     } catch (ex) {
-                        statusEl.textContent = 'Invalid JSON file';
+                        statusEl.textContent = 'Invalid JSON file — could not parse';
                         statusEl.style.color = '#f87171';
                     }
                 };

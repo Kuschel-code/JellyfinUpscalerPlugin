@@ -128,7 +128,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 hardwareAcceleration = config.HardwareAcceleration,
                 maxConcurrentStreams = config.MaxConcurrentStreams,
                 isProcessing = false, // Placeholder for actual processing state
-                version = typeof(Plugin).Assembly.GetName().Version?.ToString(4) ?? "1.5.2.7"
+                version = typeof(Plugin).Assembly.GetName().Version?.ToString(4) ?? "1.5.2.8"
             });
         }
 
@@ -232,7 +232,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                     FFmpegAvailable = true,
                     OnnxRuntime = "Available",
                     Platform = Environment.OSVersion.Platform.ToString(),
-                    PluginVersion = typeof(Plugin).Assembly.GetName().Version?.ToString(4) ?? "1.5.2.7"
+                    PluginVersion = typeof(Plugin).Assembly.GetName().Version?.ToString(4) ?? "1.5.2.8"
                 });
             }
             catch (Exception ex)
@@ -674,7 +674,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 return Ok(new
                 {
                     success = true,
-                    pluginVersion = "1.5.2.7",
+                    pluginVersion = "1.5.2.8",
                     exportDate = DateTime.UtcNow.ToString("o"),
                     settings = new
                     {
@@ -704,7 +704,8 @@ namespace JellyfinUpscalerPlugin.Controllers
                         config.EnableAutoBenchmarking,
                         config.EnablePreProcessingCache,
                         config.MaxCacheAgeDays,
-                        config.CacheSizeMB
+                        config.CacheSizeMB,
+                        config.GpuDeviceIndex
                     }
                 });
             }
@@ -759,6 +760,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 if (settings.TryGetProperty("EnablePreProcessingCache", out v)) config.EnablePreProcessingCache = v.GetBoolean();
                 if (settings.TryGetProperty("MaxCacheAgeDays", out v)) config.MaxCacheAgeDays = v.GetInt32();
                 if (settings.TryGetProperty("CacheSizeMB", out v)) config.CacheSizeMB = v.GetInt32();
+                if (settings.TryGetProperty("GpuDeviceIndex", out v)) config.GpuDeviceIndex = Math.Max(0, v.GetInt32());
 
                 Plugin.Instance?.SaveConfiguration();
                 _logger.LogInformation("Settings imported successfully");
