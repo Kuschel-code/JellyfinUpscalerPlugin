@@ -525,7 +525,7 @@ namespace JellyfinUpscalerPlugin.Services
                 
                 // Clear index
                 _cacheIndex.Clear();
-                _totalCacheSize = 0;
+                Interlocked.Exchange(ref _totalCacheSize, 0);
                 
                 lock (_statsLock)
                 {
@@ -585,10 +585,12 @@ namespace JellyfinUpscalerPlugin.Services
             _cleanupTimer?.Dispose();
             _statsTimer?.Dispose();
             
-            // Save index on dispose - use GetAwaiter().GetResult() instead of Wait() to avoid deadlocks
+            // Save index synchronously on dispose to avoid async deadlocks
             try
             {
-                SaveCacheIndexAsync().GetAwaiter().GetResult();
+                var entries = _cacheIndex.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                var jsonContent = JsonSerializer.Serialize(entries, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(_indexFile, jsonContent);
             }
             catch (Exception ex)
             {

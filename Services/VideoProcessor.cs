@@ -34,7 +34,6 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly LibraryScanHelper _libraryScanHelper;
         
         // Processing queue for concurrent streams
-        // Processing queue for concurrent streams
         private readonly SemaphoreSlim _processingSemaphore;
         private readonly System.Collections.Concurrent.ConcurrentDictionary<string, ProcessingJob> _activeJobs = new();
         private readonly System.Collections.Concurrent.ConcurrentDictionary<string, CancellationTokenSource> _jobCancellationTokens = new();
@@ -322,7 +321,7 @@ namespace JellyfinUpscalerPlugin.Services
                     BitRate = videoStream.BitRate,
                     PixelFormat = videoStream.PixelFormat,
                     ColorSpace = videoStream.PixelFormat ?? "unknown",
-                    ColorRange = videoStream.PixelFormat ?? "unknown",
+                    ColorRange = "unknown",
                     FileSize = new FileInfo(inputPath).Length,
                     HasAudio = mediaInfo.AudioStreams.Any(),
                     HasSubtitles = mediaInfo.SubtitleStreams.Any()
@@ -331,7 +330,7 @@ namespace JellyfinUpscalerPlugin.Services
                 // Enhanced analysis
                 info.EstimatedQuality = EstimateVideoQuality(info);
                 info.IsHDR = IsHDRVideo(videoStream);
-                info.AspectRatio = (double)info.Width / info.Height;
+                info.AspectRatio = info.Height > 0 ? (double)info.Width / info.Height : 0;
                 
                 _logger.LogInformation($"📊 Video analysis: {info.Width}x{info.Height} @ {info.FrameRate:F1}fps, {info.Codec}, {info.BitRate}kbps");
                 
@@ -967,8 +966,8 @@ namespace JellyfinUpscalerPlugin.Services
                 ProcessingTime = job.ProcessingDuration,
                 InputResolution = $"{inputW}x{inputH}",
                 OutputResolution = $"{inputW * scale}x{inputH * scale}",
-                Model = job.OptimizedOptions.Model,
-                Scale = job.OptimizedOptions.ScaleFactor,
+                Model = job.OptimizedOptions?.Model ?? "unknown",
+                Scale = job.OptimizedOptions?.ScaleFactor ?? 1,
                 Method = job.ProcessingMethod,
                 Success = job.Result?.Success ?? false,
                 Timestamp = DateTime.Now

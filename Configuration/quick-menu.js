@@ -261,14 +261,20 @@
 
             if (gl) {
                 var debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                var result;
                 if (debugInfo) {
-                    return {
+                    result = {
                         vendor: gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL),
                         renderer: gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL),
                         version: gl.getParameter(gl.VERSION)
                     };
+                } else {
+                    result = { status: 'WebGL supported, details not available' };
                 }
-                return { status: 'WebGL supported, details not available' };
+                // Release WebGL context to free GPU resources
+                var loseCtx = gl.getExtension('WEBGL_lose_context');
+                if (loseCtx) loseCtx.loseContext();
+                return result;
             }
             return { status: 'WebGL not supported' };
         },
@@ -333,11 +339,18 @@
         testHardwareAcceleration: function() {
             var canvas = document.createElement('canvas');
             var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            var supported = !!gl;
+
+            // Release WebGL context to free GPU resources
+            if (gl) {
+                var loseCtx = gl.getExtension('WEBGL_lose_context');
+                if (loseCtx) loseCtx.loseContext();
+            }
 
             return Promise.resolve({
                 test: 'Hardware Acceleration',
-                passed: !!gl,
-                details: gl ? 'WebGL supported' : 'WebGL not supported'
+                passed: supported,
+                details: supported ? 'WebGL supported' : 'WebGL not supported'
             });
         },
 
@@ -424,7 +437,7 @@
     };
 
     // Initialize when DOM is loaded
-    document.addEventListener('DOMContentLoaded', function() {
+    function onDomReady() {
         console.log('AI Upscaler Plugin Quick Menu v' + PLUGIN_VERSION + ' initialized');
 
         // Make functions globally available
@@ -435,7 +448,13 @@
             var deviceInfo = QuickMenuActions.detectDevice();
             console.log('Detected device:', deviceInfo);
         }, 1000);
-    });
+    }
+
+    if (document.readyState === 'interactive' || document.readyState === 'complete') {
+        onDomReady();
+    } else {
+        document.addEventListener('DOMContentLoaded', onDomReady);
+    }
 
     // Global functions for HTML onclick handlers
     window.loadDefaults = function() { QuickMenuActions.loadDefaults(); };

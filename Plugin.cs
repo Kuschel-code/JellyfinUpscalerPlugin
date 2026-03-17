@@ -93,8 +93,8 @@ namespace JellyfinUpscalerPlugin
             }
 
             // Remove old versions of our script tag (if version changed) - Singleline so .*? matches across newlines
-            var pattern = @"<script src=""configurationpage\?name=UPSCALERPlayerIntegration.*?</script>";
-            contents = Regex.Replace(contents, pattern, string.Empty, RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            var pattern = @"<script src=""configurationpage\?name=UPSCALERPlayerIntegration[^""]*""></script>";
+            contents = Regex.Replace(contents, pattern, string.Empty, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
 
             // Inject before </head>
             var headEndRegex = new Regex(@"</head>", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));

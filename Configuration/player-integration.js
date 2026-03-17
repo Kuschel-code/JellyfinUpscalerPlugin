@@ -18,6 +18,8 @@
         _buttonInjected: false,
         _stylesInjected: false,
         _playbackListenersAttached: false,
+        _menuCloseHandler: null,
+        _menuAutoCloseTimer: null,
 
         // Initialize — called once when script loads
         init: function() {
@@ -43,11 +45,16 @@
 
         // Wait for Jellyfin's ApiClient to be available
         waitForApiClient: function() {
+            let retries = 0;
+            const maxRetries = 30;
             const check = () => {
                 if (window.ApiClient) {
                     this.attachPlaybackListeners();
-                } else {
+                } else if (retries < maxRetries) {
+                    retries++;
                     setTimeout(check, 1000);
+                } else {
+                    console.warn('AI Upscaler: ApiClient not available after ' + maxRetries + ' retries, giving up');
                 }
             };
             check();
@@ -179,10 +186,22 @@
         },
 
         // Toggle upscaler quick menu
+        _cleanupMenu: function() {
+            if (this._menuCloseHandler) {
+                document.removeEventListener('click', this._menuCloseHandler);
+                this._menuCloseHandler = null;
+            }
+            if (this._menuAutoCloseTimer) {
+                clearTimeout(this._menuAutoCloseTimer);
+                this._menuAutoCloseTimer = null;
+            }
+        },
+
         toggleUpscalerMenu: function() {
             const existingMenu = document.querySelector('#aiUpscalerQuickMenu');
             if (existingMenu) {
                 existingMenu.remove();
+                this._cleanupMenu();
                 return;
             }
 
@@ -239,20 +258,21 @@
             document.body.appendChild(menu);
 
             // Close menu on outside click
-            const closeHandler = (e) => {
+            this._cleanupMenu();
+            this._menuCloseHandler = (e) => {
                 if (!menu.contains(e.target) && e.target.id !== 'aiUpscalerButton') {
                     menu.remove();
-                    document.removeEventListener('click', closeHandler);
+                    this._cleanupMenu();
                 }
             };
-            setTimeout(() => document.addEventListener('click', closeHandler), 100);
+            setTimeout(() => document.addEventListener('click', this._menuCloseHandler), 100);
 
             // Auto-close after 15 seconds
-            setTimeout(() => {
+            this._menuAutoCloseTimer = setTimeout(() => {
                 if (menu.parentElement) {
                     menu.remove();
-                    document.removeEventListener('click', closeHandler);
                 }
+                this._cleanupMenu();
             }, 15000);
         },
 
@@ -398,6 +418,7 @@
         // Add styles (once)
         addStyles: function() {
             if (this._stylesInjected) return;
+            if (document.getElementById('aiUpscalerPlayerStyles')) { this._stylesInjected = true; return; }
 
             const styles = document.createElement('style');
             styles.id = 'aiUpscalerPlayerStyles';

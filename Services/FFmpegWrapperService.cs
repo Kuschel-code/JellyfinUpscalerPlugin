@@ -89,7 +89,8 @@ namespace JellyfinUpscalerPlugin.Services
                         }
                     };
                     process.Start();
-                    await process.WaitForExitAsync();
+                    using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    await process.WaitForExitAsync(cts.Token);
                 }
                 catch (Exception ex)
                 {

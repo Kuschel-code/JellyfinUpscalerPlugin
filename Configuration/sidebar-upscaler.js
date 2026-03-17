@@ -165,11 +165,17 @@
         appendConsolePrompt(consoleEl);
     }
 
+    var MAX_CONSOLE_LINES = 200;
+
     function appendConsoleLine(consoleEl, text, color) {
         var div = document.createElement('div');
         div.textContent = text;
         if (color) div.style.color = color;
         consoleEl.appendChild(div);
+        // Cap console lines to prevent unbounded DOM growth
+        while (consoleEl.children.length > MAX_CONSOLE_LINES) {
+            consoleEl.removeChild(consoleEl.firstChild);
+        }
     }
 
     function appendConsolePrompt(consoleEl) {
@@ -262,6 +268,7 @@
     }
 
     // Load system information from real API endpoints
+    // Note: API calls rely on browser/fetch default timeouts; no explicit timeout is set.
     function loadSystemInfo() {
         if (!window.ApiClient) {
             console.warn('AI Upscaler: ApiClient not available yet');
@@ -492,6 +499,21 @@
             }
         }
     }
+
+    // Cleanup function to release all resources
+    function cleanup() {
+        stopLiveMonitoring();
+        if (_observer) {
+            _observer.disconnect();
+            _observer = null;
+            _observerAttached = false;
+        }
+        var panel = document.getElementById('aiUpscalerPanel');
+        if (panel) panel.remove();
+    }
+
+    // Expose cleanup for external use (e.g., plugin unload)
+    window._aiUpscalerSidebarCleanup = cleanup;
 
     // Start initialization
     init();
