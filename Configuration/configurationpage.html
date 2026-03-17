@@ -1,3 +1,4 @@
+<div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage">
 <style>
     /* ===== CSS DESIGN SYSTEM v1.5.2.8 ===== */
     #UpscalerConfigurationPage {
@@ -536,9 +537,22 @@
         }
         #UpscalerConfigurationPage .grid-2 { grid-template-columns: 1fr; }
     }
+    /* Force parent containers to not interfere with our layout */
+    #UpscalerConfigurationPage .content-primary {
+        display: block !important;
+        background: transparent !important;
+        padding: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+    }
+    #UpscalerConfigurationPage [data-role="content"] {
+        display: block !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
 </style>
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-<div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage">
     <div data-role="content">
         <div class="content-primary">
             <div class="upscaler-layout">
