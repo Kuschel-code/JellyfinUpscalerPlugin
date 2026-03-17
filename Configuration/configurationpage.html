@@ -226,65 +226,85 @@
         display: none !important;
     }
 
-    /* ===== LAYOUT: Sidebar + Main ===== */
+    /* ===== LAYOUT: Top Header + Tab Bar + Main ===== */
     #UpscalerConfigurationPage .upscaler-layout {
-        display: flex !important;
+        display: block !important;
         min-height: 600px !important;
-        gap: 0 !important;
         background: var(--bg-primary) !important;
         border-radius: var(--radius) !important;
         position: relative !important;
     }
-    #UpscalerConfigurationPage .upscaler-sidebar {
-        width: 220px !important;
-        min-width: 220px !important;
-        max-width: 220px !important;
-        background: var(--bg-sidebar) !important;
-        border-right: 1px solid var(--border) !important;
-        border-radius: var(--radius) 0 0 var(--radius) !important;
+    #UpscalerConfigurationPage .upscaler-header {
         display: flex !important;
-        flex-direction: column !important;
-        padding: 1.25rem 0 !important;
-        flex-shrink: 0 !important;
-    }
-    #UpscalerConfigurationPage .sidebar-brand {
-        padding: 0 1.25rem 1.25rem !important;
+        align-items: center !important;
+        gap: 0.75rem !important;
+        padding: 0.75rem 1.25rem !important;
         border-bottom: 1px solid var(--border) !important;
-        margin-bottom: 0.75rem !important;
     }
-    #UpscalerConfigurationPage .sidebar-brand h2 {
+    #UpscalerConfigurationPage .upscaler-header h2 {
         margin: 0 !important;
-        font-size: 1.1rem !important;
+        font-size: 1rem !important;
         color: var(--text-primary) !important;
         display: flex !important;
         align-items: center !important;
         gap: 0.5rem !important;
     }
-    #UpscalerConfigurationPage .sidebar-brand h2 .material-icons { color: var(--accent) !important; font-size: 22px !important; }
-    #UpscalerConfigurationPage .sidebar-brand .brand-sub {
+    #UpscalerConfigurationPage .upscaler-header h2 .material-icons { color: var(--accent) !important; font-size: 22px !important; }
+    #UpscalerConfigurationPage .upscaler-header .brand-sub {
         font-size: 0.72rem !important;
         color: var(--text-muted) !important;
-        margin-top: 0.2rem !important;
     }
-    #UpscalerConfigurationPage .sidebar-nav { flex: 1 !important; }
-    #UpscalerConfigurationPage .nav-item {
+    #UpscalerConfigurationPage .upscaler-header .header-right {
+        margin-left: auto !important;
         display: flex !important;
         align-items: center !important;
         gap: 0.75rem !important;
-        padding: 0.65rem 1.25rem !important;
+    }
+    #UpscalerConfigurationPage .upscaler-header .version-badge {
+        font-size: 0.72rem !important;
+        color: var(--text-muted) !important;
+    }
+    #UpscalerConfigurationPage .upscaler-header .status-dot {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        font-size: 0.75rem !important;
+    }
+    #UpscalerConfigurationPage .upscaler-header .status-dot::before {
+        content: '' !important;
+        width: 7px !important;
+        height: 7px !important;
+        border-radius: 50% !important;
+        display: inline-block !important;
+    }
+    #UpscalerConfigurationPage .upscaler-header .status-dot.online::before { background: var(--success) !important; }
+    #UpscalerConfigurationPage .upscaler-header .status-dot.offline::before { background: var(--danger) !important; }
+    #UpscalerConfigurationPage .upscaler-header .status-dot.checking::before { background: var(--warning) !important; }
+
+    #UpscalerConfigurationPage .tab-bar {
+        display: flex !important;
+        border-bottom: 1px solid var(--border) !important;
+        background: rgba(255,255,255,0.02) !important;
+        overflow-x: auto !important;
+    }
+    #UpscalerConfigurationPage .nav-item {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        padding: 0.7rem 1.25rem !important;
         color: var(--text-secondary) !important;
         cursor: pointer !important;
-        border-left: 2px solid transparent !important;
+        border-bottom: 2px solid transparent !important;
         transition: all 0.15s !important;
-        font-size: 0.88rem !important;
+        font-size: 0.85rem !important;
         user-select: none !important;
         background: transparent !important;
-        border-right: none !important;
         border-top: none !important;
-        border-bottom: none !important;
+        border-left: none !important;
+        border-right: none !important;
         border-radius: 0 !important;
-        text-align: left !important;
-        width: 100% !important;
+        text-align: center !important;
+        white-space: nowrap !important;
         box-sizing: border-box !important;
     }
     #UpscalerConfigurationPage .nav-item:hover {
@@ -293,40 +313,13 @@
     }
     #UpscalerConfigurationPage .nav-item.active {
         color: var(--accent) !important;
-        border-left-color: var(--accent) !important;
-        background: var(--accent-glow) !important;
+        border-bottom-color: var(--accent) !important;
+        background: transparent !important;
     }
-    #UpscalerConfigurationPage .nav-item .material-icons { font-size: 20px !important; }
-    #UpscalerConfigurationPage .sidebar-footer {
-        padding: 1rem 1.25rem 0 !important;
-        border-top: 1px solid var(--border) !important;
-        margin-top: auto !important;
-    }
-    #UpscalerConfigurationPage .sidebar-footer .version-badge {
-        font-size: 0.72rem !important;
-        color: var(--text-muted) !important;
-    }
-    #UpscalerConfigurationPage .sidebar-footer .status-dot {
-        display: inline-flex !important;
-        align-items: center !important;
-        gap: 6px !important;
-        font-size: 0.75rem !important;
-        margin-top: 0.4rem !important;
-    }
-    #UpscalerConfigurationPage .sidebar-footer .status-dot::before {
-        content: '' !important;
-        width: 7px !important;
-        height: 7px !important;
-        border-radius: 50% !important;
-        display: inline-block !important;
-    }
-    #UpscalerConfigurationPage .sidebar-footer .status-dot.online::before { background: var(--success) !important; }
-    #UpscalerConfigurationPage .sidebar-footer .status-dot.offline::before { background: var(--danger) !important; }
-    #UpscalerConfigurationPage .sidebar-footer .status-dot.checking::before { background: var(--warning) !important; }
+    #UpscalerConfigurationPage .nav-item .material-icons { font-size: 18px !important; }
 
     #UpscalerConfigurationPage .upscaler-main {
-        flex: 1 !important;
-        padding: 1.5rem !important;
+        padding: 1.25rem !important;
         min-width: 0 !important;
         background: var(--bg-primary) !important;
     }
@@ -607,72 +600,40 @@
 
     /* ===== MOBILE RESPONSIVE ===== */
     @media (max-width: 768px) {
-        #UpscalerConfigurationPage .upscaler-layout {
-            flex-direction: column !important;
-        }
-        #UpscalerConfigurationPage .upscaler-sidebar {
-            width: 100% !important;
-            min-width: unset !important;
-            max-width: 100% !important;
-            flex-direction: row !important;
-            padding: 0 !important;
-            border-right: none !important;
-            border-bottom: 1px solid var(--border) !important;
-            border-radius: var(--radius) var(--radius) 0 0 !important;
-            overflow-x: auto !important;
-        }
-        #UpscalerConfigurationPage .sidebar-brand { display: none !important; }
-        #UpscalerConfigurationPage .sidebar-footer { display: none !important; }
-        #UpscalerConfigurationPage .sidebar-nav {
-            display: flex !important;
-            flex-direction: row !important;
-            width: 100% !important;
-        }
-        #UpscalerConfigurationPage .nav-item {
-            border-left: none !important;
-            border-bottom: 2px solid transparent !important;
-            padding: 0.65rem 1rem !important;
-            white-space: nowrap !important;
-            flex-direction: column !important;
-            gap: 0.2rem !important;
-            font-size: 0.75rem !important;
-        }
-        #UpscalerConfigurationPage .nav-item.active {
-            border-bottom-color: var(--accent) !important;
-            border-left-color: transparent !important;
-        }
+        #UpscalerConfigurationPage .tab-bar { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+        #UpscalerConfigurationPage .nav-item { padding: 0.6rem 0.85rem !important; font-size: 0.78rem !important; }
         #UpscalerConfigurationPage .grid-2 { grid-template-columns: 1fr !important; }
         #UpscalerConfigurationPage .jobs-table-wrapper { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+        #UpscalerConfigurationPage .upscaler-header { flex-wrap: wrap !important; }
     }
-    @media (max-width: 480px) {
+        @media (max-width: 480px) {
         #UpscalerConfigurationPage .grid-4 { grid-template-columns: 1fr 1fr !important; }
         #UpscalerConfigurationPage .page-header { flex-direction: column !important; align-items: flex-start !important; }
     }
     </style>
     <div data-role="content">
         <div class="content-primary">
-            <div class="upscaler-layout" style="display:flex !important;min-height:600px;gap:0;background:#0f172a;border-radius:12px">
-                <!-- ===== SIDEBAR ===== -->
-                <div class="upscaler-sidebar" style="display:flex !important;flex-direction:column;width:220px;min-width:220px;max-width:220px;flex-shrink:0;background:rgba(15,23,42,0.98);border-right:1px solid rgba(255,255,255,0.06);border-radius:12px 0 0 12px;padding:1.25rem 0">
-                    <div class="sidebar-brand">
-                        <h2><span class="material-icons">auto_awesome</span> AI Upscaler</h2>
-                        <div class="brand-sub">Docker Microservice Architecture</div>
-                    </div>
-                    <div class="sidebar-nav">
-                        <div class="nav-item active" data-tab="dashboard"><span class="material-icons">dashboard</span> Dashboard</div>
-                        <div class="nav-item" data-tab="settings"><span class="material-icons">tune</span> Settings</div>
-                        <div class="nav-item" data-tab="jobs"><span class="material-icons">work</span> Jobs</div>
-                        <div class="nav-item" data-tab="cache"><span class="material-icons">cached</span> Cache</div>
-                        <div class="nav-item" data-tab="system"><span class="material-icons">memory</span> System</div>
-                    </div>
-                    <div class="sidebar-footer">
+            <div class="upscaler-layout">
+                <!-- ===== HEADER ===== -->
+                <div class="upscaler-header">
+                    <h2><span class="material-icons">auto_awesome</span> AI Upscaler</h2>
+                    <span class="brand-sub">Docker Microservice Architecture</span>
+                    <div class="header-right">
                         <div class="version-badge">v1.5.2.8</div>
                         <div class="status-dot checking" id="sidebar-status">Checking...</div>
                     </div>
                 </div>
+                <!-- ===== TAB BAR ===== -->
+                <div class="tab-bar">
+                    <div class="nav-item active" data-tab="dashboard"><span class="material-icons">dashboard</span> Dashboard</div>
+                    <div class="nav-item" data-tab="settings"><span class="material-icons">tune</span> Settings</div>
+                    <div class="nav-item" data-tab="jobs"><span class="material-icons">work</span> Jobs</div>
+                    <div class="nav-item" data-tab="cache"><span class="material-icons">cached</span> Cache</div>
+                    <div class="nav-item" data-tab="system"><span class="material-icons">memory</span> System</div>
+                </div>
 
                 <!-- ===== MAIN CONTENT ===== -->
-                <div class="upscaler-main" style="flex:1;padding:1.5rem;min-width:0;background:#0f172a">
+                <div class="upscaler-main">
 
                     <!-- ==================== TAB: DASHBOARD ==================== -->
                     <div id="tab-dashboard" class="tab-content">
