@@ -30,6 +30,7 @@ namespace JellyfinUpscalerPlugin.Controllers
     [ApiController]
     [Authorize]
     [Route("api/[controller]")]
+    [Route("[controller]")]
     public class UpscalerController : ControllerBase
     {
         private readonly ILogger<UpscalerController> _logger;
