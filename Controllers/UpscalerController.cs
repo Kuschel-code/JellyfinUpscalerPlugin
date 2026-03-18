@@ -129,7 +129,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 hardwareAcceleration = config.HardwareAcceleration,
                 maxConcurrentStreams = config.MaxConcurrentStreams,
                 isProcessing = false, // Placeholder for actual processing state
-                version = typeof(Plugin).Assembly.GetName().Version?.ToString(4) ?? "1.5.2.8"
+                version = typeof(Plugin).Assembly.GetName().Version?.ToString(4) ?? "1.5.2.9"
             });
         }
 
@@ -196,13 +196,18 @@ namespace JellyfinUpscalerPlugin.Controllers
             try
             {
                 var results = await _benchmarkService.RunHardwareBenchmark();
+                var serviceAvailable = results.Hardware?.ServiceAvailable ?? false;
                 return Ok(new
                 {
                     success = true,
-                    message = "Hardware benchmark completed successfully",
+                    serviceAvailable = serviceAvailable,
+                    message = serviceAvailable
+                        ? "Hardware benchmark completed successfully"
+                        : "Docker AI Service is not reachable — benchmark skipped",
                     results = new
                     {
                         duration = results.TotalDuration.TotalSeconds,
+                        serviceAvailable = serviceAvailable,
                         systemInfo = results.SystemInfo,
                         optimalSettings = results.OptimalSettings,
                         modelPerformance = results.ModelPerformance,
@@ -233,7 +238,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                     FFmpegAvailable = true,
                     OnnxRuntime = "Available",
                     Platform = Environment.OSVersion.Platform.ToString(),
-                    PluginVersion = typeof(Plugin).Assembly.GetName().Version?.ToString(4) ?? "1.5.2.8"
+                    PluginVersion = typeof(Plugin).Assembly.GetName().Version?.ToString(4) ?? "1.5.2.9"
                 });
             }
             catch (Exception ex)
@@ -798,6 +803,8 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
+                // Always do a fresh check when user explicitly clicks Test Connection
+                _benchmarkService.InvalidateHealthCache();
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 var isAvailable = await _benchmarkService.IsServiceAvailableAsync();
                 stopwatch.Stop();

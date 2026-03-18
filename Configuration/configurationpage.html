@@ -1,6 +1,6 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
 <style>
-    /* ===== AI Upscaler v1.5.2.8 — Jellyfin-compatible dark theme ===== */
+    /* ===== AI Upscaler v1.5.2.9 — Jellyfin-compatible dark theme ===== */
     #UpscalerConfigurationPage {
         --accent: #00d4ff;
         --accent-bg: rgba(0, 212, 255, 0.12);
@@ -360,7 +360,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.5.2.8 &middot; Docker Microservice Architecture</div>
+                <div class="upscaler-header-meta">v1.5.2.9 &middot; Docker Microservice Architecture</div>
             </div>
 
             <!-- Tab bar -->
@@ -511,13 +511,16 @@
                         </div>
                     </details>
 
-                    <!-- Player -->
-                    <details>
-                        <summary>Player</summary>
+                    <!-- Player Integration (Intro Skipper-style button) -->
+                    <details open>
+                        <summary>Player Integration</summary>
                         <div class="details-body">
-                            <div class="checkboxContainer"><label><input type="checkbox" id="PlayerButton" /> Show Player Button</label></div>
-                            <div class="checkboxContainer"><label><input type="checkbox" id="Notifications" /> Notifications</label></div>
-                            <div class="checkboxContainer"><label><input type="checkbox" id="AutoRetryButton" /> Auto-Retry Button</label></div>
+                            <div style="margin-bottom:0.75rem;color:var(--text-secondary);font-size:0.85rem;line-height:1.5;">
+                                Adds an AI Upscaler button to the video player controls (similar to Intro Skipper). Click the button during playback to access quick upscaling settings, model selection, and scale factor controls. Keyboard shortcut: Alt+U to toggle, Alt+M for menu.
+                            </div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="PlayerButton" /> Enable Player Button</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="Notifications" /> Show Notifications</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="AutoRetryButton" /> Auto-Retry on Failure</label></div>
                             <div class="selectContainer" style="margin-top:0.5rem;">
                                 <label class="selectLabel" for="ButtonPosition">Button Position</label>
                                 <select id="ButtonPosition">
@@ -1051,7 +1054,7 @@
                 config.QualityLevel = page.querySelector('#QualityLevel').value;
                 config.ButtonPosition = page.querySelector('#ButtonPosition').value;
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
-                config.PluginVersion = '1.5.2.8';
+                config.PluginVersion = '1.5.2.9';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -1167,6 +1170,10 @@
                 ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/benchmark'), dataType: 'json' }).then(function(data) {
                     if (data.success && data.results) {
                         var r = data.results;
+                        if (!r.serviceAvailable) {
+                            result.innerHTML = '<div style="color:var(--danger);">Docker AI Service is not reachable. Check your AI Service URL and ensure the container is running.</div>';
+                            return;
+                        }
                         var html = '<div class="info-row"><span class="label">Duration</span><span class="value">' + (r.duration || 0).toFixed(1) + 's</span></div>';
                         if (r.optimalSettings) {
                             html += '<div class="info-row"><span class="label">Rec. Model</span><span class="value">' + (r.optimalSettings.RecommendedModel || '-') + '</span></div>';
@@ -1175,9 +1182,11 @@
                             html += '<div class="info-row"><span class="label">Max Streams</span><span class="value">' + (r.optimalSettings.MaxConcurrentStreams || 1) + '</span></div>';
                         }
                         result.innerHTML = html;
+                    } else {
+                        result.innerHTML = '<div style="color:var(--danger);">' + (data.message || 'Benchmark failed') + '</div>';
                     }
                 }).catch(function() {
-                    result.innerHTML = '<div style="color:var(--danger);">Benchmark failed</div>';
+                    result.innerHTML = '<div style="color:var(--danger);">Benchmark failed — check API connection</div>';
                 });
             });
 

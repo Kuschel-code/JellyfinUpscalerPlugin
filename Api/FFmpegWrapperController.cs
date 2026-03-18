@@ -9,6 +9,7 @@ namespace JellyfinUpscalerPlugin.Api
     [ApiController]
     [Authorize(Policy = "RequiresElevation")]
     [Route("api/upscaler/wrapper")]
+    [Route("upscaler/wrapper")]
     public class FFmpegWrapperController : ControllerBase
     {
         private readonly ILogger<FFmpegWrapperController> _logger;

@@ -11,7 +11,7 @@ namespace JellyfinUpscalerPlugin.Services
 {
     /// <summary>
     /// HTTP-based upscaler service that communicates with the AI Upscaler Docker container.
-    /// v1.5.2.8 - Health caching, retry logic, multi-GPU support.
+    /// v1.5.2.9 - Health caching, retry logic, multi-GPU support.
     /// </summary>
     public class HttpUpscalerService : IDisposable
     {
@@ -25,6 +25,20 @@ namespace JellyfinUpscalerPlugin.Services
         private DateTime _healthCacheExpiry = DateTime.MinValue;
         private static readonly TimeSpan HealthCacheDuration = TimeSpan.FromSeconds(30);
         private readonly object _healthLock = new();
+
+        /// <summary>
+        /// Invalidate the health check cache so the next call does a fresh check.
+        /// Call this when the AI Service URL changes or before explicit Test Connection.
+        /// </summary>
+        public void InvalidateHealthCache()
+        {
+            lock (_healthLock)
+            {
+                _cachedHealthResult = null;
+                _healthCacheExpiry = DateTime.MinValue;
+            }
+            _logger.LogDebug("Health cache invalidated");
+        }
 
         public HttpUpscalerService(ILogger<HttpUpscalerService> logger, IHttpClientFactory? httpClientFactory = null)
         {
@@ -41,7 +55,7 @@ namespace JellyfinUpscalerPlugin.Services
                 Timeout = TimeSpan.FromMinutes(5)
             };
 
-            _logger.LogInformation("HttpUpscalerService v1.5.2.8 initialized");
+            _logger.LogInformation("HttpUpscalerService v1.5.2.9 initialized");
         }
 
         private HttpClient GetClient()

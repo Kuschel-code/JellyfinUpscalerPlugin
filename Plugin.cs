@@ -11,8 +11,8 @@ using Microsoft.Extensions.Logging;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// AI Upscaler Plugin for Jellyfin v1.5.2.8 - Docker Microservice Architecture
-    /// v1.5.2.8 - Fixed notification spam, English UI, dark theme, XSS fixes
+    /// AI Upscaler Plugin for Jellyfin v1.5.2.9 - Docker Microservice Architecture
+    /// v1.5.2.9 - Fixed notification spam, English UI, dark theme, XSS fixes
     /// </summary>
     public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     {

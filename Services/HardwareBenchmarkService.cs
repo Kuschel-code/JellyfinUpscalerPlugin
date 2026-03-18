@@ -159,6 +159,14 @@ namespace JellyfinUpscalerPlugin.Services
         }
 
         /// <summary>
+        /// Invalidate health cache so next check is fresh.
+        /// </summary>
+        public void InvalidateHealthCache()
+        {
+            _httpUpscaler.InvalidateHealthCache();
+        }
+
+        /// <summary>
         /// Quick check if Docker AI service is reachable
         /// </summary>
         public async Task<bool> IsServiceAvailableAsync()
