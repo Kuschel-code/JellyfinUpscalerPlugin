@@ -62,7 +62,7 @@ namespace JellyfinUpscalerPlugin.Services
                 scriptContent = GenerateWindowsBatchScript(psScriptPath);
                 
                 // Generate the PowerShell logic script (handles path mapping & SSH)
-                var psContent = GenerateWindowsPowerShellScript(realFFmpegPath, logPath, activeMarkerPath, config);
+                var psContent = GenerateWindowsPowerShellScript(realFFmpegPath, logPath, activeMarkerPath, config ?? new PluginConfiguration());
                 await File.WriteAllTextAsync(psScriptPath, psContent);
             }
             else

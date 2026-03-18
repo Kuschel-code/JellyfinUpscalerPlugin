@@ -1,941 +1,688 @@
-<div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage">
+<div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
 <style>
-    /* ===== CSS DESIGN SYSTEM v1.5.2.8 ===== */
+    /* ===== AI Upscaler v1.5.2.8 — Jellyfin-compatible dark theme ===== */
     #UpscalerConfigurationPage {
-        --bg-primary: #0f172a;
-        --bg-card: rgba(30, 41, 59, 0.6);
-        --bg-input: #1e293b;
-        --bg-sidebar: rgba(15, 23, 42, 0.98);
-        --border: rgba(255, 255, 255, 0.06);
-        --border-hover: rgba(255, 255, 255, 0.12);
         --accent: #00d4ff;
-        --accent-glow: rgba(0, 212, 255, 0.15);
+        --accent-bg: rgba(0, 212, 255, 0.12);
         --success: #4ade80;
         --warning: #fbbf24;
         --danger: #f87171;
+        --bg-card: rgba(30, 41, 59, 0.55);
+        --bg-input: #1e293b;
+        --border: rgba(255, 255, 255, 0.08);
         --text-primary: #e2e8f0;
         --text-secondary: #94a3b8;
         --text-muted: #64748b;
-        --radius: 12px;
-        --radius-sm: 8px;
+    }
+    #UpscalerConfigurationPage, #UpscalerConfigurationPage * { color-scheme: dark !important; }
+    #UpscalerConfigurationPage .content-primary { background: transparent !important; }
+    #UpscalerConfigurationPage[data-role="page"] { background: transparent !important; }
+
+    /* ===== Tab bar ===== */
+    #UpscalerConfigurationPage .upscaler-tabs {
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 1.25rem;
+        padding-bottom: 0;
+    }
+    #UpscalerConfigurationPage .upscaler-tab {
+        display: inline-block;
+        padding: 0.55rem 1.1rem;
+        color: var(--text-secondary);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        font-size: 0.9rem;
+        margin-bottom: -1px;
+        transition: color 0.15s, border-color 0.15s;
+    }
+    #UpscalerConfigurationPage .upscaler-tab:hover { color: var(--text-primary); }
+    #UpscalerConfigurationPage .upscaler-tab.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+        font-weight: 600;
     }
 
-    /* ===== JELLYFIN 10.11+ OVERRIDES ===== */
-    /* Force dark theme on everything — prevent Jellyfin from injecting white backgrounds */
-    #UpscalerConfigurationPage,
-    #UpscalerConfigurationPage * {
-        color-scheme: dark !important;
+    /* ===== Header ===== */
+    #UpscalerConfigurationPage .upscaler-header {
+        margin-bottom: 1rem;
     }
-    #UpscalerConfigurationPage .content-primary {
-        background: transparent !important;
+    #UpscalerConfigurationPage .upscaler-header h1 {
+        margin: 0 0 0.25rem;
+        font-size: 1.5rem;
+        color: var(--text-primary);
     }
-    /* Override ALL button styles Jellyfin might inject */
-    #UpscalerConfigurationPage button,
-    #UpscalerConfigurationPage .button-submit,
-    #UpscalerConfigurationPage [type="button"],
-    #UpscalerConfigurationPage .btnSubmit,
-    #UpscalerConfigurationPage .emby-button,
-    #UpscalerConfigurationPage .paper-icon-button-light {
-        background: var(--bg-input) !important;
-        color: var(--text-primary) !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
-        -webkit-appearance: none !important;
-        appearance: none !important;
-    }
-    #UpscalerConfigurationPage button:hover,
-    #UpscalerConfigurationPage [type="button"]:hover {
-        background: rgba(255,255,255,0.08) !important;
-        border-color: var(--accent) !important;
-        color: var(--accent) !important;
-    }
-    /* Override Jellyfin's default white block button style */
-    #UpscalerConfigurationPage .block {
-        display: block !important;
-        width: 100% !important;
-    }
-    /* Ensure verticalSection from Jellyfin has no white bg */
-    #UpscalerConfigurationPage .verticalSection {
-        background: transparent !important;
-    }
-    /* Override Jellyfin page-level backgrounds */
-    #UpscalerConfigurationPage[data-role="page"] {
-        background: transparent !important;
+    #UpscalerConfigurationPage .upscaler-header-meta {
+        font-size: 0.8rem;
+        color: var(--text-muted);
     }
 
-    /* Raised buttons */
-    #UpscalerConfigurationPage .raised {
-        background: var(--bg-input) !important;
-        color: var(--text-primary) !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
-        border-radius: var(--radius-sm) !important;
-        padding: 0.5rem 1.2rem !important;
-        cursor: pointer !important;
-        transition: all 0.2s !important;
-        font-size: 0.85rem !important;
+    /* ===== Status pills ===== */
+    #UpscalerConfigurationPage .status-pill {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 100px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        vertical-align: middle;
     }
-    #UpscalerConfigurationPage .raised:hover {
-        background: rgba(255,255,255,0.08) !important;
-        border-color: var(--accent) !important;
-        color: var(--accent) !important;
+    #UpscalerConfigurationPage .status-pill--online { background: rgba(74,222,128,0.15); color: var(--success); }
+    #UpscalerConfigurationPage .status-pill--offline { background: rgba(248,113,113,0.15); color: var(--danger); }
+    #UpscalerConfigurationPage .status-pill--processing { background: rgba(0,212,255,0.15); color: var(--accent); }
+    #UpscalerConfigurationPage .status-pill--warning { background: rgba(251,191,36,0.15); color: var(--warning); }
+    #UpscalerConfigurationPage .status-pill--checking { background: rgba(251,191,36,0.15); color: var(--warning); }
+
+    /* ===== Cards ===== */
+    #UpscalerConfigurationPage .upscaler-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1.1rem;
+        margin-bottom: 1rem;
     }
-    #UpscalerConfigurationPage button.button-submit,
-    #UpscalerConfigurationPage .button-submit {
-        background: linear-gradient(135deg, #0369a1, #0284c7) !important;
-        color: #fff !important;
-        border: none !important;
-        font-weight: bold !important;
-    }
-    #UpscalerConfigurationPage button.button-submit:hover,
-    #UpscalerConfigurationPage .button-submit:hover {
-        background: linear-gradient(135deg, #0284c7, #0ea5e9) !important;
-        color: #fff !important;
+    #UpscalerConfigurationPage .upscaler-card h3 {
+        margin: 0 0 0.75rem;
+        font-size: 0.95rem;
+        color: var(--accent);
     }
 
-    /* Force dark theme on ALL form elements */
+    /* ===== Stat grid ===== */
+    #UpscalerConfigurationPage .stat-row {
+        display: block;
+        margin-bottom: 1rem;
+    }
+    #UpscalerConfigurationPage .stat-card {
+        display: inline-block;
+        vertical-align: top;
+        width: 23%;
+        min-width: 120px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0.9rem;
+        text-align: center;
+        margin-right: 1.5%;
+        margin-bottom: 0.5rem;
+        box-sizing: border-box;
+    }
+    #UpscalerConfigurationPage .stat-value { font-size: 1.4rem; font-weight: 700; }
+    #UpscalerConfigurationPage .stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+    /* ===== Two-column row ===== */
+    #UpscalerConfigurationPage .two-col {
+        display: block;
+        margin-bottom: 1rem;
+    }
+    #UpscalerConfigurationPage .two-col > .upscaler-card {
+        display: inline-block;
+        vertical-align: top;
+        width: 48.5%;
+        margin-right: 2%;
+        box-sizing: border-box;
+    }
+    #UpscalerConfigurationPage .two-col > .upscaler-card:last-child { margin-right: 0; }
+
+    /* ===== Info rows (key-value) ===== */
+    #UpscalerConfigurationPage .info-row {
+        display: block;
+        padding: 0.35rem 0;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+        font-size: 0.85rem;
+    }
+    #UpscalerConfigurationPage .info-row .label {
+        display: inline-block;
+        width: 120px;
+        color: var(--text-secondary);
+    }
+    #UpscalerConfigurationPage .info-row .value { color: var(--text-primary); }
+
+    /* ===== Service banner ===== */
+    #UpscalerConfigurationPage .service-banner {
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        font-size: 0.85rem;
+    }
+    #UpscalerConfigurationPage .service-banner.online { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.2); color: var(--success); }
+    #UpscalerConfigurationPage .service-banner.offline { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); color: var(--danger); }
+    #UpscalerConfigurationPage .service-banner.checking { background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.2); color: var(--warning); }
+
+    /* ===== Details/Summary (accordion) ===== */
+    #UpscalerConfigurationPage details {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin-bottom: 0.75rem;
+    }
+    #UpscalerConfigurationPage details[open] { border-color: rgba(255,255,255,0.12); }
+    #UpscalerConfigurationPage summary {
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 0.9rem;
+        list-style: none;
+        display: block;
+    }
+    #UpscalerConfigurationPage summary::-webkit-details-marker { display: none; }
+    #UpscalerConfigurationPage summary::after {
+        content: '\25B6';
+        float: right;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        transition: transform 0.2s;
+    }
+    #UpscalerConfigurationPage details[open] > summary::after {
+        transform: rotate(90deg);
+    }
+    #UpscalerConfigurationPage .details-body {
+        padding: 0.25rem 1rem 1rem;
+    }
+
+    /* ===== Form elements ===== */
     #UpscalerConfigurationPage input[type="text"],
     #UpscalerConfigurationPage input[type="number"],
     #UpscalerConfigurationPage input[type="url"],
     #UpscalerConfigurationPage input[type="password"],
-    #UpscalerConfigurationPage input:not([type]),
+    #UpscalerConfigurationPage input:not([type="checkbox"]):not([type="file"]),
     #UpscalerConfigurationPage select,
     #UpscalerConfigurationPage textarea {
         background: var(--bg-input) !important;
-        background-color: var(--bg-input) !important;
         color: var(--text-primary) !important;
         border: 1px solid rgba(255,255,255,0.1) !important;
-        border-bottom: 1px solid rgba(255,255,255,0.1) !important;
         border-radius: 6px !important;
         padding: 0.5rem !important;
         width: 100%;
         box-sizing: border-box;
         font-size: 0.9rem;
-        outline: none;
     }
     #UpscalerConfigurationPage input:focus,
-    #UpscalerConfigurationPage select:focus,
-    #UpscalerConfigurationPage textarea:focus {
+    #UpscalerConfigurationPage select:focus {
         border-color: var(--accent) !important;
         outline: none !important;
-        box-shadow: 0 0 0 2px var(--accent-glow) !important;
+        box-shadow: 0 0 0 2px var(--accent-bg) !important;
     }
     #UpscalerConfigurationPage select option {
         background: var(--bg-input) !important;
         color: var(--text-primary) !important;
     }
+    #UpscalerConfigurationPage label { color: #cbd5e1 !important; font-size: 0.88rem; }
+    #UpscalerConfigurationPage .inputLabel,
+    #UpscalerConfigurationPage .selectLabel { color: var(--text-secondary) !important; font-size: 0.85rem; display: block; margin-bottom: 0.2rem; }
+    #UpscalerConfigurationPage .fieldDescription { color: var(--text-muted) !important; font-size: 0.78rem; }
     #UpscalerConfigurationPage .inputContainer,
-    #UpscalerConfigurationPage .selectContainer { margin-bottom: 0; }
+    #UpscalerConfigurationPage .selectContainer { margin-bottom: 0.6rem; }
 
-    /* Checkbox styling */
-    #UpscalerConfigurationPage .checkboxContainer { margin: 0.5rem 0; }
+    /* Checkbox */
+    #UpscalerConfigurationPage .checkboxContainer { margin: 0.4rem 0; }
     #UpscalerConfigurationPage .checkboxContainer label {
-        color: #cbd5e1 !important;
         cursor: pointer;
-        display: flex !important;
-        align-items: center;
-        gap: 0.5rem;
+        display: inline-block !important;
     }
     #UpscalerConfigurationPage input[type="checkbox"] {
         -webkit-appearance: checkbox !important;
         appearance: checkbox !important;
         accent-color: var(--accent);
-        width: 18px !important;
-        height: 18px !important;
+        width: 16px !important;
+        height: 16px !important;
         cursor: pointer;
-        min-width: 18px;
+        vertical-align: middle;
+        margin-right: 0.4rem;
         background: transparent !important;
         border: none !important;
         padding: 0 !important;
     }
     #UpscalerConfigurationPage .checkboxIcon,
     #UpscalerConfigurationPage .checkboxOutline { display: none !important; }
-    #UpscalerConfigurationPage label { color: #cbd5e1 !important; }
-    #UpscalerConfigurationPage .inputLabel,
-    #UpscalerConfigurationPage .selectLabel { color: var(--text-secondary) !important; }
-    #UpscalerConfigurationPage .fieldDescription { color: var(--text-muted) !important; font-size: 0.8rem; }
 
-    /* ===== LAYOUT: Sidebar + Main ===== */
-    #UpscalerConfigurationPage .upscaler-layout {
-        display: flex;
-        min-height: 600px;
-        gap: 0;
+    /* ===== Form grid (inline-block, not flex/grid) ===== */
+    #UpscalerConfigurationPage .form-row {
+        display: block;
+        margin-bottom: 0.25rem;
     }
-    #UpscalerConfigurationPage .upscaler-sidebar {
-        width: 220px;
-        min-width: 220px;
-        background: var(--bg-sidebar);
-        border-right: 1px solid var(--border);
-        border-radius: var(--radius) 0 0 var(--radius);
-        display: flex;
-        flex-direction: column;
-        padding: 1.25rem 0;
-    }
-    #UpscalerConfigurationPage .sidebar-brand {
-        padding: 0 1.25rem 1.25rem;
-        border-bottom: 1px solid var(--border);
-        margin-bottom: 0.75rem;
-    }
-    #UpscalerConfigurationPage .sidebar-brand h2 {
-        margin: 0;
-        font-size: 1.1rem;
-        color: var(--text-primary);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    #UpscalerConfigurationPage .sidebar-brand h2 .material-icons { color: var(--accent); font-size: 22px; }
-    #UpscalerConfigurationPage .sidebar-brand .brand-sub {
-        font-size: 0.72rem;
-        color: var(--text-muted);
-        margin-top: 0.2rem;
-    }
-    #UpscalerConfigurationPage .sidebar-nav { flex: 1; }
-    #UpscalerConfigurationPage .nav-item {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.65rem 1.25rem;
-        color: var(--text-secondary);
-        cursor: pointer;
-        border-left: 2px solid transparent;
-        transition: all 0.15s;
-        font-size: 0.88rem;
-        user-select: none;
-    }
-    #UpscalerConfigurationPage .nav-item:hover {
-        color: var(--text-primary);
-        background: rgba(255,255,255,0.03);
-    }
-    #UpscalerConfigurationPage .nav-item.active {
-        color: var(--accent);
-        border-left-color: var(--accent);
-        background: var(--accent-glow);
-    }
-    #UpscalerConfigurationPage .nav-item .material-icons { font-size: 20px; }
-    #UpscalerConfigurationPage .sidebar-footer {
-        padding: 1rem 1.25rem 0;
-        border-top: 1px solid var(--border);
-        margin-top: auto;
-    }
-    #UpscalerConfigurationPage .sidebar-footer .version-badge {
-        font-size: 0.72rem;
-        color: var(--text-muted);
-    }
-    #UpscalerConfigurationPage .sidebar-footer .status-dot {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 0.75rem;
-        margin-top: 0.4rem;
-    }
-    #UpscalerConfigurationPage .sidebar-footer .status-dot::before {
-        content: '';
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
+    #UpscalerConfigurationPage .form-row > .form-col {
         display: inline-block;
+        vertical-align: top;
+        width: 48%;
+        margin-right: 2%;
+        box-sizing: border-box;
     }
-    #UpscalerConfigurationPage .sidebar-footer .status-dot.online::before { background: var(--success); }
-    #UpscalerConfigurationPage .sidebar-footer .status-dot.offline::before { background: var(--danger); }
-    #UpscalerConfigurationPage .sidebar-footer .status-dot.checking::before { background: var(--warning); }
+    #UpscalerConfigurationPage .form-row > .form-col:last-child { margin-right: 0; }
+    #UpscalerConfigurationPage .form-row > .form-col-full { display: block; width: 100%; }
 
-    #UpscalerConfigurationPage .upscaler-main {
-        flex: 1;
-        padding: 1.5rem;
-        min-width: 0;
-    }
-    #UpscalerConfigurationPage .page-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 1.5rem;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-    }
-    #UpscalerConfigurationPage .page-header h1 {
-        margin: 0;
-        font-size: 1.4rem;
-        color: var(--text-primary);
-    }
-
-    /* ===== STATUS PILLS ===== */
-    #UpscalerConfigurationPage .status-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 3px 10px;
-        border-radius: 100px;
-        font-size: 0.75rem;
-        font-weight: 500;
-    }
-    #UpscalerConfigurationPage .status-pill--online { background: rgba(74,222,128,0.15); color: var(--success); }
-    #UpscalerConfigurationPage .status-pill--offline { background: rgba(248,113,113,0.15); color: var(--danger); }
-    #UpscalerConfigurationPage .status-pill--processing { background: rgba(0,212,255,0.15); color: var(--accent); }
-    #UpscalerConfigurationPage .status-pill--warning { background: rgba(251,191,36,0.15); color: var(--warning); }
-
-    /* ===== GLASSMORPHISM CARDS ===== */
-    #UpscalerConfigurationPage .upscaler-card {
-        background: var(--bg-card);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 1.25rem;
-        transition: border-color 0.2s;
-    }
-    #UpscalerConfigurationPage .upscaler-card:hover { border-color: var(--border-hover); }
-    #UpscalerConfigurationPage .upscaler-card h3 {
-        margin: 0 0 1rem;
-        font-size: 0.95rem;
-        color: var(--accent);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    #UpscalerConfigurationPage .upscaler-card h3 .material-icons { font-size: 18px; }
-
-    /* ===== STAT CARDS ===== */
-    #UpscalerConfigurationPage .stat-card {
-        background: var(--bg-card);
-        backdrop-filter: blur(16px);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 1rem 1.25rem;
-        text-align: center;
-        position: relative;
-        overflow: hidden;
-    }
-    #UpscalerConfigurationPage .stat-card .stat-icon {
-        position: absolute;
-        right: 10px;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 48px;
-        opacity: 0.05;
-        color: var(--text-primary);
-    }
-    #UpscalerConfigurationPage .stat-card .stat-value {
-        font-size: 1.8rem;
-        font-weight: bold;
-        line-height: 1.2;
-    }
-    #UpscalerConfigurationPage .stat-card .stat-label {
-        font-size: 0.78rem;
-        color: var(--text-secondary);
-        margin-top: 0.2rem;
-    }
-
-    /* ===== SKELETON LOADERS ===== */
-    #UpscalerConfigurationPage .skeleton {
-        background: linear-gradient(90deg, var(--bg-input) 25%, #2d3a4f 50%, var(--bg-input) 75%);
-        background-size: 200% 100%;
-        animation: shimmer 1.5s infinite;
-        border-radius: 4px;
-    }
-    @keyframes shimmer {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
-    }
-
-    /* ===== ACCORDION SECTIONS ===== */
-    #UpscalerConfigurationPage .accordion-section {
-        border: 1px solid var(--border);
-        border-radius: var(--radius-sm);
-        margin-bottom: 0.5rem;
-        overflow: hidden;
-    }
-    #UpscalerConfigurationPage .accordion-header {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.85rem 1rem;
-        cursor: pointer;
-        background: rgba(255,255,255,0.02) !important;
+    /* ===== Buttons ===== */
+    #UpscalerConfigurationPage button,
+    #UpscalerConfigurationPage .raised {
+        background: var(--bg-input) !important;
         color: var(--text-primary) !important;
-        font-size: 0.9rem;
-        font-weight: 500;
-        user-select: none;
-        transition: background 0.15s;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        border-radius: 6px !important;
+        padding: 0.45rem 1rem !important;
+        cursor: pointer !important;
+        font-size: 0.85rem !important;
+        -webkit-appearance: none !important;
+        appearance: none !important;
+        display: inline-block;
+        vertical-align: middle;
+        margin-right: 0.4rem;
+        margin-bottom: 0.3rem;
+    }
+    #UpscalerConfigurationPage button:hover,
+    #UpscalerConfigurationPage .raised:hover {
+        background: rgba(255,255,255,0.08) !important;
+        border-color: var(--accent) !important;
+        color: var(--accent) !important;
+    }
+    #UpscalerConfigurationPage .btn-primary {
+        background: linear-gradient(135deg, #0369a1, #0284c7) !important;
+        color: #fff !important;
         border: none !important;
+        font-weight: bold !important;
+        padding: 0.6rem 1.5rem !important;
+        font-size: 0.95rem !important;
+        width: 100%;
     }
-    #UpscalerConfigurationPage .accordion-header:hover { background: rgba(255,255,255,0.04) !important; }
-    #UpscalerConfigurationPage .accordion-header .material-icons { font-size: 18px; color: var(--accent); }
-    #UpscalerConfigurationPage .accordion-header .chevron {
-        margin-left: auto;
-        font-size: 18px;
-        color: var(--text-muted);
-        transition: transform 0.2s;
-    }
-    #UpscalerConfigurationPage .accordion-section.open .accordion-header .chevron { transform: rotate(180deg); }
-    #UpscalerConfigurationPage .accordion-body {
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.3s ease;
-    }
-    #UpscalerConfigurationPage .accordion-section.open .accordion-body { max-height: 2000px; }
-    #UpscalerConfigurationPage .accordion-body-inner {
-        padding: 0 1rem 1rem;
+    #UpscalerConfigurationPage .btn-primary:hover {
+        background: linear-gradient(135deg, #0284c7, #0ea5e9) !important;
+        color: #fff !important;
     }
 
-    /* ===== JOBS TABLE ===== */
-    #UpscalerConfigurationPage .jobs-table {
+    /* ===== Quick actions ===== */
+    #UpscalerConfigurationPage .quick-actions { margin-top: 1rem; }
+    #UpscalerConfigurationPage .quick-action-btn {
+        display: inline-block;
+        vertical-align: middle;
+        padding: 0.35rem 0.75rem !important;
+        font-size: 0.82rem !important;
+    }
+
+    /* ===== Jobs table ===== */
+    #UpscalerConfigurationPage table {
         width: 100%;
         border-collapse: collapse;
         font-size: 0.85rem;
     }
-    #UpscalerConfigurationPage .jobs-table th {
+    #UpscalerConfigurationPage th {
         text-align: left;
-        padding: 0.6rem 0.75rem;
+        padding: 0.5rem;
         color: var(--text-secondary);
-        font-weight: 500;
         border-bottom: 1px solid var(--border);
-        cursor: pointer;
-        user-select: none;
+        font-weight: 600;
+        font-size: 0.8rem;
     }
-    #UpscalerConfigurationPage .jobs-table th:hover { color: var(--accent); }
-    #UpscalerConfigurationPage .jobs-table td {
-        padding: 0.6rem 0.75rem;
-        border-bottom: 1px solid var(--border);
+    #UpscalerConfigurationPage td {
+        padding: 0.5rem;
+        border-bottom: 1px solid rgba(255,255,255,0.03);
         color: var(--text-primary);
     }
-    #UpscalerConfigurationPage .jobs-table .file-path {
+    #UpscalerConfigurationPage .file-path {
         max-width: 200px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
 
-    /* ===== TOAST ===== */
-    #UpscalerConfigurationPage .upscaler-toast {
+    /* ===== Toast ===== */
+    #UpscalerConfigurationPage ~ .upscaler-toast,
+    .upscaler-toast {
         position: fixed;
         bottom: 2rem;
-        left: 50%;
-        transform: translateX(-50%);
-        background: var(--bg-input);
-        padding: 0.75rem 1.5rem;
-        border-radius: var(--radius-sm);
-        border: 1px solid var(--border);
-        z-index: 99999;
-        font-size: 0.9rem;
-        box-shadow: 0 4px 24px rgba(0,0,0,0.5);
-        animation: toastFadeIn 0.3s ease;
-    }
-    @keyframes toastFadeIn {
-        from { opacity: 0; transform: translateX(-50%) translateY(1rem); }
-        to { opacity: 1; transform: translateX(-50%) translateY(0); }
-    }
-
-    /* ===== QUICK ACTIONS ===== */
-    #UpscalerConfigurationPage .quick-actions {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-    }
-    #UpscalerConfigurationPage button.quick-action-btn,
-    #UpscalerConfigurationPage .quick-action-btn {
-        display: inline-flex !important;
-        align-items: center;
-        gap: 0.4rem;
-        padding: 0.4rem 0.85rem !important;
-        background: var(--bg-card) !important;
-        border: 1px solid var(--border) !important;
-        border-radius: var(--radius-sm) !important;
-        color: var(--text-secondary) !important;
-        font-size: 0.8rem !important;
-        cursor: pointer !important;
-        transition: all 0.15s;
-    }
-    #UpscalerConfigurationPage button.quick-action-btn:hover,
-    #UpscalerConfigurationPage .quick-action-btn:hover {
-        border-color: var(--accent) !important;
-        color: var(--accent) !important;
-        background: rgba(0,212,255,0.08) !important;
-    }
-    #UpscalerConfigurationPage .quick-action-btn .material-icons { font-size: 16px; }
-
-    /* ===== SERVICE BANNER ===== */
-    #UpscalerConfigurationPage .service-banner {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 0.85rem 1.25rem;
-        border-radius: var(--radius);
-        margin-bottom: 1.25rem;
-        font-size: 0.88rem;
-    }
-    #UpscalerConfigurationPage .service-banner.online {
-        background: rgba(74,222,128,0.08);
-        border: 1px solid rgba(74,222,128,0.2);
-        color: var(--success);
-    }
-    #UpscalerConfigurationPage .service-banner.offline {
-        background: rgba(248,113,113,0.08);
-        border: 1px solid rgba(248,113,113,0.2);
-        color: var(--danger);
-    }
-    #UpscalerConfigurationPage .service-banner.checking {
-        background: rgba(251,191,36,0.08);
-        border: 1px solid rgba(251,191,36,0.2);
-        color: var(--warning);
-    }
-    #UpscalerConfigurationPage .service-banner .material-icons { font-size: 20px; }
-    #UpscalerConfigurationPage .service-banner .banner-details {
-        margin-left: auto;
-        font-size: 0.78rem;
-        color: var(--text-secondary);
-    }
-
-    /* ===== GRID HELPERS ===== */
-    #UpscalerConfigurationPage .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-    #UpscalerConfigurationPage .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; }
-
-    /* ===== INFO ROWS ===== */
-    #UpscalerConfigurationPage .info-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.4rem 0;
-        border-bottom: 1px solid var(--border);
+        right: 2rem;
+        background: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(255,255,255,0.1);
+        padding: 0.75rem 1.25rem;
+        border-radius: 8px;
         font-size: 0.85rem;
+        z-index: 9999;
+        animation: upscaler-toast-in 0.3s;
     }
-    #UpscalerConfigurationPage .info-row:last-child { border-bottom: none; }
-    #UpscalerConfigurationPage .info-row .label { color: var(--text-secondary); }
-    #UpscalerConfigurationPage .info-row .value { color: var(--text-primary); }
+    @keyframes upscaler-toast-in { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 
-    /* ===== MOBILE RESPONSIVE ===== */
-    @media (max-width: 768px) {
-        #UpscalerConfigurationPage .upscaler-layout {
-            flex-direction: column;
-        }
-        #UpscalerConfigurationPage .upscaler-sidebar {
-            width: 100%;
-            min-width: unset;
-            flex-direction: row;
-            padding: 0;
-            border-right: none;
-            border-bottom: 1px solid var(--border);
-            border-radius: var(--radius) var(--radius) 0 0;
-            overflow-x: auto;
-        }
-        #UpscalerConfigurationPage .sidebar-brand { display: none; }
-        #UpscalerConfigurationPage .sidebar-footer { display: none; }
-        #UpscalerConfigurationPage .sidebar-nav {
-            display: flex;
-            flex-direction: row;
-            width: 100%;
-        }
-        #UpscalerConfigurationPage .nav-item {
-            border-left: none;
-            border-bottom: 2px solid transparent;
-            padding: 0.65rem 1rem;
-            white-space: nowrap;
-            flex-direction: column;
-            gap: 0.2rem;
-            font-size: 0.75rem;
-        }
-        #UpscalerConfigurationPage .nav-item.active {
-            border-bottom-color: var(--accent);
-            border-left-color: transparent;
-        }
-        #UpscalerConfigurationPage .grid-2 { grid-template-columns: 1fr; }
+    /* ===== Skeleton ===== */
+    #UpscalerConfigurationPage .skeleton {
+        background: linear-gradient(90deg, #1e293b 25%, #2d3a4f 50%, #1e293b 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: 4px;
+        display: inline-block;
     }
-    /* Force parent containers to not interfere with our layout */
-    #UpscalerConfigurationPage .content-primary {
-        display: block !important;
-        background: transparent !important;
-        padding: 0 !important;
-        max-width: 100% !important;
-        width: 100% !important;
-        margin: 0 !important;
-    }
-    #UpscalerConfigurationPage [data-role="content"] {
-        display: block !important;
-        padding: 0 !important;
-        margin: 0 !important;
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 640px) {
+        #UpscalerConfigurationPage .stat-card { width: 46%; margin-right: 3%; }
+        #UpscalerConfigurationPage .two-col > .upscaler-card { display: block; width: 100%; margin-right: 0; }
+        #UpscalerConfigurationPage .form-row > .form-col { display: block; width: 100%; margin-right: 0; }
     }
 </style>
-<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
     <div data-role="content">
         <div class="content-primary">
-            <div class="upscaler-layout">
-                <!-- ===== SIDEBAR ===== -->
-                <div class="upscaler-sidebar">
-                    <div class="sidebar-brand">
-                        <h2><span class="material-icons">auto_awesome</span> AI Upscaler</h2>
-                        <div class="brand-sub">Docker Microservice Architecture</div>
+
+            <!-- Header -->
+            <div class="upscaler-header">
+                <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
+                <div class="upscaler-header-meta">v1.5.2.8 &middot; Docker Microservice Architecture</div>
+            </div>
+
+            <!-- Tab bar -->
+            <div class="upscaler-tabs">
+                <div class="upscaler-tab active" data-tab="dashboard">Dashboard</div>
+                <div class="upscaler-tab" data-tab="settings">Settings</div>
+                <div class="upscaler-tab" data-tab="jobs">Jobs</div>
+                <div class="upscaler-tab" data-tab="cache">Cache</div>
+                <div class="upscaler-tab" data-tab="system">System</div>
+            </div>
+
+            <!-- ==================== TAB: DASHBOARD ==================== -->
+            <div id="tab-dashboard" class="tab-content">
+
+                <div id="service-banner" class="service-banner checking">
+                    <strong id="banner-text">Checking AI service...</strong>
+                    <span id="banner-details" style="margin-left:0.5rem;font-size:0.8rem;opacity:0.8;"></span>
+                </div>
+
+                <div class="stat-row">
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:var(--accent);" id="stat-active"><span class="skeleton" style="width:36px;height:24px;"></span></div>
+                        <div class="stat-label">Active Jobs</div>
                     </div>
-                    <div class="sidebar-nav">
-                        <div class="nav-item active" data-tab="dashboard"><span class="material-icons">dashboard</span> Dashboard</div>
-                        <div class="nav-item" data-tab="settings"><span class="material-icons">tune</span> Settings</div>
-                        <div class="nav-item" data-tab="jobs"><span class="material-icons">work</span> Jobs</div>
-                        <div class="nav-item" data-tab="cache"><span class="material-icons">cached</span> Cache</div>
-                        <div class="nav-item" data-tab="system"><span class="material-icons">memory</span> System</div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:var(--success);" id="stat-completed"><span class="skeleton" style="width:36px;height:24px;"></span></div>
+                        <div class="stat-label">Completed</div>
                     </div>
-                    <div class="sidebar-footer">
-                        <div class="version-badge">v1.5.2.8</div>
-                        <div class="status-dot checking" id="sidebar-status">Checking...</div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:var(--danger);" id="stat-failed"><span class="skeleton" style="width:36px;height:24px;"></span></div>
+                        <div class="stat-label">Failed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:var(--warning);" id="stat-cache-hit"><span class="skeleton" style="width:36px;height:24px;"></span></div>
+                        <div class="stat-label">Cache Hit Rate</div>
                     </div>
                 </div>
 
-                <!-- ===== MAIN CONTENT ===== -->
-                <div class="upscaler-main">
-
-                    <!-- ==================== TAB: DASHBOARD ==================== -->
-                    <div id="tab-dashboard" class="tab-content">
-                        <div class="page-header">
-                            <h1>Dashboard</h1>
-                            <span id="service-badge" class="status-pill status-pill--warning">Checking...</span>
-                        </div>
-
-                        <!-- Service Banner -->
-                        <div id="service-banner" class="service-banner checking">
-                            <span class="material-icons">cloud</span>
-                            <span id="banner-text">Connecting to AI service...</span>
-                            <span class="banner-details" id="banner-details"></span>
-                        </div>
-
-                        <!-- Stats Cards -->
-                        <div class="grid-4" style="margin-bottom:1.25rem;">
-                            <div class="stat-card">
-                                <span class="material-icons stat-icon">play_circle</span>
-                                <div class="stat-value" style="color:var(--accent);" id="stat-active">
-                                    <div class="skeleton" style="width:40px;height:28px;margin:0 auto;"></div>
-                                </div>
-                                <div class="stat-label">Active Jobs</div>
-                            </div>
-                            <div class="stat-card">
-                                <span class="material-icons stat-icon">check_circle</span>
-                                <div class="stat-value" style="color:var(--success);" id="stat-completed">
-                                    <div class="skeleton" style="width:40px;height:28px;margin:0 auto;"></div>
-                                </div>
-                                <div class="stat-label">Completed</div>
-                            </div>
-                            <div class="stat-card">
-                                <span class="material-icons stat-icon">error</span>
-                                <div class="stat-value" style="color:var(--danger);" id="stat-failed">
-                                    <div class="skeleton" style="width:40px;height:28px;margin:0 auto;"></div>
-                                </div>
-                                <div class="stat-label">Failed</div>
-                            </div>
-                            <div class="stat-card">
-                                <span class="material-icons stat-icon">speed</span>
-                                <div class="stat-value" style="color:var(--warning);" id="stat-cache-hit">
-                                    <div class="skeleton" style="width:40px;height:28px;margin:0 auto;"></div>
-                                </div>
-                                <div class="stat-label">Cache Hit Rate</div>
-                            </div>
-                        </div>
-
-                        <div class="grid-2" style="margin-bottom:1.25rem;">
-                            <!-- Active Jobs List -->
-                            <div class="upscaler-card">
-                                <h3><span class="material-icons">pending_actions</span> Active Jobs</h3>
-                                <div id="active-jobs-list" style="font-size:0.85rem;">
-                                    <div style="opacity:0.5;text-align:center;padding:2rem;">No active jobs</div>
-                                </div>
-                            </div>
-
-                            <!-- Service Status -->
-                            <div class="upscaler-card">
-                                <h3><span class="material-icons">monitor_heart</span> Service Status</h3>
-                                <div>
-                                    <div class="info-row"><span class="label">Docker Service</span><span class="value" id="svc-docker"><span class="skeleton" style="display:inline-block;width:60px;height:16px;"></span></span></div>
-                                    <div class="info-row"><span class="label">GPU</span><span class="value" id="svc-gpu"><span class="skeleton" style="display:inline-block;width:60px;height:16px;"></span></span></div>
-                                    <div class="info-row"><span class="label">Latency</span><span class="value" id="svc-latency"><span class="skeleton" style="display:inline-block;width:50px;height:16px;"></span></span></div>
-                                    <div class="info-row"><span class="label">Model</span><span class="value" id="svc-model"><span class="skeleton" style="display:inline-block;width:80px;height:16px;"></span></span></div>
-                                    <div class="info-row"><span class="label">Processing</span><span class="value" id="svc-processing"><span class="skeleton" style="display:inline-block;width:40px;height:16px;"></span></span></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Quick Actions -->
-                        <div class="quick-actions">
-                            <button type="button" id="btn-refresh-status" class="quick-action-btn"><span class="material-icons">refresh</span> Refresh</button>
-                            <button type="button" id="btn-quick-clear-cache" class="quick-action-btn"><span class="material-icons">delete_sweep</span> Clear Cache</button>
-                            <button type="button" id="btn-quick-benchmark" class="quick-action-btn"><span class="material-icons">speed</span> Run Benchmark</button>
+                <div class="two-col">
+                    <div class="upscaler-card">
+                        <h3>Active Jobs</h3>
+                        <div id="active-jobs-list" style="font-size:0.85rem;">
+                            <div style="opacity:0.5;text-align:center;padding:1.5rem;">No active jobs</div>
                         </div>
                     </div>
-
-                    <!-- ==================== TAB: SETTINGS ==================== -->
-                    <div id="tab-settings" class="tab-content" style="display:none;">
-                        <div class="page-header"><h1>Settings</h1></div>
-
-                        <form id="UpscalerConfigForm">
-                            <!-- Section: Docker AI Service -->
-                            <div class="accordion-section open">
-                                <div class="accordion-header">
-                                    <span class="material-icons">cloud</span> Docker AI Service
-                                    <span class="material-icons chevron">expand_more</span>
-                                </div>
-                                <div class="accordion-body"><div class="accordion-body-inner">
-                                    <div class="inputContainer">
-                                        <label class="inputLabel" for="AiServiceUrl">AI Service URL:</label>
-                                        <input type="text" id="AiServiceUrl" name="AiServiceUrl" placeholder="http://localhost:5000" />
-                                        <div class="fieldDescription">URL to Docker AI Container</div>
-                                    </div>
-                                    <div class="selectContainer" style="margin-top:0.75rem;">
-                                        <label class="selectLabel" for="GpuDeviceIndex">GPU Device:</label>
-                                        <select id="GpuDeviceIndex">
-                                            <option value="0">GPU 0 (Default)</option>
-                                        </select>
-                                        <div class="fieldDescription">Select GPU for AI processing (multi-GPU systems)</div>
-                                    </div>
-                                    <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.75rem;">
-                                        <button type="button" id="btn-test-connection" class="raised">Test Connection</button>
-                                        <span id="connection-status" style="font-size:0.85rem;"></span>
-                                    </div>
-                                </div></div>
-                            </div>
-
-                            <!-- Section: Remote Transcoding -->
-                            <div class="accordion-section">
-                                <div class="accordion-header">
-                                    <span class="material-icons">lan</span> Remote Transcoding
-                                    <span class="material-icons chevron">expand_more</span>
-                                </div>
-                                <div class="accordion-body"><div class="accordion-body-inner">
-                                    <div class="checkboxContainer">
-                                        <label><input type="checkbox" id="EnableRemoteTranscoding" /> Enable Remote Transcoding</label>
-                                    </div>
-                                    <div id="ssh-fields" class="grid-2" style="margin-top:0.75rem;">
-                                        <div class="inputContainer"><label class="inputLabel" for="RemoteHost">Host:</label><input type="text" id="RemoteHost" /></div>
-                                        <div class="inputContainer"><label class="inputLabel" for="RemoteSshPort">SSH Port:</label><input type="number" id="RemoteSshPort" /></div>
-                                        <div class="inputContainer"><label class="inputLabel" for="RemoteUser">User:</label><input type="text" id="RemoteUser" /></div>
-                                        <div class="inputContainer"><label class="inputLabel" for="RemoteSshKeyFile">SSH Key:</label><input type="text" id="RemoteSshKeyFile" /></div>
-                                        <div class="inputContainer"><label class="inputLabel" for="LocalMediaMountPoint">Local Media Path:</label><input type="text" id="LocalMediaMountPoint" /></div>
-                                        <div class="inputContainer"><label class="inputLabel" for="RemoteMediaMountPoint">Remote Media Path:</label><input type="text" id="RemoteMediaMountPoint" /></div>
-                                        <div class="inputContainer" style="grid-column:span 2;"><label class="inputLabel" for="RemoteTranscodePath">Remote Transcode Path:</label><input type="text" id="RemoteTranscodePath" /></div>
-                                    </div>
-                                    <div style="margin-top:0.5rem;">
-                                        <button type="button" id="btn-test-ssh" class="raised">SSH Test</button>
-                                        <span id="ssh-status" style="font-size:0.85rem;margin-left:0.5rem;"></span>
-                                    </div>
-                                </div></div>
-                            </div>
-
-                            <!-- Section: Upscaling -->
-                            <div class="accordion-section open">
-                                <div class="accordion-header">
-                                    <span class="material-icons">auto_awesome</span> Upscaling
-                                    <span class="material-icons chevron">expand_more</span>
-                                </div>
-                                <div class="accordion-body"><div class="accordion-body-inner">
-                                    <div class="checkboxContainer"><label><input type="checkbox" id="EnablePlugin" /> Plugin enabled</label></div>
-                                    <div class="grid-2" style="margin-top:0.75rem;">
-                                        <div class="selectContainer"><label class="selectLabel" for="Model">Model:</label><select id="Model"></select></div>
-                                        <div class="selectContainer"><label class="selectLabel" for="ScaleFactor">Scale:</label><select id="ScaleFactor"></select></div>
-                                        <div class="selectContainer"><label class="selectLabel" for="QualityLevel">Quality:</label>
-                                            <select id="QualityLevel">
-                                                <option value="high">High</option>
-                                                <option value="medium">Medium</option>
-                                                <option value="low">Low</option>
-                                            </select>
-                                        </div>
-                                        <div class="inputContainer"><label class="inputLabel" for="MaxConcurrentStreams">Max Concurrent Streams:</label><input type="number" id="MaxConcurrentStreams" min="1" max="8" /></div>
-                                    </div>
-                                </div></div>
-                            </div>
-
-                            <!-- Section: Hardware -->
-                            <div class="accordion-section">
-                                <div class="accordion-header">
-                                    <span class="material-icons">memory</span> Hardware
-                                    <span class="material-icons chevron">expand_more</span>
-                                </div>
-                                <div class="accordion-body"><div class="accordion-body-inner">
-                                    <div class="checkboxContainer"><label><input type="checkbox" id="HardwareAcceleration" /> Hardware Acceleration</label></div>
-                                    <div class="grid-2" style="margin-top:0.75rem;">
-                                        <div class="inputContainer"><label class="inputLabel" for="MaxVRAMUsage">Max VRAM (MB):</label><input type="number" id="MaxVRAMUsage" min="512" max="32768" /></div>
-                                        <div class="inputContainer"><label class="inputLabel" for="CpuThreads">CPU Threads:</label><input type="number" id="CpuThreads" min="1" max="64" /></div>
-                                    </div>
-                                </div></div>
-                            </div>
-
-                            <!-- Section: Player -->
-                            <div class="accordion-section">
-                                <div class="accordion-header">
-                                    <span class="material-icons">smart_display</span> Player
-                                    <span class="material-icons chevron">expand_more</span>
-                                </div>
-                                <div class="accordion-body"><div class="accordion-body-inner">
-                                    <div class="checkboxContainer"><label><input type="checkbox" id="PlayerButton" /> Show Player Button</label></div>
-                                    <div class="checkboxContainer"><label><input type="checkbox" id="Notifications" /> Notifications</label></div>
-                                    <div class="checkboxContainer"><label><input type="checkbox" id="AutoRetryButton" /> Auto-Retry Button</label></div>
-                                    <div class="selectContainer" style="margin-top:0.75rem;"><label class="selectLabel" for="ButtonPosition">Button Position:</label>
-                                        <select id="ButtonPosition">
-                                            <option value="right">Right</option>
-                                            <option value="left">Left</option>
-                                            <option value="center">Center</option>
-                                        </select>
-                                    </div>
-                                </div></div>
-                            </div>
-
-                            <!-- Section: Features -->
-                            <div class="accordion-section">
-                                <div class="accordion-header">
-                                    <span class="material-icons">extension</span> Features
-                                    <span class="material-icons chevron">expand_more</span>
-                                </div>
-                                <div class="accordion-body"><div class="accordion-body-inner">
-                                    <div class="checkboxContainer"><label><input type="checkbox" id="EnableComparisonView" /> Comparison View</label></div>
-                                    <div class="checkboxContainer"><label><input type="checkbox" id="EnablePerformanceMetrics" /> Performance Metrics</label></div>
-                                    <div class="checkboxContainer"><label><input type="checkbox" id="EnableAutoBenchmarking" /> Auto-Benchmarking</label></div>
-                                </div></div>
-                            </div>
-
-                            <!-- Section: FFmpeg Wrapper -->
-                            <div class="accordion-section">
-                                <div class="accordion-header">
-                                    <span class="material-icons">terminal</span> FFmpeg Wrapper
-                                    <span class="material-icons chevron">expand_more</span>
-                                </div>
-                                <div class="accordion-body"><div class="accordion-body-inner">
-                                    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
-                                        <span style="color:var(--text-secondary);">Status:</span>
-                                        <span id="wrapper-status" style="font-weight:bold;">...</span>
-                                        <span id="wrapper-platform" style="color:var(--text-muted);font-size:0.8rem;"></span>
-                                    </div>
-                                    <div id="wrapper-path-container" style="display:none;margin-bottom:0.75rem;font-size:0.8rem;color:var(--text-muted);">
-                                        Path: <code id="wrapper-path"></code>
-                                    </div>
-                                    <div style="display:flex;gap:0.5rem;">
-                                        <button type="button" id="btn-install-wrapper" class="raised">Install</button>
-                                        <button type="button" id="btn-uninstall-wrapper" class="raised">Uninstall</button>
-                                        <button type="button" id="btn-regenerate-wrapper" class="raised">Regenerate</button>
-                                    </div>
-                                </div></div>
-                            </div>
-
-                            <!-- Section: Backup -->
-                            <div class="accordion-section">
-                                <div class="accordion-header">
-                                    <span class="material-icons">backup</span> Backup
-                                    <span class="material-icons chevron">expand_more</span>
-                                </div>
-                                <div class="accordion-body"><div class="accordion-body-inner">
-                                    <p style="font-size:0.8rem;color:var(--text-muted);margin:0 0 0.75rem;">Export your settings to restore them on another device.</p>
-                                    <div style="display:flex;gap:0.5rem;align-items:center;">
-                                        <button type="button" id="btn-export-settings" class="raised">Export Settings</button>
-                                        <button type="button" id="btn-import-settings" class="raised">Import Settings</button>
-                                        <input type="file" id="settings-file-input" accept=".json,.txt" style="display:none;" />
-                                    </div>
-                                    <div id="settings-backup-status" style="font-size:0.85rem;margin-top:0.5rem;"></div>
-                                </div></div>
-                            </div>
-
-                            <div style="margin-top:1rem;">
-                                <button type="button" id="btn-save" class="raised button-submit" style="width:100%;padding:0.7rem !important;font-size:0.95rem !important;">Save Settings</button>
-                            </div>
-                        </form>
+                    <div class="upscaler-card">
+                        <h3>Service Status</h3>
+                        <div class="info-row"><span class="label">Docker Service</span><span class="value" id="svc-docker"><span class="skeleton" style="width:55px;height:14px;"></span></span></div>
+                        <div class="info-row"><span class="label">GPU</span><span class="value" id="svc-gpu"><span class="skeleton" style="width:55px;height:14px;"></span></span></div>
+                        <div class="info-row"><span class="label">Latency</span><span class="value" id="svc-latency"><span class="skeleton" style="width:45px;height:14px;"></span></span></div>
+                        <div class="info-row"><span class="label">Model</span><span class="value" id="svc-model"><span class="skeleton" style="width:70px;height:14px;"></span></span></div>
+                        <div class="info-row"><span class="label">Processing</span><span class="value" id="svc-processing"><span class="skeleton" style="width:35px;height:14px;"></span></span></div>
                     </div>
+                </div>
 
-                    <!-- ==================== TAB: JOBS ==================== -->
-                    <div id="tab-jobs" class="tab-content" style="display:none;">
-                        <div class="page-header">
-                            <h1>Jobs</h1>
-                            <button type="button" id="btn-refresh-jobs" class="quick-action-btn"><span class="material-icons">refresh</span> Refresh</button>
+                <div class="quick-actions">
+                    <button type="button" id="btn-refresh-status" class="quick-action-btn">Refresh</button>
+                    <button type="button" id="btn-quick-clear-cache" class="quick-action-btn">Clear Cache</button>
+                    <button type="button" id="btn-quick-benchmark" class="quick-action-btn">Run Benchmark</button>
+                </div>
+            </div>
+
+            <!-- ==================== TAB: SETTINGS ==================== -->
+            <div id="tab-settings" class="tab-content" style="display:none;">
+
+                <form id="UpscalerConfigForm">
+
+                    <!-- Docker AI Service -->
+                    <details open>
+                        <summary>Docker AI Service</summary>
+                        <div class="details-body">
+                            <div class="inputContainer">
+                                <label class="inputLabel" for="AiServiceUrl">AI Service URL</label>
+                                <input type="url" id="AiServiceUrl" placeholder="http://localhost:5000" />
+                                <div class="fieldDescription">URL to Docker AI Container (e.g. http://192.168.1.100:5000)</div>
+                            </div>
+                            <div class="selectContainer">
+                                <label class="selectLabel" for="GpuDeviceIndex">GPU Device</label>
+                                <select id="GpuDeviceIndex"><option value="0">GPU 0 (Default)</option></select>
+                                <div class="fieldDescription">Select GPU for AI processing (multi-GPU systems)</div>
+                            </div>
+                            <div style="margin-top:0.5rem;">
+                                <button type="button" id="btn-test-connection" class="raised">Test Connection</button>
+                                <span id="connection-status" style="font-size:0.85rem;margin-left:0.5rem;"></span>
+                            </div>
                         </div>
-                        <div class="upscaler-card">
-                            <table class="jobs-table" id="jobs-table">
-                                <thead>
-                                    <tr>
-                                        <th>File</th>
-                                        <th>Status</th>
-                                        <th>Progress</th>
-                                        <th>Method</th>
-                                        <th>Duration</th>
-                                        <th style="text-align:center;">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="jobs-tbody">
-                                    <tr><td colspan="6" style="text-align:center;padding:2rem;opacity:0.5;">No jobs found</td></tr>
-                                </tbody>
-                            </table>
+                    </details>
+
+                    <!-- Remote Transcoding (SSH) -->
+                    <details>
+                        <summary>Remote Transcoding (SSH)</summary>
+                        <div class="details-body">
+                            <div class="checkboxContainer">
+                                <label><input type="checkbox" id="EnableRemoteTranscoding" /> Enable Remote Transcoding</label>
+                            </div>
+                            <div id="ssh-fields" class="form-row" style="margin-top:0.5rem;">
+                                <div class="form-col inputContainer"><label class="inputLabel" for="RemoteHost">Host</label><input type="text" id="RemoteHost" /></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="RemoteSshPort">SSH Port</label><input type="number" id="RemoteSshPort" /></div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-col inputContainer"><label class="inputLabel" for="RemoteUser">User</label><input type="text" id="RemoteUser" /></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="RemoteSshKeyFile">SSH Key File</label><input type="text" id="RemoteSshKeyFile" /></div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-col inputContainer"><label class="inputLabel" for="LocalMediaMountPoint">Local Media Path</label><input type="text" id="LocalMediaMountPoint" /></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="RemoteMediaMountPoint">Remote Media Path</label><input type="text" id="RemoteMediaMountPoint" /></div>
+                            </div>
+                            <div class="inputContainer"><label class="inputLabel" for="RemoteTranscodePath">Remote Transcode Path</label><input type="text" id="RemoteTranscodePath" /></div>
+                            <div style="margin-top:0.5rem;">
+                                <button type="button" id="btn-test-ssh" class="raised">Test SSH</button>
+                                <span id="ssh-status" style="font-size:0.85rem;margin-left:0.5rem;"></span>
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- Upscaling -->
+                    <details open>
+                        <summary>Upscaling</summary>
+                        <div class="details-body">
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnablePlugin" /> Plugin enabled</label></div>
+                            <div class="form-row" style="margin-top:0.5rem;">
+                                <div class="form-col selectContainer"><label class="selectLabel" for="Model">Model</label><select id="Model"></select></div>
+                                <div class="form-col selectContainer"><label class="selectLabel" for="ScaleFactor">Scale</label><select id="ScaleFactor"></select></div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-col selectContainer">
+                                    <label class="selectLabel" for="QualityLevel">Quality</label>
+                                    <select id="QualityLevel">
+                                        <option value="high">High</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="low">Low</option>
+                                    </select>
+                                </div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxConcurrentStreams">Max Concurrent Streams</label><input type="number" id="MaxConcurrentStreams" min="1" max="8" /></div>
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- Hardware -->
+                    <details>
+                        <summary>Hardware</summary>
+                        <div class="details-body">
+                            <div class="checkboxContainer"><label><input type="checkbox" id="HardwareAcceleration" /> Hardware Acceleration</label></div>
+                            <div class="form-row" style="margin-top:0.5rem;">
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxVRAMUsage">Max VRAM (MB)</label><input type="number" id="MaxVRAMUsage" min="512" max="32768" /></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="CpuThreads">CPU Threads</label><input type="number" id="CpuThreads" min="1" max="64" /></div>
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- Player -->
+                    <details>
+                        <summary>Player</summary>
+                        <div class="details-body">
+                            <div class="checkboxContainer"><label><input type="checkbox" id="PlayerButton" /> Show Player Button</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="Notifications" /> Notifications</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="AutoRetryButton" /> Auto-Retry Button</label></div>
+                            <div class="selectContainer" style="margin-top:0.5rem;">
+                                <label class="selectLabel" for="ButtonPosition">Button Position</label>
+                                <select id="ButtonPosition">
+                                    <option value="right">Right</option>
+                                    <option value="left">Left</option>
+                                    <option value="center">Center</option>
+                                </select>
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- Features -->
+                    <details>
+                        <summary>Features</summary>
+                        <div class="details-body">
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableComparisonView" /> Comparison View</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnablePerformanceMetrics" /> Performance Metrics</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableAutoBenchmarking" /> Auto-Benchmarking</label></div>
+                        </div>
+                    </details>
+
+                    <!-- FFmpeg Wrapper -->
+                    <details>
+                        <summary>FFmpeg Wrapper</summary>
+                        <div class="details-body">
+                            <div style="margin-bottom:0.5rem;">
+                                <span style="color:var(--text-secondary);font-size:0.85rem;">Status: </span>
+                                <span id="wrapper-status" style="font-weight:bold;font-size:0.85rem;">...</span>
+                                <span id="wrapper-platform" style="color:var(--text-muted);font-size:0.78rem;margin-left:0.5rem;"></span>
+                            </div>
+                            <div id="wrapper-path-container" style="display:none;margin-bottom:0.5rem;font-size:0.78rem;color:var(--text-muted);">
+                                Path: <code id="wrapper-path"></code>
+                            </div>
+                            <div>
+                                <button type="button" id="btn-install-wrapper" class="raised">Install</button>
+                                <button type="button" id="btn-uninstall-wrapper" class="raised">Uninstall</button>
+                                <button type="button" id="btn-regenerate-wrapper" class="raised">Regenerate</button>
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- Backup -->
+                    <details>
+                        <summary>Backup &amp; Restore</summary>
+                        <div class="details-body">
+                            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.5rem;">Export your settings to restore them on another device.</div>
+                            <div>
+                                <button type="button" id="btn-export-settings" class="raised">Export Settings</button>
+                                <button type="button" id="btn-import-settings" class="raised">Import Settings</button>
+                                <input type="file" id="settings-file-input" accept=".json,.txt" style="display:none;" />
+                            </div>
+                            <div id="settings-backup-status" style="font-size:0.85rem;margin-top:0.4rem;"></div>
+                        </div>
+                    </details>
+
+                    <div style="margin-top:1rem;">
+                        <button type="button" id="btn-save" class="raised btn-primary">Save Settings</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ==================== TAB: JOBS ==================== -->
+            <div id="tab-jobs" class="tab-content" style="display:none;">
+                <div style="margin-bottom:0.75rem;">
+                    <button type="button" id="btn-refresh-jobs" class="quick-action-btn">Refresh Jobs</button>
+                </div>
+                <div class="upscaler-card">
+                    <table id="jobs-table">
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th>Status</th>
+                                <th>Progress</th>
+                                <th>Method</th>
+                                <th>Duration</th>
+                                <th style="text-align:center;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="jobs-tbody">
+                            <tr><td colspan="6" style="text-align:center;padding:1.5rem;opacity:0.5;">No jobs found</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ==================== TAB: CACHE ==================== -->
+            <div id="tab-cache" class="tab-content" style="display:none;">
+
+                <div class="stat-row">
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:var(--accent);" id="cache-size"><span class="skeleton" style="width:55px;height:20px;"></span></div>
+                        <div class="stat-label">Size</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:var(--success);" id="cache-entries"><span class="skeleton" style="width:35px;height:20px;"></span></div>
+                        <div class="stat-label">Entries</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:var(--warning);" id="cache-hitrate"><span class="skeleton" style="width:45px;height:20px;"></span></div>
+                        <div class="stat-label">Hit Rate</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:var(--danger);" id="cache-usage"><span class="skeleton" style="width:45px;height:20px;"></span></div>
+                        <div class="stat-label">Usage</div>
+                    </div>
+                </div>
+
+                <div class="upscaler-card">
+                    <h3>Cache Settings</h3>
+                    <div class="checkboxContainer"><label><input type="checkbox" id="EnablePreProcessingCache" /> Cache enabled</label></div>
+                    <div class="form-row" style="margin-top:0.5rem;">
+                        <div class="form-col inputContainer"><label class="inputLabel" for="MaxCacheAgeDays">Max Age (Days)</label><input type="number" id="MaxCacheAgeDays" min="1" max="365" /></div>
+                        <div class="form-col inputContainer"><label class="inputLabel" for="CacheSizeMB">Max Size (MB)</label><input type="number" id="CacheSizeMB" min="128" max="1048576" /></div>
+                    </div>
+                    <div style="margin-top:0.5rem;">
+                        <button type="button" id="btn-clear-cache" class="raised">Clear Cache</button>
+                        <button type="button" id="btn-refresh-cache" class="raised">Refresh</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== TAB: SYSTEM ==================== -->
+            <div id="tab-system" class="tab-content" style="display:none;">
+
+                <div class="two-col">
+                    <div class="upscaler-card">
+                        <h3>Hardware Info</h3>
+                        <div id="hw-info">
+                            <div class="info-row"><span class="label">CPU</span><span class="value" id="hw-cpu"><span class="skeleton" style="width:100px;height:14px;"></span></span></div>
+                            <div class="info-row"><span class="label">GPU</span><span class="value" id="hw-gpu"><span class="skeleton" style="width:100px;height:14px;"></span></span></div>
+                            <div class="info-row"><span class="label">Platform</span><span class="value" id="hw-platform"><span class="skeleton" style="width:70px;height:14px;"></span></span></div>
+                            <div class="info-row"><span class="label">Providers</span><span class="value" id="hw-providers"><span class="skeleton" style="width:90px;height:14px;"></span></span></div>
+                            <div class="info-row"><span class="label">Container</span><span class="value" id="hw-container"><span class="skeleton" style="width:35px;height:14px;"></span></span></div>
                         </div>
                     </div>
-
-                    <!-- ==================== TAB: CACHE ==================== -->
-                    <div id="tab-cache" class="tab-content" style="display:none;">
-                        <div class="page-header"><h1>Cache</h1></div>
-
-                        <div class="grid-4" style="margin-bottom:1.25rem;">
-                            <div class="stat-card">
-                                <span class="material-icons stat-icon">storage</span>
-                                <div class="stat-value" style="color:var(--accent);" id="cache-size"><div class="skeleton" style="width:60px;height:24px;margin:0 auto;"></div></div>
-                                <div class="stat-label">Size</div>
-                            </div>
-                            <div class="stat-card">
-                                <span class="material-icons stat-icon">folder</span>
-                                <div class="stat-value" style="color:var(--success);" id="cache-entries"><div class="skeleton" style="width:40px;height:24px;margin:0 auto;"></div></div>
-                                <div class="stat-label">Entries</div>
-                            </div>
-                            <div class="stat-card">
-                                <span class="material-icons stat-icon">trending_up</span>
-                                <div class="stat-value" style="color:var(--warning);" id="cache-hitrate"><div class="skeleton" style="width:50px;height:24px;margin:0 auto;"></div></div>
-                                <div class="stat-label">Hit Rate</div>
-                            </div>
-                            <div class="stat-card">
-                                <span class="material-icons stat-icon">data_usage</span>
-                                <div class="stat-value" style="color:var(--danger);" id="cache-usage"><div class="skeleton" style="width:50px;height:24px;margin:0 auto;"></div></div>
-                                <div class="stat-label">Usage</div>
-                            </div>
+                    <div class="upscaler-card">
+                        <h3>Benchmark</h3>
+                        <div id="benchmark-result" style="font-size:0.85rem;margin-bottom:0.5rem;">
+                            <div style="opacity:0.5;">No benchmark run yet</div>
                         </div>
+                        <button type="button" id="btn-run-benchmark" class="raised" style="width:100%;">Run Benchmark</button>
+                    </div>
+                </div>
 
-                        <div class="upscaler-card">
-                            <h3><span class="material-icons">settings</span> Cache Settings</h3>
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnablePreProcessingCache" /> Cache enabled</label></div>
-                            <div class="grid-2" style="margin-top:0.75rem;">
-                                <div class="inputContainer"><label class="inputLabel" for="MaxCacheAgeDays">Max Age (Days):</label><input type="number" id="MaxCacheAgeDays" min="1" max="365" /></div>
-                                <div class="inputContainer"><label class="inputLabel" for="CacheSizeMB">Max Size (MB):</label><input type="number" id="CacheSizeMB" min="128" max="1048576" /></div>
+                <div class="upscaler-card">
+                    <h3>AI Comparison View</h3>
+                    <div class="form-row" style="margin-bottom:0.5rem;">
+                        <div class="form-col selectContainer"><label class="selectLabel" for="comparison-item">Media Item</label><select id="comparison-item"></select></div>
+                        <div class="form-col" style="padding-top:1.4rem;"><button type="button" id="btn-compare" class="raised">Generate Comparison</button></div>
+                    </div>
+                    <div id="comparison-container" style="display:none;">
+                        <div class="two-col">
+                            <div style="text-align:center;display:inline-block;width:48%;vertical-align:top;">
+                                <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.3rem;">Original</div>
+                                <img id="img-original" style="max-width:100%;border-radius:6px;" />
                             </div>
-                            <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
-                                <button type="button" id="btn-clear-cache" class="raised">Clear Cache</button>
-                                <button type="button" id="btn-refresh-cache" class="raised">Refresh</button>
+                            <div style="text-align:center;display:inline-block;width:48%;vertical-align:top;">
+                                <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.3rem;">Upscaled</div>
+                                <img id="img-upscaled" style="max-width:100%;border-radius:6px;" />
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    <!-- ==================== TAB: SYSTEM ==================== -->
-                    <div id="tab-system" class="tab-content" style="display:none;">
-                        <div class="page-header"><h1>System</h1></div>
-
-                        <div class="grid-2" style="margin-bottom:1.25rem;">
-                            <div class="upscaler-card">
-                                <h3><span class="material-icons">developer_board</span> Hardware Info</h3>
-                                <div id="hw-info">
-                                    <div class="info-row"><span class="label">CPU</span><span class="value" id="hw-cpu"><span class="skeleton" style="display:inline-block;width:120px;height:16px;"></span></span></div>
-                                    <div class="info-row"><span class="label">GPU</span><span class="value" id="hw-gpu"><span class="skeleton" style="display:inline-block;width:120px;height:16px;"></span></span></div>
-                                    <div class="info-row"><span class="label">Platform</span><span class="value" id="hw-platform"><span class="skeleton" style="display:inline-block;width:80px;height:16px;"></span></span></div>
-                                    <div class="info-row"><span class="label">Providers</span><span class="value" id="hw-providers"><span class="skeleton" style="display:inline-block;width:100px;height:16px;"></span></span></div>
-                                    <div class="info-row"><span class="label">Container</span><span class="value" id="hw-container"><span class="skeleton" style="display:inline-block;width:40px;height:16px;"></span></span></div>
-                                </div>
-                            </div>
-
-                            <div class="upscaler-card">
-                                <h3><span class="material-icons">speed</span> Benchmark</h3>
-                                <div id="benchmark-result" style="font-size:0.85rem;margin-bottom:0.75rem;">
-                                    <div style="opacity:0.5;">No benchmark run yet</div>
-                                </div>
-                                <button type="button" id="btn-run-benchmark" class="raised" style="width:100%;">Run Benchmark</button>
-                            </div>
-                        </div>
-
-                        <div class="upscaler-card">
-                            <h3><span class="material-icons">compare</span> AI Comparison View</h3>
-                            <div style="display:flex;gap:0.75rem;align-items:flex-end;margin-bottom:1rem;">
-                                <div class="selectContainer" style="flex:1;"><label class="selectLabel" for="comparison-item">Media Item:</label><select id="comparison-item"></select></div>
-                                <button type="button" id="btn-compare" class="raised">Generate Comparison</button>
-                            </div>
-                            <div id="comparison-container" style="display:none;">
-                                <div class="grid-2">
-                                    <div style="text-align:center;"><div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.3rem;">Original</div><img id="img-original" style="max-width:100%;border-radius:6px;" /></div>
-                                    <div style="text-align:center;"><div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.3rem;">Upscaled</div><img id="img-upscaled" style="max-width:100%;border-radius:6px;" /></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div><!-- /upscaler-main -->
-            </div><!-- /upscaler-layout -->
         </div>
     </div>
 
@@ -958,14 +705,14 @@
             setTimeout(function() { if (t.parentNode) t.remove(); }, 3000);
         }
 
-        // ===== SIDEBAR NAV =====
+        // ===== TAB NAVIGATION =====
         function initNav(page) {
-            var items = page.querySelectorAll('.nav-item[data-tab]');
-            items.forEach(function(item) {
-                item.addEventListener('click', function() {
-                    var tabId = item.getAttribute('data-tab');
-                    items.forEach(function(i) { i.classList.remove('active'); });
-                    item.classList.add('active');
+            var tabs = page.querySelectorAll('.upscaler-tab[data-tab]');
+            tabs.forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    var tabId = tab.getAttribute('data-tab');
+                    tabs.forEach(function(t) { t.classList.remove('active'); });
+                    tab.classList.add('active');
 
                     page.querySelectorAll('.tab-content').forEach(function(c) { c.style.display = 'none'; });
                     var target = page.querySelector('#tab-' + tabId);
@@ -975,14 +722,6 @@
                     else if (tabId === 'jobs') refreshJobs(page);
                     else if (tabId === 'cache') refreshCache(page);
                     else if (tabId === 'system') refreshSystem(page);
-                });
-            });
-
-            // Accordion toggle
-            page.querySelectorAll('.accordion-header').forEach(function(header) {
-                header.addEventListener('click', function() {
-                    var section = header.parentElement;
-                    section.classList.toggle('open');
                 });
             });
         }
@@ -995,7 +734,6 @@
                 var banner = page.querySelector('#service-banner');
                 var bannerText = page.querySelector('#banner-text');
                 var bannerDetails = page.querySelector('#banner-details');
-                var sidebarStatus = page.querySelector('#sidebar-status');
 
                 if (data.available) {
                     badge.className = 'status-pill status-pill--online';
@@ -1003,8 +741,6 @@
                     banner.className = 'service-banner online';
                     bannerText.textContent = 'AI service connected and running';
                     bannerDetails.textContent = data.currentModel ? ('Model: ' + data.currentModel + ' | ' + data.latencyMs + 'ms') : (data.latencyMs + 'ms');
-                    sidebarStatus.className = 'status-dot online';
-                    sidebarStatus.textContent = 'Online';
 
                     page.querySelector('#svc-docker').textContent = 'Online';
                     page.querySelector('#svc-docker').style.color = '#4ade80';
@@ -1022,8 +758,6 @@
                     banner.className = 'service-banner offline';
                     bannerText.textContent = 'AI service is not reachable';
                     bannerDetails.textContent = '';
-                    sidebarStatus.className = 'status-dot offline';
-                    sidebarStatus.textContent = 'Offline';
 
                     page.querySelector('#svc-docker').textContent = 'Offline';
                     page.querySelector('#svc-docker').style.color = '#f87171';
@@ -1032,9 +766,6 @@
                 var badge = page.querySelector('#service-badge');
                 badge.className = 'status-pill status-pill--offline';
                 badge.textContent = 'Error';
-                var sidebarStatus = page.querySelector('#sidebar-status');
-                sidebarStatus.className = 'status-dot offline';
-                sidebarStatus.textContent = 'Error';
             });
         }
 
@@ -1042,8 +773,6 @@
         function loadGpuList(page) {
             ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/service-health'), dataType: 'json' }).then(function(data) {
                 if (!data.available) return;
-                var serviceUrl = page.querySelector('#AiServiceUrl').value || 'http://localhost:5000';
-                // Try to fetch GPU list from the Docker service directly through proxy
                 ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/gpus'), dataType: 'json' }).then(function(gpuData) {
                     var select = page.querySelector('#GpuDeviceIndex');
                     if (!select || !gpuData || !gpuData.gpus) return;
@@ -1079,12 +808,10 @@
 
                         if (j.status === 'Processing' || j.status === 'Starting') {
                             var prog = Math.min(Math.max(Math.round(j.progress || 0), 0), 100);
-                            jobsHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid rgba(255,255,255,0.06);">' +
-                                '<span style="font-size:0.85rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(j.inputPath || 'Unknown') + '</span>' +
-                                '<div style="display:flex;align-items:center;gap:0.5rem;">' +
-                                '<div style="width:80px;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:var(--accent);border-radius:3px;"></div></div>' +
-                                '<span style="font-size:0.75rem;color:var(--text-secondary);">' + prog + '%</span>' +
-                                '</div></div>';
+                            jobsHtml += '<div style="padding:0.4rem 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:0.85rem;">' +
+                                '<span style="display:inline-block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;">' + esc(j.inputPath || 'Unknown') + '</span>' +
+                                ' <span style="font-size:0.75rem;color:var(--text-secondary);vertical-align:middle;">' + prog + '%</span>' +
+                                '</div>';
                         }
                     });
                     page.querySelector('#stat-active').textContent = active;
@@ -1093,7 +820,7 @@
                     if (jobsHtml) {
                         page.querySelector('#active-jobs-list').innerHTML = jobsHtml;
                     } else {
-                        page.querySelector('#active-jobs-list').innerHTML = '<div style="opacity:0.5;text-align:center;padding:2rem;">No active jobs</div>';
+                        page.querySelector('#active-jobs-list').innerHTML = '<div style="opacity:0.5;text-align:center;padding:1.5rem;">No active jobs</div>';
                     }
                 }
             }).catch(function() {});
@@ -1110,29 +837,29 @@
             ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/jobs'), dataType: 'json' }).then(function(data) {
                 var tbody = page.querySelector('#jobs-tbody');
                 if (!data || !data.jobs || data.jobs.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;opacity:0.5;">No jobs found</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:1.5rem;opacity:0.5;">No jobs found</td></tr>';
                     return;
                 }
                 var html = '';
                 data.jobs.forEach(function(j) {
                     var prog = Math.min(Math.max(Math.round(j.progress || 0), 0), 100);
                     var dur = j.duration ? j.duration.toFixed(1) + 's' : '-';
-                    var statusColor = j.status === 'Completed' ? 'var(--success)' : j.status === 'Failed' ? 'var(--danger)' : j.status === 'Processing' ? 'var(--accent)' : 'var(--warning)';
                     var statusIcon = j.status === 'Completed' ? 'check_circle' : j.status === 'Failed' ? 'error' : j.status === 'Processing' ? 'play_circle' : 'pending';
+                    var statusClass = j.status === 'Completed' ? 'online' : j.status === 'Failed' ? 'offline' : j.status === 'Processing' ? 'processing' : 'warning';
                     var safeJobId = esc(j.jobId || '');
                     var actions = '';
                     if (j.status === 'Processing' || j.status === 'Starting') {
                         if (j.isPaused) {
-                            actions = '<button type="button" data-action="resume" data-jobid="' + safeJobId + '" class="quick-action-btn" style="padding:0.2rem 0.5rem;"><span class="material-icons" style="font-size:14px;">play_arrow</span></button>';
+                            actions = '<button type="button" data-action="resume" data-jobid="' + safeJobId + '" class="quick-action-btn" style="padding:0.2rem 0.5rem;">Resume</button>';
                         } else {
-                            actions = '<button type="button" data-action="pause" data-jobid="' + safeJobId + '" class="quick-action-btn" style="padding:0.2rem 0.5rem;"><span class="material-icons" style="font-size:14px;">pause</span></button> ' +
-                                      '<button type="button" data-action="cancel" data-jobid="' + safeJobId + '" class="quick-action-btn" style="padding:0.2rem 0.5rem;border-color:rgba(248,113,113,0.3);color:var(--danger);"><span class="material-icons" style="font-size:14px;">stop</span></button>';
+                            actions = '<button type="button" data-action="pause" data-jobid="' + safeJobId + '" class="quick-action-btn" style="padding:0.2rem 0.5rem;">Pause</button> ' +
+                                      '<button type="button" data-action="cancel" data-jobid="' + safeJobId + '" class="quick-action-btn" style="padding:0.2rem 0.5rem;color:var(--danger);">Cancel</button>';
                         }
                     }
                     html += '<tr>' +
                         '<td class="file-path" title="' + esc(j.inputPath || '') + '">' + esc(j.inputPath || '-') + '</td>' +
-                        '<td><span class="status-pill status-pill--' + (j.status === 'Completed' ? 'online' : j.status === 'Failed' ? 'offline' : j.status === 'Processing' ? 'processing' : 'warning') + '"><span class="material-icons" style="font-size:14px;">' + statusIcon + '</span> ' + esc(j.status || '-') + '</span></td>' +
-                        '<td><div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:60px;height:5px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;"><div style="width:' + prog + '%;height:100%;background:var(--accent);"></div></div><span style="font-size:0.75rem;">' + prog + '%</span></div></td>' +
+                        '<td><span class="status-pill status-pill--' + statusClass + '">' + esc(j.status || '-') + '</span></td>' +
+                        '<td>' + prog + '%</td>' +
                         '<td>' + esc(j.method || '-') + '</td>' +
                         '<td>' + dur + '</td>' +
                         '<td style="text-align:center;">' + actions + '</td>' +
@@ -1140,7 +867,7 @@
                 });
                 tbody.innerHTML = html;
             }).catch(function() {
-                page.querySelector('#jobs-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--danger);">Error loading jobs</td></tr>';
+                page.querySelector('#jobs-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--danger);">Error loading jobs</td></tr>';
             });
         }
 
@@ -1290,7 +1017,6 @@
                     page.querySelector('#ScaleFactor').value = config.ScaleFactor;
                 }
 
-                // GPU device index
                 if (config.GpuDeviceIndex !== undefined) {
                     var gpuSel = page.querySelector('#GpuDeviceIndex');
                     if (gpuSel) gpuSel.value = config.GpuDeviceIndex;
@@ -1310,7 +1036,7 @@
                 var nums = ['RemoteSshPort','MaxVRAMUsage','CpuThreads','MaxConcurrentStreams','MaxCacheAgeDays','CacheSizeMB','ScaleFactor','GpuDeviceIndex'];
                 nums.forEach(function(f) {
                     var el = page.querySelector('#' + f);
-                    if (el) config[f] = parseInt(el.value, 10) || config[f];
+                    if (el) { var parsed = parseInt(el.value, 10); if (!isNaN(parsed)) config[f] = parsed; }
                 });
 
                 var checks = ['EnablePlugin','PlayerButton','HardwareAcceleration','Notifications','AutoRetryButton',
@@ -1443,8 +1169,8 @@
                         var r = data.results;
                         var html = '<div class="info-row"><span class="label">Duration</span><span class="value">' + (r.duration || 0).toFixed(1) + 's</span></div>';
                         if (r.optimalSettings) {
-                            html += '<div class="info-row"><span class="label">Recommended Model</span><span class="value">' + (r.optimalSettings.RecommendedModel || '-') + '</span></div>';
-                            html += '<div class="info-row"><span class="label">Max Resolution</span><span class="value">' + (r.optimalSettings.RecommendedMaxResolution || '-') + '</span></div>';
+                            html += '<div class="info-row"><span class="label">Rec. Model</span><span class="value">' + (r.optimalSettings.RecommendedModel || '-') + '</span></div>';
+                            html += '<div class="info-row"><span class="label">Max Res.</span><span class="value">' + (r.optimalSettings.RecommendedMaxResolution || '-') + '</span></div>';
                             html += '<div class="info-row"><span class="label">Quality</span><span class="value">' + (r.optimalSettings.RecommendedQuality || '-') + '</span></div>';
                             html += '<div class="info-row"><span class="label">Max Streams</span><span class="value">' + (r.optimalSettings.MaxConcurrentStreams || 1) + '</span></div>';
                         }
@@ -1456,7 +1182,7 @@
             });
 
             page.querySelector('#btn-quick-benchmark').addEventListener('click', function() {
-                page.querySelector('.nav-item[data-tab="system"]').click();
+                page.querySelector('.upscaler-tab[data-tab="system"]').click();
                 page.querySelector('#btn-run-benchmark').click();
             });
 
@@ -1564,9 +1290,9 @@
 
             if (refreshInterval) clearInterval(refreshInterval);
             refreshInterval = setInterval(function() {
-                var activeItem = page.querySelector('.nav-item.active');
-                if (activeItem) {
-                    var tab = activeItem.getAttribute('data-tab');
+                var activeTab = page.querySelector('.upscaler-tab.active');
+                if (activeTab) {
+                    var tab = activeTab.getAttribute('data-tab');
                     if (tab === 'dashboard') refreshDashboard(page);
                     else if (tab === 'jobs') refreshJobs(page);
                 }
