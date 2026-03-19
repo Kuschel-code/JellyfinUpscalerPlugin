@@ -13,8 +13,8 @@
         "changelog": "v1.5.3.0: Fix player button injection (multi-path Docker support, config page bootstrap fallback), add Scheduled Task for library scanning, close stale issues. Fixes #48 #43 #36 #33 #27 #28.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.3.0/JellyfinUpscalerPlugin-v1.5.3.0.zip",
-        "checksum": "37ef70962d5d2343a6f588935f57c4e0",
-        "timestamp": "2026-03-19T11:22:00.000Z"
+        "checksum": "26c5c544cd27a034ab17947deab334a0",
+        "timestamp": "2026-03-19T11:24:27.000Z"
       },
       {
         "version": "1.5.2.9",
