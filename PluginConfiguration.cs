@@ -52,8 +52,12 @@ namespace JellyfinUpscalerPlugin
         public string RemoteMediaMountPoint { get; set; } = ""; // e.g., "/media"
         public string RemoteTranscodePath { get; set; } = "/transcode"; // Shared transcode dir on remote
         
+        // Scheduled Task: Library Scan
+        public int MinResolutionWidth { get; set; } = 1920;
+        public int MinResolutionHeight { get; set; } = 1080;
+
         // Version tracking
-        public string PluginVersion { get; set; } = "1.5.2.9";
+        public string PluginVersion { get; set; } = "1.5.3.0";
 
         public PluginConfiguration()
         {

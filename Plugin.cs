@@ -11,33 +11,26 @@ using Microsoft.Extensions.Logging;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// AI Upscaler Plugin for Jellyfin v1.5.2.9 - Docker Microservice Architecture
-    /// v1.5.2.9 - Fixed notification spam, English UI, dark theme, XSS fixes
+    /// AI Upscaler Plugin for Jellyfin v1.5.3.0
+    /// v1.5.3.0 - Fixed player button injection, scheduled tasks, issue cleanup
     /// </summary>
     public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     {
         private readonly IApplicationPaths _applicationPaths;
+        private readonly ILogger<Plugin> _logger;
 
         /// <summary>
         /// Initializes a new instance of the Plugin class.
         /// </summary>
-        /// <param name="applicationPaths">Application paths.</param>
-        /// <param name="xmlSerializer">XML serializer.</param>
-        public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer)
+        public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer, ILogger<Plugin> logger)
             : base(applicationPaths, xmlSerializer)
         {
             Instance = this;
             _applicationPaths = applicationPaths;
+            _logger = logger;
 
             // Inject player script into Jellyfin's index.html (like Intro Skipper plugin)
-            try
-            {
-                InjectPlayerScript(applicationPaths.WebPath);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"AI Upscaler: Failed to inject player script: {ex.Message}");
-            }
+            InjectPlayerScriptWithFallback();
         }
 
         /// <summary>
@@ -63,36 +56,81 @@ namespace JellyfinUpscalerPlugin
 
 
         /// <summary>
-        /// Injects the AI Upscaler player script into Jellyfin's index.html.
-        /// This ensures the script loads on every page, not just the config page.
-        /// Same approach as the Intro Skipper plugin.
+        /// Attempts to inject the player script into Jellyfin's index.html.
+        /// Tries the primary web path first, then known Docker container paths.
         /// </summary>
-        private void InjectPlayerScript(string webPath)
+        private void InjectPlayerScriptWithFallback()
+        {
+            var version = GetType().Assembly.GetName().Version;
+
+            // Try primary path first, then known Docker paths
+            var pathsToTry = new List<string>();
+
+            if (!string.IsNullOrEmpty(_applicationPaths.WebPath))
+            {
+                pathsToTry.Add(_applicationPaths.WebPath);
+            }
+
+            // Known Docker container web paths
+            pathsToTry.Add("/jellyfin/jellyfin-web");
+            pathsToTry.Add("/usr/share/jellyfin/web");
+            pathsToTry.Add("/usr/lib/jellyfin/bin/jellyfin-web");
+
+            foreach (var webPath in pathsToTry)
+            {
+                try
+                {
+                    if (InjectPlayerScript(webPath, version))
+                    {
+                        _logger.LogInformation("AI Upscaler: Player script injected via {WebPath}", webPath);
+                        return;
+                    }
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    _logger.LogWarning("AI Upscaler: Cannot write to {WebPath} (read-only): {Message}", webPath, ex.Message);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning("AI Upscaler: Failed to inject at {WebPath}: {Message}", webPath, ex.Message);
+                }
+            }
+
+            _logger.LogWarning(
+                "AI Upscaler: Could not inject player script into index.html. " +
+                "The player button will be activated when you visit the plugin config page. " +
+                "Tried paths: {Paths}", string.Join(", ", pathsToTry));
+        }
+
+        /// <summary>
+        /// Injects the AI Upscaler player script into a specific index.html.
+        /// Returns true if injection succeeded or script already present.
+        /// </summary>
+        private bool InjectPlayerScript(string webPath, Version? version)
         {
             if (string.IsNullOrEmpty(webPath))
             {
-                return;
+                return false;
             }
 
             var indexPath = Path.Join(webPath, "index.html");
             if (!File.Exists(indexPath))
             {
-                return;
+                _logger.LogDebug("AI Upscaler: index.html not found at {Path}", indexPath);
+                return false;
             }
 
             var contents = File.ReadAllText(indexPath);
-            var version = GetType().Assembly.GetName().Version;
-
-            // Script tag that loads our player integration JS globally
             var scriptTag = $"<script src=\"configurationpage?name=UPSCALERPlayerIntegration&release={version}\"></script>";
 
-            // Already injected?
+            // Already injected with current version?
             if (contents.Contains(scriptTag, StringComparison.OrdinalIgnoreCase))
             {
-                return;
+                _logger.LogDebug("AI Upscaler: Player script already injected at {Path}", indexPath);
+                return true;
             }
 
-            // Remove old versions of our script tag (if version changed) - Singleline so .*? matches across newlines
+            // Remove old versions of our script tag
             var pattern = @"<script src=""configurationpage\?name=UPSCALERPlayerIntegration[^""]*""></script>";
             contents = Regex.Replace(contents, pattern, string.Empty, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
 
@@ -101,6 +139,7 @@ namespace JellyfinUpscalerPlugin
             contents = headEndRegex.Replace(contents, scriptTag + "</head>", 1);
 
             File.WriteAllText(indexPath, contents);
+            return true;
         }
 
         /// <summary>

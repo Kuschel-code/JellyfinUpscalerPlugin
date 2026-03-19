@@ -1,6 +1,6 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
 <style>
-    /* ===== AI Upscaler v1.5.2.9 — Jellyfin-compatible dark theme ===== */
+    /* ===== AI Upscaler v1.5.3.0 — Jellyfin-compatible dark theme ===== */
     #UpscalerConfigurationPage {
         --accent: #00d4ff;
         --accent-bg: rgba(0, 212, 255, 0.12);
@@ -690,6 +690,16 @@
     </div>
 
     <script type="text/javascript">
+    // Auto-bootstrap: Load player integration script if not already loaded via index.html
+    // This ensures the player button works even if the index.html injection failed (e.g., read-only Docker)
+    if (!window._aiUpscalerLoaded) {
+        (function() {
+            var s = document.createElement('script');
+            s.src = 'configurationpage?name=UPSCALERPlayerIntegration';
+            document.head.appendChild(s);
+            console.log('AI Upscaler: Player script bootstrapped from config page');
+        })();
+    }
     (function() {
         'use strict';
         var pluginId = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';

@@ -2,7 +2,9 @@ using System;
 using Microsoft.Extensions.DependencyInjection;
 using MediaBrowser.Controller.Plugins;
 using MediaBrowser.Controller;
+using MediaBrowser.Model.Tasks;
 using JellyfinUpscalerPlugin.Services;
+using JellyfinUpscalerPlugin.ScheduledTasks;
 
 namespace JellyfinUpscalerPlugin
 {
@@ -20,15 +22,17 @@ namespace JellyfinUpscalerPlugin
             serviceCollection.AddSingleton<ModelManager>();
             serviceCollection.AddSingleton<UpscalerProgressHub>();
             serviceCollection.AddSingleton<LibraryScanHelper>();
-            
+
             // HTTP-based AI Service (Docker)
             serviceCollection.AddSingleton<HttpUpscalerService>();
 
             // Background / Hosted Services
-            // Register HardwareBenchmarkService as Singleton FIRST so it can be injected into controllers
             serviceCollection.AddSingleton<HardwareBenchmarkService>();
             serviceCollection.AddHostedService<UpscalerService>();
             serviceCollection.AddHostedService(sp => sp.GetRequiredService<HardwareBenchmarkService>());
+
+            // Scheduled Tasks (visible in Dashboard → Scheduled Tasks)
+            serviceCollection.AddSingleton<IScheduledTask, LibraryUpscaleScanTask>();
 
             // Platform & Interop
             serviceCollection.AddSingleton<IPlatformDetectionService, PlatformDetectionService>();
