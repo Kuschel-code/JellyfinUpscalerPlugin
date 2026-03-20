@@ -13,6 +13,54 @@
     if (window._aiUpscalerLoaded) return;
     window._aiUpscalerLoaded = true;
 
+    // All available models grouped by category
+    const MODEL_CATALOG = {
+        realesrgan: {
+            label: 'Real-ESRGAN',
+            desc: 'Best Quality',
+            models: [
+                { id: 'realesrgan-x4', name: 'Real-ESRGAN x4', scale: 4, badge: 'Best' },
+                { id: 'realesrgan-x4-256', name: 'Real-ESRGAN x4 (256px)', scale: 4, badge: 'Low VRAM' }
+            ]
+        },
+        edsr: {
+            label: 'EDSR',
+            desc: 'High Quality',
+            models: [
+                { id: 'edsr-x2', name: 'EDSR x2', scale: 2 },
+                { id: 'edsr-x3', name: 'EDSR x3', scale: 3 },
+                { id: 'edsr-x4', name: 'EDSR x4', scale: 4 }
+            ]
+        },
+        lapsrn: {
+            label: 'LapSRN',
+            desc: 'Good Quality',
+            models: [
+                { id: 'lapsrn-x2', name: 'LapSRN x2', scale: 2 },
+                { id: 'lapsrn-x4', name: 'LapSRN x4', scale: 4 },
+                { id: 'lapsrn-x8', name: 'LapSRN x8', scale: 8 }
+            ]
+        },
+        fsrcnn: {
+            label: 'FSRCNN',
+            desc: 'Fast',
+            models: [
+                { id: 'fsrcnn-x2', name: 'FSRCNN x2', scale: 2 },
+                { id: 'fsrcnn-x3', name: 'FSRCNN x3', scale: 3 },
+                { id: 'fsrcnn-x4', name: 'FSRCNN x4', scale: 4 }
+            ]
+        },
+        espcn: {
+            label: 'ESPCN',
+            desc: 'Fastest',
+            models: [
+                { id: 'espcn-x2', name: 'ESPCN x2', scale: 2 },
+                { id: 'espcn-x3', name: 'ESPCN x3', scale: 3 },
+                { id: 'espcn-x4', name: 'ESPCN x4', scale: 4 }
+            ]
+        }
+    };
+
     // Player integration manager
     const PlayerIntegration = {
         _buttonInjected: false,
@@ -20,66 +68,50 @@
         _playbackListenersAttached: false,
         _menuCloseHandler: null,
         _menuAutoCloseTimer: null,
+        _cachedConfig: null,
+        _configCacheTime: 0,
 
         // Initialize — called once when script loads
         init: function() {
-            console.log(`AI Upscaler: Player Integration v${PLUGIN_VERSION} initializing...`);
-
-            // Inject CSS once
+            console.log('AI Upscaler: Player Integration v' + PLUGIN_VERSION + ' initializing...');
             this.addStyles();
 
-            // Listen for Jellyfin SPA navigation events
-            // 'viewshow' fires every time Jellyfin navigates to a new view (including video player)
-            document.addEventListener('viewshow', (e) => {
-                this.onViewShow(e);
+            document.addEventListener('viewshow', function(e) {
+                PlayerIntegration.onViewShow(e);
             });
 
-            // Also listen for playback events when ApiClient becomes available
             this.waitForApiClient();
-
-            // Add keyboard shortcuts once
             this.addKeyboardShortcuts();
-
-            console.log(`AI Upscaler: Player Integration v${PLUGIN_VERSION} loaded (global injection)`);
+            console.log('AI Upscaler: Player Integration v' + PLUGIN_VERSION + ' loaded');
         },
 
-        // Wait for Jellyfin's ApiClient to be available
         waitForApiClient: function() {
-            let retries = 0;
-            const maxRetries = 30;
-            const check = () => {
+            var retries = 0;
+            var maxRetries = 30;
+            var check = function() {
                 if (window.ApiClient) {
-                    this.attachPlaybackListeners();
+                    PlayerIntegration.attachPlaybackListeners();
                 } else if (retries < maxRetries) {
                     retries++;
                     setTimeout(check, 1000);
-                } else {
-                    console.warn('AI Upscaler: ApiClient not available after ' + maxRetries + ' retries, giving up');
                 }
             };
             check();
         },
 
-        // Called on every SPA view change
         onViewShow: function(e) {
-            const detail = e.detail || {};
-            const type = detail.type || '';
-            const id = (detail.params && detail.params.id) || '';
-
-            // Check if we navigated to the video player page
-            // Jellyfin 10.11 uses #/video as the video OSD page
-            const isVideoPage = type === 'video-osd' ||
-                                (e.target && e.target.id === 'videoOsdPage') ||
-                                window.location.hash.startsWith('#/video');
+            var detail = e.detail || {};
+            var type = detail.type || '';
+            var isVideoPage = type === 'video-osd' ||
+                              (e.target && e.target.id === 'videoOsdPage') ||
+                              window.location.hash.startsWith('#/video');
 
             if (isVideoPage) {
-                console.log('AI Upscaler: Video player detected, injecting button...');
-                this._buttonInjected = false; // Reset so we re-inject
+                this._buttonInjected = false;
                 this.injectPlayerButton();
             }
         },
 
-        // Inject button into video player OSD with robust retry + MutationObserver fallback
         _injectRetryCount: 0,
         _injectMaxRetries: 10,
         _mutationObserver: null,
@@ -87,23 +119,21 @@
         injectPlayerButton: function() {
             if (this._buttonInjected) return;
 
-            // Try multiple selectors for different Jellyfin versions
-            const selectors = [
-                '.videoOsdBottom .buttons',             // 10.11 standard
-                '.videoOsdBottom .osdControls',         // 10.11 controls area
-                '.videoOsdBottom',                      // 10.11 fallback
-                '#videoOsdPage .osdControls',           // alternate
-                '.osdControls',                         // generic
-                '.osdBottomBar',                        // some skins
-                '[data-action="fullscreen"]',           // near fullscreen button
-                '.btnToggleFullscreen',                 // fullscreen button parent
+            var selectors = [
+                '.videoOsdBottom .buttons',
+                '.videoOsdBottom .osdControls',
+                '.videoOsdBottom',
+                '#videoOsdPage .osdControls',
+                '.osdControls',
+                '.osdBottomBar',
+                '[data-action="fullscreen"]',
+                '.btnToggleFullscreen'
             ];
 
-            let container = null;
-            for (const sel of selectors) {
-                const el = document.querySelector(sel);
+            var container = null;
+            for (var i = 0; i < selectors.length; i++) {
+                var el = document.querySelector(selectors[i]);
                 if (el) {
-                    // For button elements, use parent as container
                     container = (el.tagName === 'BUTTON') ? el.parentElement : el;
                     break;
                 }
@@ -112,12 +142,9 @@
             if (!container) {
                 this._injectRetryCount++;
                 if (this._injectRetryCount <= this._injectMaxRetries) {
-                    // Exponential backoff: 500ms, 750ms, 1125ms, ... up to ~3s
-                    const delay = Math.min(500 * Math.pow(1.5, this._injectRetryCount - 1), 3000);
-                    console.warn(`AI Upscaler: OSD container not found (attempt ${this._injectRetryCount}/${this._injectMaxRetries}), retrying in ${Math.round(delay)}ms`);
-                    setTimeout(() => this.injectPlayerButton(), delay);
+                    var delay = Math.min(500 * Math.pow(1.5, this._injectRetryCount - 1), 3000);
+                    setTimeout(function() { PlayerIntegration.injectPlayerButton(); }, delay);
                 } else {
-                    console.warn('AI Upscaler: OSD container not found after max retries, starting MutationObserver fallback');
                     this._startMutationObserver();
                 }
                 return;
@@ -126,14 +153,12 @@
             this._injectRetryCount = 0;
             this._stopMutationObserver();
 
-            // Don't duplicate
             if (document.querySelector('#aiUpscalerButton')) {
                 this._buttonInjected = true;
                 return;
             }
 
-            // Create the AI Upscaler button (matches Jellyfin's player button style)
-            const btn = document.createElement('button');
+            var btn = document.createElement('button');
             btn.id = 'aiUpscalerButton';
             btn.className = 'paper-icon-button-light autoSize';
             btn.setAttribute('is', 'paper-icon-button-light');
@@ -141,14 +166,13 @@
             btn.setAttribute('title', 'AI Upscaler');
             btn.innerHTML = '<span class="material-icons">auto_awesome</span>';
 
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                this.toggleUpscalerMenu();
+                PlayerIntegration.toggleUpscalerMenu();
             });
 
-            // Insert before fullscreen button or at end
-            const refButton = container.querySelector('.btnVideoOsdSettings, .btnToggleFullscreen');
+            var refButton = container.querySelector('.btnVideoOsdSettings, .btnToggleFullscreen');
             if (refButton) {
                 refButton.parentNode.insertBefore(btn, refButton);
             } else {
@@ -159,33 +183,53 @@
             console.log('AI Upscaler: Player button injected');
         },
 
-        // Attach playback event listeners (once)
         attachPlaybackListeners: function() {
             if (this._playbackListenersAttached) return;
 
             if (window.playbackManager) {
                 try {
-                    window.playbackManager.addEventListener('playbackstart', () => {
-                        console.log('AI Upscaler: Playback started');
-                        // Re-inject button when playback starts (DOM might have been rebuilt)
-                        this._buttonInjected = false;
-                        setTimeout(() => this.injectPlayerButton(), 500);
+                    window.playbackManager.addEventListener('playbackstart', function() {
+                        PlayerIntegration._buttonInjected = false;
+                        setTimeout(function() { PlayerIntegration.injectPlayerButton(); }, 500);
                     });
-
-                    window.playbackManager.addEventListener('playbackstop', () => {
-                        console.log('AI Upscaler: Playback stopped');
-                        this._buttonInjected = false;
+                    window.playbackManager.addEventListener('playbackstop', function() {
+                        PlayerIntegration._buttonInjected = false;
                     });
-
                     this._playbackListenersAttached = true;
-                    console.log('AI Upscaler: Playback listeners attached');
                 } catch (err) {
                     console.warn('AI Upscaler: Could not attach playback listeners:', err);
                 }
             }
         },
 
-        // Toggle upscaler quick menu
+        // Get config with 10s cache
+        getPluginConfig: function() {
+            var now = Date.now();
+            if (this._cachedConfig && (now - this._configCacheTime) < 10000) {
+                return Promise.resolve(this._cachedConfig);
+            }
+            if (window.ApiClient) {
+                return window.ApiClient.getPluginConfiguration(PLUGIN_ID).then(function(config) {
+                    PlayerIntegration._cachedConfig = config;
+                    PlayerIntegration._configCacheTime = Date.now();
+                    return config;
+                });
+            }
+            return Promise.resolve({});
+        },
+
+        updatePluginConfig: function(updates) {
+            if (window.ApiClient) {
+                this.getPluginConfig().then(function(config) {
+                    var newConfig = Object.assign({}, config, updates);
+                    PlayerIntegration._cachedConfig = newConfig;
+                    PlayerIntegration._configCacheTime = Date.now();
+                    window.ApiClient.updatePluginConfiguration(PLUGIN_ID, newConfig);
+                });
+            }
+        },
+
+        // Menu management
         _cleanupMenu: function() {
             if (this._menuCloseHandler) {
                 document.removeEventListener('click', this._menuCloseHandler);
@@ -198,214 +242,236 @@
         },
 
         toggleUpscalerMenu: function() {
-            const existingMenu = document.querySelector('#aiUpscalerQuickMenu');
-            if (existingMenu) {
-                existingMenu.remove();
+            var existing = document.querySelector('#aiUpscalerQuickMenu');
+            if (existing) {
+                existing.remove();
                 this._cleanupMenu();
                 return;
             }
 
-            const menu = document.createElement('div');
+            // Read config to get position + current model + scale
+            this.getPluginConfig().then(function(config) {
+                PlayerIntegration._buildMenu(config);
+            });
+        },
+
+        _buildMenu: function(config) {
+            var position = (config.ButtonPosition || 'right').toLowerCase();
+            var currentModel = config.Model || 'realesrgan-x4';
+            var currentScale = config.ScaleFactor || 2;
+            var isEnabled = config.EnablePlugin !== false;
+
+            var menu = document.createElement('div');
             menu.id = 'aiUpscalerQuickMenu';
-            menu.className = 'aiUpscalerQuickMenu';
-            menu.innerHTML = `
-                <div class="quick-menu-header">
-                    <span class="menu-title">🚀 AI Upscaler</span>
-                    <button class="menu-close" onclick="this.parentElement.parentElement.remove()">×</button>
-                </div>
-                <div class="quick-menu-content">
-                    <div class="menu-section">
-                        <h4>Quick Settings</h4>
-                        <div class="menu-item" onclick="PlayerIntegration.quickSetModel('realesrgan-x4')">
-                            <span class="menu-icon">🎨</span>
-                            <span>Real-ESRGAN x4 (Best Quality)</span>
-                        </div>
-                        <div class="menu-item" onclick="PlayerIntegration.quickSetModel('edsr-x4')">
-                            <span class="menu-icon">⚡</span>
-                            <span>EDSR x4 (Best OpenCV)</span>
-                        </div>
-                        <div class="menu-item" onclick="PlayerIntegration.quickSetModel('fsrcnn-x2')">
-                            <span class="menu-icon">🔧</span>
-                            <span>FSRCNN x2 (Fast)</span>
-                        </div>
-                        <div class="menu-item" onclick="PlayerIntegration.quickSetModel('espcn-x2')">
-                            <span class="menu-icon">🚀</span>
-                            <span>ESPCN x2 (Fastest)</span>
-                        </div>
-                    </div>
-                    <div class="menu-section">
-                        <h4>Scale Factor</h4>
-                        <div class="scale-buttons">
-                            <button class="scale-btn" onclick="PlayerIntegration.setScale(2)">2x</button>
-                            <button class="scale-btn" onclick="PlayerIntegration.setScale(3)">3x</button>
-                            <button class="scale-btn" onclick="PlayerIntegration.setScale(4)">4x</button>
-                        </div>
-                    </div>
-                    <div class="menu-section">
-                        <h4>Actions</h4>
-                        <div class="menu-item" onclick="PlayerIntegration.toggleUpscaling()">
-                            <span class="menu-icon">🔄</span>
-                            <span>Toggle Upscaling</span>
-                        </div>
-                        <div class="menu-item" onclick="PlayerIntegration.openFullConfig()">
-                            <span class="menu-icon">⚙️</span>
-                            <span>Full Configuration</span>
-                        </div>
-                    </div>
-                </div>
-            `;
+            menu.className = 'ai-menu ai-menu--' + position;
+
+            // Build model list HTML grouped by category
+            var modelsHtml = '';
+            var cats = Object.keys(MODEL_CATALOG);
+            for (var ci = 0; ci < cats.length; ci++) {
+                var catKey = cats[ci];
+                var cat = MODEL_CATALOG[catKey];
+                modelsHtml += '<div class="ai-menu__cat">';
+                modelsHtml += '<div class="ai-menu__cat-head">';
+                modelsHtml += '<span class="ai-menu__cat-name">' + cat.label + '</span>';
+                modelsHtml += '<span class="ai-menu__cat-desc">' + cat.desc + '</span>';
+                modelsHtml += '</div>';
+                for (var mi = 0; mi < cat.models.length; mi++) {
+                    var m = cat.models[mi];
+                    var isActive = m.id === currentModel;
+                    modelsHtml += '<button class="ai-menu__model' + (isActive ? ' ai-menu__model--active' : '') + '" data-model="' + m.id + '" data-scale="' + m.scale + '">';
+                    modelsHtml += '<span class="ai-menu__model-name">' + m.name + '</span>';
+                    if (m.badge) {
+                        modelsHtml += '<span class="ai-menu__badge">' + m.badge + '</span>';
+                    }
+                    modelsHtml += '<span class="ai-menu__model-scale">' + m.scale + 'x</span>';
+                    if (isActive) {
+                        modelsHtml += '<span class="ai-menu__check">&#10003;</span>';
+                    }
+                    modelsHtml += '</button>';
+                }
+                modelsHtml += '</div>';
+            }
+
+            // Scale buttons
+            var scales = [2, 3, 4];
+            var scaleHtml = '';
+            for (var si = 0; si < scales.length; si++) {
+                var s = scales[si];
+                var sActive = s === currentScale;
+                scaleHtml += '<button class="ai-menu__scale' + (sActive ? ' ai-menu__scale--active' : '') + '" data-scale-val="' + s + '">' + s + 'x</button>';
+            }
+
+            menu.innerHTML =
+                '<div class="ai-menu__header">' +
+                    '<div class="ai-menu__header-left">' +
+                        '<span class="material-icons ai-menu__logo">auto_awesome</span>' +
+                        '<div>' +
+                            '<div class="ai-menu__title">AI Upscaler</div>' +
+                            '<div class="ai-menu__version">v' + PLUGIN_VERSION + '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="ai-menu__header-right">' +
+                        '<button class="ai-menu__toggle' + (isEnabled ? ' ai-menu__toggle--on' : '') + '" data-action="toggle">' +
+                            (isEnabled ? 'ON' : 'OFF') +
+                        '</button>' +
+                        '<button class="ai-menu__close" data-action="close">&times;</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="ai-menu__body">' +
+                    '<div class="ai-menu__section">' +
+                        '<div class="ai-menu__section-title">Models</div>' +
+                        '<div class="ai-menu__models">' + modelsHtml + '</div>' +
+                    '</div>' +
+                    '<div class="ai-menu__section">' +
+                        '<div class="ai-menu__section-title">Scale Factor</div>' +
+                        '<div class="ai-menu__scales">' + scaleHtml + '</div>' +
+                    '</div>' +
+                    '<div class="ai-menu__section">' +
+                        '<button class="ai-menu__action" data-action="config">' +
+                            '<span class="material-icons" style="font-size:16px;margin-right:8px">settings</span>' +
+                            'Full Configuration' +
+                        '</button>' +
+                    '</div>' +
+                '</div>';
 
             document.body.appendChild(menu);
 
-            // Close menu on outside click
+            // Event delegation
+            menu.addEventListener('click', function(e) {
+                var target = e.target.closest('[data-model]');
+                if (target) {
+                    PlayerIntegration.quickSetModel(target.getAttribute('data-model'));
+                    return;
+                }
+                target = e.target.closest('[data-scale-val]');
+                if (target) {
+                    PlayerIntegration.setScale(parseInt(target.getAttribute('data-scale-val'), 10));
+                    return;
+                }
+                target = e.target.closest('[data-action]');
+                if (target) {
+                    var action = target.getAttribute('data-action');
+                    if (action === 'close') {
+                        menu.remove();
+                        PlayerIntegration._cleanupMenu();
+                    } else if (action === 'toggle') {
+                        PlayerIntegration.toggleUpscaling();
+                    } else if (action === 'config') {
+                        PlayerIntegration.openFullConfig();
+                    }
+                }
+            });
+
+            // Close on outside click
             this._cleanupMenu();
-            this._menuCloseHandler = (e) => {
+            this._menuCloseHandler = function(e) {
                 if (!menu.contains(e.target) && e.target.id !== 'aiUpscalerButton') {
                     menu.remove();
-                    this._cleanupMenu();
+                    PlayerIntegration._cleanupMenu();
                 }
             };
-            setTimeout(() => document.addEventListener('click', this._menuCloseHandler), 100);
+            setTimeout(function() { document.addEventListener('click', PlayerIntegration._menuCloseHandler); }, 100);
 
-            // Auto-close after 15 seconds
-            this._menuAutoCloseTimer = setTimeout(() => {
-                if (menu.parentElement) {
-                    menu.remove();
-                }
-                this._cleanupMenu();
-            }, 15000);
+            // Auto-close after 20s
+            this._menuAutoCloseTimer = setTimeout(function() {
+                if (menu.parentElement) menu.remove();
+                PlayerIntegration._cleanupMenu();
+            }, 20000);
         },
 
-        // Quick model selection
         quickSetModel: function(model) {
             this.updatePluginConfig({ Model: model });
             this.showPlayerNotification('Model: ' + model, 'success');
-            const menu = document.querySelector('#aiUpscalerQuickMenu');
+            var menu = document.querySelector('#aiUpscalerQuickMenu');
             if (menu) menu.remove();
+            this._cleanupMenu();
         },
 
-        // Set scale factor
         setScale: function(scale) {
             this.updatePluginConfig({ ScaleFactor: scale });
             this.showPlayerNotification('Scale: ' + scale + 'x', 'success');
-            const menu = document.querySelector('#aiUpscalerQuickMenu');
+            var menu = document.querySelector('#aiUpscalerQuickMenu');
             if (menu) menu.remove();
+            this._cleanupMenu();
         },
 
-        // Toggle upscaling on/off
         toggleUpscaling: function() {
-            this.getPluginConfig().then(config => {
-                const newState = !config.EnablePlugin;
-                this.updatePluginConfig({ EnablePlugin: newState });
-                this.showPlayerNotification(
+            this.getPluginConfig().then(function(config) {
+                var newState = !config.EnablePlugin;
+                PlayerIntegration.updatePluginConfig({ EnablePlugin: newState });
+                PlayerIntegration.showPlayerNotification(
                     'Upscaling ' + (newState ? 'enabled' : 'disabled'),
                     newState ? 'success' : 'warning'
                 );
             });
-            const menu = document.querySelector('#aiUpscalerQuickMenu');
+            var menu = document.querySelector('#aiUpscalerQuickMenu');
             if (menu) menu.remove();
+            this._cleanupMenu();
         },
 
-        // Open full configuration
         openFullConfig: function() {
-            // Navigate within Jellyfin SPA
             window.location.hash = '/configurationpage?name=' + encodeURIComponent('AI Upscaler Plugin');
-            const menu = document.querySelector('#aiUpscalerQuickMenu');
+            var menu = document.querySelector('#aiUpscalerQuickMenu');
             if (menu) menu.remove();
+            this._cleanupMenu();
         },
 
-        // Configuration management
-        getPluginConfig: function() {
-            if (window.ApiClient) {
-                return window.ApiClient.getPluginConfiguration(PLUGIN_ID);
-            }
-            return Promise.resolve({});
-        },
-
-        updatePluginConfig: function(updates) {
-            if (window.ApiClient) {
-                this.getPluginConfig().then(config => {
-                    const newConfig = Object.assign({}, config, updates);
-                    window.ApiClient.updatePluginConfiguration(PLUGIN_ID, newConfig).then(() => {
-                        console.log('AI Upscaler: Configuration updated');
-                    });
-                });
-            }
-        },
-
-        // Show player notification
         showPlayerNotification: function(message, type) {
             type = type || 'info';
-            const notification = document.createElement('div');
-            notification.className = 'ai-upscaler-notification notification-' + type;
+            var notification = document.createElement('div');
+            notification.className = 'ai-notif ai-notif--' + type;
             notification.textContent = message;
-
-            const videoContainer = document.querySelector('#videoOsdPage, .videoContainer, .playerContainer');
-            if (videoContainer) {
-                videoContainer.appendChild(notification);
-            } else {
-                document.body.appendChild(notification);
-            }
-
-            setTimeout(() => {
-                if (notification.parentElement) {
-                    notification.remove();
-                }
+            document.body.appendChild(notification);
+            setTimeout(function() {
+                if (notification.parentElement) notification.remove();
             }, 3000);
         },
 
-        // Keyboard shortcuts
         addKeyboardShortcuts: function() {
-            document.addEventListener('keydown', (e) => {
-                // Skip shortcuts when typing in form inputs
+            document.addEventListener('keydown', function(e) {
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
                 if (e.altKey && e.key === 'u') {
                     e.preventDefault();
-                    this.toggleUpscaling();
+                    PlayerIntegration.toggleUpscaling();
                 }
                 if (e.altKey && e.key === 'm') {
                     e.preventDefault();
-                    this.toggleUpscalerMenu();
+                    PlayerIntegration.toggleUpscalerMenu();
                 }
             });
         },
 
-        // MutationObserver fallback: watch for video OSD DOM appearing
         _startMutationObserver: function() {
             if (this._mutationObserver) return;
-
-            this._mutationObserver = new MutationObserver((mutations) => {
-                if (this._buttonInjected) {
-                    this._stopMutationObserver();
+            this._mutationObserver = new MutationObserver(function(mutations) {
+                if (PlayerIntegration._buttonInjected) {
+                    PlayerIntegration._stopMutationObserver();
                     return;
                 }
-                // Check if any OSD-related elements appeared
-                for (const mutation of mutations) {
-                    for (const node of mutation.addedNodes) {
+                for (var i = 0; i < mutations.length; i++) {
+                    var addedNodes = mutations[i].addedNodes;
+                    for (var j = 0; j < addedNodes.length; j++) {
+                        var node = addedNodes[j];
                         if (node.nodeType !== 1) continue;
                         if (node.classList && (
                             node.classList.contains('videoOsdBottom') ||
                             node.classList.contains('osdControls') ||
                             node.id === 'videoOsdPage'
                         )) {
-                            console.log('AI Upscaler: MutationObserver detected OSD element');
-                            this._injectRetryCount = 0;
-                            this.injectPlayerButton();
+                            PlayerIntegration._injectRetryCount = 0;
+                            PlayerIntegration.injectPlayerButton();
                             return;
                         }
-                        // Also check children
                         if (node.querySelector && node.querySelector('.videoOsdBottom, .osdControls, #videoOsdPage')) {
-                            console.log('AI Upscaler: MutationObserver detected OSD in subtree');
-                            this._injectRetryCount = 0;
-                            this.injectPlayerButton();
+                            PlayerIntegration._injectRetryCount = 0;
+                            PlayerIntegration.injectPlayerButton();
                             return;
                         }
                     }
                 }
             });
-
             this._mutationObserver.observe(document.body, { childList: true, subtree: true });
-            console.log('AI Upscaler: MutationObserver started');
         },
 
         _stopMutationObserver: function() {
@@ -415,102 +481,299 @@
             }
         },
 
-        // Add styles (once)
         addStyles: function() {
             if (this._stylesInjected) return;
             if (document.getElementById('aiUpscalerPlayerStyles')) { this._stylesInjected = true; return; }
 
-            const styles = document.createElement('style');
+            var styles = document.createElement('style');
             styles.id = 'aiUpscalerPlayerStyles';
-            styles.textContent = `
-                #aiUpscalerButton {
-                    display: inline-flex !important;
-                    align-items: center;
-                    justify-content: center;
-                    color: #fff;
-                    cursor: pointer;
-                }
-                #aiUpscalerButton:hover {
-                    color: #00d4ff;
-                }
-                #aiUpscalerButton .material-icons {
-                    font-size: 24px;
-                }
+            styles.textContent =
+                /* Button */
+                '#aiUpscalerButton {' +
+                    'display: inline-flex !important;' +
+                    'align-items: center;' +
+                    'justify-content: center;' +
+                    'color: #fff;' +
+                    'cursor: pointer;' +
+                    'transition: color 0.2s;' +
+                '}' +
+                '#aiUpscalerButton:hover {' +
+                    'color: #a78bfa;' +
+                '}' +
+                '#aiUpscalerButton .material-icons {' +
+                    'font-size: 24px;' +
+                '}' +
 
-                .aiUpscalerQuickMenu {
-                    position: fixed;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    background: rgba(0, 0, 0, 0.95);
-                    border: 2px solid #00d4ff;
-                    border-radius: 12px;
-                    z-index: 100000;
-                    min-width: 300px;
-                    max-width: 400px;
-                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
-                    animation: aiMenuSlideIn 0.3s ease-out;
-                }
-                @keyframes aiMenuSlideIn {
-                    from { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
-                    to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-                }
-                .quick-menu-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 15px 20px;
-                    background: linear-gradient(135deg, #00d4ff, #0099cc);
-                    color: #000;
-                    border-radius: 10px 10px 0 0;
-                }
-                .menu-title { font-weight: bold; font-size: 16px; }
-                .menu-close {
-                    background: none; border: none; color: #000;
-                    font-size: 20px; cursor: pointer; padding: 0;
-                    width: 24px; height: 24px; border-radius: 50%;
-                    display: flex; align-items: center; justify-content: center;
-                }
-                .menu-close:hover { background: rgba(0,0,0,0.2); }
-                .quick-menu-content { padding: 20px; }
-                .menu-section { margin-bottom: 20px; }
-                .menu-section:last-child { margin-bottom: 0; }
-                .menu-section h4 { color: #00d4ff; margin: 0 0 10px 0; font-size: 14px; }
-                .menu-item {
-                    display: flex; align-items: center;
-                    padding: 10px 15px; background: rgba(255,255,255,0.1);
-                    border-radius: 6px; margin: 5px 0;
-                    cursor: pointer; color: #fff; transition: all 0.2s ease;
-                }
-                .menu-item:hover {
-                    background: rgba(0,212,255,0.3);
-                    transform: translateX(5px);
-                }
-                .menu-icon { margin-right: 10px; font-size: 16px; }
-                .scale-buttons { display: flex; gap: 10px; }
-                .scale-btn {
-                    flex: 1; padding: 8px 12px;
-                    background: rgba(255,255,255,0.1);
-                    border: 1px solid rgba(255,255,255,0.3);
-                    border-radius: 4px; color: #fff; cursor: pointer;
-                    transition: all 0.2s ease;
-                }
-                .scale-btn:hover { background: rgba(0,212,255,0.5); border-color: #00d4ff; }
-                .ai-upscaler-notification {
-                    position: fixed; top: 20px; right: 20px;
-                    padding: 12px 18px; border-radius: 8px;
-                    color: white; font-weight: 500; z-index: 100001;
-                    animation: aiNotifSlideIn 0.3s ease-out; pointer-events: none;
-                }
-                .notification-info { background: rgba(37,99,235,0.9); }
-                .notification-success { background: rgba(5,150,105,0.9); }
-                .notification-warning { background: rgba(217,119,6,0.9); }
-                .notification-error { background: rgba(220,38,38,0.9); }
-                @keyframes aiNotifSlideIn {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-            `;
+                /* Menu base */
+                '.ai-menu {' +
+                    'position: fixed;' +
+                    'bottom: 90px;' +
+                    'z-index: 100000;' +
+                    'width: 320px;' +
+                    'max-height: calc(100vh - 140px);' +
+                    'background: rgba(15, 10, 30, 0.96);' +
+                    'border: 1px solid rgba(139, 92, 246, 0.3);' +
+                    'border-radius: 16px;' +
+                    'box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7), 0 0 60px rgba(139, 92, 246, 0.08);' +
+                    'backdrop-filter: blur(20px);' +
+                    '-webkit-backdrop-filter: blur(20px);' +
+                    'overflow: hidden;' +
+                    'animation: aiMenuIn 0.25s ease-out;' +
+                    'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;' +
+                '}' +
+
+                /* Position variants */
+                '.ai-menu--right { right: 20px; }' +
+                '.ai-menu--left { left: 20px; }' +
+                '.ai-menu--center { left: 50%; transform: translateX(-50%); }' +
+
+                '@keyframes aiMenuIn {' +
+                    'from { opacity: 0; transform: translateY(20px); }' +
+                    'to { opacity: 1; transform: translateY(0); }' +
+                '}' +
+                '.ai-menu--center { animation: aiMenuInCenter 0.25s ease-out; }' +
+                '@keyframes aiMenuInCenter {' +
+                    'from { opacity: 0; transform: translateX(-50%) translateY(20px); }' +
+                    'to { opacity: 1; transform: translateX(-50%) translateY(0); }' +
+                '}' +
+
+                /* Header */
+                '.ai-menu__header {' +
+                    'display: flex;' +
+                    'align-items: center;' +
+                    'justify-content: space-between;' +
+                    'padding: 14px 16px;' +
+                    'background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.1));' +
+                    'border-bottom: 1px solid rgba(139, 92, 246, 0.15);' +
+                '}' +
+                '.ai-menu__header-left {' +
+                    'display: flex;' +
+                    'align-items: center;' +
+                    'gap: 10px;' +
+                '}' +
+                '.ai-menu__logo {' +
+                    'font-size: 22px;' +
+                    'color: #a78bfa;' +
+                '}' +
+                '.ai-menu__title {' +
+                    'font-size: 14px;' +
+                    'font-weight: 600;' +
+                    'color: #e2e0ff;' +
+                    'letter-spacing: 0.3px;' +
+                '}' +
+                '.ai-menu__version {' +
+                    'font-size: 10px;' +
+                    'color: rgba(167, 139, 250, 0.6);' +
+                '}' +
+                '.ai-menu__header-right {' +
+                    'display: flex;' +
+                    'align-items: center;' +
+                    'gap: 8px;' +
+                '}' +
+                '.ai-menu__toggle {' +
+                    'padding: 4px 12px;' +
+                    'border-radius: 12px;' +
+                    'border: 1px solid rgba(255,255,255,0.15);' +
+                    'background: rgba(255, 60, 60, 0.2);' +
+                    'color: #ff6b6b;' +
+                    'font-size: 11px;' +
+                    'font-weight: 700;' +
+                    'cursor: pointer;' +
+                    'transition: all 0.2s;' +
+                '}' +
+                '.ai-menu__toggle--on {' +
+                    'background: rgba(52, 211, 153, 0.2);' +
+                    'color: #34d399;' +
+                    'border-color: rgba(52, 211, 153, 0.3);' +
+                '}' +
+                '.ai-menu__toggle:hover { opacity: 0.8; }' +
+                '.ai-menu__close {' +
+                    'background: none;' +
+                    'border: none;' +
+                    'color: rgba(255,255,255,0.4);' +
+                    'font-size: 20px;' +
+                    'cursor: pointer;' +
+                    'padding: 0;' +
+                    'width: 24px;' +
+                    'height: 24px;' +
+                    'display: flex;' +
+                    'align-items: center;' +
+                    'justify-content: center;' +
+                    'border-radius: 6px;' +
+                    'transition: all 0.15s;' +
+                '}' +
+                '.ai-menu__close:hover {' +
+                    'background: rgba(255,255,255,0.1);' +
+                    'color: #fff;' +
+                '}' +
+
+                /* Body */
+                '.ai-menu__body {' +
+                    'padding: 12px;' +
+                    'overflow-y: auto;' +
+                    'max-height: calc(100vh - 240px);' +
+                '}' +
+                '.ai-menu__body::-webkit-scrollbar { width: 4px; }' +
+                '.ai-menu__body::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.3); border-radius: 2px; }' +
+                '.ai-menu__body::-webkit-scrollbar-track { background: transparent; }' +
+
+                /* Section */
+                '.ai-menu__section {' +
+                    'margin-bottom: 12px;' +
+                '}' +
+                '.ai-menu__section:last-child { margin-bottom: 0; }' +
+                '.ai-menu__section-title {' +
+                    'font-size: 10px;' +
+                    'font-weight: 600;' +
+                    'text-transform: uppercase;' +
+                    'letter-spacing: 1.2px;' +
+                    'color: rgba(167, 139, 250, 0.5);' +
+                    'padding: 0 4px 6px;' +
+                '}' +
+
+                /* Model categories */
+                '.ai-menu__cat {' +
+                    'margin-bottom: 8px;' +
+                '}' +
+                '.ai-menu__cat:last-child { margin-bottom: 0; }' +
+                '.ai-menu__cat-head {' +
+                    'display: flex;' +
+                    'align-items: baseline;' +
+                    'gap: 6px;' +
+                    'padding: 4px;' +
+                '}' +
+                '.ai-menu__cat-name {' +
+                    'font-size: 11px;' +
+                    'font-weight: 600;' +
+                    'color: rgba(255,255,255,0.7);' +
+                '}' +
+                '.ai-menu__cat-desc {' +
+                    'font-size: 10px;' +
+                    'color: rgba(255,255,255,0.3);' +
+                '}' +
+
+                /* Model button */
+                '.ai-menu__model {' +
+                    'display: flex;' +
+                    'align-items: center;' +
+                    'width: 100%;' +
+                    'padding: 7px 10px;' +
+                    'background: rgba(255,255,255,0.03);' +
+                    'border: 1px solid transparent;' +
+                    'border-radius: 8px;' +
+                    'color: rgba(255,255,255,0.75);' +
+                    'font-size: 12px;' +
+                    'cursor: pointer;' +
+                    'transition: all 0.15s;' +
+                    'margin: 2px 0;' +
+                    'text-align: left;' +
+                '}' +
+                '.ai-menu__model:hover {' +
+                    'background: rgba(139, 92, 246, 0.1);' +
+                    'border-color: rgba(139, 92, 246, 0.2);' +
+                    'color: #fff;' +
+                '}' +
+                '.ai-menu__model--active {' +
+                    'background: rgba(139, 92, 246, 0.15) !important;' +
+                    'border-color: rgba(139, 92, 246, 0.4) !important;' +
+                    'color: #a78bfa !important;' +
+                '}' +
+                '.ai-menu__model-name {' +
+                    'flex: 1;' +
+                '}' +
+                '.ai-menu__model-scale {' +
+                    'font-size: 10px;' +
+                    'color: rgba(255,255,255,0.35);' +
+                    'margin-left: 8px;' +
+                '}' +
+                '.ai-menu__badge {' +
+                    'font-size: 9px;' +
+                    'padding: 1px 6px;' +
+                    'border-radius: 4px;' +
+                    'background: rgba(139, 92, 246, 0.2);' +
+                    'color: #a78bfa;' +
+                    'margin-left: 6px;' +
+                    'font-weight: 600;' +
+                '}' +
+                '.ai-menu__check {' +
+                    'color: #34d399;' +
+                    'font-size: 13px;' +
+                    'margin-left: 6px;' +
+                '}' +
+
+                /* Scale buttons */
+                '.ai-menu__scales {' +
+                    'display: flex;' +
+                    'gap: 6px;' +
+                '}' +
+                '.ai-menu__scale {' +
+                    'flex: 1;' +
+                    'padding: 8px;' +
+                    'background: rgba(255,255,255,0.04);' +
+                    'border: 1px solid rgba(255,255,255,0.1);' +
+                    'border-radius: 8px;' +
+                    'color: rgba(255,255,255,0.7);' +
+                    'font-size: 13px;' +
+                    'font-weight: 600;' +
+                    'cursor: pointer;' +
+                    'transition: all 0.15s;' +
+                '}' +
+                '.ai-menu__scale:hover {' +
+                    'background: rgba(139, 92, 246, 0.15);' +
+                    'border-color: rgba(139, 92, 246, 0.3);' +
+                    'color: #fff;' +
+                '}' +
+                '.ai-menu__scale--active {' +
+                    'background: rgba(139, 92, 246, 0.2) !important;' +
+                    'border-color: rgba(139, 92, 246, 0.5) !important;' +
+                    'color: #a78bfa !important;' +
+                '}' +
+
+                /* Action button */
+                '.ai-menu__action {' +
+                    'display: flex;' +
+                    'align-items: center;' +
+                    'justify-content: center;' +
+                    'width: 100%;' +
+                    'padding: 10px;' +
+                    'background: rgba(255,255,255,0.04);' +
+                    'border: 1px solid rgba(255,255,255,0.08);' +
+                    'border-radius: 8px;' +
+                    'color: rgba(255,255,255,0.6);' +
+                    'font-size: 12px;' +
+                    'cursor: pointer;' +
+                    'transition: all 0.15s;' +
+                '}' +
+                '.ai-menu__action:hover {' +
+                    'background: rgba(255,255,255,0.08);' +
+                    'color: #fff;' +
+                '}' +
+
+                /* Notification */
+                '.ai-notif {' +
+                    'position: fixed;' +
+                    'top: 20px;' +
+                    'right: 20px;' +
+                    'padding: 10px 16px;' +
+                    'border-radius: 10px;' +
+                    'color: #fff;' +
+                    'font-size: 13px;' +
+                    'font-weight: 500;' +
+                    'z-index: 100001;' +
+                    'animation: aiNotifIn 0.3s ease-out;' +
+                    'pointer-events: none;' +
+                    'backdrop-filter: blur(12px);' +
+                    '-webkit-backdrop-filter: blur(12px);' +
+                '}' +
+                '.ai-notif--info { background: rgba(59, 130, 246, 0.85); }' +
+                '.ai-notif--success { background: rgba(16, 185, 129, 0.85); }' +
+                '.ai-notif--warning { background: rgba(245, 158, 11, 0.85); }' +
+                '.ai-notif--error { background: rgba(239, 68, 68, 0.85); }' +
+                '@keyframes aiNotifIn {' +
+                    'from { transform: translateY(-10px); opacity: 0; }' +
+                    'to { transform: translateY(0); opacity: 1; }' +
+                '}';
+
             document.head.appendChild(styles);
             this._stylesInjected = true;
         }
@@ -521,7 +784,7 @@
 
     // Initialize
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => PlayerIntegration.init());
+        document.addEventListener('DOMContentLoaded', function() { PlayerIntegration.init(); });
     } else {
         PlayerIntegration.init();
     }
