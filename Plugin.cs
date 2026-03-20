@@ -11,8 +11,8 @@ using Microsoft.Extensions.Logging;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// AI Upscaler Plugin for Jellyfin v1.5.3.1
-    /// v1.5.3.1 - Scheduled task now processes videos, GPU fallback fixes, diagnostics
+    /// AI Upscaler Plugin for Jellyfin v1.5.3.2
+    /// v1.5.3.2 - Fix: model selection now works end-to-end (download + load + upscale)
     /// </summary>
     public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     {

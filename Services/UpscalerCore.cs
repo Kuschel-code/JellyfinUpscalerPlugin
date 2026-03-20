@@ -70,11 +70,21 @@ namespace JellyfinUpscalerPlugin.Services
         public async Task<byte[]> UpscaleImageAsync(byte[] imageData, string model = "auto", int scale = 2, CancellationToken cancellationToken = default)
         {
             var stopwatch = Stopwatch.StartNew();
-            
+
             try
             {
-                _logger.LogDebug("Starting image upscale: {Size} bytes, scale={Scale}", imageData.Length, scale);
-                
+                // Resolve "auto" to the configured model
+                var effectiveModel = model == "auto" ? (Config.Model ?? "realesrgan-x4") : model;
+
+                _logger.LogDebug("Starting image upscale: {Size} bytes, model={Model}, scale={Scale}", imageData.Length, effectiveModel, scale);
+
+                // Ensure the correct model is loaded on the Docker AI service
+                var modelLoaded = await _httpUpscaler.EnsureModelLoadedAsync(effectiveModel, cancellationToken);
+                if (!modelLoaded)
+                {
+                    _logger.LogWarning("Could not load model {Model}, proceeding with whatever is loaded", effectiveModel);
+                }
+
                 var result = await _httpUpscaler.UpscaleImageAsync(imageData, scale, cancellationToken);
                 
                 if (result == null || result.Length == 0)

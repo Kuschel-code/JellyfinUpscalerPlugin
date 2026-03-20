@@ -141,6 +141,65 @@ namespace JellyfinUpscalerPlugin.Services
             return null;
         }
 
+        // Track which model is currently loaded on the AI service to avoid redundant load calls
+        private string? _currentlyLoadedModel;
+        private readonly object _modelLock = new();
+
+        /// <summary>
+        /// Ensure the specified model is downloaded and loaded on the AI service.
+        /// Skips if the model is already the active model.
+        /// </summary>
+        public async Task<bool> EnsureModelLoadedAsync(string modelName, CancellationToken cancellationToken = default)
+        {
+            // Quick check: is this model already loaded?
+            lock (_modelLock)
+            {
+                if (_currentlyLoadedModel == modelName)
+                {
+                    return true;
+                }
+            }
+
+            // Check service status to see what's actually loaded
+            try
+            {
+                var status = await GetServiceStatusAsync(cancellationToken);
+                if (status?.CurrentModel == modelName)
+                {
+                    lock (_modelLock) { _currentlyLoadedModel = modelName; }
+                    return true;
+                }
+            }
+            catch { /* proceed to load */ }
+
+            _logger.LogInformation("Switching AI model to: {Model}", modelName);
+
+            // Download model if needed (idempotent — skips if already downloaded)
+            var downloaded = await DownloadModelAsync(modelName, cancellationToken);
+            if (!downloaded)
+            {
+                _logger.LogWarning("Failed to download model {Model}, attempting load anyway", modelName);
+            }
+
+            // Load the model
+            var config = Plugin.Instance?.Configuration;
+            var useGpu = config?.HardwareAcceleration ?? true;
+            var gpuDeviceId = config?.GpuDeviceIndex ?? 0;
+
+            var loaded = await LoadModelAsync(modelName, useGpu, gpuDeviceId, cancellationToken);
+            if (loaded)
+            {
+                lock (_modelLock) { _currentlyLoadedModel = modelName; }
+                _logger.LogInformation("Model {Model} loaded successfully", modelName);
+            }
+            else
+            {
+                _logger.LogError("Failed to load model {Model}", modelName);
+            }
+
+            return loaded;
+        }
+
         /// <summary>
         /// Upscale an image using the AI service.
         /// </summary>
