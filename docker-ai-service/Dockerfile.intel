@@ -48,7 +48,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
        intel-level-zero-gpu \
        level-zero \
        intel-media-va-driver-non-free \
-    && rm -rf /var/lib/apt/lists/*
+       intel-compute-runtime \
+    && rm -rf /var/lib/apt/lists/* && \
+    echo "=== GPU Diagnostics ===" && \
+    clinfo --list 2>/dev/null || echo "clinfo: no platforms found (GPU may not be passed through)" && \
+    ls -la /dev/dri/ 2>/dev/null || echo "/dev/dri not available at build time (expected)"
 
 # Add root to render and video groups for GPU access inside container
 RUN usermod -aG render root 2>/dev/null || true && \

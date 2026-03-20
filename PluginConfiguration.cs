@@ -5,7 +5,7 @@ using MediaBrowser.Model.Plugins;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// Plugin Configuration - v1.5.2.9 (Docker-based AI Service)
+    /// Plugin Configuration - v1.5.3.1 (Docker-based AI Service)
     /// </summary>
     public class PluginConfiguration : BasePluginConfiguration
     {
@@ -57,7 +57,7 @@ namespace JellyfinUpscalerPlugin
         public int MinResolutionHeight { get; set; } = 1080;
 
         // Version tracking
-        public string PluginVersion { get; set; } = "1.5.3.0";
+        public string PluginVersion { get; set; } = "1.5.3.1";
 
         public PluginConfiguration()
         {

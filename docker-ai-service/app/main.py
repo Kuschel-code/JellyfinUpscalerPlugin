@@ -341,7 +341,38 @@ def detect_hardware():
             # Check if /dev/dri exists (Intel GPU render node)
             dri_path = Path("/dev/dri")
             render_nodes = list(dri_path.glob("renderD*")) if dri_path.exists() else []
-            
+
+            # Log /dev/dri status for diagnostics
+            if dri_path.exists():
+                try:
+                    dri_contents = list(dri_path.iterdir())
+                    logger.info(f"Intel GPU: /dev/dri contents: {[str(f) for f in dri_contents]}")
+                    # Check permissions
+                    for rn in render_nodes:
+                        import stat
+                        st = rn.stat()
+                        logger.info(f"Intel GPU: {rn} permissions: {oct(st.st_mode)}, gid: {st.st_gid}")
+                except Exception as perm_err:
+                    logger.warning(f"Intel GPU: Cannot read /dev/dri: {perm_err}")
+            else:
+                logger.info("Intel GPU: /dev/dri not found. Ensure Docker has --device=/dev/dri or privileged mode.")
+
+            # Check clinfo for OpenCL platform diagnostics
+            try:
+                clinfo_result = subprocess.run(
+                    ["clinfo", "--list"],
+                    capture_output=True, text=True, timeout=5
+                )
+                if clinfo_result.returncode == 0:
+                    logger.info(f"Intel GPU: clinfo platforms:\n{clinfo_result.stdout.strip()}")
+                else:
+                    logger.warning(f"Intel GPU: clinfo returned no platforms. "
+                                   f"Check that intel-compute-runtime is installed and /dev/dri is mapped.")
+            except FileNotFoundError:
+                logger.debug("Intel GPU: clinfo not installed")
+            except Exception as cl_err:
+                logger.debug(f"Intel GPU: clinfo check failed: {cl_err}")
+
             if render_nodes:
                 # Try lspci to get Intel GPU name
                 gpu_name = "Intel GPU"
@@ -352,15 +383,12 @@ def detect_hardware():
                     )
                     if result.returncode == 0:
                         for line in result.stdout.split("\n"):
-                            if "VGA" in line and "Intel" in line:
-                                gpu_name = line.split(":")[-1].strip()
-                                break
-                            elif "Display" in line and "Intel" in line:
+                            if ("VGA" in line or "Display" in line or "3D" in line) and "Intel" in line:
                                 gpu_name = line.split(":")[-1].strip()
                                 break
                 except:
                     pass
-                
+
                 # Also check via /sys for device info
                 if gpu_name == "Intel GPU":
                     try:
@@ -376,7 +404,7 @@ def detect_hardware():
                                     break
                     except:
                         pass
-                
+
                 state.gpu_name = gpu_name
                 state.gpu_memory = "Shared Memory"
                 # Enumerate Intel GPUs by render nodes
@@ -390,14 +418,20 @@ def detect_hardware():
                     })
                 gpu_detected = True
                 logger.info(f"Detected Intel GPU: {state.gpu_name} (render nodes: {[str(r) for r in render_nodes]})")
-            
+
             # If no render nodes but OpenVINO is available, still mark as detected
             elif ONNX_AVAILABLE and 'OpenVINOExecutionProvider' in ort.get_available_providers():
-                state.gpu_name = "Intel OpenVINO (CPU inference)"
+                state.gpu_name = "Intel OpenVINO (CPU inference only)"
                 state.gpu_memory = "Shared"
                 gpu_detected = True
-                logger.info(f"Intel OpenVINO available (no /dev/dri, using CPU backend)")
-                
+                logger.warning(
+                    "Intel OpenVINO available but no /dev/dri render nodes found. "
+                    "Models will run on CPU. To enable GPU acceleration:\n"
+                    "  1. Pass --device=/dev/dri to Docker\n"
+                    "  2. Ensure intel-compute-runtime is installed in the container\n"
+                    "  3. Add user to 'render' and 'video' groups"
+                )
+
         except Exception as e:
             logger.debug(f"Intel GPU not detected: {e}")
     
@@ -1096,6 +1130,20 @@ async def gpu_verify():
     except Exception as e:
         diagnostics["nvidia_smi"] = f"not available: {e}"
 
+    # /dev/dri status (Intel GPU passthrough check)
+    dri_path = Path("/dev/dri")
+    if dri_path.exists():
+        try:
+            dri_contents = [str(f.name) for f in dri_path.iterdir()]
+            diagnostics["dev_dri"] = {"exists": True, "contents": dri_contents}
+        except Exception as e:
+            diagnostics["dev_dri"] = {"exists": True, "error": str(e)}
+    else:
+        diagnostics["dev_dri"] = {"exists": False, "hint": "Pass --device=/dev/dri to Docker for Intel GPU access"}
+
+    # SKIP_TENSORRT setting
+    diagnostics["skip_tensorrt"] = os.getenv("SKIP_TENSORRT", "false").lower() == "true"
+
     # ONNX inference test
     if ONNX_AVAILABLE and state.onnx_session is not None:
         try:
@@ -1109,6 +1157,18 @@ async def gpu_verify():
             diagnostics["inference_test"] = {"status": "failed", "error": str(e)}
     else:
         diagnostics["inference_test"] = {"status": "no_model_loaded"}
+
+    # Troubleshooting tips based on detected issues
+    tips = []
+    if not state.use_gpu:
+        tips.append("GPU disabled. Set USE_GPU=true environment variable to enable.")
+    if diagnostics.get("clinfo", "").startswith("error") or "not available" in diagnostics.get("clinfo", ""):
+        tips.append("OpenCL not working. For Intel GPUs: ensure intel-compute-runtime is installed and /dev/dri is mapped.")
+    if "nvidia_smi" in diagnostics and "not available" in diagnostics["nvidia_smi"]:
+        tips.append("NVIDIA GPU not detected. Ensure Docker has --gpus all or --runtime=nvidia.")
+    if diagnostics.get("skip_tensorrt"):
+        tips.append("TensorRT is skipped (SKIP_TENSORRT=true). Set to false if your GPU supports TensorRT.")
+    diagnostics["troubleshooting_tips"] = tips
 
     return diagnostics
 

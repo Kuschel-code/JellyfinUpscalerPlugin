@@ -11,8 +11,8 @@ using Microsoft.Extensions.Logging;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// AI Upscaler Plugin for Jellyfin v1.5.3.0
-    /// v1.5.3.0 - Fixed player button injection, scheduled tasks, issue cleanup
+    /// AI Upscaler Plugin for Jellyfin v1.5.3.1
+    /// v1.5.3.1 - Scheduled task now processes videos, GPU fallback fixes, diagnostics
     /// </summary>
     public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     {

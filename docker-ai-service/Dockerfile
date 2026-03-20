@@ -10,6 +10,9 @@ ENV PYTHONUNBUFFERED=1
 ENV DEBIAN_FRONTEND=noninteractive
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+# Skip TensorRT by default — CUDA alone is more reliable across GPU types
+# Set SKIP_TENSORRT=false to re-enable TensorRT if your GPU supports it
+ENV SKIP_TENSORRT=true
 
 WORKDIR /app
 
