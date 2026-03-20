@@ -20,7 +20,7 @@ from contextlib import asynccontextmanager
 import numpy as np
 import cv2
 import httpx
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, BackgroundTasks
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, BackgroundTasks, Request
 from fastapi.responses import Response, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -494,6 +494,10 @@ async def lifespan(app: FastAPI):
     state.use_gpu = os.getenv("USE_GPU", "true").lower() == "true"
     state.max_concurrent = int(os.getenv("MAX_CONCURRENT_REQUESTS", "4"))
     state.gpu_device_id = int(os.getenv("GPU_DEVICE_ID", "0"))
+
+    # Re-create semaphore with actual env var value
+    global _upscale_semaphore
+    _upscale_semaphore = _asyncio.Semaphore(state.max_concurrent)
     
     logger.info(f"GPU Enabled: {state.use_gpu}")
     logger.info(f"ONNX Runtime Available: {ONNX_AVAILABLE}")
@@ -916,8 +920,21 @@ def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
     
     # Convert RGB back to BGR for OpenCV encoding
     result = cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
-    
+
     return result
+
+
+def upscale_image_array(img: np.ndarray) -> np.ndarray:
+    """Upscale a numpy image array using the loaded model. Avoids double encode/decode for frame pipeline."""
+    if state.current_model is None:
+        raise ValueError("No model loaded")
+
+    if state.current_model_type == "opencv" and state.cv_model is not None:
+        return state.cv_model.upsample(img)
+    elif state.current_model_type == "onnx" and state.onnx_session is not None:
+        return upscale_with_onnx(img)
+    else:
+        raise ValueError("No model loaded")
 
 
 def run_benchmark(test_size: int = 256) -> dict:
@@ -1332,6 +1349,107 @@ async def benchmark_endpoint():
     
     loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(None, run_benchmark, 256)
+    return result
+
+
+@app.post("/upscale-frame")
+async def upscale_frame_endpoint(request: Request):
+    """Fast frame upscaling for real-time playback. Raw JPEG in, JPEG out. Returns 503 when busy."""
+    if state.cv_model is None and state.onnx_session is None:
+        raise HTTPException(status_code=400, detail="No model loaded")
+
+    # Return 503 immediately if busy — client skips this frame
+    if _upscale_semaphore.locked():
+        raise HTTPException(status_code=503, detail="Busy")
+
+    async with _upscale_semaphore:
+        state.processing_count += 1
+        try:
+            body = await request.body()
+            if not body:
+                raise HTTPException(status_code=400, detail="Empty body")
+
+            # Decode JPEG to numpy array
+            nparr = np.frombuffer(body, np.uint8)
+            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            if img is None:
+                raise HTTPException(status_code=400, detail="Failed to decode image")
+
+            # Upscale using array helper (no double encode/decode)
+            loop = asyncio.get_running_loop()
+            result = await loop.run_in_executor(None, upscale_image_array, img)
+
+            # Encode as JPEG quality 85 (much faster than PNG)
+            _, buffer = cv2.imencode('.jpg', result, [cv2.IMWRITE_JPEG_QUALITY, 85])
+
+            return Response(content=buffer.tobytes(), media_type="image/jpeg")
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Frame upscale failed: {e}")
+            raise HTTPException(status_code=500, detail="Frame upscaling failed")
+        finally:
+            state.processing_count -= 1
+
+
+def _run_frame_benchmark(width: int, height: int) -> dict:
+    """Benchmark at actual capture resolution with JPEG encode/decode."""
+    if state.current_model is None:
+        return {"error": "No model loaded"}
+
+    # Create test image at specified capture resolution
+    test_img = np.random.randint(0, 255, (height, width, 3), dtype=np.uint8)
+
+    # Warm up
+    try:
+        upscale_image_array(test_img)
+    except Exception as e:
+        return {"error": f"Warmup failed: {str(e)}"}
+
+    # Benchmark 5 iterations (JPEG decode → upscale → JPEG encode)
+    times = []
+    iterations = 5
+    for _ in range(iterations):
+        # Simulate full pipeline: JPEG encode → decode → upscale → JPEG encode
+        _, jpeg_buf = cv2.imencode('.jpg', test_img, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        jpeg_bytes = jpeg_buf.tobytes()
+
+        start = time.perf_counter()
+        nparr = np.frombuffer(jpeg_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        result = upscale_image_array(img)
+        cv2.imencode('.jpg', result, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        elapsed = time.perf_counter() - start
+        times.append(elapsed)
+
+    avg_time = sum(times) / len(times)
+    fps = 1.0 / avg_time if avg_time > 0 else 0
+
+    return {
+        "fps": round(fps, 1),
+        "avg_time_ms": round(avg_time * 1000, 1),
+        "model": state.current_model,
+        "using_gpu": state.use_gpu,
+        "capture_width": width,
+        "capture_height": height,
+        "output_width": width * (state.onnx_model_scale if state.current_model_type == "onnx" else state.cv_model_scale),
+        "output_height": height * (state.onnx_model_scale if state.current_model_type == "onnx" else state.cv_model_scale)
+    }
+
+
+@app.get("/benchmark-frame")
+async def benchmark_frame_endpoint(width: int = 480, height: int = 270):
+    """Benchmark at actual capture resolution for real-time upscaling feasibility."""
+    if state.cv_model is None and state.onnx_session is None:
+        raise HTTPException(status_code=400, detail="No model loaded")
+
+    # Clamp dimensions to reasonable range
+    width = max(64, min(width, 1920))
+    height = max(64, min(height, 1080))
+
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(None, _run_frame_benchmark, width, height)
     return result
 
 

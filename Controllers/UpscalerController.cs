@@ -859,6 +859,81 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
+        /// Proxy: Real-time frame upscaling. Raw JPEG body in, JPEG out. Returns 503 when AI service is busy.
+        /// </summary>
+        [HttpPost("upscale-frame")]
+        public async Task<ActionResult> UpscaleFrame()
+        {
+            try
+            {
+                var config = Plugin.Instance?.Configuration;
+                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+
+                // Read raw body
+                using var ms = new MemoryStream();
+                await Request.Body.CopyToAsync(ms);
+                var body = ms.ToArray();
+
+                if (body.Length == 0)
+                    return BadRequest("Empty body");
+
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+                using var content = new ByteArrayContent(body);
+                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+
+                var response = await client.PostAsync($"{serviceUrl}/upscale-frame", content);
+
+                if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
+                    return StatusCode(503, "AI service busy");
+
+                if (!response.IsSuccessStatusCode)
+                    return StatusCode((int)response.StatusCode, "Frame upscaling failed");
+
+                var result = await response.Content.ReadAsByteArrayAsync();
+                return File(result, "image/jpeg");
+            }
+            catch (TaskCanceledException)
+            {
+                return StatusCode(504, "AI service timeout");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Frame upscale proxy failed");
+                return StatusCode(500, "Frame upscale proxy error");
+            }
+        }
+
+        /// <summary>
+        /// Proxy: Benchmark frame upscaling at a specific capture resolution.
+        /// </summary>
+        [HttpGet("benchmark-frame")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult<object>> BenchmarkFrame([FromQuery] int width = 480, [FromQuery] int height = 270)
+        {
+            try
+            {
+                var config = Plugin.Instance?.Configuration;
+                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
+                var response = await client.GetAsync($"{serviceUrl}/benchmark-frame?width={width}&height={height}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    return Content(json, "application/json");
+                }
+
+                return StatusCode((int)response.StatusCode, new { error = "Frame benchmark failed" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Frame benchmark proxy failed");
+                return Ok(new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Test SSH connection to remote transcoding host (admin only)
         /// </summary>
         [HttpPost("ssh/test")]

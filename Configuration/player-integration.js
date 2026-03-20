@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.5.3.2';
+    const PLUGIN_VERSION = '1.5.3.3';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -60,6 +60,345 @@
             ]
         }
     };
+
+    // Real-Time Upscaler Engine
+    const RealtimeUpscaler = {
+        _mode: null,       // 'webgl' | 'server' | null
+        _active: false,
+        _videoElement: null,
+        _captureCanvas: null,
+        _captureCtx: null,
+        _overlayCanvas: null,
+        _overlayCtx: null,
+        _pendingFrame: false,
+        _fpsFrameCount: 0,
+        _fpsLastTime: 0,
+        _currentFps: 0,
+        _lowFpsStart: 0,
+        _config: null,
+        _benchmarkResult: null,
+        _webglInstance: null,
+
+        start: function(video, config, benchmarkResult) {
+            this._videoElement = video;
+            this._config = config;
+            this._benchmarkResult = benchmarkResult;
+
+            var mode = (config.RealtimeMode || 'auto').toLowerCase();
+            if (mode === 'auto') {
+                mode = this._decideTier(benchmarkResult, video);
+            }
+
+            this._mode = mode;
+            this._active = true;
+            this._lowFpsStart = 0;
+            console.log('AI Upscaler RT: Starting in ' + mode + ' mode');
+
+            if (mode === 'server') {
+                this._startServer();
+            } else {
+                this._startWebGL();
+            }
+
+            this._createFpsOverlay();
+            this._updateButtonIndicator(mode);
+        },
+
+        stop: function() {
+            this._active = false;
+            this._mode = null;
+            this._stopServer();
+            this._stopWebGL();
+            this._removeFpsOverlay();
+            this._updateButtonIndicator(null);
+            console.log('AI Upscaler RT: Stopped');
+        },
+
+        _decideTier: function(benchmark, video) {
+            if (!benchmark || benchmark.error) return 'webgl';
+            var videoFps = 24; // reasonable default
+            try {
+                var rate = video.playbackRate || 1;
+                videoFps = (video.getVideoPlaybackQuality && video.getVideoPlaybackQuality().totalVideoFrames > 0) ? 30 : 24;
+                videoFps *= rate;
+            } catch(e) {}
+            if (benchmark.fps >= videoFps * 0.8) return 'server';
+            return 'webgl';
+        },
+
+        // --- WebGL Tier ---
+        _startWebGL: function() {
+            if (!window.AIUpscalerWebGL) {
+                this._loadWebGLScript(function() {
+                    RealtimeUpscaler._initWebGL();
+                });
+                return;
+            }
+            this._initWebGL();
+        },
+
+        _loadWebGLScript: function(callback) {
+            // Check if already loaded
+            if (document.querySelector('script[src*="webgl-upscaler"]')) {
+                if (window.AIUpscalerWebGL) { callback(); return; }
+                setTimeout(callback, 500);
+                return;
+            }
+            var paths = [
+                '/api/upscaler/js/webgl-upscaler.js',
+                '/upscaler/js/webgl-upscaler.js'
+            ];
+            var tryLoad = function(idx) {
+                if (idx >= paths.length) {
+                    console.warn('AI Upscaler RT: Could not load WebGL shader');
+                    return;
+                }
+                var script = document.createElement('script');
+                script.src = paths[idx];
+                script.onload = function() { setTimeout(callback, 100); };
+                script.onerror = function() { tryLoad(idx + 1); };
+                document.head.appendChild(script);
+            };
+            tryLoad(0);
+        },
+
+        _initWebGL: function() {
+            if (!window.AIUpscalerWebGL || !this._videoElement) return;
+            var wgl = window.AIUpscalerWebGL;
+            if (wgl.init(this._videoElement)) {
+                wgl.onFpsUpdate = function(fps) {
+                    RealtimeUpscaler._currentFps = fps;
+                    RealtimeUpscaler._updateFpsDisplay();
+                };
+                wgl.enable();
+                this._webglInstance = wgl;
+            }
+        },
+
+        _stopWebGL: function() {
+            if (this._webglInstance) {
+                this._webglInstance.disable();
+                this._webglInstance.destroy();
+                this._webglInstance = null;
+            }
+        },
+
+        // --- Server AI Tier ---
+        _startServer: function() {
+            var captureW = (this._config && this._config.RealtimeCaptureWidth) || 480;
+            var captureH = Math.round(captureW * 9 / 16); // assume 16:9
+
+            this._captureCanvas = document.createElement('canvas');
+            this._captureCanvas.width = captureW;
+            this._captureCanvas.height = captureH;
+            this._captureCtx = this._captureCanvas.getContext('2d');
+
+            // Overlay canvas for displaying upscaled frames
+            this._overlayCanvas = document.createElement('canvas');
+            this._overlayCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;';
+            var parent = this._videoElement.parentElement;
+            if (parent) {
+                parent.style.position = 'relative';
+                parent.appendChild(this._overlayCanvas);
+            }
+
+            this._pendingFrame = false;
+            this._fpsFrameCount = 0;
+            this._fpsLastTime = performance.now();
+            this._lastSuccessfulFrame = performance.now();
+            this._serverRenderLoop();
+            // Timer-based fallback check: if no successful frame for 5 seconds, switch to WebGL
+            this._fallbackCheckInterval = setInterval(function() {
+                if (!RealtimeUpscaler._active || RealtimeUpscaler._mode !== 'server') {
+                    clearInterval(RealtimeUpscaler._fallbackCheckInterval);
+                    return;
+                }
+                if (performance.now() - RealtimeUpscaler._lastSuccessfulFrame > 5000) {
+                    console.log('AI Upscaler RT: No frames for 5s, switching to WebGL');
+                    clearInterval(RealtimeUpscaler._fallbackCheckInterval);
+                    RealtimeUpscaler._stopServer();
+                    RealtimeUpscaler._mode = 'webgl';
+                    RealtimeUpscaler._startWebGL();
+                    RealtimeUpscaler._updateButtonIndicator('webgl');
+                    if (window.PlayerIntegration) {
+                        window.PlayerIntegration.showPlayerNotification('Switched to WebGL (server unresponsive)', 'warning');
+                    }
+                }
+            }, 2000);
+        },
+
+        _stopServer: function() {
+            if (this._serverRafId) {
+                cancelAnimationFrame(this._serverRafId);
+                this._serverRafId = null;
+            }
+            if (this._fallbackCheckInterval) {
+                clearInterval(this._fallbackCheckInterval);
+                this._fallbackCheckInterval = null;
+            }
+            if (this._overlayCanvas && this._overlayCanvas.parentElement) {
+                this._overlayCanvas.parentElement.removeChild(this._overlayCanvas);
+            }
+            this._overlayCanvas = null;
+            this._overlayCtx = null;
+            this._captureCanvas = null;
+            this._captureCtx = null;
+        },
+
+        _serverRafId: null,
+
+        _serverRenderLoop: function() {
+            if (!this._active || this._mode !== 'server') return;
+
+            if (!this._pendingFrame && this._videoElement && !this._videoElement.paused) {
+                this._captureAndSend();
+            }
+
+            this._serverRafId = requestAnimationFrame(function() { RealtimeUpscaler._serverRenderLoop(); });
+        },
+
+        _captureAndSend: function() {
+            var video = this._videoElement;
+            var ctx = this._captureCtx;
+            var canvas = this._captureCanvas;
+            if (!video || !ctx || !canvas) return;
+
+            // Draw video frame to capture canvas
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            this._pendingFrame = true;
+            var self = this;
+
+            canvas.toBlob(function(blob) {
+                if (!blob || !self._active) { self._pendingFrame = false; return; }
+
+                fetch('/api/upscaler/upscale-frame', {
+                    method: 'POST',
+                    body: blob,
+                    headers: { 'Content-Type': 'application/octet-stream' }
+                }).then(function(resp) {
+                    if (resp.status === 503) {
+                        // Server busy, skip frame
+                        self._pendingFrame = false;
+                        return null;
+                    }
+                    if (!resp.ok) {
+                        self._pendingFrame = false;
+                        return null;
+                    }
+                    return resp.blob();
+                }).then(function(resultBlob) {
+                    if (!resultBlob || !self._active) { self._pendingFrame = false; return; }
+
+                    var img = new Image();
+                    img.onload = function() {
+                        if (self._overlayCanvas && self._active) {
+                            // Resize overlay to match result
+                            if (self._overlayCanvas.width !== img.width || self._overlayCanvas.height !== img.height) {
+                                self._overlayCanvas.width = img.width;
+                                self._overlayCanvas.height = img.height;
+                            }
+                            if (!self._overlayCtx) self._overlayCtx = self._overlayCanvas.getContext('2d');
+                            self._overlayCtx.drawImage(img, 0, 0);
+                            self._lastSuccessfulFrame = performance.now();
+
+                            // FPS tracking
+                            self._fpsFrameCount++;
+                            var now = performance.now();
+                            if (now - self._fpsLastTime >= 1000) {
+                                self._currentFps = Math.round(self._fpsFrameCount * 1000 / (now - self._fpsLastTime));
+                                self._fpsFrameCount = 0;
+                                self._fpsLastTime = now;
+                                self._updateFpsDisplay();
+
+                                // Auto-fallback: if FPS < 10 for 3 seconds → switch to WebGL
+                                if (self._currentFps < 10) {
+                                    if (!self._lowFpsStart) self._lowFpsStart = now;
+                                    else if (now - self._lowFpsStart > 3000) {
+                                        console.log('AI Upscaler RT: Server FPS too low, switching to WebGL');
+                                        self._stopServer();
+                                        self._mode = 'webgl';
+                                        self._startWebGL();
+                                        self._updateButtonIndicator('webgl');
+                                        if (window.PlayerIntegration) {
+                                            window.PlayerIntegration.showPlayerNotification('Switched to WebGL (server too slow)', 'warning');
+                                        }
+                                    }
+                                } else {
+                                    self._lowFpsStart = 0;
+                                }
+                            }
+                        }
+                        URL.revokeObjectURL(img.src);
+                        self._pendingFrame = false;
+                    };
+                    img.onerror = function() {
+                        URL.revokeObjectURL(img.src);
+                        self._pendingFrame = false;
+                    };
+                    img.src = URL.createObjectURL(resultBlob);
+                }).catch(function() {
+                    self._pendingFrame = false;
+                });
+            }, 'image/jpeg', 0.85);
+        },
+
+        // --- UI ---
+        _createFpsOverlay: function() {
+            this._removeFpsOverlay();
+            var el = document.createElement('div');
+            el.id = 'aiUpscalerFpsOverlay';
+            el.style.cssText = 'position:fixed;top:10px;left:10px;z-index:100002;padding:4px 10px;' +
+                'background:rgba(0,0,0,0.7);color:#34d399;font-size:12px;font-family:monospace;' +
+                'border-radius:6px;pointer-events:none;backdrop-filter:blur(6px);';
+            el.textContent = 'AI --fps';
+            document.body.appendChild(el);
+        },
+
+        _removeFpsOverlay: function() {
+            var el = document.getElementById('aiUpscalerFpsOverlay');
+            if (el) el.remove();
+        },
+
+        _updateFpsDisplay: function() {
+            var el = document.getElementById('aiUpscalerFpsOverlay');
+            if (!el) return;
+            var modeLabel = this._mode === 'server' ? 'Server' : 'WebGL';
+            var modelLabel = '';
+            if (this._mode === 'server' && this._benchmarkResult && this._benchmarkResult.model) {
+                modelLabel = ' ' + this._benchmarkResult.model;
+            }
+            el.textContent = 'AI ' + this._currentFps + 'fps | ' + modeLabel + modelLabel;
+            el.style.color = this._currentFps >= 20 ? '#34d399' : this._currentFps >= 10 ? '#fbbf24' : '#ef4444';
+        },
+
+        _updateButtonIndicator: function(mode) {
+            var btn = document.getElementById('aiUpscalerButton');
+            if (!btn) return;
+            // Remove old indicator
+            var old = btn.querySelector('.ai-rt-dot');
+            if (old) old.remove();
+
+            if (!mode) return;
+            var dot = document.createElement('span');
+            dot.className = 'ai-rt-dot';
+            dot.style.cssText = 'position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;';
+            dot.style.background = mode === 'server' ? '#34d399' : '#60a5fa';
+            btn.style.position = 'relative';
+            btn.appendChild(dot);
+        },
+
+        getStatus: function() {
+            return {
+                active: this._active,
+                mode: this._mode,
+                fps: this._currentFps,
+                benchmark: this._benchmarkResult
+            };
+        }
+    };
+
+    window.RealtimeUpscaler = RealtimeUpscaler;
 
     // Player integration manager
     const PlayerIntegration = {
@@ -191,9 +530,12 @@
                     window.playbackManager.addEventListener('playbackstart', function() {
                         PlayerIntegration._buttonInjected = false;
                         setTimeout(function() { PlayerIntegration.injectPlayerButton(); }, 500);
+                        // Start real-time upscaling after 1s settle time
+                        setTimeout(function() { PlayerIntegration.startRealtimeUpscaling(); }, 1000);
                     });
                     window.playbackManager.addEventListener('playbackstop', function() {
                         PlayerIntegration._buttonInjected = false;
+                        RealtimeUpscaler.stop();
                     });
                     this._playbackListenersAttached = true;
                 } catch (err) {
@@ -328,12 +670,38 @@
                         '<div class="ai-menu__scales">' + scaleHtml + '</div>' +
                     '</div>' +
                     '<div class="ai-menu__section">' +
+                        '<div class="ai-menu__section-title">Real-Time Upscaling</div>' +
+                        '<div class="ai-menu__rt-status" id="aiRtStatus">' +
+                            '<span class="ai-menu__rt-label">Status:</span> ' +
+                            '<span class="ai-menu__rt-value" id="aiRtStatusValue">--</span>' +
+                        '</div>' +
+                        '<div class="ai-menu__rt-row">' +
+                            '<button class="ai-menu__rt-btn" data-action="rt-toggle">Toggle</button>' +
+                            '<button class="ai-menu__rt-btn" data-action="rt-switch">Switch Mode</button>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="ai-menu__section">' +
                         '<button class="ai-menu__action" data-action="config">' +
                             '<span class="material-icons" style="font-size:16px;margin-right:8px">settings</span>' +
                             'Full Configuration' +
                         '</button>' +
                     '</div>' +
                 '</div>';
+
+            // After DOM insertion, update RT status
+            setTimeout(function() {
+                var statusEl = document.getElementById('aiRtStatusValue');
+                if (statusEl) {
+                    var st = RealtimeUpscaler.getStatus();
+                    if (st.active) {
+                        statusEl.textContent = st.mode.toUpperCase() + ' — ' + st.fps + ' fps';
+                        statusEl.style.color = '#34d399';
+                    } else {
+                        statusEl.textContent = 'Inactive';
+                        statusEl.style.color = 'rgba(255,255,255,0.4)';
+                    }
+                }
+            }, 50);
 
             document.body.appendChild(menu);
 
@@ -359,6 +727,30 @@
                         PlayerIntegration.toggleUpscaling();
                     } else if (action === 'config') {
                         PlayerIntegration.openFullConfig();
+                    } else if (action === 'rt-toggle') {
+                        if (RealtimeUpscaler._active) {
+                            RealtimeUpscaler.stop();
+                            PlayerIntegration.showPlayerNotification('Real-time upscaling stopped', 'warning');
+                        } else {
+                            PlayerIntegration.startRealtimeUpscaling();
+                            PlayerIntegration.showPlayerNotification('Real-time upscaling starting...', 'success');
+                        }
+                        menu.remove();
+                        PlayerIntegration._cleanupMenu();
+                    } else if (action === 'rt-switch') {
+                        if (RealtimeUpscaler._active) {
+                            var newMode = RealtimeUpscaler._mode === 'server' ? 'webgl' : 'server';
+                            var bench = RealtimeUpscaler._benchmarkResult;
+                            RealtimeUpscaler.stop();
+                            var video = PlayerIntegration.findVideoElement();
+                            if (video) {
+                                var overrideConfig = Object.assign({}, PlayerIntegration._cachedConfig || {}, { RealtimeMode: newMode });
+                                RealtimeUpscaler.start(video, overrideConfig, bench);
+                            }
+                            PlayerIntegration.showPlayerNotification('Switched to ' + newMode.toUpperCase(), 'info');
+                        }
+                        menu.remove();
+                        PlayerIntegration._cleanupMenu();
                     }
                 }
             });
@@ -426,6 +818,49 @@
             setTimeout(function() {
                 if (notification.parentElement) notification.remove();
             }, 3000);
+        },
+
+        findVideoElement: function() {
+            return document.querySelector('video') ||
+                   document.querySelector('#videoOsdPage video') ||
+                   document.querySelector('.htmlvideoplayer video');
+        },
+
+        startRealtimeUpscaling: function() {
+            this.getPluginConfig().then(function(config) {
+                if (!config.EnableRealtimeUpscaling && config.EnableRealtimeUpscaling !== undefined) {
+                    console.log('AI Upscaler RT: Disabled in config');
+                    return;
+                }
+                if (config.EnableRealtimeUpscaling === false) return;
+
+                var video = PlayerIntegration.findVideoElement();
+                if (!video) {
+                    console.log('AI Upscaler RT: No video element found');
+                    return;
+                }
+
+                var mode = (config.RealtimeMode || 'auto').toLowerCase();
+
+                // If mode is auto or server, run benchmark first
+                if (mode === 'auto' || mode === 'server') {
+                    var captureW = config.RealtimeCaptureWidth || 480;
+                    var captureH = Math.round(captureW * 9 / 16);
+                    fetch('/api/upscaler/benchmark-frame?width=' + captureW + '&height=' + captureH)
+                        .then(function(r) { return r.json(); })
+                        .then(function(bench) {
+                            console.log('AI Upscaler RT: Benchmark result', bench);
+                            RealtimeUpscaler.start(video, config, bench);
+                        })
+                        .catch(function(err) {
+                            console.warn('AI Upscaler RT: Benchmark failed, using WebGL', err);
+                            RealtimeUpscaler.start(video, config, { error: 'benchmark failed' });
+                        });
+                } else {
+                    // WebGL mode, no benchmark needed
+                    RealtimeUpscaler.start(video, config, null);
+                }
+            });
         },
 
         addKeyboardShortcuts: function() {
@@ -772,6 +1207,37 @@
                 '@keyframes aiNotifIn {' +
                     'from { transform: translateY(-10px); opacity: 0; }' +
                     'to { transform: translateY(0); opacity: 1; }' +
+                '}' +
+
+                /* Real-Time section */
+                '.ai-menu__rt-status {' +
+                    'padding: 6px 10px;' +
+                    'font-size: 12px;' +
+                    'color: rgba(255,255,255,0.6);' +
+                '}' +
+                '.ai-menu__rt-label { color: rgba(255,255,255,0.4); }' +
+                '.ai-menu__rt-value { font-weight: 600; }' +
+                '.ai-menu__rt-row {' +
+                    'display: flex;' +
+                    'gap: 6px;' +
+                    'padding: 0 4px;' +
+                '}' +
+                '.ai-menu__rt-btn {' +
+                    'flex: 1;' +
+                    'padding: 7px;' +
+                    'background: rgba(255,255,255,0.04);' +
+                    'border: 1px solid rgba(255,255,255,0.1);' +
+                    'border-radius: 8px;' +
+                    'color: rgba(255,255,255,0.7);' +
+                    'font-size: 11px;' +
+                    'font-weight: 600;' +
+                    'cursor: pointer;' +
+                    'transition: all 0.15s;' +
+                '}' +
+                '.ai-menu__rt-btn:hover {' +
+                    'background: rgba(139,92,246,0.15);' +
+                    'border-color: rgba(139,92,246,0.3);' +
+                    'color: #fff;' +
                 '}';
 
             document.head.appendChild(styles);

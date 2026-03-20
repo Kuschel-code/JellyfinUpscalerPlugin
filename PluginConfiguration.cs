@@ -5,7 +5,7 @@ using MediaBrowser.Model.Plugins;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// Plugin Configuration - v1.5.3.2 (Docker-based AI Service)
+    /// Plugin Configuration - v1.5.3.3 (Docker-based AI Service + Real-Time Upscaling)
     /// </summary>
     public class PluginConfiguration : BasePluginConfiguration
     {
@@ -56,8 +56,14 @@ namespace JellyfinUpscalerPlugin
         public int MinResolutionWidth { get; set; } = 1920;
         public int MinResolutionHeight { get; set; } = 1080;
 
+        // Real-Time Upscaling
+        public bool EnableRealtimeUpscaling { get; set; } = true;
+        public string RealtimeMode { get; set; } = "auto"; // "auto", "webgl", "server"
+        public int RealtimeTargetFps { get; set; } = 24;
+        public int RealtimeCaptureWidth { get; set; } = 480;
+
         // Version tracking
-        public string PluginVersion { get; set; } = "1.5.3.2";
+        public string PluginVersion { get; set; } = "1.5.3.3";
 
         public PluginConfiguration()
         {

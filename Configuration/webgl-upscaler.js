@@ -12,6 +12,12 @@
         program: null,
         videoElement: null,
         animationFrameId: null,
+        sharpness: 0.5,
+        onFpsUpdate: null,
+        _fpsFrameCount: 0,
+        _fpsLastTime: 0,
+        _explicitWidth: 0,
+        _explicitHeight: 0,
         
         // Shader sources
         vertexShaderSource: `
@@ -223,11 +229,13 @@
             const gl = this.gl;
             const video = this.videoElement;
             
-            // Update canvas size
-            if (this.canvas.width !== video.videoWidth || this.canvas.height !== video.videoHeight) {
-                this.canvas.width = video.videoWidth;
-                this.canvas.height = video.videoHeight;
-                gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+            // Update canvas size (use explicit size if set, else video native)
+            var targetW = this._explicitWidth || video.videoWidth;
+            var targetH = this._explicitHeight || video.videoHeight;
+            if (this.canvas.width !== targetW || this.canvas.height !== targetH) {
+                this.canvas.width = targetW;
+                this.canvas.height = targetH;
+                gl.viewport(0, 0, targetW, targetH);
             }
             
             // Upload video frame to texture
@@ -242,11 +250,23 @@
             gl.uniform2f(resolutionLocation, this.canvas.width, this.canvas.height);
             
             const sharpnessLocation = gl.getUniformLocation(this.program, 'u_sharpness');
-            gl.uniform1f(sharpnessLocation, 0.5); // Adjustable sharpness
-            
+            gl.uniform1f(sharpnessLocation, this.sharpness);
+
             // Draw
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-            
+
+            // FPS tracking
+            this._fpsFrameCount++;
+            var now = performance.now();
+            if (now - this._fpsLastTime >= 1000) {
+                var fps = Math.round(this._fpsFrameCount * 1000 / (now - this._fpsLastTime));
+                this._fpsFrameCount = 0;
+                this._fpsLastTime = now;
+                if (typeof this.onFpsUpdate === 'function') {
+                    this.onFpsUpdate(fps);
+                }
+            }
+
             // Continue rendering
             this.animationFrameId = requestAnimationFrame(() => this.render());
         },
@@ -257,8 +277,10 @@
                 console.error('AI Upscaler: WebGL not initialized');
                 return;
             }
-            
+
             this.enabled = true;
+            this._fpsLastTime = performance.now();
+            this._fpsFrameCount = 0;
             this.canvas.style.display = 'block';
             this.videoElement.style.opacity = '0';
             this.render();
@@ -295,6 +317,17 @@
             }
         },
         
+        // Set sharpness (0.0 to 1.0)
+        setSharpness: function(value) {
+            this.sharpness = Math.max(0, Math.min(1, value));
+        },
+
+        // Set explicit canvas output size (0 = use video native)
+        setCanvasSize: function(w, h) {
+            this._explicitWidth = w || 0;
+            this._explicitHeight = h || 0;
+        },
+
         // Cleanup
         destroy: function() {
             this.disable();

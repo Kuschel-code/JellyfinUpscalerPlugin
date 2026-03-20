@@ -11,8 +11,8 @@ using Microsoft.Extensions.Logging;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// AI Upscaler Plugin for Jellyfin v1.5.3.2
-    /// v1.5.3.2 - Fix: model selection now works end-to-end (download + load + upscale)
+    /// AI Upscaler Plugin for Jellyfin v1.5.3.3
+    /// v1.5.3.3 - Real-time upscaling during playback (WebGL + Server AI tiers)
     /// </summary>
     public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     {
