@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.5.3.5
+# Jellyfin AI Upscaler Plugin v1.5.3.6
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -27,7 +27,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.5.3.5      │  │
+│  │  AI Upscaler Plugin v1.5.3.6      │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -39,8 +39,8 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 │  ┌────────────────────────────────────┐  │
 │  │  Python + FastAPI + OpenCV DNN     │  │
 │  │  CUDA / ROCm / OpenVINO / CPU     │  │
-│  │  Real-ESRGAN, SPAN, SwinIR,      │  │
-│  │  EDSR, FSRCNN, ESPCN (18 models) │  │
+│  │  Real-ESRGAN, SPAN, SwinIR, DAT2 │  │
+│  │  EDSR, FSRCNN, ESPCN (30 models) │  │
 │  │  Web UI for Model Management      │  │
 │  └────────────────────────────────────┘  │
 └──────────────────────────────────────────┘
@@ -231,6 +231,14 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 ---
 
 ## Changelog
+
+### v1.5.3.6 (30 Models — Video-Optimized Community Models)
+- **Added**: 12 new community ONNX models with verified download URLs
+- **Added**: Video Real-Time category: ClearReality x4 (1.7MB SPAN), NomosUni Compact x2, LSDIR Compact x4, SwinIR-S x2/x4
+- **Added**: Video Quality category: UltraSharp V2 x4 (DAT2), Nomos2 DAT2 x4, Nomos2 RealPLKSR x4
+- **Added**: Film Restoration category: FSDedither x4 (DVD/VHS), Nomos8k HAT-S x4
+- **Added**: Anime category: Real-ESRGAN Anime Compact x4 (5MB), APISR x2 (CVPR 2024)
+- Now 30 models total across 7 categories
 
 ### v1.5.3.5 (RTX 5000 + Apple M5 + Bugfixes)
 - **Added**: NVIDIA RTX 5000 series support (Blackwell, sm_120) via CUDA 12.8 + ONNX Runtime 1.20+

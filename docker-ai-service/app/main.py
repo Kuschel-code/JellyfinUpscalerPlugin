@@ -311,6 +311,138 @@ AVAILABLE_MODELS = {
         "available": True
     },
 
+    # ============================================================
+    # === v1.5.3.6 — Community Video-Optimized Models ===
+    # ============================================================
+
+    # --- Video Real-Time (Ultra-Fast, <3MB) ---
+    "clearreality-x4": {
+        "name": "ClearReality x4 (Ultra-Fast Video)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/4x-ClearRealityV1.onnx",
+        "scale": 4,
+        "description": "SPAN architecture, only 1.7MB. Real-time 4x for clean video. Best for faces, nature, hair.",
+        "type": "onnx",
+        "category": "video-fast",
+        "model_type": "span",
+        "available": True
+    },
+    "nomosuni-compact-x2": {
+        "name": "NomosUni Compact x2 (Real-Time Video)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/2xNomosUni_compact_otf_medium.onnx",
+        "scale": 2,
+        "description": "Compact 2x with medium degradation handling. 2.4MB, ideal for real-time video playback.",
+        "type": "onnx",
+        "category": "video-fast",
+        "model_type": "compact",
+        "available": True
+    },
+    "lsdir-compact-x4": {
+        "name": "LSDIR Compact x4 (Fast Video)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/4xLSDIRCompact.onnx",
+        "scale": 4,
+        "description": "Compact 4x trained on 85k images. 2.5MB, fast enough for near-real-time video.",
+        "type": "onnx",
+        "category": "video-fast",
+        "model_type": "compact",
+        "available": True
+    },
+    "swinir-small-x2": {
+        "name": "SwinIR-S x2 (Lightweight Transformer)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/002_lightweightSR_DIV2K_s64w8_SwinIR-S_x2.onnx",
+        "scale": 2,
+        "description": "Lightweight SwinIR 2x, only 7.9MB. Good quality/speed balance for video.",
+        "type": "onnx",
+        "category": "video-fast",
+        "model_type": "swinir",
+        "available": True
+    },
+    "swinir-small-x4": {
+        "name": "SwinIR-S x4 (Lightweight Transformer)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/002_lightweightSR_DIV2K_s64w8_SwinIR-S_x4.onnx",
+        "scale": 4,
+        "description": "Lightweight SwinIR 4x, only 8MB. Best quality in the fast category.",
+        "type": "onnx",
+        "category": "video-fast",
+        "model_type": "swinir",
+        "available": True
+    },
+
+    # --- Video Quality (Best single-frame for video content) ---
+    "ultrasharp-v2-x4": {
+        "name": "UltraSharp V2 x4 (Best Photo/Video)",
+        "url": "https://huggingface.co/Kim2091/UltraSharpV2/resolve/main/4x-UltraSharpV2_fp32_op17.onnx",
+        "scale": 4,
+        "description": "DAT2 Transformer — best overall quality for photos and video. 49MB.",
+        "type": "onnx",
+        "category": "video-quality",
+        "model_type": "dat2",
+        "available": True
+    },
+    "nomos2-dat2-x4": {
+        "name": "Nomos2 DAT2 x4 (Photo/Video HQ)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/4xNomos2_hq_dat2_fp32.onnx",
+        "scale": 4,
+        "description": "DAT2 trained on Nomos v2 dataset. Fixes noise, compression, blur. 53MB.",
+        "type": "onnx",
+        "category": "video-quality",
+        "model_type": "dat2",
+        "available": True
+    },
+    "nomos2-realplksr-x4": {
+        "name": "Nomos2 RealPLKSR x4 (Efficient Quality)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/4xNomos2_realplksr_dysample_256_fp32_fullyoptimized.onnx",
+        "scale": 4,
+        "description": "Modern RealPLKSR architecture. 30MB — best quality-to-size ratio for video.",
+        "type": "onnx",
+        "category": "video-quality",
+        "model_type": "realplksr",
+        "available": True
+    },
+
+    # --- Film Restoration (Old Movies, DVDs, VHS) ---
+    "fsdedither-x4": {
+        "name": "FSDedither x4 (DVD/VHS Restore)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/4xFSDedither.onnx",
+        "scale": 4,
+        "description": "Removes dithering artifacts from old DVDs and digitized VHS tapes. 67MB.",
+        "type": "onnx",
+        "category": "film-restore",
+        "model_type": "esrgan",
+        "available": True
+    },
+    "nomos8k-hat-x4": {
+        "name": "Nomos8k HAT-S x4 (Film Restoration)",
+        "url": "https://github.com/Phhofm/models/raw/main/4xNomos8kSCHAT-S/4xNomos8kSCHAT-S.onnx",
+        "scale": 4,
+        "description": "HAT Transformer trained on 8k dataset. Handles JPG compression + blur. 57MB.",
+        "type": "onnx",
+        "category": "film-restore",
+        "model_type": "hat",
+        "available": True
+    },
+
+    # --- Anime Video Specialist ---
+    "anime-compact-x4": {
+        "name": "Real-ESRGAN Anime Compact x4 (Fast Anime)",
+        "url": "https://huggingface.co/xiongjie/lightweight-real-ESRGAN-anime/resolve/main/RealESRGAN_x4plus_anime_4B32F.onnx",
+        "scale": 4,
+        "description": "Ultra-lightweight anime 4x, only 5MB. Perfect for anime real-time playback.",
+        "type": "onnx",
+        "category": "anime",
+        "model_type": "compact",
+        "available": True
+    },
+    "apisr-anime-x2": {
+        "name": "APISR x2 (Anime Production Quality)",
+        "url": "https://huggingface.co/Xenova/2x_APISR_RRDB_GAN_generator-onnx/resolve/main/onnx/model.onnx",
+        "scale": 2,
+        "description": "CVPR 2024 — trained on anime production pipeline. Best anime 2x quality. 18MB.",
+        "type": "onnx",
+        "category": "anime",
+        "model_type": "rrdb",
+        "available": True
+    },
+
 }
 
 

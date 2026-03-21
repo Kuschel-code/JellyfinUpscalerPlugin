@@ -16,7 +16,7 @@ using JellyfinUpscalerPlugin.Models;
 namespace JellyfinUpscalerPlugin.Services
 {
     /// <summary>
-    /// Core upscaling engine - v1.5.3.5 Docker-based implementation
+    /// Core upscaling engine - v1.5.3.6 Docker-based implementation
     /// Delegates AI processing to the external Docker AI service via HTTP.
     /// </summary>
     public class UpscalerCore : IDisposable
