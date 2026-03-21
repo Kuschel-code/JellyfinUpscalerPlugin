@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.5.3.1
+# Jellyfin AI Upscaler Plugin v1.5.3.3
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -27,7 +27,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.5.3.1      │  │
+│  │  AI Upscaler Plugin v1.5.3.3      │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -50,7 +50,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 
 ## How It Works
 
-The plugin supports two upscaling modes:
+The plugin supports three upscaling modes:
 
 ### Pre-Upscaling (Batch Processing)
 The **Scheduled Task** ("Scan & Upscale Library") runs daily at 3 AM and:
@@ -61,11 +61,24 @@ The **Scheduled Task** ("Scan & Upscale Library") runs daily at 3 AM and:
 
 This is ideal for users **without powerful servers** — upscaling happens overnight.
 
-### Player Integration (Real-Time Controls)
+### Real-Time Upscaling During Playback (NEW in v1.5.3.3)
+When you press play, the plugin automatically enhances the video in real-time using a **two-tier system**:
+
+- **Tier 1 — WebGL (Client-Side):** An FSR-inspired shader runs on your browser's GPU. Zero latency, always available. Works on any device with WebGL support.
+- **Tier 2 — Server AI:** Video frames are captured, sent to the Docker AI service, upscaled with the selected model, and rendered back. Requires a powerful server.
+
+**How it decides:** At playback start, a benchmark runs against the Docker service. If the server can process frames fast enough (≥80% of video FPS), it uses Server AI mode. Otherwise, it falls back to WebGL. If server performance drops during playback, it auto-switches to WebGL.
+
+**Visual indicators:**
+- FPS overlay (top-left corner): Shows current FPS, mode, and model
+- Button dot: Green = Server AI, Blue = WebGL
+- Menu section: Toggle on/off, switch modes manually
+
+### Player Integration
 The in-player button lets you:
 - Select from **14 AI models** across 5 categories (Real-ESRGAN, EDSR, LapSRN, FSRCNN, ESPCN)
 - Choose scale factor (2x, 3x, 4x, 8x)
-- Toggle upscaling on/off
+- Toggle real-time upscaling and switch modes
 - Quick access via keyboard shortcuts (Alt+U, Alt+M)
 
 ---
@@ -152,11 +165,13 @@ To batch-upscale your low-resolution content:
 
 ## Features
 
+- **Real-Time Upscaling**: Two-tier system — WebGL client-side shader + Server AI frame pipeline with auto-fallback
 - **Pre-Upscaling**: Scheduled task batch-processes low-res videos overnight
 - **Docker Microservice**: AI runs isolated in a container (no DLL conflicts)
 - **14 AI Models**: Real-ESRGAN (best), EDSR, FSRCNN, ESPCN, LapSRN (2x–8x)
 - **5 GPU Architectures**: NVIDIA CUDA/TensorRT, AMD ROCm, Intel OpenVINO, Apple Silicon, CPU
-- **Player Integration**: In-player button with quick settings menu and keyboard shortcuts (Alt+U, Alt+M)
+- **Player Integration**: In-player button with quick settings menu, FPS overlay, and keyboard shortcuts (Alt+U, Alt+M)
+- **Benchmark-Driven**: Automatic tier selection based on real-time server benchmarks
 - **GPU Diagnostics**: `/gpu-verify` endpoint with troubleshooting tips
 - **SSH Remote Transcoding**: Offload FFmpeg to GPU containers via SSH
 - **Web UI**: Model management at `http://YOUR_SERVER_IP:5000`
@@ -190,6 +205,9 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 | **Min Resolution** | Threshold for scheduled task (default: 1920x1080) |
 | **Player Button** | Show/hide AI button in video player |
 | **Button Position** | Left, Center, or Right |
+| **Real-Time Upscaling** | Enable/disable real-time enhancement during playback |
+| **Real-Time Mode** | Auto (benchmark decides), WebGL only, or Server AI only |
+| **Capture Width** | Resolution for server frame capture (default: 480px) |
 | **Remote Transcoding** | Enable SSH-based remote transcoding |
 
 ---
@@ -207,6 +225,22 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 ---
 
 ## Changelog
+
+### v1.5.3.3 (Real-Time Upscaling)
+- **Added**: Real-time upscaling during playback with two-tier system
+- **Added**: WebGL FSR-inspired client-side shader (Tier 1 — zero latency)
+- **Added**: Server AI frame pipeline via `/upscale-frame` (Tier 2 — best quality)
+- **Added**: Benchmark-driven tier selection at playback start
+- **Added**: FPS overlay during playback (color-coded green/yellow/red)
+- **Added**: Auto-fallback: server → WebGL if FPS drops or server unresponsive
+- **Added**: Player menu section for real-time controls (toggle, mode switch)
+- **Added**: Button indicator dot (green = Server AI, blue = WebGL)
+- **Added**: Docker `/upscale-frame` (fast JPEG) and `/benchmark-frame` endpoints
+- **Added**: Jellyfin proxy endpoints for CORS-free browser communication
+
+### v1.5.3.2 (Model Selection Fix)
+- **Fixed**: Model selection pipeline — configured model now downloads, loads, and is used for upscaling
+- **Added**: `EnsureModelLoadedAsync()` called before every upscale operation
 
 ### v1.5.3.1 (Pre-Upscaling + GPU Fixes)
 - **Added**: Scheduled task now actually processes videos (pre-upscaling pipeline)
@@ -268,7 +302,7 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 1. Uninstall old versions (v1.4.x)
 2. Delete old plugin folder from Jellyfin plugins directory
 3. Restart Jellyfin
-4. Install v1.5.3.1 fresh from repository
+4. Install v1.5.3.3 fresh from repository
 
 ### Player button not showing
 1. The button only works in **web browsers** (Chrome, Edge, Firefox)

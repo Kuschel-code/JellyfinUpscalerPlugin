@@ -5,10 +5,10 @@ const i18n = {
     en: {
         nav: { home: "Home", installation: "Installation", sshSetup: "SSH Setup", configuration: "Configuration", features: "Features", troubleshooting: "Troubleshooting", dockerTags: "Docker Tags", changelog: "Changelog" },
         hero: {
-            badge: "v1.5.3.1 — Pre-Upscaling + GPU Fixes",
+            badge: "v1.5.3.3 — Real-Time Upscaling",
             title1: "Transform your media",
             title2: "with AI.",
-            subtitle: "Upscale SD to 4K using neural networks. GPU-accelerated Docker microservice for Jellyfin with support for NVIDIA, AMD, Intel & Apple Silicon.",
+            subtitle: "Upscale SD to 4K using neural networks. Real-time upscaling during playback with WebGL + Server AI. GPU-accelerated Docker microservice for Jellyfin.",
             getStarted: "Get Started",
             viewGithub: "View on GitHub",
             stats: { gpus: "GPU Architectures", size: "Plugin Size", upscale: "Upscaling", license: "Open Source" }
@@ -21,7 +21,8 @@ const i18n = {
             gpu: { title: "5 GPU Architectures", desc: "Native NVIDIA CUDA, AMD ROCm, Intel OpenVINO, Apple Silicon ARM64, and multi-threaded CPU." },
             ai: { title: "Neural Network Models", desc: "FSRCNN, ESPCN, LapSRN, EDSR, Real-ESRGAN — from lightning-fast to maximum detail." },
             ui: { title: "Seamless Integration", desc: "Player button, side-by-side preview, real-time benchmarking, and Web UI for model management." },
-            preupscale: { title: "Pre-Upscaling", desc: "Scheduled task batch-processes low-res videos overnight. Perfect for servers without powerful GPUs — upscaling happens while you sleep." }
+            preupscale: { title: "Pre-Upscaling", desc: "Scheduled task batch-processes low-res videos overnight. Perfect for servers without powerful GPUs — upscaling happens while you sleep." },
+            realtime: { title: "Real-Time Upscaling", desc: "Two-tier system: WebGL shader on your browser GPU (zero latency) or Server AI frame pipeline (best quality). Benchmark decides automatically, with live FPS overlay." }
         },
         installation: {
             tag: "Getting Started",
@@ -98,6 +99,8 @@ const i18n = {
             tag: "History",
             title1: "What's", title2: "new.",
             versions: [
+                { ver: "1.5.3.3", date: "Mar 2026", type: "Feature", items: ["Real-time upscaling during playback — two-tier system (WebGL + Server AI)", "WebGL FSR-inspired client-side shader (Tier 1 — zero latency, always available)", "Server AI frame pipeline via /upscale-frame (Tier 2 — best quality with selected model)", "Benchmark-driven tier selection: auto-detects if server is fast enough", "FPS overlay during playback (color-coded green/yellow/red)", "Auto-fallback: server → WebGL if FPS drops or server becomes unresponsive", "Player menu: Real-Time Upscaling section with toggle and mode switch", "Button indicator dot: green = Server AI, blue = WebGL"] },
+                { ver: "1.5.3.2", date: "Mar 2026", type: "Fix", items: ["Fixed model selection pipeline — configured model now downloads, loads, and is used for upscaling", "Added EnsureModelLoadedAsync() called before every upscale operation"] },
                 { ver: "1.5.3.1", date: "Mar 2026", type: "Feature", items: ["Scheduled task now pre-upscales videos (FFmpeg frame extraction + AI upscaling + reassembly)", "Skips already upscaled files (_upscaled suffix)", "NVIDIA: SKIP_TENSORRT=true by default — fixes RTX A2000 and similar GPU crashes", "Intel: Added intel-compute-runtime to Docker image, improved OpenVINO GPU diagnostics", "Enhanced /gpu-verify endpoint with /dev/dri status, permissions, and troubleshooting tips", "Player quick menu redesigned: all 14 models in 5 categories, respects ButtonPosition config"] },
                 { ver: "1.5.3.0", date: "Mar 2026", type: "Feature", items: ["Fixed player button injection for Docker (multi-path fallback)", "Config page auto-bootstrap activates player script if index.html injection fails", "Added Scheduled Task: Scan Library for Upscaling (daily at 3 AM)", "Configurable resolution threshold (MinResolutionWidth/Height)", "Detailed logging for script injection diagnostics"] },
                 { ver: "1.5.2.8", date: "Mar 2026", type: "Fix", items: ["Critical: Fixed API route mismatch causing 503 errors on all buttons", "Dual route attributes on UpscalerController ([controller] + api/[controller])", "Config page rebuilt for Jellyfin 10.11+ compatibility", "Horizontal tabs + collapsible accordion sections", "Full dark theme hardening, custom CSS checkboxes", "Docker AI Service UI redesigned to match plugin look"] },
@@ -154,7 +157,7 @@ const i18n = {
     de: {
         nav: { home: "Startseite", installation: "Installation", sshSetup: "SSH Einrichtung", configuration: "Konfiguration", features: "Funktionen", troubleshooting: "Fehlerbehebung", dockerTags: "Docker Tags", changelog: "Änderungen" },
         hero: {
-            badge: "v1.5.3.1 — Vorab-Upscaling + GPU-Fixes",
+            badge: "v1.5.3.3 — Echtzeit-Upscaling",
             title1: "Transformiere deine Medien",
             title2: "mit KI.",
             subtitle: "Skaliere SD auf 4K mit neuronalen Netzwerken. GPU-beschleunigter Docker-Microservice für Jellyfin mit Unterstützung für NVIDIA, AMD, Intel & Apple Silicon.",
@@ -170,7 +173,8 @@ const i18n = {
             gpu: { title: "5 GPU-Architekturen", desc: "Native Unterstützung für NVIDIA CUDA, AMD ROCm, Intel OpenVINO, Apple Silicon ARM64 und CPU." },
             ai: { title: "Neuronale Netzwerk-Modelle", desc: "FSRCNN, ESPCN, LapSRN, EDSR, Real-ESRGAN — von blitzschnell bis maximale Details." },
             ui: { title: "Nahtlose Integration", desc: "Player-Taste, Vergleichsvorschau, Echtzeit-Benchmark und Web-UI zur Modellverwaltung." },
-            preupscale: { title: "Vorab-Upscaling", desc: "Geplante Aufgabe verarbeitet Videos mit niedriger Auflösung über Nacht. Perfekt für Server ohne starke GPUs." }
+            preupscale: { title: "Vorab-Upscaling", desc: "Geplante Aufgabe verarbeitet Videos mit niedriger Auflösung über Nacht. Perfekt für Server ohne starke GPUs." },
+            realtime: { title: "Echtzeit-Upscaling", desc: "Zwei-Stufen-System: WebGL-Shader auf deiner Browser-GPU (keine Latenz) oder Server-KI-Frame-Pipeline (beste Qualität). Benchmark entscheidet automatisch, mit Live-FPS-Anzeige." }
         },
         installation: {
             tag: "Erste Schritte",
@@ -247,6 +251,8 @@ const i18n = {
             tag: "Verlauf",
             title1: "Was gibt's", title2: "Neues.",
             versions: [
+                { ver: "1.5.3.3", date: "Mär 2026", type: "Feature", items: ["Echtzeit-Upscaling während der Wiedergabe — Zwei-Stufen-System (WebGL + Server-KI)", "WebGL FSR-inspirierter Client-Side Shader (Stufe 1 — keine Latenz, immer verfügbar)", "Server-KI-Frame-Pipeline über /upscale-frame (Stufe 2 — beste Qualität mit gewähltem Modell)", "Benchmark-gesteuerte Stufenwahl: erkennt automatisch ob Server schnell genug ist", "FPS-Anzeige während der Wiedergabe (farbcodiert grün/gelb/rot)", "Auto-Fallback: Server → WebGL bei niedrigem FPS oder unerreichbarem Server", "Player-Menü: Echtzeit-Upscaling Bereich mit Toggle und Moduswechsel", "Button-Indikator: grün = Server-KI, blau = WebGL"] },
+                { ver: "1.5.3.2", date: "Mär 2026", type: "Fix", items: ["Modellauswahl-Pipeline behoben — konfiguriertes Modell wird jetzt heruntergeladen, geladen und für Upscaling verwendet", "EnsureModelLoadedAsync() wird vor jedem Upscale-Vorgang aufgerufen"] },
                 { ver: "1.5.3.1", date: "Mär 2026", type: "Feature", items: ["Geplante Aufgabe verarbeitet jetzt Videos (FFmpeg Frame-Extraktion + KI-Upscaling + Zusammenbau)", "Überspringt bereits upscalte Dateien (_upscaled Suffix)", "NVIDIA: SKIP_TENSORRT=true als Standard — behebt RTX A2000 und ähnliche GPU-Abstürze", "Intel: intel-compute-runtime zum Docker-Image hinzugefügt, verbesserte OpenVINO GPU-Diagnostik", "Verbesserter /gpu-verify Endpoint mit /dev/dri Status, Berechtigungen und Troubleshooting-Tipps", "Player Quick-Menü neu gestaltet: alle 14 Modelle in 5 Kategorien, berücksichtigt Button-Position"] },
                 { ver: "1.5.3.0", date: "Mär 2026", type: "Feature", items: ["Player-Button Injection für Docker behoben (Multi-Pfad Fallback)", "Config-Seite Auto-Bootstrap aktiviert Player-Script", "Geplante Aufgabe: Bibliothek nach Upscaling scannen (täglich um 3 Uhr)", "Konfigurierbare Auflösungsschwelle", "Detailliertes Logging für Script-Injection"] },
                 { ver: "1.5.2.8", date: "Mär 2026", type: "Fix", items: ["Kritisch: API-Route-Fehler behoben — 503-Fehler auf allen Buttons", "Duale Route-Attribute auf UpscalerController ([controller] + api/[controller])", "Konfigurationsseite für Jellyfin 10.11+ neu aufgebaut", "Horizontale Tabs + einklappbare Akkordeon-Abschnitte", "Vollständige Dark-Theme-Härtung, eigene CSS-Checkboxen", "Docker AI Service UI im Plugin-Design neu gestaltet"] },

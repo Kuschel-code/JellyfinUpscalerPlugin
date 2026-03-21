@@ -111,12 +111,14 @@ function renderHome() {
         </div>
         <div class="features-grid">
             ${[
+            { k: 'realtime', ic: icons.features },
+            { k: 'preupscale', ic: icons.ai },
             { k: 'docker', ic: icons.docker },
             { k: 'ssh', ic: icons.ssh },
             { k: 'gpu', ic: icons.gpu },
             { k: 'ai', ic: icons.ai },
             { k: 'ui', ic: icons.ui }
-        ].map((item, i) => `
+        ].filter(item => f[item.k]).map((item, i) => `
                 <div class="feature-card fade-in delay-${i + 1}">
                     <div class="feature-icon">${item.ic}</div>
                     <h3>${escapeHtml(f[item.k].title)}</h3>
@@ -332,12 +334,14 @@ function renderFeatures() {
         </div>
         <div class="features-grid">
             ${[
+            { k: 'realtime', ic: icons.features },
+            { k: 'preupscale', ic: icons.ai },
             { k: 'docker', ic: icons.docker },
             { k: 'ssh', ic: icons.ssh },
             { k: 'gpu', ic: icons.gpu },
             { k: 'ai', ic: icons.ai },
             { k: 'ui', ic: icons.ui }
-        ].map((item, i) => `
+        ].filter(item => f[item.k]).map((item, i) => `
                 <div class="feature-card fade-in delay-${i + 1}">
                     <div class="feature-icon">${item.ic}</div>
                     <h3>${escapeHtml(f[item.k].title)}</h3>
