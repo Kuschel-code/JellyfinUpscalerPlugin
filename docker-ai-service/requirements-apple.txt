@@ -1,4 +1,4 @@
-# Apple Silicon (M1/M2/M3/M4) requirements
+# Apple Silicon (M1/M2/M3/M4/M5) requirements
 # For native macOS installation or Docker on Apple Silicon
 
 # FastAPI and Server
@@ -8,7 +8,8 @@ python-multipart==0.0.6
 aiofiles==23.2.1
 
 # AI/ML - ONNX Runtime (CPU mode in Docker, CoreML natively)
-onnxruntime>=1.17.0
+onnxruntime>=1.20.0
+coremltools>=7.0  # Enables CoreML/Neural Engine on Apple Silicon (M1-M5)
 numpy>=1.24.0,<2.0.0
 
 # Image Processing - OpenCV with DNN Super Resolution

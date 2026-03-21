@@ -2,7 +2,8 @@
 # FROM python:3.11-slim-bookworm
 
 # === GPU Version (NVIDIA CUDA + cuDNN 9) ===
-FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu22.04
+# CUDA 12.8 supports RTX 5000 series (Blackwell, sm_120) + RTX 4000/3000/2000
+FROM nvidia/cuda:12.8.0-cudnn-runtime-ubuntu22.04
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1

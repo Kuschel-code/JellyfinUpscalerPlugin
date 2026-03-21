@@ -6,7 +6,7 @@ aiofiles==23.2.1
 
 # AI/ML - ONNX Runtime with GPU support for Real-ESRGAN
 # Use onnxruntime-gpu for CUDA acceleration
-onnxruntime-gpu>=1.17.0
+onnxruntime-gpu>=1.20.0  # 1.20+ required for RTX 5000 (Blackwell sm_120) support
 numpy>=1.24.0,<2.0.0
 
 # Image Processing - OpenCV with DNN Super Resolution

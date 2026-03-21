@@ -25,6 +25,9 @@ services:
       - GPU_DEVICE_ID=0
     restart: unless-stopped
     # GPU support (requires nvidia-docker)
+    # Compatible with: RTX 5000 series (Blackwell), RTX 4000, RTX 3000, RTX 2000
+    # CUDA 12.8 + ONNX Runtime 1.20+ enables RTX 5000 (sm_120) support
+    # CUDA_VISIBLE_DEVICES=0  # Select specific GPU for multi-GPU setups
     deploy:
       resources:
         reservations:

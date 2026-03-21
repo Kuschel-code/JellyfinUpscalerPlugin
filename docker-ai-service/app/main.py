@@ -82,6 +82,9 @@ class AppState:
     # Benchmark results
     last_benchmark: dict = {}
 
+    # Last model load error (for surfacing in API responses)
+    last_load_error: Optional[str] = None
+
 state = AppState()
 
 # Concurrency semaphore for upscaling requests (thread-safe)
@@ -325,9 +328,9 @@ def detect_hardware():
                     if "model name" in line:
                         state.cpu_name = line.split(":")[1].strip()
                         break
-    except:
-        pass
-    
+    except Exception as e:
+        logger.debug(f"Failed to read /proc/cpuinfo for CPU name: {e}")
+
     gpu_detected = False
     
     # Try NVIDIA GPU first (nvidia-smi) — enumerate ALL GPUs
@@ -354,6 +357,26 @@ def detect_hardware():
                 state.gpu_memory = state.gpu_list[idx]["memory"]
                 gpu_detected = True
                 logger.info(f"Detected {len(state.gpu_list)} NVIDIA GPU(s): {[g['name'] for g in state.gpu_list]}")
+
+            # Detect compute capability for Blackwell identification
+            try:
+                cc_result = subprocess.run(
+                    ["nvidia-smi", "--query-gpu=compute_cap", "--format=csv,noheader"],
+                    capture_output=True, text=True, timeout=10
+                )
+                if cc_result.returncode == 0:
+                    for i, cc_line in enumerate(cc_result.stdout.strip().split('\n')):
+                        cc = cc_line.strip()
+                        if cc and i < len(state.gpu_list):
+                            state.gpu_list[i]['compute_capability'] = cc
+                            cc_major = int(cc.split('.')[0]) if '.' in cc else 0
+                            if cc_major >= 12:
+                                logger.info(f"  GPU {i}: Blackwell architecture detected (sm_{cc.replace('.', '')})")
+                            elif cc_major >= 8:
+                                logger.info(f"  GPU {i}: Ampere/Ada architecture (sm_{cc.replace('.', '')})")
+            except Exception as e:
+                logger.debug(f"Could not detect compute capability: {e}")
+
     except Exception as e:
         logger.debug(f"NVIDIA GPU not detected: {e}")
     
@@ -388,9 +411,10 @@ def detect_hardware():
                                     if p.isdigit():
                                         state.gpu_memory = f"{int(p)} MB"
                                         break
-                except:
+                except Exception as e:
+                    logger.debug(f"Failed to detect AMD GPU VRAM via rocm-smi: {e}")
                     state.gpu_memory = "Unknown"
-                
+
                 gpu_detected = True
                 logger.info(f"Detected AMD GPU: {state.gpu_name}")
         except Exception as e:
@@ -447,8 +471,8 @@ def detect_hardware():
                             if ("VGA" in line or "Display" in line or "3D" in line) and "Intel" in line:
                                 gpu_name = line.split(":")[-1].strip()
                                 break
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Failed to detect Intel GPU name via lspci: {e}")
 
                 # Also check via /sys for device info
                 if gpu_name == "Intel GPU":
@@ -463,8 +487,8 @@ def detect_hardware():
                                         device_id = device_path.read_text().strip()
                                         gpu_name = f"Intel GPU (Device {device_id})"
                                     break
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"Failed to detect Intel GPU via /sys/class/drm: {e}")
 
                 state.gpu_name = gpu_name
                 state.gpu_memory = "Shared Memory"
@@ -517,7 +541,8 @@ def detect_hardware():
                         if mem_result.returncode == 0:
                             mem_bytes = int(mem_result.stdout.strip())
                             state.gpu_memory = f"{mem_bytes // (1024**3)} GB (Unified)"
-                    except:
+                    except Exception as e:
+                        logger.debug(f"Failed to detect Apple Silicon memory size: {e}")
                         state.gpu_memory = "Unified Memory"
                     gpu_detected = True
                     logger.info(f"Detected Apple Silicon: {state.gpu_name}")
@@ -631,6 +656,7 @@ async def load_opencv_model(model_name: str, model_info: dict, model_path: Path)
         return True
         
     except Exception as e:
+        state.last_load_error = str(e)
         logger.error(f"Failed to load OpenCV model {model_name}: {e}")
         return False
 
@@ -726,6 +752,26 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
         skip_tensorrt = os.getenv("SKIP_TENSORRT", "false").lower() == "true"
         device_id = state.gpu_device_id
 
+        # Check for provider override via environment variable
+        override_providers = os.getenv("ONNX_PROVIDERS")
+        if override_providers:
+            providers = [p.strip() for p in override_providers.split(",")]
+            logger.info(f"Using override providers: {providers}")
+            try:
+                session = ort.InferenceSession(str(model_path), providers=providers)
+                with _model_lock:
+                    state.onnx_session = session
+                    state.current_model = model_name
+                    state.current_model_type = "onnx"
+                    state.onnx_model_scale = model_info.get("scale", 4)
+                    state.onnx_model_name = model_name
+                    state.cv_model = None
+                state.providers = session.get_providers()
+                logger.info(f"ONNX model {model_name} loaded with override providers: {state.providers}")
+                return True
+            except Exception as e:
+                logger.warning(f"Override providers failed: {e}, falling back to auto-detection")
+
         # Detect available providers
         available_providers = ort.get_available_providers()
         logger.info(f"Available ONNX Runtime providers: {available_providers}")
@@ -751,6 +797,40 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
                     'options': [{'device_type': openvino_device, 'precision': 'FP32'}, {}],
                     'name': 'OpenVINO GPU'
                 })
+
+        # Chain: CoreML + CPU (macOS with Apple Silicon — M1/M2/M3/M4/M5)
+        if platform.system() == "Darwin" and platform.machine() == "arm64":
+            try:
+                if "CoreMLExecutionProvider" in available_providers:
+                    logger.info("Attempting CoreML (Apple Neural Engine) provider chain...")
+                    coreml_options = {
+                        "coreml_flags": 0  # 0 = default, uses Neural Engine when available
+                    }
+                    providers_to_try = [
+                        ("CoreMLExecutionProvider", coreml_options),
+                        "CPUExecutionProvider"
+                    ]
+                    try:
+                        session = ort.InferenceSession(str(model_path), providers=providers_to_try)
+                        active = session.get_providers()
+                        if "CoreMLExecutionProvider" in active:
+                            logger.info("CoreML provider active — using Apple Neural Engine")
+                            with _model_lock:
+                                state.onnx_session = session
+                                state.current_model = model_name
+                                state.current_model_type = "onnx"
+                                state.onnx_model_scale = model_info.get("scale", 4)
+                                state.onnx_model_name = model_name
+                                state.use_gpu = True
+                                state.gpu_name = f"Apple Neural Engine ({platform.processor() or 'Apple Silicon'})"
+                                state.cv_model = None
+                            state.providers = active
+                            logger.info(f"ONNX model {model_name} loaded with CoreML: {active}")
+                            return True
+                    except Exception as e:
+                        logger.warning(f"CoreML provider failed: {e}, falling back...")
+            except Exception as e:
+                logger.debug(f"CoreML detection error: {e}")
 
         # Chain 3: CPU only (always works)
         provider_chains.append({
@@ -887,6 +967,7 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
         return True
 
     except Exception as e:
+        state.last_load_error = str(e)
         logger.error(f"Failed to load ONNX model {model_name}: {e}")
         return False
 
@@ -1435,7 +1516,7 @@ async def load_model_endpoint(
     success = await load_model(model_name)
 
     if not success:
-        raise HTTPException(status_code=500, detail="Failed to load model")
+        raise HTTPException(status_code=500, detail=f"Failed to load model: {state.last_load_error or 'unknown'}")
 
     return {
         "status": "success",
@@ -1462,8 +1543,10 @@ async def upscale_endpoint(
         logger.warning(f"Requested scale={scale} differs from loaded model scale={model_scale}. Using model's native scale={model_scale}.")
 
     # Atomic try-acquire to avoid TOCTOU race (same pattern as /upscale-frame)
+    acquired = False
     try:
         await asyncio.wait_for(_upscale_semaphore.acquire(), timeout=0)
+        acquired = True
     except asyncio.TimeoutError:
         raise HTTPException(status_code=429, detail="Too many concurrent requests")
 
@@ -1487,7 +1570,8 @@ async def upscale_endpoint(
         finally:
             state.processing_count -= 1
     finally:
-        _upscale_semaphore.release()
+        if acquired:
+            _upscale_semaphore.release()
 
 
 @app.get("/benchmark")
@@ -1508,8 +1592,10 @@ async def upscale_frame_endpoint(request: Request):
         raise HTTPException(status_code=400, detail="No model loaded")
 
     # Return 503 immediately if busy — client skips this frame (try-acquire)
+    acquired = False
     try:
         await asyncio.wait_for(_upscale_semaphore.acquire(), timeout=0)
+        acquired = True
     except asyncio.TimeoutError:
         raise HTTPException(status_code=503, detail="Busy")
 
@@ -1543,7 +1629,8 @@ async def upscale_frame_endpoint(request: Request):
         finally:
             state.processing_count -= 1
     finally:
-        _upscale_semaphore.release()
+        if acquired:
+            _upscale_semaphore.release()
 
 
 def _run_frame_benchmark(width: int, height: int) -> dict:
@@ -1596,6 +1683,9 @@ async def benchmark_frame_endpoint(width: int = 480, height: int = 270):
     """Benchmark at actual capture resolution for real-time upscaling feasibility."""
     if state.cv_model is None and state.onnx_session is None:
         raise HTTPException(status_code=400, detail="No model loaded")
+
+    if state.current_model is None:
+        raise HTTPException(status_code=400, detail="No model loaded. Load a model first via POST /models/load")
 
     # Clamp dimensions to reasonable range
     width = max(64, min(width, 1920))

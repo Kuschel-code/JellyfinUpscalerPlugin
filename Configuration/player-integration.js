@@ -1,4 +1,4 @@
-// AI Upscaler Plugin - Player Integration v1.5.3.4
+// AI Upscaler Plugin - Player Integration v1.5.3.5
 // Global script injection (loaded via index.html like Intro Skipper)
 // Compatible with Jellyfin 10.11+
 
@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.5.3.4';
+    const PLUGIN_VERSION = '1.5.3.5';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -71,6 +71,7 @@
         _overlayCanvas: null,
         _overlayCtx: null,
         _pendingFrame: false,
+        _currentObjectUrl: null,
         _fpsFrameCount: 0,
         _fpsLastTime: 0,
         _currentFps: 0,
@@ -236,6 +237,11 @@
                 clearInterval(this._fallbackCheckInterval);
                 this._fallbackCheckInterval = null;
             }
+            // Revoke any pending object URL to prevent memory leak
+            if (this._currentObjectUrl) {
+                URL.revokeObjectURL(this._currentObjectUrl);
+                this._currentObjectUrl = null;
+            }
             if (this._overlayCanvas && this._overlayCanvas.parentElement) {
                 this._overlayCanvas.parentElement.removeChild(this._overlayCanvas);
             }
@@ -291,6 +297,10 @@
 
                     var img = new Image();
                     img.onload = function() {
+                        // Revoke object URL immediately after decode to prevent memory leak
+                        URL.revokeObjectURL(img.src);
+                        self._currentObjectUrl = null;
+
                         if (self._overlayCanvas && self._active) {
                             // Resize overlay to match result
                             if (self._overlayCanvas.width !== img.width || self._overlayCanvas.height !== img.height) {
@@ -328,14 +338,19 @@
                                 }
                             }
                         }
-                        URL.revokeObjectURL(img.src);
                         self._pendingFrame = false;
                     };
                     img.onerror = function() {
                         URL.revokeObjectURL(img.src);
+                        self._currentObjectUrl = null;
                         self._pendingFrame = false;
                     };
-                    img.src = URL.createObjectURL(resultBlob);
+                    // Revoke previous URL if still pending (safety net)
+                    if (self._currentObjectUrl) {
+                        URL.revokeObjectURL(self._currentObjectUrl);
+                    }
+                    self._currentObjectUrl = URL.createObjectURL(resultBlob);
+                    img.src = self._currentObjectUrl;
                 }).catch(function() {
                     self._pendingFrame = false;
                 });

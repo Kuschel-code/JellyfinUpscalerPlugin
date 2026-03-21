@@ -466,7 +466,12 @@ namespace JellyfinUpscalerPlugin.Services
                     .ExecuteAsync(cancellationToken);
                 
                 var success = result.ExitCode == 0;
-                
+
+                if (!success)
+                {
+                    _logger.LogError("❌ Real-time FFmpeg processing failed with exit code {ExitCode} for {InputPath}", result.ExitCode, inputPath);
+                }
+
                 return new VideoProcessingResult
                 {
                     Success = success,
