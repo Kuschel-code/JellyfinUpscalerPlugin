@@ -18,6 +18,8 @@
         _fpsLastTime: 0,
         _explicitWidth: 0,
         _explicitHeight: 0,
+        _vertexShader: null,
+        _fragmentShader: null,
         
         // Shader sources
         vertexShaderSource: `
@@ -127,6 +129,13 @@
                     videoContainer.appendChild(this.canvas);
                 }
                 
+                // Handle WebGL context loss
+                this.canvas.addEventListener('webglcontextlost', function(e) {
+                    e.preventDefault();
+                    console.warn('AI Upscaler: WebGL context lost');
+                    WebGLUpscaler.disable();
+                }, false);
+
                 console.log('AI Upscaler: WebGL upscaler initialized successfully');
                 return true;
                 
@@ -141,29 +150,29 @@
             const gl = this.gl;
             
             // Vertex shader
-            const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-            gl.shaderSource(vertexShader, this.vertexShaderSource);
-            gl.compileShader(vertexShader);
-            
-            if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
-                console.error('Vertex shader error:', gl.getShaderInfoLog(vertexShader));
+            this._vertexShader = gl.createShader(gl.VERTEX_SHADER);
+            gl.shaderSource(this._vertexShader, this.vertexShaderSource);
+            gl.compileShader(this._vertexShader);
+
+            if (!gl.getShaderParameter(this._vertexShader, gl.COMPILE_STATUS)) {
+                console.error('Vertex shader error:', gl.getShaderInfoLog(this._vertexShader));
                 return false;
             }
-            
+
             // Fragment shader
-            const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-            gl.shaderSource(fragmentShader, this.fragmentShaderSource);
-            gl.compileShader(fragmentShader);
-            
-            if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
-                console.error('Fragment shader error:', gl.getShaderInfoLog(fragmentShader));
+            this._fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+            gl.shaderSource(this._fragmentShader, this.fragmentShaderSource);
+            gl.compileShader(this._fragmentShader);
+
+            if (!gl.getShaderParameter(this._fragmentShader, gl.COMPILE_STATUS)) {
+                console.error('Fragment shader error:', gl.getShaderInfoLog(this._fragmentShader));
                 return false;
             }
-            
+
             // Link program
             this.program = gl.createProgram();
-            gl.attachShader(this.program, vertexShader);
-            gl.attachShader(this.program, fragmentShader);
+            gl.attachShader(this.program, this._vertexShader);
+            gl.attachShader(this.program, this._fragmentShader);
             gl.linkProgram(this.program);
             
             if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
@@ -222,7 +231,7 @@
         
         // Render frame
         render: function() {
-            if (!this.enabled || !this.videoElement || !this.gl) {
+            if (!this.enabled || !this.videoElement || !this.gl || this.gl.isContextLost()) {
                 return;
             }
             
@@ -340,13 +349,21 @@
                 this.gl.deleteTexture(this.texture);
             }
             
+            if (this.gl && this._vertexShader) {
+                this.gl.deleteShader(this._vertexShader);
+            }
+            if (this.gl && this._fragmentShader) {
+                this.gl.deleteShader(this._fragmentShader);
+            }
             if (this.gl && this.program) {
                 this.gl.deleteProgram(this.program);
             }
-            
+
             this.canvas = null;
             this.gl = null;
             this.program = null;
+            this._vertexShader = null;
+            this._fragmentShader = null;
             this.videoElement = null;
         }
     };

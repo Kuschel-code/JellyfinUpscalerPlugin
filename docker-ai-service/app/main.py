@@ -1358,11 +1358,13 @@ async def upscale_frame_endpoint(request: Request):
     if state.cv_model is None and state.onnx_session is None:
         raise HTTPException(status_code=400, detail="No model loaded")
 
-    # Return 503 immediately if busy — client skips this frame
-    if _upscale_semaphore.locked():
+    # Return 503 immediately if busy — client skips this frame (try-acquire)
+    try:
+        await asyncio.wait_for(_upscale_semaphore.acquire(), timeout=0)
+    except asyncio.TimeoutError:
         raise HTTPException(status_code=503, detail="Busy")
 
-    async with _upscale_semaphore:
+    try:
         state.processing_count += 1
         try:
             body = await request.body()
@@ -1391,6 +1393,8 @@ async def upscale_frame_endpoint(request: Request):
             raise HTTPException(status_code=500, detail="Frame upscaling failed")
         finally:
             state.processing_count -= 1
+    finally:
+        _upscale_semaphore.release()
 
 
 def _run_frame_benchmark(width: int, height: int) -> dict:

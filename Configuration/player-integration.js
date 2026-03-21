@@ -163,7 +163,7 @@
         },
 
         _initWebGL: function() {
-            if (!window.AIUpscalerWebGL || !this._videoElement) return;
+            if (!window.AIUpscalerWebGL || !this._videoElement || !this._active) return;
             var wgl = window.AIUpscalerWebGL;
             if (wgl.init(this._videoElement)) {
                 wgl.onFpsUpdate = function(fps) {
@@ -274,8 +274,7 @@
 
                 fetch('/api/upscaler/upscale-frame', {
                     method: 'POST',
-                    body: blob,
-                    headers: { 'Content-Type': 'application/octet-stream' }
+                    body: blob
                 }).then(function(resp) {
                     if (resp.status === 503) {
                         // Server busy, skip frame

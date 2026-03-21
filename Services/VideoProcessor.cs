@@ -411,7 +411,8 @@ namespace JellyfinUpscalerPlugin.Services
             VideoProcessingOptions options)
         {
             // Real-time processing for short videos or live streams
-            if (inputInfo.Duration.TotalMinutes < 5 || options.EnableRealTimeProcessing)
+            // BUT: if AI upscaling is explicitly requested, use frame-by-frame instead
+            if (!options.EnableAIUpscaling && (inputInfo.Duration.TotalMinutes < 5 || options.EnableRealTimeProcessing))
             {
                 return ProcessingMethod.RealTime;
             }
@@ -715,21 +716,21 @@ namespace JellyfinUpscalerPlugin.Services
             double frameRate,
             CancellationToken cancellationToken)
         {
-            var tempAudioPath = Path.Combine(Path.GetTempPath(), $"temp_audio_{Guid.NewGuid()}.aac");
+            var tempAudioPath = Path.Combine(Path.GetTempPath(), $"temp_audio_{Guid.NewGuid()}.mka");
             var hasAudio = false;
             var effectiveFps = frameRate > 0 ? frameRate : 30.0;
-            
+
             try
             {
-                // Try to extract audio from original video
+                // Try to extract audio from original video (use .mka container to support any codec)
                 var audioArgs = $"-i \"{originalPath}\" -vn -acodec copy -y \"{tempAudioPath}\"";
                 var audioResult = await Cli.Wrap(_ffmpegPath)
                     .WithArguments(audioArgs)
                     .WithValidation(CommandResultValidation.None)
                     .ExecuteAsync(cancellationToken);
-                
+
                 hasAudio = audioResult.ExitCode == 0 && File.Exists(tempAudioPath) && new FileInfo(tempAudioPath).Length > 0;
-                
+
                 if (!hasAudio)
                 {
                     _logger.LogInformation("ℹ️ No audio track found in source video");
@@ -745,11 +746,11 @@ namespace JellyfinUpscalerPlugin.Services
             string reconstructArgs;
             if (hasAudio && File.Exists(tempAudioPath))
             {
-                reconstructArgs = $"-framerate {effectiveFps} -i \"{processedDir}/frame_%06d.png\" -i \"{tempAudioPath}\" -c:v libx264 -c:a copy -pix_fmt yuv420p -y \"{outputPath}\"";
+                reconstructArgs = $"-framerate {effectiveFps} -i \"{processedDir}/frame_%06d.png\" -i \"{tempAudioPath}\" -c:v libx264 -r {effectiveFps} -c:a aac -b:a 192k -pix_fmt yuv420p -y \"{outputPath}\"";
             }
             else
             {
-                reconstructArgs = $"-framerate {effectiveFps} -i \"{processedDir}/frame_%06d.png\" -c:v libx264 -pix_fmt yuv420p -y \"{outputPath}\"";
+                reconstructArgs = $"-framerate {effectiveFps} -i \"{processedDir}/frame_%06d.png\" -c:v libx264 -r {effectiveFps} -pix_fmt yuv420p -y \"{outputPath}\"";
             }
             
             var result = await Cli.Wrap(_ffmpegPath)
