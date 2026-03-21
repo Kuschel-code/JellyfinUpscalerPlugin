@@ -995,13 +995,12 @@ async def download_model(model_name: str) -> bool:
         
         logger.info(f"Downloading model {model_name} from {download_url}")
         
-        async with httpx.AsyncClient(timeout=600.0) as client:
-            response = await client.get(download_url, follow_redirects=True)
-            response.raise_for_status()
-
-            # Use run_in_executor to avoid blocking the event loop on large file writes
-            loop = asyncio.get_running_loop()
-            await loop.run_in_executor(None, model_path.write_bytes, response.content)
+        async with httpx.AsyncClient(timeout=600.0, follow_redirects=True) as dl_client:
+            async with dl_client.stream("GET", download_url) as response:
+                response.raise_for_status()
+                with open(model_path, "wb") as f:
+                    async for chunk in response.aiter_bytes(chunk_size=65536):
+                        f.write(chunk)
         
         size_mb = model_path.stat().st_size / 1024 / 1024
         logger.info(f"Model {model_name} downloaded ({size_mb:.1f} MB)")
@@ -1064,21 +1063,17 @@ def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
     # Convert BGR to RGB and normalize to [0, 1]
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
 
-    # Acquire model lock to prevent reading a half-swapped model
+    # Acquire model lock ONCE to capture consistent session/config snapshot
     with _model_lock:
         session = state.onnx_session
         if session is None:
             raise ValueError("ONNX session not loaded")
         input_name = session.get_inputs()[0].name
         output_name = session.get_outputs()[0].name
-        scale = state.onnx_model_scale
+        scale = state.onnx_model_scale or 4
 
     # Small image: skip tiling, process directly
     if w <= tile_size and h <= tile_size:
-        with _model_lock:
-            session = state.onnx_session
-            if session is None:
-                raise ValueError("ONNX session not loaded")
         result = _onnx_infer_tile(img_rgb, session, input_name, output_name)
         result = np.clip(result * 255.0, 0, 255).astype(np.uint8)
         return cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
@@ -1114,11 +1109,7 @@ def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
 
             tile = img_rgb[y_start:y_end, x_start:x_end]
 
-            # Inference (lock protects against model swap during run)
-            with _model_lock:
-                session = state.onnx_session
-                if session is None:
-                    raise ValueError("ONNX session not loaded")
+            # Inference using captured session (no lock needed — snapshot is consistent)
             out_tile = _onnx_infer_tile(tile, session, input_name, output_name)
 
             # Compute output coordinates
@@ -1707,6 +1698,9 @@ async def update_config(
         state.use_gpu = use_gpu
     if max_concurrent is not None:
         state.max_concurrent = max_concurrent
+        global _upscale_semaphore
+        _upscale_semaphore = _asyncio.Semaphore(max_concurrent)
+        logger.info(f"Updated max_concurrent to {max_concurrent}")
     if gpu_device_id is not None:
         state.gpu_device_id = gpu_device_id
         logger.info(f"GPU device ID updated to {gpu_device_id}")

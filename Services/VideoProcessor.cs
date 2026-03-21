@@ -708,7 +708,9 @@ namespace JellyfinUpscalerPlugin.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, $"⚠️ Failed to process frame {frameFile}");
+                        _logger.LogWarning(ex, "Failed to upscale frame {Frame}, using original", frameFile);
+                        var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFile));
+                        File.Copy(frameFile, outputFile, true);
                     }
                     finally
                     {

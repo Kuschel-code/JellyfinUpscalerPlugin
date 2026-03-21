@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.5.3.4
+# Jellyfin AI Upscaler Plugin v1.5.3.5
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -27,7 +27,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.5.3.4      │  │
+│  │  AI Upscaler Plugin v1.5.3.5      │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -222,15 +222,31 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 | Tag | GPU | Use Case |
 |-----|-----|----------|
-| `:docker4` | NVIDIA CUDA + TensorRT | RTX 40/30/20, GTX 16/10 |
+| `:docker4` | NVIDIA CUDA 12.8 + TensorRT | RTX 50/40/30/20, GTX 16/10 |
 | `:docker4-amd` | AMD ROCm | RX 7000, RX 6000 |
 | `:docker4-intel` | Intel OpenVINO | Arc A-Series, Iris Xe |
-| `:docker4-apple` | ARM64 Optimized | Apple M1–M4 |
+| `:docker4-apple` | ARM64 Optimized | Apple M1–M5 (Docker=CPU, native=CoreML) |
 | `:docker4-cpu` | Multi-threaded CPU | Any platform |
 
 ---
 
 ## Changelog
+
+### v1.5.3.5 (RTX 5000 + Apple M5 + Bugfixes)
+- **Added**: NVIDIA RTX 5000 series support (Blackwell, sm_120) via CUDA 12.8 + ONNX Runtime 1.20+
+- **Added**: Apple M5 Neural Engine support via CoreML execution provider
+- **Added**: Native macOS install script (`install-native-macos.sh`) for GPU-accelerated upscaling without Docker
+- **Added**: `ONNX_PROVIDERS` env var for custom execution provider chains
+- **Added**: Blackwell architecture auto-detection with compute capability logging
+- **Fixed**: Server-mode real-time upscaling crash (ReferenceError in `_startServer`)
+- **Fixed**: ONNX model-swap race condition during inference (single-lock pattern)
+- **Fixed**: Library scan resolution filter (OR instead of AND — catches all low-res content)
+- **Fixed**: Frame-by-frame processing drops frames on error (now uses original as fallback)
+- **Fixed**: Model download buffers entire file in RAM (now streams to disk)
+- **Fixed**: WebGL buffer leak on repeated enable/disable cycles
+- **Fixed**: `/config` endpoint semaphore not updated on `max_concurrent` change
+- **Fixed**: Semaphore crash on concurrent 503 responses
+- **Fixed**: Browser memory leak from Object URLs in real-time upscaler
 
 ### v1.5.3.4 (New Models + Critical Bugfixes)
 - **Added**: SPAN x2/x4 — fastest quality model (NTIRE 2023 winner), ideal for real-time
@@ -324,7 +340,7 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 1. Uninstall old versions (v1.4.x)
 2. Delete old plugin folder from Jellyfin plugins directory
 3. Restart Jellyfin
-4. Install v1.5.3.4 fresh from repository
+4. Install v1.5.3.5 fresh from repository
 
 ### Player button not showing
 1. The button only works in **web browsers** (Chrome, Edge, Firefox)
@@ -349,9 +365,14 @@ docker run --rm --gpus all nvidia/cuda:12.2.2-base-ubuntu22.04 nvidia-smi
 ```
 
 ### GPU not detected
-- **NVIDIA**: Install `nvidia-container-toolkit`, use `--gpus all`. TensorRT is skipped by default — set `SKIP_TENSORRT=false` if your GPU supports it.
+- **NVIDIA RTX 5000 (Blackwell)**: Requires CUDA 12.8+ — use latest `:docker4` image. Compute capability sm_120 auto-detected.
+- **NVIDIA RTX 4000/3000/2000**: Install `nvidia-container-toolkit`, use `--gpus all`. TensorRT is skipped by default — set `SKIP_TENSORRT=false` if your GPU supports it.
 - **Intel**: Use `:docker4-intel` tag with `--device=/dev/dri --group-add=render`. Check diagnostics: `curl http://YOUR_SERVER_IP:5000/gpu-verify`
 - **AMD**: Use `:docker4-amd` tag with `--device=/dev/kfd --device=/dev/dri`
+- **Apple M1–M5**: Docker on macOS runs CPU-only. For GPU acceleration via CoreML/Neural Engine, use the native install:
+  ```bash
+  cd docker-ai-service && chmod +x install-native-macos.sh && ./install-native-macos.sh
+  ```
 - **Windows Docker Desktop**: GPU passthrough not supported — use `:docker4-cpu`
 
 ### Proxmox LXC GPU Passthrough

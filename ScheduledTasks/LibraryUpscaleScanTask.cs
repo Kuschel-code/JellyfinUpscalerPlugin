@@ -167,7 +167,7 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                     continue;
                 }
 
-                if (detectedWidth < minWidth && detectedHeight < minHeight)
+                if (detectedWidth < minWidth || detectedHeight < minHeight)
                 {
                     lowResVideos.Add((video, detectedWidth.Value, detectedHeight.Value));
                     _logger.LogDebug("AI Upscaler: Candidate: {Name} ({W}x{H})", video.Name, detectedWidth, detectedHeight);

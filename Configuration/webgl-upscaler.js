@@ -219,7 +219,11 @@
             const texCoordLocation = gl.getAttribLocation(this.program, 'a_texCoord');
             gl.enableVertexAttribArray(texCoordLocation);
             gl.vertexAttribPointer(texCoordLocation, 2, gl.FLOAT, false, 0, 0);
-            
+
+            // Store buffer references for cleanup
+            this._positionBuffer = positionBuffer;
+            this._texCoordBuffer = texCoordBuffer;
+
             // Create texture
             this.texture = gl.createTexture();
             gl.bindTexture(gl.TEXTURE_2D, this.texture);
@@ -345,6 +349,9 @@
                 this.canvas.parentElement.removeChild(this.canvas);
             }
             
+            if (this._positionBuffer) this.gl.deleteBuffer(this._positionBuffer);
+            if (this._texCoordBuffer) this.gl.deleteBuffer(this._texCoordBuffer);
+
             if (this.gl && this.texture) {
                 this.gl.deleteTexture(this.texture);
             }

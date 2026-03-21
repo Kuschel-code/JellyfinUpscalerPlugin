@@ -187,7 +187,7 @@
         // --- Server AI Tier ---
         _startServer: function() {
             var captureW = (this._config && this._config.RealtimeCaptureWidth) || 480;
-            var captureH = Math.round(captureW * (video.videoHeight / video.videoWidth));
+            var captureH = Math.round(captureW * (this._videoElement.videoHeight / this._videoElement.videoWidth));
 
             this._captureCanvas = document.createElement('canvas');
             this._captureCanvas.width = captureW;
