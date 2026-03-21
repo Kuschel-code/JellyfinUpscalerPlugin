@@ -13,8 +13,8 @@
         "changelog": "v1.5.3.3: Real-time upscaling during playback — two-tier system (WebGL client-side + Server AI). Benchmark-driven tier selection, FPS overlay, auto-fallback.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.3.3/ai-upscaler-plugin-v1.5.3.3.zip",
-        "checksum": "5f0ed7191c160108f59e08f8f78cf2c8",
-        "timestamp": "2026-03-21T12:00:00.000Z"
+        "checksum": "ba37453e37b2678f9f9f8d3aed59c32e",
+        "timestamp": "2026-03-21T14:01:00.000Z"
       },
       {
         "version": "1.5.3.2",
