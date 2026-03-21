@@ -12,6 +12,7 @@ import logging
 import asyncio
 import platform
 import subprocess
+import threading
 import multiprocessing
 from pathlib import Path
 from typing import Optional, Any, List
@@ -86,6 +87,12 @@ state = AppState()
 # Concurrency semaphore for upscaling requests (thread-safe)
 import asyncio as _asyncio
 _upscale_semaphore = _asyncio.Semaphore(state.max_concurrent)
+
+# Threading lock to prevent model-swap data races between load and inference
+_model_lock = threading.Lock()
+
+# Tile size for ONNX inference (prevents OOM on large images)
+ONNX_TILE_SIZE = int(os.getenv("ONNX_TILE_SIZE", "512"))
 
 # Available models with download URLs from PUBLIC sources
 # Note: Real-ESRGAN ONNX models need to be converted, using pre-converted from community
@@ -246,7 +253,61 @@ AVAILABLE_MODELS = {
         "model_type": "edsr",
         "available": True
     },
-    
+
+    # ============================================================
+    # === NEW v1.5.3.4 — Next-Gen Models (ONNX) ===
+    # ============================================================
+    "span-x2": {
+        "name": "SPAN x2 (Fastest Quality)",
+        "url": "https://github.com/jcj83429/upscaling/raw/f73a3a02874360ec6ced18f8bdd8e43b5d7bba57/2xLiveActionV1_SPAN/2xLiveActionV1_SPAN_490000.onnx",
+        "scale": 2,
+        "description": "SPAN — fastest quality model, NTIRE 2023 winner. Best for real-time video.",
+        "type": "onnx",
+        "category": "nextgen",
+        "model_type": "span",
+        "available": True
+    },
+    "span-x4": {
+        "name": "SPAN x4 (Fastest Quality)",
+        "url": "https://huggingface.co/mp3pintyo/upscale/resolve/main/4xSPANkendata_fp32.onnx",
+        "scale": 4,
+        "description": "SPAN 4x — fast quality upscaling, great speed/quality balance.",
+        "type": "onnx",
+        "category": "nextgen",
+        "model_type": "span",
+        "available": True
+    },
+    "realesrgan-x2-plus": {
+        "name": "Real-ESRGAN x2+ (General)",
+        "url": "https://huggingface.co/tidus2102/Real-ESRGAN/resolve/main/Real-ESRGAN_x2plus.onnx",
+        "scale": 2,
+        "description": "Real-ESRGAN x2 Plus — high quality 2x for photos and live-action.",
+        "type": "onnx",
+        "category": "nextgen",
+        "model_type": "realesrgan",
+        "available": True
+    },
+    "realesrgan-animevideo-x4": {
+        "name": "Real-ESRGAN AnimeVideo x4",
+        "url": "https://huggingface.co/tidus2102/Real-ESRGAN/resolve/main/RealESR-AnimeVideo-v3_x4.onnx",
+        "scale": 4,
+        "description": "Real-ESRGAN trained specifically for anime video. Optimized for temporal consistency.",
+        "type": "onnx",
+        "category": "nextgen",
+        "model_type": "realesrgan",
+        "available": True
+    },
+    "swinir-x4": {
+        "name": "SwinIR x4 (Transformer Quality)",
+        "url": "https://huggingface.co/rocca/swin-ir-onnx/resolve/main/003_realSR_BSRGAN_DFO_s64w8_SwinIR-M_x4_GAN.onnx",
+        "scale": 4,
+        "description": "SwinIR — Swin Transformer for image restoration. Best quality for photos & live-action.",
+        "type": "onnx",
+        "category": "nextgen",
+        "model_type": "swinir",
+        "available": True
+    },
+
 }
 
 
@@ -558,12 +619,13 @@ async def load_opencv_model(model_name: str, model_info: dict, model_path: Path)
                 sr.setPreferableBackend(cv2.dnn.DNN_BACKEND_DEFAULT)
                 sr.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
         
-        state.cv_model = sr
-        state.cv_model_name = model_name
-        state.cv_model_scale = scale
-        state.current_model = model_name
-        state.current_model_type = "opencv"
-        state.onnx_session = None
+        with _model_lock:
+            state.cv_model = sr
+            state.cv_model_name = model_name
+            state.cv_model_scale = scale
+            state.current_model = model_name
+            state.current_model_type = "opencv"
+            state.onnx_session = None
         
         logger.info(f"OpenCV model {model_name} loaded successfully (scale={scale})")
         return True
@@ -809,12 +871,13 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
             else:
                 logger.info("TensorRT probe failed — keeping CUDA (no context poisoning)")
 
-        state.onnx_session = session
-        state.onnx_model_name = model_name
-        state.onnx_model_scale = scale
-        state.current_model = model_name
-        state.current_model_type = "onnx"
-        state.cv_model = None
+        with _model_lock:
+            state.onnx_session = session
+            state.onnx_model_name = model_name
+            state.onnx_model_scale = scale
+            state.current_model = model_name
+            state.current_model_type = "onnx"
+            state.cv_model = None
 
         # Update providers list with actual active providers
         actual_providers = session.get_providers()
@@ -896,42 +959,124 @@ def upscale_image(image_bytes: bytes) -> bytes:
     return buffer.tobytes()
 
 
-def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
-    """Upscale an image using the loaded ONNX model (Real-ESRGAN)."""
-    # Convert BGR to RGB
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    
-    # Normalize to [0, 1] and transpose to NCHW format
-    img_normalized = img_rgb.astype(np.float32) / 255.0
-    img_nchw = np.transpose(img_normalized, (2, 0, 1))  # HWC to CHW
+def _onnx_infer_tile(img_rgb_float: np.ndarray, session, input_name: str, output_name: str) -> np.ndarray:
+    """Run ONNX inference on a single tile (HWC float32 [0,1] RGB). Returns HWC float32 RGB."""
+    img_nchw = np.transpose(img_rgb_float, (2, 0, 1))  # HWC to CHW
     img_batch = np.expand_dims(img_nchw, axis=0)  # Add batch dimension
-    
-    # Run inference
-    input_name = state.onnx_session.get_inputs()[0].name
-    output_name = state.onnx_session.get_outputs()[0].name
-    result = state.onnx_session.run([output_name], {input_name: img_batch})[0]
-    
-    # Post-process: remove batch, transpose back to HWC
+    result = session.run([output_name], {input_name: img_batch})[0]
     result = np.squeeze(result, axis=0)
     result = np.transpose(result, (1, 2, 0))  # CHW to HWC
-    
-    # Clip and convert back to uint8
-    result = np.clip(result * 255.0, 0, 255).astype(np.uint8)
-    
-    # Convert RGB back to BGR for OpenCV encoding
-    result = cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
-
     return result
+
+
+def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
+    """Upscale an image using the loaded ONNX model (Real-ESRGAN).
+
+    Uses tile-based processing for large images to prevent GPU OOM.
+    Tile size controlled by ONNX_TILE_SIZE env var (default 512).
+    Overlap of 32px between tiles prevents seam artifacts.
+    """
+    tile_size = ONNX_TILE_SIZE
+    overlap = 32
+    h, w = img.shape[:2]
+
+    # Convert BGR to RGB and normalize to [0, 1]
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+
+    # Acquire model lock to prevent reading a half-swapped model
+    with _model_lock:
+        session = state.onnx_session
+        if session is None:
+            raise ValueError("ONNX session not loaded")
+        input_name = session.get_inputs()[0].name
+        output_name = session.get_outputs()[0].name
+        scale = state.onnx_model_scale
+
+    # Small image: skip tiling, process directly
+    if w <= tile_size and h <= tile_size:
+        with _model_lock:
+            session = state.onnx_session
+            if session is None:
+                raise ValueError("ONNX session not loaded")
+        result = _onnx_infer_tile(img_rgb, session, input_name, output_name)
+        result = np.clip(result * 255.0, 0, 255).astype(np.uint8)
+        return cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
+
+    # Tile-based processing for large images
+    step = tile_size - overlap
+    out_h, out_w = h * scale, w * scale
+    output = np.zeros((out_h, out_w, 3), dtype=np.float64)
+    weight = np.zeros((out_h, out_w, 3), dtype=np.float64)
+
+    # Build a per-tile blending mask (linear ramp on overlap borders)
+    def _make_blend_weight(th: int, tw: int) -> np.ndarray:
+        """Create a 2D blending weight array that tapers at edges for seamless stitching."""
+        wy = np.ones(th, dtype=np.float64)
+        wx = np.ones(tw, dtype=np.float64)
+        if overlap > 0:
+            ramp = np.linspace(0, 1, overlap, dtype=np.float64)
+            # Top / left ramp
+            wy[:overlap] = ramp
+            wx[:overlap] = ramp
+            # Bottom / right ramp
+            wy[-overlap:] = ramp[::-1]
+            wx[-overlap:] = ramp[::-1]
+        return wy[:, None] * wx[None, :]  # (th, tw)
+
+    for y in range(0, h, step):
+        for x in range(0, w, step):
+            # Clamp tile to image boundaries
+            y_end = min(y + tile_size, h)
+            x_end = min(x + tile_size, w)
+            y_start = max(y_end - tile_size, 0)
+            x_start = max(x_end - tile_size, 0)
+
+            tile = img_rgb[y_start:y_end, x_start:x_end]
+
+            # Inference (lock protects against model swap during run)
+            with _model_lock:
+                session = state.onnx_session
+                if session is None:
+                    raise ValueError("ONNX session not loaded")
+            out_tile = _onnx_infer_tile(tile, session, input_name, output_name)
+
+            # Compute output coordinates
+            oy_start = y_start * scale
+            ox_start = x_start * scale
+            oy_end = y_end * scale
+            ox_end = x_end * scale
+            actual_oh = oy_end - oy_start
+            actual_ow = ox_end - ox_start
+
+            # Trim inference output to match expected size (model may round)
+            out_tile = out_tile[:actual_oh, :actual_ow]
+
+            blend_w = _make_blend_weight(actual_oh, actual_ow)
+            blend_w3 = blend_w[:, :, None]  # broadcast to 3 channels
+
+            output[oy_start:oy_end, ox_start:ox_end] += out_tile.astype(np.float64) * blend_w3
+            weight[oy_start:oy_end, ox_start:ox_end] += blend_w3
+
+    # Normalize by accumulated weight
+    weight = np.maximum(weight, 1e-8)
+    output = output / weight
+
+    result = np.clip(output * 255.0, 0, 255).astype(np.uint8)
+    return cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
 
 
 def upscale_image_array(img: np.ndarray) -> np.ndarray:
     """Upscale a numpy image array using the loaded model. Avoids double encode/decode for frame pipeline."""
-    if state.current_model is None:
-        raise ValueError("No model loaded")
+    with _model_lock:
+        if state.current_model is None:
+            raise ValueError("No model loaded")
+        model_type = state.current_model_type
+        cv_model = state.cv_model
+        onnx_session = state.onnx_session
 
-    if state.current_model_type == "opencv" and state.cv_model is not None:
-        return state.cv_model.upsample(img)
-    elif state.current_model_type == "onnx" and state.onnx_session is not None:
+    if model_type == "opencv" and cv_model is not None:
+        return cv_model.upsample(img)
+    elif model_type == "onnx" and onnx_session is not None:
         return upscale_with_onnx(img)
     else:
         raise ValueError("No model loaded")
@@ -1316,11 +1461,13 @@ async def upscale_endpoint(
     if scale != model_scale:
         logger.warning(f"Requested scale={scale} differs from loaded model scale={model_scale}. Using model's native scale={model_scale}.")
 
-    # Use semaphore for thread-safe concurrency limiting
-    if _upscale_semaphore.locked():
+    # Atomic try-acquire to avoid TOCTOU race (same pattern as /upscale-frame)
+    try:
+        await asyncio.wait_for(_upscale_semaphore.acquire(), timeout=0)
+    except asyncio.TimeoutError:
         raise HTTPException(status_code=429, detail="Too many concurrent requests")
 
-    async with _upscale_semaphore:
+    try:
         state.processing_count += 1
         try:
             # Read image
@@ -1339,6 +1486,8 @@ async def upscale_endpoint(
             raise HTTPException(status_code=500, detail="Upscaling failed")
         finally:
             state.processing_count -= 1
+    finally:
+        _upscale_semaphore.release()
 
 
 @app.get("/benchmark")

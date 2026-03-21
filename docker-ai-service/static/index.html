@@ -4,20 +4,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Upscaler Service v1.1.5</title>
+    <title>AI Upscaler Service</title>
     <style>
         :root {
-            --bg-primary: #0f0f1a;
-            --bg-secondary: #1a1a2e;
-            --bg-card: #16213e;
-            --accent: #7c3aed;
-            --accent-light: #a78bfa;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --error: #ef4444;
-            --text-primary: #f8fafc;
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: rgba(30, 41, 59, 0.6);
+            --bg-input: #1e293b;
+            --accent: #00d4ff;
+            --accent-glow: rgba(0, 212, 255, 0.15);
+            --accent-hover: #00b8e6;
+            --success: #4ade80;
+            --warning: #fbbf24;
+            --error: #f87171;
+            --text-primary: #e2e8f0;
             --text-secondary: #94a3b8;
-            --border: rgba(255, 255, 255, 0.1);
+            --text-muted: #64748b;
+            --border: rgba(255, 255, 255, 0.06);
+            --border-hover: rgba(255, 255, 255, 0.12);
+            --radius: 12px;
+            --radius-sm: 8px;
         }
 
         * {
@@ -27,7 +33,7 @@
         }
 
         body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
@@ -43,87 +49,79 @@
         /* Header */
         .header {
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
             padding: 1.5rem;
-            background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
-            border-radius: 1rem;
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: var(--radius);
             border: 1px solid var(--border);
         }
 
         .header h1 {
-            font-size: 2rem;
+            font-size: 1.75rem;
             font-weight: 700;
             margin-bottom: 0.25rem;
-            background: linear-gradient(135deg, var(--accent-light) 0%, var(--accent) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--accent);
         }
 
         .header p {
             color: var(--text-secondary);
-            font-size: 1rem;
+            font-size: 0.9rem;
         }
 
         .header-badges {
             display: flex;
             justify-content: center;
-            gap: 0.75rem;
+            gap: 0.5rem;
             margin-top: 0.75rem;
             flex-wrap: wrap;
         }
 
-        /* Status Badge */
-        .status-badge {
+        /* Status Pills — matching plugin style */
+        .status-pill {
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.4rem 0.8rem;
-            border-radius: 2rem;
-            font-weight: 600;
-            font-size: 0.8rem;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 500;
         }
 
-        .status-badge.online {
-            background: rgba(16, 185, 129, 0.2);
+        .status-pill.online {
+            background: rgba(74, 222, 128, 0.15);
             color: var(--success);
         }
 
-        .status-badge.offline {
-            background: rgba(239, 68, 68, 0.2);
+        .status-pill.offline {
+            background: rgba(248, 113, 113, 0.15);
             color: var(--error);
         }
 
-        .status-badge.warning {
-            background: rgba(245, 158, 11, 0.2);
+        .status-pill.warning {
+            background: rgba(251, 191, 36, 0.15);
             color: var(--warning);
         }
 
+        .status-pill.accent {
+            background: var(--accent-glow);
+            color: var(--accent);
+        }
+
         .status-dot {
-            width: 8px;
-            height: 8px;
+            width: 7px;
+            height: 7px;
             border-radius: 50%;
             animation: pulse 2s infinite;
         }
 
-        .status-badge.online .status-dot {
-            background: var(--success);
-        }
-
-        .status-badge.offline .status-dot {
-            background: var(--error);
-        }
+        .status-pill.online .status-dot { background: var(--success); }
+        .status-pill.offline .status-dot { background: var(--error); }
 
         @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.5;
-            }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
         }
 
         /* Grid Layout */
@@ -131,25 +129,26 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 1rem;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
         }
 
         .grid-3 {
             grid-template-columns: repeat(3, 1fr);
         }
 
-        /* Cards */
+        /* Glassmorphism Cards — matching plugin */
         .card {
             background: var(--bg-card);
-            border-radius: 1rem;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: var(--radius);
             border: 1px solid var(--border);
             padding: 1.25rem;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: border-color 0.2s;
         }
 
         .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(124, 58, 237, 0.1);
+            border-color: var(--border-hover);
         }
 
         .card-header {
@@ -162,25 +161,27 @@
         }
 
         .card-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 0.5rem;
+            width: 34px;
+            height: 34px;
+            border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.1rem;
-            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+            font-size: 1rem;
+            background: var(--accent-glow);
+            border: 1px solid rgba(0, 212, 255, 0.2);
         }
 
         .card-title {
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 600;
+            color: var(--accent);
         }
 
-        /* Info Grid */
+        /* Info Items */
         .info-grid {
             display: grid;
-            gap: 0.5rem;
+            gap: 0.4rem;
         }
 
         .info-item {
@@ -188,9 +189,10 @@
             justify-content: space-between;
             align-items: center;
             padding: 0.5rem 0.75rem;
-            background: var(--bg-secondary);
-            border-radius: 0.5rem;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: var(--radius-sm);
             font-size: 0.85rem;
+            border: 1px solid var(--border);
         }
 
         .info-label {
@@ -201,36 +203,25 @@
             font-weight: 600;
         }
 
-        .info-value.success {
-            color: var(--success);
-        }
+        .info-value.success { color: var(--success); }
+        .info-value.warning { color: var(--warning); }
+        .info-value.error { color: var(--error); }
 
-        .info-value.warning {
-            color: var(--warning);
-        }
-
-        .info-value.error {
-            color: var(--error);
-        }
-
-        /* Hardware Card */
+        /* Hardware Items */
         .hw-item {
             display: flex;
             align-items: center;
             gap: 0.75rem;
             padding: 0.75rem;
-            background: var(--bg-secondary);
-            border-radius: 0.5rem;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: var(--radius-sm);
             margin-bottom: 0.5rem;
+            border: 1px solid var(--border);
         }
 
-        .hw-icon {
-            font-size: 1.5rem;
-        }
+        .hw-icon { font-size: 1.4rem; }
 
-        .hw-details {
-            flex: 1;
-        }
+        .hw-details { flex: 1; }
 
         .hw-name {
             font-weight: 600;
@@ -238,7 +229,7 @@
         }
 
         .hw-sub {
-            color: var(--text-secondary);
+            color: var(--text-muted);
             font-size: 0.75rem;
         }
 
@@ -246,29 +237,40 @@
         .model-list {
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            gap: 0.4rem;
             max-height: 400px;
             overflow-y: auto;
+        }
+
+        .model-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .model-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .model-list::-webkit-scrollbar-thumb {
+            background: var(--text-muted);
+            border-radius: 4px;
         }
 
         .model-item {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0.75rem;
-            background: var(--bg-secondary);
-            border-radius: 0.5rem;
+            padding: 0.65rem 0.75rem;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: var(--radius-sm);
             border: 1px solid var(--border);
+            transition: border-color 0.2s;
         }
 
-        .model-item.unavailable {
-            opacity: 0.6;
-        }
+        .model-item:hover { border-color: var(--border-hover); }
 
-        .model-info {
-            flex: 1;
-            min-width: 0;
-        }
+        .model-item.unavailable { opacity: 0.5; }
+
+        .model-info { flex: 1; min-width: 0; }
 
         .model-name {
             font-weight: 600;
@@ -279,8 +281,8 @@
         }
 
         .model-desc {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
+            font-size: 0.72rem;
+            color: var(--text-muted);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -293,37 +295,22 @@
         }
 
         .badge {
-            padding: 0.2rem 0.5rem;
-            border-radius: 1rem;
-            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 100px;
+            font-size: 0.68rem;
             font-weight: 600;
         }
 
-        .badge-downloaded {
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--success);
-        }
+        .badge-downloaded { background: rgba(74, 222, 128, 0.15); color: var(--success); }
+        .badge-loaded { background: var(--accent-glow); color: var(--accent); }
+        .badge-pending { background: rgba(251, 191, 36, 0.15); color: var(--warning); }
+        .badge-unavailable { background: rgba(248, 113, 113, 0.15); color: var(--error); }
 
-        .badge-loaded {
-            background: rgba(124, 58, 237, 0.2);
-            color: var(--accent-light);
-        }
-
-        .badge-pending {
-            background: rgba(245, 158, 11, 0.2);
-            color: var(--warning);
-        }
-
-        .badge-unavailable {
-            background: rgba(239, 68, 68, 0.2);
-            color: var(--error);
-        }
-
-        /* Buttons */
+        /* Buttons — matching plugin */
         .btn {
             padding: 0.4rem 0.75rem;
-            border-radius: 0.4rem;
-            border: none;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
             font-weight: 600;
             font-size: 0.75rem;
             cursor: pointer;
@@ -331,59 +318,70 @@
             display: inline-flex;
             align-items: center;
             gap: 0.3rem;
+            background: var(--bg-input);
+            color: var(--text-primary);
+        }
+
+        .btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
-            color: white;
+            background: var(--accent);
+            color: #0f172a;
+            border-color: var(--accent);
         }
 
         .btn-primary:hover {
-            transform: scale(1.02);
-            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
-        }
-
-        .btn-secondary {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-        }
-
-        .btn-secondary:hover {
-            background: var(--bg-card);
+            background: var(--accent-hover);
+            box-shadow: 0 0 20px var(--accent-glow);
+            color: #0f172a;
         }
 
         .btn:disabled {
-            opacity: 0.5;
+            opacity: 0.4;
             cursor: not-allowed;
+        }
+
+        .btn:disabled:hover {
+            border-color: var(--border);
+            color: var(--text-primary);
         }
 
         .btn-group {
             display: flex;
-            gap: 0.3rem;
+            gap: 0.4rem;
         }
 
         /* Test Section */
         .test-section {
             background: var(--bg-card);
-            border-radius: 1rem;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: var(--radius);
             border: 1px solid var(--border);
             padding: 1.25rem;
+            transition: border-color 0.2s;
         }
 
+        .test-section:hover { border-color: var(--border-hover); }
+
         .upload-area {
-            border: 2px dashed var(--border);
-            border-radius: 0.75rem;
+            border: 2px dashed rgba(0, 212, 255, 0.2);
+            border-radius: var(--radius-sm);
             padding: 1.5rem;
             text-align: center;
             margin-bottom: 1rem;
             transition: all 0.2s;
             cursor: pointer;
+            color: var(--text-secondary);
         }
 
         .upload-area:hover {
             border-color: var(--accent);
-            background: rgba(124, 58, 237, 0.05);
+            background: var(--accent-glow);
+            color: var(--accent);
         }
 
         .upload-icon {
@@ -400,12 +398,13 @@
 
         .preview-box {
             aspect-ratio: 16/9;
-            background: var(--bg-secondary);
-            border-radius: 0.75rem;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            border: 1px solid var(--border);
         }
 
         .preview-box img {
@@ -416,16 +415,16 @@
 
         .preview-label {
             text-align: center;
-            color: var(--text-secondary);
+            color: var(--text-muted);
             font-size: 0.8rem;
             margin-top: 0.5rem;
         }
 
-        /* Loading */
+        /* Loading Spinner */
         .loading {
             display: inline-block;
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             border: 2px solid transparent;
             border-top-color: currentColor;
             border-radius: 50%;
@@ -433,9 +432,7 @@
         }
 
         @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
+            to { transform: rotate(360deg); }
         }
 
         /* Toast Notifications */
@@ -450,61 +447,63 @@
         }
 
         .toast {
-            padding: 0.75rem 1rem;
-            border-radius: 0.5rem;
+            padding: 0.65rem 1rem;
+            border-radius: var(--radius-sm);
             font-weight: 500;
-            font-size: 0.85rem;
+            font-size: 0.82rem;
             animation: slideIn 0.3s ease;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
         }
 
         .toast.success {
-            background: rgba(16, 185, 129, 0.9);
+            background: rgba(74, 222, 128, 0.15);
+            color: var(--success);
+            border-color: rgba(74, 222, 128, 0.3);
         }
 
         .toast.error {
-            background: rgba(239, 68, 68, 0.9);
+            background: rgba(248, 113, 113, 0.15);
+            color: var(--error);
+            border-color: rgba(248, 113, 113, 0.3);
         }
 
         .toast.info {
-            background: rgba(124, 58, 237, 0.9);
+            background: var(--accent-glow);
+            color: var(--accent);
+            border-color: rgba(0, 212, 255, 0.3);
         }
 
         @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 1rem 0;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        .footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .footer a:hover { text-decoration: underline; }
 
         /* Responsive */
         @media (max-width: 768px) {
-            .container {
-                padding: 1rem;
-            }
-
-            .header h1 {
-                font-size: 1.5rem;
-            }
-
-            .grid {
-                grid-template-columns: 1fr;
-            }
-
-            .preview-container {
-                grid-template-columns: 1fr;
-            }
-
-            .grid-3 {
-                grid-template-columns: 1fr;
-            }
+            .container { padding: 1rem; }
+            .header h1 { font-size: 1.3rem; }
+            .grid, .grid-3 { grid-template-columns: 1fr; }
+            .preview-container { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -512,20 +511,18 @@
 <body>
     <div class="container">
         <header class="header">
-            <h1>🚀 AI Upscaler Service</h1>
-            <p>Neural network image upscaling for Jellyfin</p>
+            <h1>AI Upscaler Service</h1>
+            <p>Docker Microservice Architecture for Jellyfin</p>
             <div class="header-badges">
-                <div id="statusBadge" class="status-badge online">
+                <div id="statusBadge" class="status-pill online">
                     <span class="status-dot"></span>
                     <span id="statusText">Checking...</span>
                 </div>
-                <div id="pluginBadge" class="status-badge warning">
-                    <span>🔌</span>
+                <div id="pluginBadge" class="status-pill warning">
                     <span id="pluginText">No Plugin</span>
                 </div>
-                <div id="versionBadge" class="status-badge online"
-                    style="background: rgba(124, 58, 237, 0.2); color: var(--accent-light);">
-                    <span id="versionText">v1.1.2</span>
+                <div id="versionBadge" class="status-pill accent">
+                    <span id="versionText">v1.5.4</span>
                 </div>
             </div>
         </header>
@@ -534,7 +531,7 @@
             <!-- Service Status -->
             <div class="card">
                 <div class="card-header">
-                    <div class="card-icon">📊</div>
+                    <div class="card-icon">S</div>
                     <h2 class="card-title">Service Status</h2>
                 </div>
                 <div class="info-grid">
@@ -560,11 +557,11 @@
             <!-- GPU Info -->
             <div class="card">
                 <div class="card-header">
-                    <div class="card-icon">🎮</div>
+                    <div class="card-icon">G</div>
                     <h2 class="card-title">GPU</h2>
                 </div>
                 <div class="hw-item">
-                    <span class="hw-icon">🖥️</span>
+                    <span class="hw-icon">&#9632;</span>
                     <div class="hw-details">
                         <div id="gpuName" class="hw-name">Detecting...</div>
                         <div id="gpuMemory" class="hw-sub">Memory: -</div>
@@ -585,11 +582,11 @@
             <!-- CPU Info -->
             <div class="card">
                 <div class="card-header">
-                    <div class="card-icon">💻</div>
+                    <div class="card-icon">C</div>
                     <h2 class="card-title">CPU</h2>
                 </div>
                 <div class="hw-item">
-                    <span class="hw-icon">⚙️</span>
+                    <span class="hw-icon">&#9881;</span>
                     <div class="hw-details">
                         <div id="cpuName" class="hw-name">Detecting...</div>
                         <div id="cpuCores" class="hw-sub">Cores: -</div>
@@ -608,7 +605,7 @@
             <!-- Models -->
             <div class="card">
                 <div class="card-header">
-                    <div class="card-icon">🧠</div>
+                    <div class="card-icon">M</div>
                     <h2 class="card-title">AI Models</h2>
                 </div>
                 <div id="modelList" class="model-list">
@@ -619,22 +616,22 @@
             <!-- Test Upscaling -->
             <div class="test-section">
                 <div class="card-header">
-                    <div class="card-icon">🖼️</div>
+                    <div class="card-icon">T</div>
                     <h2 class="card-title">Test Upscaling</h2>
                 </div>
 
                 <div id="uploadArea" class="upload-area">
-                    <div class="upload-icon">📤</div>
+                    <div class="upload-icon">&#8679;</div>
                     <p>Drop an image here or click to upload</p>
                     <input type="file" id="fileInput" accept="image/*" style="display: none;">
                 </div>
 
                 <div class="btn-group" style="justify-content: center;">
                     <button id="upscaleBtn" class="btn btn-primary" disabled>
-                        <span>⚡ Upscale Image</span>
+                        Upscale Image
                     </button>
-                    <button id="benchmarkBtn" class="btn btn-secondary">
-                        <span>📈 Benchmark</span>
+                    <button id="benchmarkBtn" class="btn">
+                        Benchmark
                     </button>
                 </div>
 
@@ -649,6 +646,10 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div class="footer">
+            AI Upscaler Plugin &mdash; <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub</a>
         </div>
     </div>
 
@@ -666,7 +667,7 @@
                 const data = await res.json();
                 updateStatusUI(data);
             } catch (e) {
-                document.getElementById('statusBadge').className = 'status-badge offline';
+                document.getElementById('statusBadge').className = 'status-pill offline';
                 document.getElementById('statusText').textContent = 'Offline';
             }
         }
@@ -702,13 +703,13 @@
         }
 
         async function downloadModel(modelName) {
-            showToast(`Downloading ${modelName}...`, 'info');
+            showToast('Downloading ' + modelName + '...', 'info');
             try {
                 const formData = new FormData();
                 formData.append('model_name', modelName);
                 const res = await fetch('/models/download', { method: 'POST', body: formData });
                 if (res.ok) {
-                    showToast(`Model ${modelName} downloaded!`, 'success');
+                    showToast('Model ' + modelName + ' downloaded!', 'success');
                     fetchModels();
                 } else {
                     const err = await res.json();
@@ -720,14 +721,14 @@
         }
 
         async function loadModel(modelName) {
-            showToast(`Loading ${modelName}...`, 'info');
+            showToast('Loading ' + modelName + '...', 'info');
             try {
                 const formData = new FormData();
                 formData.append('model_name', modelName);
                 formData.append('use_gpu', 'true');
                 const res = await fetch('/models/load', { method: 'POST', body: formData });
                 if (res.ok) {
-                    showToast(`Model ${modelName} loaded!`, 'success');
+                    showToast('Model ' + modelName + ' loaded!', 'success');
                     fetchStatus();
                     fetchModels();
                 } else {
@@ -751,8 +752,8 @@
                 if (res.ok && !data.error) {
                     const fps = data.fps !== undefined ? data.fps : 'N/A';
                     const time = data.avg_time_ms !== undefined ? data.avg_time_ms : 'N/A';
-                    showToast(`Benchmark: ${fps} FPS (${time}ms)`, 'success');
-                    updateStatus();
+                    showToast('Benchmark: ' + fps + ' FPS (' + time + 'ms)', 'success');
+                    fetchStatus();
                 } else {
                     throw new Error(data.detail || data.error || 'Benchmark failed');
                 }
@@ -760,7 +761,7 @@
                 showToast(e.message, 'error');
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '<span>📈 Benchmark</span>';
+                btn.innerHTML = 'Benchmark';
             }
         }
 
@@ -780,7 +781,7 @@
                 if (res.ok) {
                     const blob = await res.blob();
                     const url = URL.createObjectURL(blob);
-                    document.getElementById('upscaledPreview').innerHTML = `<img src="${url}" alt="Upscaled">`;
+                    document.getElementById('upscaledPreview').innerHTML = '<img src="' + url + '" alt="Upscaled">';
                     showToast('Upscaling complete!', 'success');
                 } else {
                     const err = await res.json();
@@ -790,133 +791,132 @@
                 showToast(e.message, 'error');
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '<span>⚡ Upscale Image</span>';
+                btn.innerHTML = 'Upscale Image';
             }
         }
 
         // UI Updates
         function updateStatusUI(data) {
-            const badge = document.getElementById('statusBadge');
-            const statusText = document.getElementById('statusText');
+            var badge = document.getElementById('statusBadge');
+            var statusText = document.getElementById('statusText');
 
-            badge.className = 'status-badge online';
+            badge.className = 'status-pill online';
             statusText.textContent = 'Running';
 
             document.getElementById('currentModel').textContent = data.current_model || 'None';
             document.getElementById('currentModel').className = 'info-value ' + (data.current_model ? 'success' : '');
 
             document.getElementById('activeRequests').textContent =
-                `${data.processing_count} / ${data.max_concurrent}`;
+                data.processing_count + ' / ' + data.max_concurrent;
 
-            document.getElementById('cudaStatus').textContent = data.cuda_available ? '✅ Yes' : '❌ No';
-            document.getElementById('cudaStatus').className = 'info-value ' + (data.cuda_available ? 'success' : 'warning');
+            document.getElementById('cudaStatus').textContent = data.cuda_available ? 'Yes' : 'No';
+            document.getElementById('cudaStatus').className = 'info-value ' + (data.cuda_available ? 'success' : 'error');
 
-            document.getElementById('onnxStatus').textContent = data.onnx_available ? '✅ Yes' : '❌ No';
-            document.getElementById('onnxStatus').className = 'info-value ' + (data.onnx_available ? 'success' : 'warning');
+            document.getElementById('onnxStatus').textContent = data.onnx_available ? 'Yes' : 'No';
+            document.getElementById('onnxStatus').className = 'info-value ' + (data.onnx_available ? 'success' : 'error');
 
-            document.getElementById('versionText').textContent = `v${data.version}`;
+            document.getElementById('versionText').textContent = 'v' + data.version;
 
             currentModelLoaded = data.current_model;
             updateUpscaleButton();
         }
 
         function updateHardwareUI(data) {
-            // GPU
             document.getElementById('gpuName').textContent = data.gpu.name;
-            document.getElementById('gpuMemory').textContent = `Memory: ${data.gpu.memory}`;
-            document.getElementById('gpuCuda').textContent = data.gpu.cuda_available ? '✅ Active' : '❌ Off';
-            document.getElementById('gpuCuda').className = 'info-value ' + (data.gpu.cuda_available ? 'success' : 'warning');
-            document.getElementById('gpuTensorrt').textContent = data.gpu.tensorrt_available ? '✅ Active' : '❌ Off';
-            document.getElementById('gpuTensorrt').className = 'info-value ' + (data.gpu.tensorrt_available ? 'success' : 'warning');
+            document.getElementById('gpuMemory').textContent = 'Memory: ' + data.gpu.memory;
+            document.getElementById('gpuCuda').textContent = data.gpu.cuda_available ? 'Active' : 'Off';
+            document.getElementById('gpuCuda').className = 'info-value ' + (data.gpu.cuda_available ? 'success' : 'error');
+            document.getElementById('gpuTensorrt').textContent = data.gpu.tensorrt_available ? 'Active' : 'Off';
+            document.getElementById('gpuTensorrt').className = 'info-value ' + (data.gpu.tensorrt_available ? 'success' : 'error');
 
-            // CPU
             document.getElementById('cpuName').textContent = data.cpu.name || 'Unknown';
-            document.getElementById('cpuCores').textContent = `Cores: ${data.cpu.cores}`;
+            document.getElementById('cpuCores').textContent = 'Cores: ' + data.cpu.cores;
 
-            // Providers
-            const shortProviders = data.providers
-                .map(p => p.replace('ExecutionProvider', ''))
+            var shortProviders = data.providers
+                .map(function(p) { return p.replace('ExecutionProvider', ''); })
                 .slice(0, 3)
                 .join(', ');
             document.getElementById('providers').textContent = shortProviders;
         }
 
         function updateConnectionsUI(data) {
-            const badge = document.getElementById('pluginBadge');
-            const text = document.getElementById('pluginText');
+            var badge = document.getElementById('pluginBadge');
+            var text = document.getElementById('pluginText');
 
             if (data.total > 0) {
-                badge.className = 'status-badge online';
-                text.textContent = `${data.total} Plugin(s)`;
+                badge.className = 'status-pill online';
+                text.textContent = data.total + ' Plugin(s)';
             } else {
-                badge.className = 'status-badge warning';
+                badge.className = 'status-pill warning';
                 text.textContent = 'No Plugin';
             }
         }
 
         function updateModelsUI(models) {
-            const container = document.getElementById('modelList');
-            container.innerHTML = models.map(m => `
-                <div class="model-item ${!m.available ? 'unavailable' : ''}">
-                    <div class="model-info">
-                        <div class="model-name">${m.name}</div>
-                        <div class="model-desc">${m.description}</div>
-                    </div>
-                    <div class="model-status">
-                        ${m.loaded ? '<span class="badge badge-loaded">Loaded</span>' : ''}
-                        ${m.downloaded && !m.loaded ? '<span class="badge badge-downloaded">Ready</span>' : ''}
-                        ${!m.downloaded && m.available ? '<span class="badge badge-pending">Not Downloaded</span>' : ''}
-                        ${!m.available ? '<span class="badge badge-unavailable">Coming Soon</span>' : ''}
-                    </div>
-                    <div class="btn-group">
-                        ${!m.downloaded && m.available ? `<button class="btn btn-secondary" onclick="downloadModel('${m.id}')">Download</button>` : ''}
-                        ${m.downloaded && !m.loaded ? `<button class="btn btn-primary" onclick="loadModel('${m.id}')">Load</button>` : ''}
-                    </div>
-                </div>
-            `).join('');
+            var container = document.getElementById('modelList');
+            container.innerHTML = models.map(function(m) {
+                var statusHtml = '';
+                if (m.loaded) statusHtml = '<span class="badge badge-loaded">Loaded</span>';
+                else if (m.downloaded) statusHtml = '<span class="badge badge-downloaded">Ready</span>';
+                else if (m.available) statusHtml = '<span class="badge badge-pending">Not Downloaded</span>';
+                else statusHtml = '<span class="badge badge-unavailable">Coming Soon</span>';
+
+                var btnHtml = '';
+                if (!m.downloaded && m.available) btnHtml = '<button class="btn" onclick="downloadModel(\'' + m.id + '\')">Download</button>';
+                else if (m.downloaded && !m.loaded) btnHtml = '<button class="btn btn-primary" onclick="loadModel(\'' + m.id + '\')">Load</button>';
+
+                return '<div class="model-item ' + (!m.available ? 'unavailable' : '') + '">' +
+                    '<div class="model-info">' +
+                        '<div class="model-name">' + m.name + '</div>' +
+                        '<div class="model-desc">' + m.description + '</div>' +
+                    '</div>' +
+                    '<div class="model-status">' + statusHtml + '</div>' +
+                    '<div class="btn-group">' + btnHtml + '</div>' +
+                '</div>';
+            }).join('');
         }
 
         function updateUpscaleButton() {
-            const btn = document.getElementById('upscaleBtn');
-            btn.disabled = !selectedFile || !currentModelLoaded;
+            document.getElementById('upscaleBtn').disabled = !selectedFile || !currentModelLoaded;
         }
 
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.innerHTML = `<span>${message}</span>`;
+        function showToast(message, type) {
+            type = type || 'info';
+            var container = document.getElementById('toastContainer');
+            var toast = document.createElement('div');
+            toast.className = 'toast ' + type;
+            toast.innerHTML = '<span>' + message + '</span>';
             container.appendChild(toast);
-            setTimeout(() => toast.remove(), 4000);
+            setTimeout(function() { toast.remove(); }, 4000);
         }
 
         // File handling
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('fileInput');
+        var uploadArea = document.getElementById('uploadArea');
+        var fileInput = document.getElementById('fileInput');
 
-        uploadArea.addEventListener('click', () => fileInput.click());
-        uploadArea.addEventListener('dragover', (e) => {
+        uploadArea.addEventListener('click', function() { fileInput.click(); });
+        uploadArea.addEventListener('dragover', function(e) {
             e.preventDefault();
             uploadArea.style.borderColor = 'var(--accent)';
         });
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.style.borderColor = 'var(--border)';
+        uploadArea.addEventListener('dragleave', function() {
+            uploadArea.style.borderColor = 'rgba(0, 212, 255, 0.2)';
         });
-        uploadArea.addEventListener('drop', (e) => {
+        uploadArea.addEventListener('drop', function(e) {
             e.preventDefault();
-            uploadArea.style.borderColor = 'var(--border)';
+            uploadArea.style.borderColor = 'rgba(0, 212, 255, 0.2)';
             handleFile(e.dataTransfer.files[0]);
         });
-        fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+        fileInput.addEventListener('change', function(e) { handleFile(e.target.files[0]); });
 
         function handleFile(file) {
             if (!file || !file.type.startsWith('image/')) return;
             selectedFile = file;
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                document.getElementById('originalPreview').innerHTML = `<img src="${e.target.result}" alt="Original">`;
-                document.getElementById('upscaledPreview').innerHTML = '<span style="color: var(--text-secondary)">Click Upscale</span>';
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('originalPreview').innerHTML = '<img src="' + e.target.result + '" alt="Original">';
+                document.getElementById('upscaledPreview').innerHTML = '<span style="color: var(--text-muted)">Click Upscale</span>';
                 document.getElementById('previewContainer').style.display = 'grid';
             };
             reader.readAsDataURL(file);

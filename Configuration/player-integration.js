@@ -1,4 +1,4 @@
-// AI Upscaler Plugin - Player Integration v1.5.3.0
+// AI Upscaler Plugin - Player Integration v1.5.3.4
 // Global script injection (loaded via index.html like Intro Skipper)
 // Compatible with Jellyfin 10.11+
 
@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.5.3.3';
+    const PLUGIN_VERSION = '1.5.3.4';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -186,7 +186,7 @@
         // --- Server AI Tier ---
         _startServer: function() {
             var captureW = (this._config && this._config.RealtimeCaptureWidth) || 480;
-            var captureH = Math.round(captureW * 9 / 16); // assume 16:9
+            var captureH = Math.round(captureW * (video.videoHeight / video.videoWidth));
 
             this._captureCanvas = document.createElement('canvas');
             this._captureCanvas.width = captureW;
@@ -841,10 +841,16 @@
 
                 var mode = (config.RealtimeMode || 'auto').toLowerCase();
 
+                // Skip upscaling if source resolution is already high enough
+                if (video.videoWidth >= 1920) {
+                    console.log('AI Upscaler RT: Source resolution already high enough (' + video.videoWidth + 'x' + video.videoHeight + '), skipping real-time upscaling');
+                    return;
+                }
+
                 // If mode is auto or server, run benchmark first
                 if (mode === 'auto' || mode === 'server') {
                     var captureW = config.RealtimeCaptureWidth || 480;
-                    var captureH = Math.round(captureW * 9 / 16);
+                    var captureH = Math.round(captureW * (video.videoHeight / video.videoWidth));
                     fetch('/api/upscaler/benchmark-frame?width=' + captureW + '&height=' + captureH)
                         .then(function(r) { return r.json(); })
                         .then(function(bench) {

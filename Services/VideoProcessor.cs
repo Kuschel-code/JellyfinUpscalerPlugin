@@ -503,7 +503,17 @@ namespace JellyfinUpscalerPlugin.Services
                 
                 var tempDir = Path.Combine(Path.GetTempPath(), "JellyfinUpscaler", job.Id);
                 Directory.CreateDirectory(tempDir);
-                
+
+                // Disk space check before frame extraction
+                var driveInfo = new DriveInfo(Path.GetPathRoot(tempDir) ?? "/");
+                var estimatedSpaceNeeded = (long)((job.InputInfo?.Duration.TotalSeconds ?? 300) * 25 * 500_000); // ~500KB per frame estimate
+                if (driveInfo.AvailableFreeSpace < estimatedSpaceNeeded)
+                {
+                    _logger.LogError("Insufficient disk space. Need ~{Need}GB, have {Have}GB",
+                        estimatedSpaceNeeded / 1_000_000_000.0, driveInfo.AvailableFreeSpace / 1_000_000_000.0);
+                    throw new InvalidOperationException($"Insufficient disk space for frame extraction");
+                }
+
                 try
                 {
                     // 1. Extract frames
@@ -743,14 +753,17 @@ namespace JellyfinUpscalerPlugin.Services
             }
             
             // Reconstruct video with or without audio
+            var outputCodec = Config.OutputCodec ?? "libx264";
+            var codecArgs = outputCodec == "copy" ? "-c:v copy" : $"-c:v {outputCodec} -pix_fmt yuv420p";
+
             string reconstructArgs;
             if (hasAudio && File.Exists(tempAudioPath))
             {
-                reconstructArgs = $"-framerate {effectiveFps} -i \"{processedDir}/frame_%06d.png\" -i \"{tempAudioPath}\" -c:v libx264 -r {effectiveFps} -c:a aac -b:a 192k -pix_fmt yuv420p -y \"{outputPath}\"";
+                reconstructArgs = $"-framerate {effectiveFps} -i \"{processedDir}/frame_%06d.png\" -i \"{tempAudioPath}\" {codecArgs} -r {effectiveFps} -c:a aac -b:a 192k -y \"{outputPath}\"";
             }
             else
             {
-                reconstructArgs = $"-framerate {effectiveFps} -i \"{processedDir}/frame_%06d.png\" -c:v libx264 -r {effectiveFps} -pix_fmt yuv420p -y \"{outputPath}\"";
+                reconstructArgs = $"-framerate {effectiveFps} -i \"{processedDir}/frame_%06d.png\" {codecArgs} -r {effectiveFps} -y \"{outputPath}\"";
             }
             
             var result = await Cli.Wrap(_ffmpegPath)
@@ -909,9 +922,17 @@ namespace JellyfinUpscalerPlugin.Services
             }
             else
             {
-                args.Add("-c:v libx264 -preset medium -crf 23");
+                var outputCodec = Config.OutputCodec ?? "libx264";
+                if (outputCodec == "copy")
+                {
+                    args.Add("-c:v copy");
+                }
+                else
+                {
+                    args.Add($"-c:v {outputCodec} -preset medium -crf 23");
+                }
             }
-            
+
             // Audio
             args.Add("-c:a copy");
             

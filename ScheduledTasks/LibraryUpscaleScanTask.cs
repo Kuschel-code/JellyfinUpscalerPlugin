@@ -167,7 +167,7 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                     continue;
                 }
 
-                if (detectedWidth < minWidth || detectedHeight < minHeight)
+                if (detectedWidth < minWidth && detectedHeight < minHeight)
                 {
                     lowResVideos.Add((video, detectedWidth.Value, detectedHeight.Value));
                     _logger.LogDebug("AI Upscaler: Candidate: {Name} ({W}x{H})", video.Name, detectedWidth, detectedHeight);
@@ -188,6 +188,14 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
             {
                 progress.Report(100);
                 return;
+            }
+
+            // Apply MaxItemsPerScan limit
+            var maxItems = config.MaxItemsPerScan;
+            if (maxItems > 0 && lowResVideos.Count > maxItems)
+            {
+                _logger.LogInformation("Limiting scan to {Max} items (of {Total} found)", maxItems, lowResVideos.Count);
+                lowResVideos = lowResVideos.Take(maxItems).ToList();
             }
 
             // Phase 2: Process low-res videos through the AI upscaling pipeline

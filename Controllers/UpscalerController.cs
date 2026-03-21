@@ -33,6 +33,12 @@ namespace JellyfinUpscalerPlugin.Controllers
     [Route("[controller]")]
     public class UpscalerController : ControllerBase
     {
+        /// <summary>
+        /// Shared HttpClient for AI service proxy calls (UpscaleFrame, BenchmarkFrame, GetGpuList).
+        /// Avoids socket exhaustion from creating a new HttpClient per request.
+        /// </summary>
+        private static readonly HttpClient _aiServiceClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+
         private readonly ILogger<UpscalerController> _logger;
         private readonly ILibraryManager _libraryManager;
         private readonly ISessionManager _sessionManager;
@@ -415,7 +421,8 @@ namespace JellyfinUpscalerPlugin.Controllers
                 {
                     Model = model ?? config?.Model ?? "auto",
                     ScaleFactor = scale ?? config?.ScaleFactor ?? 2,
-                    QualityLevel = config?.QualityLevel ?? "medium"
+                    QualityLevel = config?.QualityLevel ?? "medium",
+                    EnableAIUpscaling = true
                 };
 
                 var directory = Path.GetDirectoryName(item.Path);
@@ -842,8 +849,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             {
                 var config = Plugin.Instance?.Configuration;
                 var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
-                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
-                var response = await client.GetAsync($"{serviceUrl}/gpus");
+                var response = await _aiServiceClient.GetAsync($"{serviceUrl}/gpus");
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
@@ -877,11 +883,10 @@ namespace JellyfinUpscalerPlugin.Controllers
                 if (body.Length == 0)
                     return BadRequest("Empty body");
 
-                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
                 using var content = new ByteArrayContent(body);
                 content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
 
-                var response = await client.PostAsync($"{serviceUrl}/upscale-frame", content);
+                var response = await _aiServiceClient.PostAsync($"{serviceUrl}/upscale-frame", content);
 
                 if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
                     return StatusCode(503, "AI service busy");
@@ -915,8 +920,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 var config = Plugin.Instance?.Configuration;
                 var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
 
-                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
-                var response = await client.GetAsync($"{serviceUrl}/benchmark-frame?width={width}&height={height}");
+                var response = await _aiServiceClient.GetAsync($"{serviceUrl}/benchmark-frame?width={width}&height={height}");
 
                 if (response.IsSuccessStatusCode)
                 {

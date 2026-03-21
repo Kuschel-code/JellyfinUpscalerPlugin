@@ -6,9 +6,9 @@
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <AssemblyTitle>AI Upscaler Plugin</AssemblyTitle>
-    <Version>1.5.3.3</Version>
-    <AssemblyVersion>1.5.3.3</AssemblyVersion>
-    <FileVersion>1.5.3.3</FileVersion>
+    <Version>1.5.3.4</Version>
+    <AssemblyVersion>1.5.3.4</AssemblyVersion>
+    <FileVersion>1.5.3.4</FileVersion>
     <NoWarn>CS8632</NoWarn>
     <Nullable>enable</Nullable>
     <!-- AI processing now handled by external Docker service - minimal dependencies -->

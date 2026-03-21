@@ -5,7 +5,7 @@ using MediaBrowser.Model.Plugins;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// Plugin Configuration - v1.5.3.3 (Docker-based AI Service + Real-Time Upscaling)
+    /// Plugin Configuration - v1.5.3.4 (Docker-based AI Service + Real-Time Upscaling)
     /// </summary>
     public class PluginConfiguration : BasePluginConfiguration
     {
@@ -55,6 +55,7 @@ namespace JellyfinUpscalerPlugin
         // Scheduled Task: Library Scan
         public int MinResolutionWidth { get; set; } = 1920;
         public int MinResolutionHeight { get; set; } = 1080;
+        public int MaxItemsPerScan { get; set; } = 0; // 0 = unlimited
 
         // Real-Time Upscaling
         public bool EnableRealtimeUpscaling { get; set; } = true;
@@ -62,8 +63,11 @@ namespace JellyfinUpscalerPlugin
         public int RealtimeTargetFps { get; set; } = 24;
         public int RealtimeCaptureWidth { get; set; } = 480;
 
+        // Output Settings
+        public string OutputCodec { get; set; } = "libx264"; // "libx264", "libx265", "copy"
+
         // Version tracking
-        public string PluginVersion { get; set; } = "1.5.3.3";
+        public string PluginVersion { get; set; } = "1.5.3.4";
 
         public PluginConfiguration()
         {

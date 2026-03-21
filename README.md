@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.5.3.3
+# Jellyfin AI Upscaler Plugin v1.5.3.4
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -27,7 +27,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.5.3.3      │  │
+│  │  AI Upscaler Plugin v1.5.3.4      │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -39,8 +39,8 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 │  ┌────────────────────────────────────┐  │
 │  │  Python + FastAPI + OpenCV DNN     │  │
 │  │  CUDA / ROCm / OpenVINO / CPU     │  │
-│  │  Real-ESRGAN, FSRCNN, ESPCN,     │  │
-│  │  LapSRN, EDSR (14 models)        │  │
+│  │  Real-ESRGAN, SPAN, SwinIR,      │  │
+│  │  EDSR, FSRCNN, ESPCN (18 models) │  │
 │  │  Web UI for Model Management      │  │
 │  └────────────────────────────────────┘  │
 └──────────────────────────────────────────┘
@@ -76,7 +76,7 @@ When you press play, the plugin automatically enhances the video in real-time us
 
 ### Player Integration
 The in-player button lets you:
-- Select from **14 AI models** across 5 categories (Real-ESRGAN, EDSR, LapSRN, FSRCNN, ESPCN)
+- Select from **18 AI models** across 7 categories (Real-ESRGAN, SPAN, SwinIR, EDSR, LapSRN, FSRCNN, ESPCN)
 - Choose scale factor (2x, 3x, 4x, 8x)
 - Toggle real-time upscaling and switch modes
 - Quick access via keyboard shortcuts (Alt+U, Alt+M)
@@ -145,7 +145,7 @@ Verify the container is running: `curl http://YOUR_SERVER_IP:5000/health`
 ### Step 3: Use the Player Button
 
 After installation, play any video in a **web browser** (Chrome, Edge, Firefox). You will see an AI upscaler button (sparkle icon) in the player controls. Click it to access:
-- Quick model selection (Real-ESRGAN, EDSR, FSRCNN, ESPCN, LapSRN)
+- Quick model selection (Real-ESRGAN, SPAN, SwinIR, EDSR, FSRCNN, ESPCN, LapSRN)
 - Scale factor (2x, 3x, 4x)
 - Toggle upscaling on/off
 
@@ -168,7 +168,7 @@ To batch-upscale your low-resolution content:
 - **Real-Time Upscaling**: Two-tier system — WebGL client-side shader + Server AI frame pipeline with auto-fallback
 - **Pre-Upscaling**: Scheduled task batch-processes low-res videos overnight
 - **Docker Microservice**: AI runs isolated in a container (no DLL conflicts)
-- **14 AI Models**: Real-ESRGAN (best), EDSR, FSRCNN, ESPCN, LapSRN (2x–8x)
+- **18 AI Models**: Real-ESRGAN, SPAN, SwinIR, EDSR, FSRCNN, ESPCN, LapSRN (2x–8x)
 - **5 GPU Architectures**: NVIDIA CUDA/TensorRT, AMD ROCm, Intel OpenVINO, Apple Silicon, CPU
 - **Player Integration**: In-player button with quick settings menu, FPS overlay, and keyboard shortcuts (Alt+U, Alt+M)
 - **Benchmark-Driven**: Automatic tier selection based on real-time server benchmarks
@@ -185,6 +185,10 @@ To batch-upscale your low-resolution content:
 |----------|-------|-------|-------|---------|
 | Real-ESRGAN | realesrgan-x4 | 4x | Slow | Best |
 | Real-ESRGAN | realesrgan-x4-256 | 4x | Slow | Best (Low VRAM) |
+| Real-ESRGAN | realesrgan-x2plus | 2x | Slow | Best (Photos) |
+| Real-ESRGAN | realesrgan-animevideo-x4 | 4x | Slow | Best (Anime) |
+| SPAN | span-x2/x4 | 2-4x | Fast | High |
+| SwinIR | swinir-x4 | 4x | Slow | Best (Photos) |
 | EDSR | edsr-x2/x3/x4 | 2-4x | Medium | High |
 | LapSRN | lapsrn-x2/x4/x8 | 2-8x | Medium | Good |
 | FSRCNN | fsrcnn-x2/x3/x4 | 2-4x | Fast | Good |
@@ -208,6 +212,8 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 | **Real-Time Upscaling** | Enable/disable real-time enhancement during playback |
 | **Real-Time Mode** | Auto (benchmark decides), WebGL only, or Server AI only |
 | **Capture Width** | Resolution for server frame capture (default: 480px) |
+| **Output Codec** | Codec for upscaled videos: H.264, H.265, or copy (default: H.264) |
+| **MaxItemsPerScan** | Limit number of items processed per scan run (default: unlimited) |
 | **Remote Transcoding** | Enable SSH-based remote transcoding |
 
 ---
@@ -225,6 +231,22 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 ---
 
 ## Changelog
+
+### v1.5.3.4 (New Models + Critical Bugfixes)
+- **Added**: SPAN x2/x4 — fastest quality model (NTIRE 2023 winner), ideal for real-time
+- **Added**: Real-ESRGAN x2 Plus — high quality 2x for photos and live-action
+- **Added**: Real-ESRGAN AnimeVideo x4 — optimized for anime temporal consistency
+- **Added**: SwinIR x4 — Swin Transformer, best quality for photos
+- **Added**: Output codec selection (H.264, H.265, copy) — preserve audio quality
+- **Added**: MaxItemsPerScan config — limit batch processing per scan run
+- **Fixed**: ONNX tile-based upscaling prevents OOM on GPUs with <8GB VRAM
+- **Fixed**: Socket exhaustion from per-request HttpClient in frame proxy
+- **Fixed**: Short videos (<5min) now get AI upscaling via API (not just Lanczos)
+- **Fixed**: Correct aspect ratio in real-time server capture (was hardcoded 16:9)
+- **Fixed**: Skip real-time upscaling on 1080p+ source (no needless 4K→8K)
+- **Fixed**: Library scan threshold uses AND (both dimensions must be low-res)
+- **Fixed**: Thread-safe model loading prevents data race during inference
+- **Fixed**: Disk space check before frame extraction
 
 ### v1.5.3.3 (Real-Time Upscaling)
 - **Added**: Real-time upscaling during playback with two-tier system
@@ -302,7 +324,7 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 1. Uninstall old versions (v1.4.x)
 2. Delete old plugin folder from Jellyfin plugins directory
 3. Restart Jellyfin
-4. Install v1.5.3.3 fresh from repository
+4. Install v1.5.3.4 fresh from repository
 
 ### Player button not showing
 1. The button only works in **web browsers** (Chrome, Edge, Firefox)
