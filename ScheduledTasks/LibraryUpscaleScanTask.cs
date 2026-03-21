@@ -71,13 +71,16 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
             _logger.LogInformation("AI Upscaler: Starting library scan for low-resolution media...");
 
             // Check Docker AI service connectivity first
+            _logger.LogInformation("AI Upscaler: Checking Docker AI service at {Url}...", config.AiServiceUrl);
             var serviceAvailable = await _httpUpscalerService.IsServiceAvailableAsync(cancellationToken);
             if (!serviceAvailable)
             {
-                _logger.LogWarning("AI Upscaler: Docker AI service not reachable at {Url}, aborting scan",
+                _logger.LogWarning("AI Upscaler: Docker AI service not reachable at {Url}, aborting scan. " +
+                    "Make sure the Docker container is running and the URL is correct in plugin settings.",
                     config.AiServiceUrl);
                 return;
             }
+            _logger.LogInformation("AI Upscaler: Docker AI service is online");
 
             // Get all video items from the library
             var query = new InternalItemsQuery
@@ -99,6 +102,9 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
             // Phase 1: Scan and collect low-res items
             var lowResVideos = new List<(Video video, int width, int height)>();
             var scanned = 0;
+            var noResolutionCount = 0;
+            var alreadyUpscaledCount = 0;
+            var highResCount = 0;
 
             foreach (var item in items)
             {
@@ -117,6 +123,7 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                 var fileName = Path.GetFileNameWithoutExtension(video.Path);
                 if (fileName.EndsWith("_upscaled", StringComparison.OrdinalIgnoreCase))
                 {
+                    alreadyUpscaledCount++;
                     continue;
                 }
 
@@ -126,27 +133,56 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                 var upscaledPath = Path.Combine(dir ?? "", fileName + "_upscaled" + ext);
                 if (File.Exists(upscaledPath))
                 {
+                    alreadyUpscaledCount++;
                     continue;
                 }
 
-                // Check video resolution via media streams
+                // Check video resolution via media streams (multiple fallback methods)
+                int? detectedWidth = null;
+                int? detectedHeight = null;
+
+                // Method 1: MediaStreams from DB
                 var mediaStreams = video.GetMediaStreams();
                 var videoStream = mediaStreams?.FirstOrDefault(s => s.Type == MediaStreamType.Video);
-
-                if (videoStream == null || videoStream.Width == null || videoStream.Height == null)
+                if (videoStream?.Width > 0 && videoStream?.Height > 0)
                 {
+                    detectedWidth = videoStream.Width;
+                    detectedHeight = videoStream.Height;
+                }
+
+                // Method 2: Direct properties on Video object
+                if (detectedWidth == null || detectedHeight == null)
+                {
+                    if (video.Width > 0 && video.Height > 0)
+                    {
+                        detectedWidth = video.Width;
+                        detectedHeight = video.Height;
+                    }
+                }
+
+                if (detectedWidth == null || detectedHeight == null)
+                {
+                    noResolutionCount++;
+                    _logger.LogDebug("AI Upscaler: Skipping {Name} — no resolution info available", video.Name);
                     continue;
                 }
 
-                if (videoStream.Width < minWidth || videoStream.Height < minHeight)
+                if (detectedWidth < minWidth || detectedHeight < minHeight)
                 {
-                    lowResVideos.Add((video, videoStream.Width ?? 0, videoStream.Height ?? 0));
+                    lowResVideos.Add((video, detectedWidth.Value, detectedHeight.Value));
+                    _logger.LogDebug("AI Upscaler: Candidate: {Name} ({W}x{H})", video.Name, detectedWidth, detectedHeight);
+                }
+                else
+                {
+                    highResCount++;
                 }
             }
 
             _logger.LogInformation(
-                "AI Upscaler: Scan complete. Found {LowRes}/{Total} items below {Width}x{Height}",
-                lowResVideos.Count, totalItems, minWidth, minHeight);
+                "AI Upscaler: Scan complete. {Total} videos: {LowRes} below {Width}x{Height}, " +
+                "{HighRes} already high-res, {Upscaled} already upscaled, {NoRes} no resolution info",
+                totalItems, lowResVideos.Count, minWidth, minHeight,
+                highResCount, alreadyUpscaledCount, noResolutionCount);
 
             if (lowResVideos.Count == 0)
             {
