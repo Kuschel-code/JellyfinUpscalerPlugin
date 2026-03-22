@@ -461,6 +461,28 @@ AVAILABLE_MODELS = {
         "input_frames": 5,
         "available": True
     },
+    "realbasicvsr-x4": {
+        "name": "RealBasicVSR x4 (Video SR - 5 Frame)",
+        "url": "https://huggingface.co/kuscheltier/jellyfin-vsr-models/resolve/main/realbasicvsr_x4.onnx",
+        "scale": 4,
+        "description": "RealBasicVSR — Recurrent VSR with optical flow (CVPR 2022). Best for real-world degraded video (VHS, DVD, streaming). ~50MB.",
+        "type": "onnx",
+        "category": "video-sr",
+        "model_type": "realbasicvsr",
+        "input_frames": 5,
+        "available": True
+    },
+    "animesr-v2-x4": {
+        "name": "AnimeSR v2 x4 (Anime Video SR - 5 Frame)",
+        "url": "https://huggingface.co/kuscheltier/jellyfin-vsr-models/resolve/main/animesr_v2_x4.onnx",
+        "scale": 4,
+        "description": "AnimeSR v2 — Anime-specialized multi-frame VSR (NeurIPS 2022). Preserves line art and flat colors. ~30MB.",
+        "type": "onnx",
+        "category": "video-sr",
+        "model_type": "animesr",
+        "input_frames": 5,
+        "available": True
+    },
 
 }
 
