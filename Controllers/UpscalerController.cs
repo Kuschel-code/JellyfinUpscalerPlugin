@@ -47,6 +47,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         private readonly UpscalerCore _upscalerCore;
         private readonly VideoProcessor _videoProcessor;
         private readonly CacheManager _cacheManager;
+        private readonly ProcessingQueue _processingQueue;
 
         public UpscalerController(
             ILogger<UpscalerController> logger,
@@ -55,7 +56,8 @@ namespace JellyfinUpscalerPlugin.Controllers
             HardwareBenchmarkService benchmarkService,
             UpscalerCore upscalerCore,
             VideoProcessor videoProcessor,
-            CacheManager cacheManager)
+            CacheManager cacheManager,
+            ProcessingQueue processingQueue)
         {
             _logger = logger;
             _libraryManager = libraryManager;
@@ -64,6 +66,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             _upscalerCore = upscalerCore;
             _videoProcessor = videoProcessor;
             _cacheManager = cacheManager;
+            _processingQueue = processingQueue;
         }
 
         [HttpGet("models")]
@@ -687,6 +690,99 @@ namespace JellyfinUpscalerPlugin.Controllers
                 _logger.LogError(ex, $"Failed to cancel job {jobId}");
                 return StatusCode(500, new { success = false, error = ex.Message });
             }
+        }
+
+        // ============================================================
+        // === Processing Queue API ===
+        // ============================================================
+
+        /// <summary>Get queue status — pending, active, completed jobs.</summary>
+        [HttpGet("queue")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> GetQueueStatus()
+        {
+            return Ok(new { success = true, queue = _processingQueue.GetStatus() });
+        }
+
+        /// <summary>Enqueue a video for processing with optional priority.</summary>
+        [HttpPost("queue/add")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> EnqueueJob(
+            [FromQuery] string inputPath,
+            [FromQuery] string? outputPath = null,
+            [FromQuery] string? model = null,
+            [FromQuery] int priority = 5,
+            [FromQuery] string? itemName = null)
+        {
+            if (string.IsNullOrEmpty(inputPath))
+                return BadRequest(new { success = false, error = "inputPath required" });
+
+            var effectiveOutput = outputPath ?? Path.Combine(
+                Path.GetDirectoryName(inputPath) ?? "",
+                Path.GetFileNameWithoutExtension(inputPath) + "_upscaled" + Path.GetExtension(inputPath));
+
+            var config = Plugin.Instance?.Configuration;
+            var options = new VideoProcessingOptions
+            {
+                Model = model ?? config?.Model ?? "auto",
+                ScaleFactor = config?.ScaleFactor ?? 2,
+                QualityLevel = config?.QualityLevel ?? "medium",
+                EnableAIUpscaling = true,
+                PreserveAudio = true,
+                PreserveSubtitles = true
+            };
+
+            var jobId = Guid.NewGuid().ToString("N")[..12];
+            var enqueued = _processingQueue.Enqueue(jobId, inputPath, effectiveOutput, options, priority, itemName);
+
+            if (!enqueued)
+                return StatusCode(429, new { success = false, error = "Queue is full" });
+
+            return Ok(new { success = true, job_id = jobId, position = _processingQueue.QueueSize });
+        }
+
+        /// <summary>Cancel a pending queued job.</summary>
+        [HttpPost("queue/{jobId}/cancel")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> CancelQueuedJob(string jobId)
+        {
+            var cancelled = _processingQueue.Cancel(jobId);
+            return Ok(new { success = cancelled, job_id = jobId });
+        }
+
+        /// <summary>Change priority of a pending job (1=highest, 10=lowest).</summary>
+        [HttpPost("queue/{jobId}/priority")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> SetJobPriority(string jobId, [FromQuery] int priority)
+        {
+            if (priority < 1 || priority > 10)
+                return BadRequest(new { success = false, error = "Priority must be 1-10" });
+
+            var updated = _processingQueue.SetPriority(jobId, priority);
+            return Ok(new { success = updated, job_id = jobId, priority });
+        }
+
+        /// <summary>Pause the processing queue (active jobs finish, no new jobs start).</summary>
+        [HttpPost("queue/pause")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> PauseQueue()
+        {
+            _processingQueue.Pause();
+            return Ok(new { success = true, paused = true });
+        }
+
+        /// <summary>Resume the processing queue.</summary>
+        [HttpPost("queue/resume")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> ResumeQueue()
+        {
+            _processingQueue.Resume();
+            return Ok(new { success = true, paused = false });
         }
 
         [HttpGet("cache/stats")]

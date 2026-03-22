@@ -31,8 +31,12 @@ namespace JellyfinUpscalerPlugin
             serviceCollection.AddHostedService<UpscalerService>();
             serviceCollection.AddHostedService(sp => sp.GetRequiredService<HardwareBenchmarkService>());
 
+            // Processing Queue
+            serviceCollection.AddSingleton<ProcessingQueue>();
+
             // Scheduled Tasks (visible in Dashboard → Scheduled Tasks)
             serviceCollection.AddSingleton<IScheduledTask, LibraryUpscaleScanTask>();
+            serviceCollection.AddSingleton<IScheduledTask, ImageUpscaleScanTask>();
 
             // Platform & Interop
             serviceCollection.AddSingleton<IPlatformDetectionService, PlatformDetectionService>();
