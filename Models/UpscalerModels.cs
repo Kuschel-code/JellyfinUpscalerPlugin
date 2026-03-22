@@ -230,7 +230,8 @@ namespace JellyfinUpscalerPlugin.Models
     {
         RealTime,
         FrameByFrame,
-        Batch
+        Batch,
+        MultiFrame
     }
 
     /// <summary>
