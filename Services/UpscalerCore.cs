@@ -76,33 +76,104 @@ namespace JellyfinUpscalerPlugin.Services
                 // Resolve "auto" to the best model for the content
                 var effectiveModel = model == "auto" ? ResolveAutoModel() : model;
 
-                _logger.LogDebug("Starting image upscale: {Size} bytes, model={Model}, scale={Scale}", imageData.Length, effectiveModel, scale);
+                // Build model chain: primary model + fallback chain from config
+                var modelChain = BuildModelChain(effectiveModel);
 
-                // Ensure the correct model is loaded on the Docker AI service
-                var modelLoaded = await _httpUpscaler.EnsureModelLoadedAsync(effectiveModel, cancellationToken);
-                if (!modelLoaded)
+                foreach (var candidateModel in modelChain)
                 {
-                    _logger.LogWarning("Could not load model {Model}, proceeding with whatever is loaded", effectiveModel);
+                    try
+                    {
+                        _logger.LogDebug("Trying model {Model} for image upscale ({Size} bytes, scale={Scale})",
+                            candidateModel, imageData.Length, scale);
+
+                        var modelLoaded = await _httpUpscaler.EnsureModelLoadedAsync(candidateModel, cancellationToken);
+                        if (!modelLoaded)
+                        {
+                            _logger.LogWarning("Could not load model {Model}, trying next in chain", candidateModel);
+                            continue;
+                        }
+
+                        var result = await _httpUpscaler.UpscaleImageAsync(imageData, scale, cancellationToken);
+
+                        if (result != null && result.Length > 0)
+                        {
+                            stopwatch.Stop();
+                            _logger.LogInformation("Image upscaled with {Model}: {InputSize} -> {OutputSize} bytes in {Time}ms",
+                                candidateModel, imageData.Length, result.Length, stopwatch.ElapsedMilliseconds);
+                            return result;
+                        }
+
+                        _logger.LogWarning("Model {Model} returned empty result, trying next", candidateModel);
+                    }
+                    catch (Exception ex) when (modelChain.IndexOf(candidateModel) < modelChain.Count - 1)
+                    {
+                        _logger.LogWarning(ex, "Model {Model} failed, trying next in fallback chain", candidateModel);
+                    }
                 }
 
-                var result = await _httpUpscaler.UpscaleImageAsync(imageData, scale, cancellationToken);
-                
-                if (result == null || result.Length == 0)
-                {
-                    _logger.LogWarning("Upscaling returned empty result, using fallback resize");
-                    return await FallbackResizeAsync(imageData, scale);
-                }
-                
-                stopwatch.Stop();
-                _logger.LogInformation("Image upscaled: {InputSize} -> {OutputSize} bytes in {Time}ms",
-                    imageData.Length, result.Length, stopwatch.ElapsedMilliseconds);
-                
-                return result;
+                _logger.LogWarning("All models in chain failed, using fallback resize");
+                return await FallbackResizeAsync(imageData, scale);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "AI upscaling failed, using fallback resize");
                 return await FallbackResizeAsync(imageData, scale);
+            }
+        }
+
+        /// <summary>
+        /// Build a model fallback chain: primary model + configured fallback models.
+        /// </summary>
+        private List<string> BuildModelChain(string primaryModel)
+        {
+            var chain = new List<string> { primaryModel };
+            var fallbackConfig = Config.ModelFallbackChain;
+            if (!string.IsNullOrWhiteSpace(fallbackConfig))
+            {
+                var fallbacks = fallbackConfig.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                foreach (var fb in fallbacks)
+                {
+                    if (!chain.Contains(fb, StringComparer.OrdinalIgnoreCase))
+                        chain.Add(fb);
+                }
+            }
+            return chain;
+        }
+
+        /// <summary>
+        /// Send a webhook notification for job events.
+        /// Fire-and-forget — never blocks or throws.
+        /// </summary>
+        public async Task SendWebhookAsync(string eventType, string itemName, bool success, string? error = null)
+        {
+            var webhookUrl = Config.WebhookUrl;
+            if (string.IsNullOrWhiteSpace(webhookUrl))
+                return;
+
+            if (eventType == "complete" && !Config.WebhookOnComplete) return;
+            if (eventType == "failure" && !Config.WebhookOnFailure) return;
+
+            try
+            {
+                using var client = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+                var payload = new Dictionary<string, object>
+                {
+                    ["event"] = eventType,
+                    ["item"] = itemName,
+                    ["success"] = success,
+                    ["timestamp"] = DateTime.UtcNow.ToString("o"),
+                    ["plugin_version"] = Config.PluginVersion
+                };
+                if (error != null) payload["error"] = error;
+
+                var json = System.Text.Json.JsonSerializer.Serialize(payload);
+                var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                await client.PostAsync(webhookUrl, content);
+                _logger.LogDebug("Webhook sent: {Event} for {Item}", eventType, itemName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Webhook delivery failed (non-critical)");
             }
         }
 

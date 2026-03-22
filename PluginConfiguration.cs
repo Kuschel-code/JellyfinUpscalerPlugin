@@ -65,9 +65,42 @@ namespace JellyfinUpscalerPlugin
 
         // Auto Model Selection
         public bool EnableAutoModelSelection { get; set; } = true; // true = pick best model per content, false = always use configured Model
+        public string ModelFallbackChain { get; set; } = ""; // Comma-separated: "realesrgan-x4,span-x4,edsr-x4" — try next if current fails
+        public string PreferredAnimeModel { get; set; } = ""; // Override for anime content (empty = auto)
+        public string PreferredLiveActionModel { get; set; } = ""; // Override for live-action (empty = auto)
 
         // Output Settings
         public string OutputCodec { get; set; } = "libx264"; // "libx264", "libx265", "copy"
+        public long MaxUpscaledFileSizeMB { get; set; } = 0; // 0 = unlimited. Skip videos that would exceed this size
+
+        // Processing Queue
+        public bool EnableProcessingQueue { get; set; } = true;
+        public int MaxQueueSize { get; set; } = 100; // Max pending jobs
+        public bool PauseQueueDuringPlayback { get; set; } = true; // Pause batch jobs when user is streaming
+        public bool PersistQueueAcrossRestarts { get; set; } = false; // Save queue state to disk
+
+        // Notifications & Webhooks
+        public bool EnableProgressNotifications { get; set; } = true;
+        public string WebhookUrl { get; set; } = ""; // URL to POST job completion/failure events
+        public bool WebhookOnComplete { get; set; } = true;
+        public bool WebhookOnFailure { get; set; } = true;
+
+        // Model Management
+        public bool EnableModelPreloading { get; set; } = false; // Preload preferred model on startup
+        public int ModelDiskQuotaMB { get; set; } = 2048; // Max disk space for downloaded models (0 = unlimited)
+        public bool EnableModelAutoCleanup { get; set; } = true; // Delete unused models after ModelCleanupDays
+        public int ModelCleanupDays { get; set; } = 30; // Days before unused models are cleaned up
+
+        // Health & Monitoring
+        public bool EnableHealthMonitoring { get; set; } = true;
+        public int HealthCheckIntervalSeconds { get; set; } = 60;
+        public bool EnableGpuFallbackToCpu { get; set; } = true; // If GPU lockup detected, switch to CPU
+        public int CircuitBreakerThreshold { get; set; } = 5; // Consecutive failures before circuit opens
+        public int CircuitBreakerResetSeconds { get; set; } = 60; // Time before circuit half-opens
+
+        // Scan Filtering
+        public bool RestrictToUnwatchedContent { get; set; } = false; // Only upscale unwatched items
+        public bool SkipUpscaledOnRescan { get; set; } = true; // Skip items that already have _upscaled version
 
         // Version tracking
         public string PluginVersion { get; set; } = "1.5.4.0";
