@@ -38,6 +38,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Avoids socket exhaustion from creating a new HttpClient per request.
         /// </summary>
         private static readonly HttpClient _aiServiceClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        private static readonly HttpClient _multiFrameClient = new HttpClient { Timeout = TimeSpan.FromSeconds(300) };
 
         private readonly ILogger<UpscalerController> _logger;
         private readonly ILibraryManager _libraryManager;
@@ -905,6 +906,52 @@ namespace JellyfinUpscalerPlugin.Controllers
             {
                 _logger.LogError(ex, "Frame upscale proxy failed");
                 return StatusCode(500, "Frame upscale proxy error");
+            }
+        }
+
+        /// <summary>
+        /// Proxy: Multi-frame video chunk upscaling. Forwards multipart form with N PNG frames to Docker service.
+        /// </summary>
+        [HttpPost("upscale-video-chunk")]
+        public async Task<ActionResult> UpscaleVideoChunk()
+        {
+            var config = Plugin.Instance?.Configuration;
+            if (config == null) return StatusCode(500, "Plugin not configured");
+
+            var serviceUrl = config.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+
+            try
+            {
+                // Forward the entire multipart form to the AI service
+                var form = await Request.ReadFormAsync();
+                using var content = new MultipartFormDataContent();
+
+                foreach (var file in form.Files)
+                {
+                    using var ms = new MemoryStream();
+                    await file.CopyToAsync(ms);
+                    var byteContent = new ByteArrayContent(ms.ToArray());
+                    byteContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType ?? "image/png");
+                    content.Add(byteContent, file.Name, file.FileName ?? file.Name);
+                }
+
+                var response = await _multiFrameClient.PostAsync($"{serviceUrl}/upscale-video-chunk", content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var resultBytes = await response.Content.ReadAsByteArrayAsync();
+                    return File(resultBytes, "image/png");
+                }
+
+                return StatusCode((int)response.StatusCode, await response.Content.ReadAsStringAsync());
+            }
+            catch (TaskCanceledException)
+            {
+                return StatusCode(504, "AI service timeout (multi-frame inference)");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(502, $"AI service error: {ex.Message}");
             }
         }
 
