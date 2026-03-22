@@ -26,17 +26,20 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
         private readonly ILibraryManager _libraryManager;
         private readonly HttpUpscalerService _httpUpscalerService;
         private readonly VideoProcessor _videoProcessor;
+        private readonly UpscalerCore _upscalerCore;
 
         public LibraryUpscaleScanTask(
             ILogger<LibraryUpscaleScanTask> logger,
             ILibraryManager libraryManager,
             HttpUpscalerService httpUpscalerService,
-            VideoProcessor videoProcessor)
+            VideoProcessor videoProcessor,
+            UpscalerCore upscalerCore)
         {
             _logger = logger;
             _libraryManager = libraryManager;
             _httpUpscalerService = httpUpscalerService;
             _videoProcessor = videoProcessor;
+            _upscalerCore = upscalerCore;
         }
 
         public string Name => "Scan & Upscale Library";
@@ -199,14 +202,17 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
             }
 
             // Phase 2: Process low-res videos through the AI upscaling pipeline
-            var model = config.Model ?? "realesrgan-x4";
+            // Get service status for multi-frame model detection
+            var serviceStatus = await _httpUpscalerService.GetServiceStatusAsync();
+            int serviceInputFrames = serviceStatus?.InputFrames ?? 1;
+
             var scaleFactor = config.ScaleFactor > 0 ? config.ScaleFactor : 2;
             var successCount = 0;
             var failCount = 0;
 
             _logger.LogInformation(
-                "AI Upscaler: Starting upscaling of {Count} videos with model={Model}, scale={Scale}x",
-                lowResVideos.Count, model, scaleFactor);
+                "AI Upscaler: Starting upscaling of {Count} videos, scale={Scale}x, service input_frames={InputFrames}",
+                lowResVideos.Count, scaleFactor, serviceInputFrames);
 
             for (int i = 0; i < lowResVideos.Count; i++)
             {
@@ -219,13 +225,29 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                 var baseName = Path.GetFileNameWithoutExtension(inputPath);
                 var outputPath = Path.Combine(dir, baseName + "_upscaled" + ext);
 
+                // Auto-select best model for this specific video's content (or use configured model)
+                string model;
+                if (config.EnableAutoModelSelection && (string.IsNullOrEmpty(config.Model) || config.Model == "auto"))
+                {
+                    model = _upscalerCore.ResolveModelForVideo(
+                        genres: video.Genres,
+                        width: width,
+                        height: height,
+                        isBatch: true,
+                        inputFrames: serviceInputFrames);
+                }
+                else
+                {
+                    model = config.Model ?? "realesrgan-x4";
+                }
+
                 // Progress: 30% scan + 70% processing
                 var processingProgress = 30 + ((double)(i + 1) / lowResVideos.Count * 70);
                 progress.Report(processingProgress);
 
                 _logger.LogInformation(
-                    "AI Upscaler: [{Index}/{Total}] Processing: {Name} ({Width}x{Height}) -> {Output}",
-                    i + 1, lowResVideos.Count, video.Name, width, height, Path.GetFileName(outputPath));
+                    "AI Upscaler: [{Index}/{Total}] Processing: {Name} ({Width}x{Height}) model={Model} -> {Output}",
+                    i + 1, lowResVideos.Count, video.Name, width, height, model, Path.GetFileName(outputPath));
 
                 try
                 {

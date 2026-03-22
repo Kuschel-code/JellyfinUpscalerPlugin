@@ -63,6 +63,9 @@ namespace JellyfinUpscalerPlugin
         public int RealtimeTargetFps { get; set; } = 24;
         public int RealtimeCaptureWidth { get; set; } = 480;
 
+        // Auto Model Selection
+        public bool EnableAutoModelSelection { get; set; } = true; // true = pick best model per content, false = always use configured Model
+
         // Output Settings
         public string OutputCodec { get; set; } = "libx264"; // "libx264", "libx265", "copy"
 

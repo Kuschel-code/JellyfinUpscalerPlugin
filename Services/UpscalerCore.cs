@@ -73,8 +73,8 @@ namespace JellyfinUpscalerPlugin.Services
 
             try
             {
-                // Resolve "auto" to the configured model
-                var effectiveModel = model == "auto" ? (Config.Model ?? "realesrgan-x4") : model;
+                // Resolve "auto" to the best model for the content
+                var effectiveModel = model == "auto" ? ResolveAutoModel() : model;
 
                 _logger.LogDebug("Starting image upscale: {Size} bytes, model={Model}, scale={Scale}", imageData.Length, effectiveModel, scale);
 
@@ -104,6 +104,106 @@ namespace JellyfinUpscalerPlugin.Services
                 _logger.LogError(ex, "AI upscaling failed, using fallback resize");
                 return await FallbackResizeAsync(imageData, scale);
             }
+        }
+
+        /// <summary>
+        /// Resolve "auto" model selection to the best default model.
+        /// Uses the configured model if set, otherwise picks realesrgan-x4.
+        /// </summary>
+        private string ResolveAutoModel()
+        {
+            var configured = Config.Model;
+            if (!string.IsNullOrEmpty(configured) && configured != "auto")
+                return configured;
+            return "realesrgan-x4";
+        }
+
+        /// <summary>
+        /// Resolve the best model for video content based on metadata.
+        /// Considers: anime vs live-action, resolution, batch vs real-time.
+        /// </summary>
+        /// <param name="genres">Content genre tags (e.g. "Animation", "Anime")</param>
+        /// <param name="width">Source video width</param>
+        /// <param name="height">Source video height</param>
+        /// <param name="isBatch">True for scheduled batch processing, false for real-time</param>
+        /// <param name="inputFrames">Available multi-frame model frame count (from service status)</param>
+        /// <returns>Best model name for the content</returns>
+        public string ResolveModelForVideo(
+            IEnumerable<string>? genres = null,
+            int width = 0,
+            int height = 0,
+            bool isBatch = true,
+            int inputFrames = 1)
+        {
+            // Check if user has explicitly configured a non-auto model
+            var configured = Config.Model;
+            if (!string.IsNullOrEmpty(configured) && configured != "auto")
+                return configured;
+
+            var genreList = genres?.Select(g => g.ToLowerInvariant()).ToList() ?? new List<string>();
+            bool isAnime = genreList.Any(g => g.Contains("anime") || g.Contains("animation") || g.Contains("cartoon"));
+            bool isLowRes = width > 0 && height > 0 && (width < 720 || height < 480);
+            bool isVeryLowRes = width > 0 && height > 0 && (width < 480 || height < 360);
+
+            // Multi-frame VSR: best quality for batch processing
+            if (isBatch && inputFrames > 1)
+            {
+                if (isAnime)
+                {
+                    _logger.LogDebug("Auto-model: anime content + multi-frame batch → animesr-v2-x4");
+                    return "animesr-v2-x4";
+                }
+                if (isVeryLowRes)
+                {
+                    // Very low res (VHS/DVD quality) → RealBasicVSR handles degradation best
+                    _logger.LogDebug("Auto-model: very low-res ({W}x{H}) + multi-frame batch → realbasicvsr-x4", width, height);
+                    return "realbasicvsr-x4";
+                }
+                // General multi-frame: EDVR-M is the safe default
+                _logger.LogDebug("Auto-model: multi-frame batch → edvr-m-x4");
+                return "edvr-m-x4";
+            }
+
+            // Single-frame models
+            if (isAnime)
+            {
+                if (isBatch)
+                {
+                    _logger.LogDebug("Auto-model: anime content + batch → realesrgan-animevideo-x4");
+                    return "realesrgan-animevideo-x4";
+                }
+                // Real-time anime: use the lightweight compact model
+                _logger.LogDebug("Auto-model: anime content + real-time → anime-compact-x4");
+                return "anime-compact-x4";
+            }
+
+            if (!isBatch)
+            {
+                // Real-time: prioritize speed
+                if (isLowRes)
+                {
+                    _logger.LogDebug("Auto-model: low-res real-time → clearreality-x4 (ultra-fast)");
+                    return "clearreality-x4";
+                }
+                _logger.LogDebug("Auto-model: real-time → span-x2 (fastest quality)");
+                return "span-x2";
+            }
+
+            // Batch single-frame: prioritize quality
+            if (isVeryLowRes)
+            {
+                _logger.LogDebug("Auto-model: very low-res batch → ultrasharp-v2-x4 (best quality)");
+                return "ultrasharp-v2-x4";
+            }
+            if (isLowRes)
+            {
+                _logger.LogDebug("Auto-model: low-res batch → realesrgan-x4");
+                return "realesrgan-x4";
+            }
+
+            // Default batch: good balance
+            _logger.LogDebug("Auto-model: general batch → realesrgan-x4");
+            return "realesrgan-x4";
         }
 
         /// <summary>

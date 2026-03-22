@@ -270,6 +270,51 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
+        /// <summary>
+        /// Get the recommended AI model for specific content parameters.
+        /// Used by the UI to show which model will be auto-selected.
+        /// </summary>
+        [HttpGet("recommend-model")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult<object>> RecommendModel(
+            [FromQuery] string? genres = null,
+            [FromQuery] int width = 0,
+            [FromQuery] int height = 0,
+            [FromQuery] bool isBatch = true)
+        {
+            try
+            {
+                var serviceStatus = await _upscalerCore.GetServiceStatusAsync();
+                int inputFrames = serviceStatus?.InputFrames ?? 1;
+
+                var genreList = string.IsNullOrEmpty(genres)
+                    ? Array.Empty<string>()
+                    : genres.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                var recommendedModel = _upscalerCore.ResolveModelForVideo(
+                    genres: genreList,
+                    width: width,
+                    height: height,
+                    isBatch: isBatch,
+                    inputFrames: inputFrames);
+
+                var config = Plugin.Instance?.Configuration;
+                return Ok(new
+                {
+                    success = true,
+                    recommended_model = recommendedModel,
+                    input_frames = inputFrames,
+                    auto_selection_enabled = config?.EnableAutoModelSelection ?? true,
+                    parameters = new { genres = genreList, width, height, is_batch = isBatch }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get model recommendation");
+                return StatusCode(500, new { success = false, error = ex.Message });
+            }
+        }
+
         [HttpGet("compare/{itemId}")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> GetComparisonData(string itemId, [FromQuery] string model = "realesrgan", [FromQuery] int scale = 2)
