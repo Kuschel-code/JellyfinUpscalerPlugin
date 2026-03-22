@@ -154,13 +154,17 @@ namespace JellyfinUpscalerPlugin.Services
                 var optimizedOptions = OptimizeProcessingOptions(options, inputInfo, hardwareProfile);
                 job.OptimizedOptions = optimizedOptions;
                 
-                // 4. Choose processing method
-                var processingMethod = DetermineProcessingMethod(inputInfo, hardwareProfile, optimizedOptions);
+                // 4. Check multi-frame model support
+                var serviceStatus = await _upscalerCore.GetServiceStatusAsync();
+                int inputFrames = serviceStatus?.InputFrames ?? 1;
+
+                // 5. Choose processing method
+                var processingMethod = DetermineProcessingMethod(inputInfo, hardwareProfile, optimizedOptions, inputFrames);
                 job.ProcessingMethod = processingMethod;
-                
-                // 5. Execute processing
+
+                // 6. Execute processing
                 job.Status = ProcessingStatus.Processing;
-                var result = await ExecuteProcessingAsync(inputPath, outputPath, job, cancellationToken);
+                var result = await ExecuteProcessingAsync(inputPath, outputPath, job, inputFrames, cancellationToken);
                 
                 job.Status = result.Success ? ProcessingStatus.Completed : ProcessingStatus.Failed;
                 job.EndTime = DateTime.Now;
@@ -408,8 +412,16 @@ namespace JellyfinUpscalerPlugin.Services
         private ProcessingMethod DetermineProcessingMethod(
             VideoInfo inputInfo,
             HardwareProfile hardwareProfile,
-            VideoProcessingOptions options)
+            VideoProcessingOptions options,
+            int inputFrames = 1)
         {
+            // Multi-frame VSR takes priority when model supports it
+            if (options.EnableAIUpscaling && inputFrames > 1)
+            {
+                _logger.LogInformation("Multi-frame model detected (input_frames={Frames}), using MultiFrame processing", inputFrames);
+                return ProcessingMethod.MultiFrame;
+            }
+
             // Real-time processing for short videos or live streams
             // BUT: if AI upscaling is explicitly requested, use frame-by-frame instead
             if (!options.EnableAIUpscaling && (inputInfo.Duration.TotalMinutes < 5 || options.EnableRealTimeProcessing))
@@ -434,6 +446,7 @@ namespace JellyfinUpscalerPlugin.Services
             string inputPath,
             string outputPath,
             ProcessingJob job,
+            int inputFrames,
             CancellationToken cancellationToken)
         {
             return job.ProcessingMethod switch
@@ -441,6 +454,7 @@ namespace JellyfinUpscalerPlugin.Services
                 ProcessingMethod.RealTime => await ProcessRealTimeAsync(inputPath, outputPath, job, cancellationToken),
                 ProcessingMethod.FrameByFrame => await ProcessFrameByFrameAsync(inputPath, outputPath, job, cancellationToken),
                 ProcessingMethod.Batch => await ProcessBatchAsync(inputPath, outputPath, job, cancellationToken),
+                ProcessingMethod.MultiFrame => await ProcessMultiFrameAsync(inputPath, outputPath, job, inputFrames, cancellationToken),
                 _ => throw new NotSupportedException($"Processing method {job.ProcessingMethod} not supported")
             };
         }
