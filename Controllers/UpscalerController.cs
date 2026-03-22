@@ -396,6 +396,9 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
+                if (scale < 1 || scale > 8)
+                    return BadRequest(new { success = false, error = "Scale must be between 1 and 8" });
+
                 if (!Guid.TryParse(itemId, out var itemGuid))
                     return BadRequest(new { success = false, error = "Invalid item ID format" });
 

@@ -179,14 +179,16 @@ namespace JellyfinUpscalerPlugin.Services
 
             if (!isBatch)
             {
-                // Real-time: prioritize speed
+                // Real-time: prioritize speed. Use 2x models for lower VRAM/compute cost.
+                // Low-res (480p) with 4x model would produce 1920p — too expensive for real-time.
                 if (isLowRes)
                 {
-                    _logger.LogDebug("Auto-model: low-res real-time → clearreality-x4 (ultra-fast)");
-                    return "clearreality-x4";
+                    _logger.LogDebug("Auto-model: low-res real-time → span-x2 (fast 2x, manageable output)");
+                    return "span-x2";
                 }
-                _logger.LogDebug("Auto-model: real-time → span-x2 (fastest quality)");
-                return "span-x2";
+                // HD content: already high-res, use lightweight 2x for mild enhancement
+                _logger.LogDebug("Auto-model: HD real-time → nomosuni-compact-x2 (ultra-fast 2x)");
+                return "nomosuni-compact-x2";
             }
 
             // Batch single-frame: prioritize quality

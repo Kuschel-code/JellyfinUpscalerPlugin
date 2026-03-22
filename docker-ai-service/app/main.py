@@ -1388,29 +1388,30 @@ def upscale_multiframe(frames: list) -> np.ndarray:
 
             out_tile = _onnx_infer_multiframe_tile(tile_list, session, input_name, output_name, num_frames)
 
-            # Build blend weights (same as single-frame tiling)
-            th, tw = out_tile.shape[:2]
-            blend_y = np.ones(th, dtype=np.float64)
-            blend_x = np.ones(tw, dtype=np.float64)
-            ramp = overlap * scale
-            if ramp > 0:
-                for i in range(min(ramp, th)):
-                    blend_y[i] = i / ramp
-                    blend_y[th - 1 - i] = i / ramp
-                for i in range(min(ramp, tw)):
-                    blend_x[i] = i / ramp
-                    blend_x[tw - 1 - i] = i / ramp
-            blend_w = blend_y[:, None] * blend_x[None, :]
-            blend_w3 = blend_w[:, :, None]
-
+            # Compute actual content dimensions (clip to canvas, crop padded regions)
             oy, ox = y * scale, x * scale
-            oy_end = min(oy + th, out_h)
-            ox_end = min(ox + tw, out_w)
+            oy_end = min(oy + out_tile.shape[0], out_h)
+            ox_end = min(ox + out_tile.shape[1], out_w)
             actual_th = oy_end - oy
             actual_tw = ox_end - ox
 
-            output[oy:oy_end, ox:ox_end] += out_tile[:actual_th, :actual_tw].astype(np.float64) * blend_w3[:actual_th, :actual_tw]
-            weight[oy:oy_end, ox:ox_end] += blend_w3[:actual_th, :actual_tw]
+            # Build blend weights using ACTUAL content size, not padded tile size
+            # This prevents brightness artifacts at edges where tiles were zero-padded
+            blend_y = np.ones(actual_th, dtype=np.float64)
+            blend_x = np.ones(actual_tw, dtype=np.float64)
+            ramp = overlap * scale
+            if ramp > 0:
+                for i in range(min(ramp, actual_th)):
+                    blend_y[i] = i / ramp
+                    blend_y[actual_th - 1 - i] = i / ramp
+                for i in range(min(ramp, actual_tw)):
+                    blend_x[i] = i / ramp
+                    blend_x[actual_tw - 1 - i] = i / ramp
+            blend_w = blend_y[:, None] * blend_x[None, :]
+            blend_w3 = blend_w[:, :, None]
+
+            output[oy:oy_end, ox:ox_end] += out_tile[:actual_th, :actual_tw].astype(np.float64) * blend_w3
+            weight[oy:oy_end, ox:ox_end] += blend_w3
 
     weight = np.maximum(weight, 1e-8)
     output = output / weight
@@ -1865,44 +1866,43 @@ async def upscale_frame_endpoint(request: Request):
         raise HTTPException(status_code=400, detail="No model loaded")
 
     # Return 503 immediately if busy — client skips this frame (try-acquire)
+    # Increment processing_count immediately after acquire to prevent negative count
     acquired = False
     try:
         await asyncio.wait_for(_upscale_semaphore.acquire(), timeout=0)
         acquired = True
+        state.processing_count += 1
     except asyncio.TimeoutError:
         raise HTTPException(status_code=503, detail="Busy")
 
     try:
-        state.processing_count += 1
-        try:
-            body = await request.body()
-            if not body:
-                raise HTTPException(status_code=400, detail="Empty body")
+        body = await request.body()
+        if not body:
+            raise HTTPException(status_code=400, detail="Empty body")
 
-            # Decode JPEG to numpy array
-            nparr = np.frombuffer(body, np.uint8)
-            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            if img is None:
-                raise HTTPException(status_code=400, detail="Failed to decode image")
+        # Decode JPEG to numpy array
+        nparr = np.frombuffer(body, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if img is None:
+            raise HTTPException(status_code=400, detail="Failed to decode image")
 
-            # Upscale using array helper (no double encode/decode)
-            loop = asyncio.get_running_loop()
-            result = await loop.run_in_executor(None, upscale_image_array, img)
+        # Upscale using array helper (no double encode/decode)
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, upscale_image_array, img)
 
-            # Encode as JPEG quality 85 (much faster than PNG)
-            _, buffer = cv2.imencode('.jpg', result, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        # Encode as JPEG quality 85 (much faster than PNG)
+        _, buffer = cv2.imencode('.jpg', result, [cv2.IMWRITE_JPEG_QUALITY, 85])
 
-            return Response(content=buffer.tobytes(), media_type="image/jpeg")
+        return Response(content=buffer.tobytes(), media_type="image/jpeg")
 
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Frame upscale failed: {e}")
-            raise HTTPException(status_code=500, detail="Frame upscaling failed")
-        finally:
-            state.processing_count -= 1
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Frame upscale failed: {e}")
+        raise HTTPException(status_code=500, detail="Frame upscaling failed")
     finally:
         if acquired:
+            state.processing_count -= 1
             _upscale_semaphore.release()
 
 
@@ -1914,17 +1914,17 @@ async def upscale_video_chunk(request: Request):
 
     expected_frames = state.current_model_input_frames
 
-    # Semaphore with acquired flag
+    # Semaphore with acquired flag — increment processing_count immediately after acquire
+    # to prevent going negative if cancelled between acquire and inner try
     acquired = False
     try:
         await asyncio.wait_for(_upscale_semaphore.acquire(), timeout=0)
         acquired = True
+        state.processing_count += 1
     except asyncio.TimeoutError:
         raise HTTPException(status_code=503, detail="Busy")
 
     try:
-        state.processing_count += 1
-
         # Parse multipart form
         form = await request.form()
         frame_files = []
@@ -1962,8 +1962,8 @@ async def upscale_video_chunk(request: Request):
         logger.error(f"Multi-frame upscale error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        state.processing_count -= 1
         if acquired:
+            state.processing_count -= 1
             _upscale_semaphore.release()
 
 
