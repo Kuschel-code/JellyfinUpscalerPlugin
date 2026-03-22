@@ -242,7 +242,7 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 ## Changelog
 
-### v1.5.4.0 (Multi-Frame VSR + Auto-Model + Image Upscaling)
+### v1.5.4.0 (Multi-Frame VSR + Auto-Model + Image Upscaling + Metrics + Health)
 - **Added**: Multi-Frame VSR — 5-frame sliding window for batch upscaling (EDVR-M, RealBasicVSR, AnimeSR v2)
 - **Added**: `/upscale-video-chunk` endpoint for multi-frame inference
 - **Added**: Auto-detection of multi-frame models via `input_frames` metadata
@@ -252,12 +252,24 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 - **Added**: Scheduled task "Scan & Upscale Library Images" (weekly Sunday 4 AM)
 - **Added**: `POST /upscale-images/{itemId}` endpoint for batch image upscaling
 - **Added**: `GET /recommend-model` endpoint for model recommendation API
-- **Added**: `EnableAutoModelSelection` config option (default: true)
+- **Added**: Priority processing queue with pause/resume, priority 1-10, optional persistence
+- **Added**: Queue management endpoints (add, pause, resume, cancel, set priority)
+- **Added**: Prometheus metrics endpoint (`/metrics`) — jobs, failures, frames, timing per model
+- **Added**: Detailed health endpoint (`/health/detailed`) with GPU health + circuit breaker state
+- **Added**: Circuit breaker pattern — auto-opens after consecutive failures, resets after timeout
+- **Added**: Model auto-management — disk usage tracking (`/models/disk-usage`), LRU cleanup (`/models/cleanup`)
+- **Added**: Webhook notifications — fire-and-forget HTTP POST on job complete/failure
+- **Added**: Model fallback chain — comma-separated models, tries next on failure (images + videos)
+- **Added**: 20+ new configuration options (queue, webhooks, health, model management, filtering)
 - **Added**: ONNX conversion tool for PyTorch → ONNX model export (EDVR-M, RealBasicVSR, AnimeSR)
 - **Added**: `ONNX_TILE_SIZE_MULTIFRAME` env var (default 256) for multi-frame VRAM control
 - **Fixed**: Socket exhaustion — HttpClient now reused across multi-frame processing loop
 - **Fixed**: Window frame count for even `inputFrames` values (count-based loop)
 - **Fixed**: Edge tile ONNX shape error when one dimension < tile_size
+- **Fixed**: `processing_count` going negative on semaphore timeout
+- **Fixed**: Blend weight normalization using actual content size, not padded tile size
+- **Fixed**: Scale parameter validation (1-8) on upscale-images endpoint
+- **Fixed**: Real-time model selection inverted (2x for real-time, 4x for batch)
 
 ### v1.5.3.6 (30 Models — Video-Optimized Community Models)
 - **Added**: 12 new community ONNX models with verified download URLs

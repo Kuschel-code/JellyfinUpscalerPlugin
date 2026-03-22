@@ -242,11 +242,17 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                         successCount++;
                         _logger.LogInformation("AI Upscaler Images: Upscaled {Type} for {Name}: {Input} -> {Output}",
                             imageType, item.Name, $"{width}x{height}", outputPath);
+
+                        // Fire webhook (fire-and-forget)
+                        _ = _upscalerCore.SendWebhookAsync("complete", $"{item.Name} ({imageType})", true);
                     }
                     else
                     {
                         failCount++;
                         _logger.LogWarning("AI Upscaler Images: Empty result for {Type} of {Name}", imageType, item.Name);
+
+                        // Fire webhook (fire-and-forget)
+                        _ = _upscalerCore.SendWebhookAsync("failure", $"{item.Name} ({imageType})", false, "Empty result");
                     }
                 }
                 catch (OperationCanceledException)
@@ -258,6 +264,9 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                 {
                     failCount++;
                     _logger.LogError(ex, "AI Upscaler Images: Error upscaling {Type} for {Name}", imageType, item.Name);
+
+                    // Fire webhook (fire-and-forget)
+                    _ = _upscalerCore.SendWebhookAsync("failure", $"{item.Name} ({imageType})", false, ex.Message);
                 }
             }
 

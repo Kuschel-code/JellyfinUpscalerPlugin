@@ -270,6 +270,9 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                         _logger.LogInformation(
                             "AI Upscaler: Successfully upscaled: {Name} -> {Output}",
                             video.Name, Path.GetFileName(outputPath));
+
+                        // Fire webhook notification (fire-and-forget)
+                        _ = _upscalerCore.SendWebhookAsync("complete", video.Name, true);
                     }
                     else
                     {
@@ -277,6 +280,9 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                         _logger.LogWarning(
                             "AI Upscaler: Failed to upscale {Name}: {Error}",
                             video.Name, result.Error);
+
+                        // Fire webhook notification (fire-and-forget)
+                        _ = _upscalerCore.SendWebhookAsync("failure", video.Name, false, result.Error);
 
                         // Clean up partial output
                         if (File.Exists(outputPath))
@@ -294,6 +300,9 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                 {
                     failCount++;
                     _logger.LogError(ex, "AI Upscaler: Error processing {Name}", video.Name);
+
+                    // Fire webhook notification (fire-and-forget)
+                    _ = _upscalerCore.SendWebhookAsync("failure", video.Name, false, ex.Message);
 
                     // Clean up partial output
                     if (File.Exists(outputPath))

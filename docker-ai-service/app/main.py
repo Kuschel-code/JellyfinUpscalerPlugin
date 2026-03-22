@@ -88,6 +88,26 @@ class AppState:
     # Multi-frame model support (e.g. EDVR uses 5 input frames)
     current_model_input_frames: int = 1
 
+    # Metrics tracking
+    total_jobs: int = 0
+    total_failures: int = 0
+    total_frames_processed: int = 0
+    total_processing_time_ms: float = 0
+    model_usage_count: dict = {}  # model_name -> count
+    model_failure_count: dict = {}  # model_name -> count
+    last_job_time_ms: float = 0
+    service_start_time: float = 0
+
+    # Health monitoring
+    consecutive_failures: int = 0
+    circuit_open: bool = False
+    circuit_open_at: float = 0
+    circuit_breaker_threshold: int = 5
+    circuit_breaker_reset_seconds: int = 60
+
+    # Model management
+    model_last_used: dict = {}  # model_name -> timestamp
+
 state = AppState()
 
 # Concurrency semaphore for upscaling requests (thread-safe)
@@ -1808,6 +1828,8 @@ async def upscale_endpoint(
     scale: int = Form(2)
 ):
     """Upscale an image. Scale is determined by the loaded model; the scale parameter is validated for consistency."""
+    _check_circuit_breaker()
+
     if state.cv_model is None and state.onnx_session is None:
         raise HTTPException(status_code=400, detail="No model loaded. Please load a model first.")
 
@@ -1821,30 +1843,34 @@ async def upscale_endpoint(
     try:
         await asyncio.wait_for(_upscale_semaphore.acquire(), timeout=0)
         acquired = True
+        state.processing_count += 1
     except asyncio.TimeoutError:
         raise HTTPException(status_code=429, detail="Too many concurrent requests")
 
+    start_time = time.time()
+    model_name = state.current_model or "unknown"
     try:
-        state.processing_count += 1
-        try:
-            # Read image
-            image_bytes = await file.read()
+        # Read image
+        image_bytes = await file.read()
 
-            # Upscale in thread pool to not block async
-            loop = asyncio.get_running_loop()
-            result = await loop.run_in_executor(None, upscale_image, image_bytes)
+        # Upscale in thread pool to not block async
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, upscale_image, image_bytes)
 
-            return Response(content=result, media_type="image/png")
+        duration_ms = (time.time() - start_time) * 1000
+        _record_success(model_name, duration_ms)
+        return Response(content=result, media_type="image/png")
 
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
-        except Exception as e:
-            logger.error(f"Upscale failed: {e}")
-            raise HTTPException(status_code=500, detail="Upscaling failed")
-        finally:
-            state.processing_count -= 1
+    except ValueError as e:
+        _record_failure(model_name)
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        _record_failure(model_name)
+        logger.error(f"Upscale failed: {e}")
+        raise HTTPException(status_code=500, detail="Upscaling failed")
     finally:
         if acquired:
+            state.processing_count -= 1
             _upscale_semaphore.release()
 
 
@@ -1862,6 +1888,8 @@ async def benchmark_endpoint():
 @app.post("/upscale-frame")
 async def upscale_frame_endpoint(request: Request):
     """Fast frame upscaling for real-time playback. Raw JPEG in, JPEG out. Returns 503 when busy."""
+    _check_circuit_breaker()
+
     if state.cv_model is None and state.onnx_session is None:
         raise HTTPException(status_code=400, detail="No model loaded")
 
@@ -1875,6 +1903,8 @@ async def upscale_frame_endpoint(request: Request):
     except asyncio.TimeoutError:
         raise HTTPException(status_code=503, detail="Busy")
 
+    start_time = time.time()
+    model_name = state.current_model or "unknown"
     try:
         body = await request.body()
         if not body:
@@ -1893,11 +1923,15 @@ async def upscale_frame_endpoint(request: Request):
         # Encode as JPEG quality 85 (much faster than PNG)
         _, buffer = cv2.imencode('.jpg', result, [cv2.IMWRITE_JPEG_QUALITY, 85])
 
+        duration_ms = (time.time() - start_time) * 1000
+        _record_success(model_name, duration_ms)
+        state.total_frames_processed += 1
         return Response(content=buffer.tobytes(), media_type="image/jpeg")
 
     except HTTPException:
         raise
     except Exception as e:
+        _record_failure(model_name)
         logger.error(f"Frame upscale failed: {e}")
         raise HTTPException(status_code=500, detail="Frame upscaling failed")
     finally:
@@ -1909,6 +1943,8 @@ async def upscale_frame_endpoint(request: Request):
 @app.post("/upscale-video-chunk")
 async def upscale_video_chunk(request: Request):
     """Multi-frame upscaling: receives N PNG frames, returns upscaled center frame."""
+    _check_circuit_breaker()
+
     if state.current_model is None:
         raise HTTPException(status_code=400, detail="No model loaded")
 
@@ -1924,6 +1960,8 @@ async def upscale_video_chunk(request: Request):
     except asyncio.TimeoutError:
         raise HTTPException(status_code=503, detail="Busy")
 
+    start_time = time.time()
+    model_name = state.current_model or "unknown"
     try:
         # Parse multipart form
         form = await request.form()
@@ -1954,11 +1992,16 @@ async def upscale_video_chunk(request: Request):
 
         # Encode as PNG
         _, buffer = cv2.imencode('.png', result)
+
+        duration_ms = (time.time() - start_time) * 1000
+        _record_success(model_name, duration_ms)
+        state.total_frames_processed += expected_frames
         return Response(content=buffer.tobytes(), media_type="image/png")
 
     except HTTPException:
         raise
     except Exception as e:
+        _record_failure(model_name)
         logger.error(f"Multi-frame upscale error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -2053,3 +2096,246 @@ async def update_config(
         "max_concurrent": state.max_concurrent,
         "gpu_device_id": state.gpu_device_id
     }
+
+
+# ============================================================
+# === Prometheus-Style Metrics Endpoint ===
+# ============================================================
+
+@app.get("/metrics")
+async def prometheus_metrics():
+    """Prometheus-compatible metrics endpoint."""
+    uptime = time.time() - state.service_start_time if state.service_start_time > 0 else 0
+    avg_time = state.total_processing_time_ms / max(state.total_jobs, 1)
+
+    lines = [
+        "# HELP upscaler_jobs_total Total upscaling jobs processed",
+        "# TYPE upscaler_jobs_total counter",
+        f"upscaler_jobs_total {state.total_jobs}",
+        "",
+        "# HELP upscaler_failures_total Total failed upscaling jobs",
+        "# TYPE upscaler_failures_total counter",
+        f"upscaler_failures_total {state.total_failures}",
+        "",
+        "# HELP upscaler_frames_total Total frames processed",
+        "# TYPE upscaler_frames_total counter",
+        f"upscaler_frames_total {state.total_frames_processed}",
+        "",
+        "# HELP upscaler_processing_time_avg_ms Average processing time per job",
+        "# TYPE upscaler_processing_time_avg_ms gauge",
+        f"upscaler_processing_time_avg_ms {avg_time:.1f}",
+        "",
+        "# HELP upscaler_last_job_time_ms Last job processing time",
+        "# TYPE upscaler_last_job_time_ms gauge",
+        f"upscaler_last_job_time_ms {state.last_job_time_ms:.1f}",
+        "",
+        "# HELP upscaler_active_jobs Currently processing jobs",
+        "# TYPE upscaler_active_jobs gauge",
+        f"upscaler_active_jobs {state.processing_count}",
+        "",
+        "# HELP upscaler_uptime_seconds Service uptime in seconds",
+        "# TYPE upscaler_uptime_seconds gauge",
+        f"upscaler_uptime_seconds {uptime:.0f}",
+        "",
+        "# HELP upscaler_circuit_open Circuit breaker state (1=open, 0=closed)",
+        "# TYPE upscaler_circuit_open gauge",
+        f"upscaler_circuit_open {1 if state.circuit_open else 0}",
+        "",
+        "# HELP upscaler_consecutive_failures Consecutive failures count",
+        "# TYPE upscaler_consecutive_failures gauge",
+        f"upscaler_consecutive_failures {state.consecutive_failures}",
+    ]
+
+    # Per-model usage metrics
+    for model_name, count in state.model_usage_count.items():
+        safe_name = model_name.replace("-", "_").replace(".", "_")
+        lines.append(f'upscaler_model_usage_total{{model="{model_name}"}} {count}')
+
+    for model_name, count in state.model_failure_count.items():
+        lines.append(f'upscaler_model_failures_total{{model="{model_name}"}} {count}')
+
+    return Response(content="\n".join(lines) + "\n", media_type="text/plain; charset=utf-8")
+
+
+# ============================================================
+# === Health Check & Circuit Breaker ===
+# ============================================================
+
+def _record_success(model_name: str, duration_ms: float):
+    """Record a successful job for metrics and health tracking."""
+    state.total_jobs += 1
+    state.total_frames_processed += 1
+    state.total_processing_time_ms += duration_ms
+    state.last_job_time_ms = duration_ms
+    state.consecutive_failures = 0
+    state.model_usage_count[model_name] = state.model_usage_count.get(model_name, 0) + 1
+    state.model_last_used[model_name] = time.time()
+
+    # Close circuit breaker on success
+    if state.circuit_open:
+        state.circuit_open = False
+        logger.info("Circuit breaker CLOSED after successful job")
+
+
+def _record_failure(model_name: str):
+    """Record a failed job for metrics and health tracking."""
+    state.total_jobs += 1
+    state.total_failures += 1
+    state.consecutive_failures += 1
+    state.model_failure_count[model_name] = state.model_failure_count.get(model_name, 0) + 1
+
+    # Open circuit breaker after threshold failures
+    if state.consecutive_failures >= state.circuit_breaker_threshold and not state.circuit_open:
+        state.circuit_open = True
+        state.circuit_open_at = time.time()
+        logger.warning(f"Circuit breaker OPEN after {state.consecutive_failures} consecutive failures")
+
+
+def _check_circuit_breaker():
+    """Check if circuit breaker allows processing. Raises 503 if open."""
+    if not state.circuit_open:
+        return
+
+    elapsed = time.time() - state.circuit_open_at
+    if elapsed >= state.circuit_breaker_reset_seconds:
+        # Half-open: allow one request through
+        state.circuit_open = False
+        logger.info("Circuit breaker HALF-OPEN, allowing request through")
+        return
+
+    raise HTTPException(
+        status_code=503,
+        detail=f"Circuit breaker open — {state.consecutive_failures} consecutive failures. "
+               f"Retry in {int(state.circuit_breaker_reset_seconds - elapsed)}s"
+    )
+
+
+@app.get("/health/detailed")
+async def health_detailed():
+    """Detailed health status including circuit breaker, GPU, and model state."""
+    gpu_healthy = True
+    gpu_error = None
+
+    # Quick GPU check
+    if state.use_gpu and state.onnx_session:
+        try:
+            providers = state.onnx_session.get_providers()
+            gpu_healthy = any("CUDA" in p or "TensorRT" in p or "CoreML" in p or "DirectML" in p for p in providers)
+        except Exception as e:
+            gpu_healthy = False
+            gpu_error = str(e)
+
+    return {
+        "status": "healthy" if not state.circuit_open else "degraded",
+        "circuit_breaker": {
+            "open": state.circuit_open,
+            "consecutive_failures": state.consecutive_failures,
+            "threshold": state.circuit_breaker_threshold,
+            "reset_seconds": state.circuit_breaker_reset_seconds
+        },
+        "gpu": {
+            "healthy": gpu_healthy,
+            "name": state.gpu_name,
+            "memory": state.gpu_memory,
+            "error": gpu_error
+        },
+        "model": {
+            "loaded": state.current_model is not None,
+            "name": state.current_model,
+            "type": state.current_model_type,
+            "input_frames": state.current_model_input_frames,
+            "last_error": state.last_load_error
+        },
+        "metrics": {
+            "total_jobs": state.total_jobs,
+            "total_failures": state.total_failures,
+            "avg_time_ms": state.total_processing_time_ms / max(state.total_jobs, 1),
+            "uptime_seconds": time.time() - state.service_start_time if state.service_start_time > 0 else 0
+        }
+    }
+
+
+# ============================================================
+# === Model Auto-Management ===
+# ============================================================
+
+@app.get("/models/disk-usage")
+async def models_disk_usage():
+    """Show disk usage of downloaded models."""
+    models_dir = os.getenv("MODEL_DIR", "/app/models")
+    if not os.path.isdir(models_dir):
+        return {"models_dir": models_dir, "total_size_mb": 0, "models": []}
+
+    model_files = []
+    total_size = 0
+    for f in os.listdir(models_dir):
+        fpath = os.path.join(models_dir, f)
+        if os.path.isfile(fpath):
+            size = os.path.getsize(fpath)
+            total_size += size
+            last_used = state.model_last_used.get(f.replace(".onnx", "").replace(".pb", ""), 0)
+            model_files.append({
+                "name": f,
+                "size_mb": round(size / 1024 / 1024, 1),
+                "last_used": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(last_used)) if last_used > 0 else "never"
+            })
+
+    model_files.sort(key=lambda x: x["size_mb"], reverse=True)
+    return {
+        "models_dir": models_dir,
+        "total_size_mb": round(total_size / 1024 / 1024, 1),
+        "model_count": len(model_files),
+        "models": model_files
+    }
+
+
+@app.post("/models/cleanup")
+async def models_cleanup(max_age_days: int = 30, dry_run: bool = True):
+    """Clean up models not used within max_age_days. Use dry_run=false to actually delete."""
+    models_dir = os.getenv("MODEL_DIR", "/app/models")
+    if not os.path.isdir(models_dir):
+        return {"cleaned": 0, "message": "Models directory not found"}
+
+    cutoff = time.time() - (max_age_days * 86400)
+    to_delete = []
+    kept = []
+
+    for f in os.listdir(models_dir):
+        fpath = os.path.join(models_dir, f)
+        if not os.path.isfile(fpath):
+            continue
+
+        model_key = f.replace(".onnx", "").replace(".pb", "")
+        last_used = state.model_last_used.get(model_key, 0)
+
+        # Don't delete the currently loaded model
+        if state.current_model and model_key in state.current_model:
+            kept.append({"name": f, "reason": "currently loaded"})
+            continue
+
+        if last_used < cutoff:
+            size_mb = round(os.path.getsize(fpath) / 1024 / 1024, 1)
+            to_delete.append({"name": f, "size_mb": size_mb, "last_used_days_ago": int((time.time() - last_used) / 86400) if last_used > 0 else -1})
+            if not dry_run:
+                try:
+                    os.remove(fpath)
+                    logger.info(f"Deleted unused model: {f} ({size_mb}MB)")
+                except Exception as e:
+                    logger.warning(f"Failed to delete {f}: {e}")
+        else:
+            kept.append({"name": f, "reason": "recently used"})
+
+    freed_mb = sum(m["size_mb"] for m in to_delete)
+    return {
+        "dry_run": dry_run,
+        "to_delete": to_delete,
+        "kept": kept,
+        "freed_mb": freed_mb,
+        "deleted_count": len(to_delete) if not dry_run else 0
+    }
+
+
+@app.on_event("startup")
+async def _track_startup():
+    """Record service start time for uptime tracking."""
+    state.service_start_time = time.time()

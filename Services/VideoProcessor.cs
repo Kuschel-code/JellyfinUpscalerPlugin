@@ -31,6 +31,7 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly ILogger<VideoProcessor> _logger;
         private readonly IMediaEncoder _mediaEncoder;
         private readonly UpscalerCore _upscalerCore;
+        private readonly HttpUpscalerService _httpUpscalerService;
         private readonly UpscalerProgressHub _progressHub;
         private readonly LibraryScanHelper _libraryScanHelper;
         
@@ -54,12 +55,14 @@ namespace JellyfinUpscalerPlugin.Services
             ILogger<VideoProcessor> logger,
             IMediaEncoder mediaEncoder,
             UpscalerCore upscalerCore,
+            HttpUpscalerService httpUpscalerService,
             UpscalerProgressHub progressHub,
             LibraryScanHelper libraryScanHelper)
         {
             _logger = logger;
             _mediaEncoder = mediaEncoder;
             _upscalerCore = upscalerCore;
+            _httpUpscalerService = httpUpscalerService;
             _progressHub = progressHub;
             _libraryScanHelper = libraryScanHelper;
             
@@ -154,7 +157,52 @@ namespace JellyfinUpscalerPlugin.Services
                 // 3. Optimize processing options
                 var optimizedOptions = OptimizeProcessingOptions(options, inputInfo, hardwareProfile);
                 job.OptimizedOptions = optimizedOptions;
-                
+
+                // 3b. Model fallback chain: try primary model, fall back to alternatives
+                var modelChain = BuildVideoModelChain(optimizedOptions.Model);
+                string loadedModel = optimizedOptions.Model;
+                bool modelLoaded = false;
+                foreach (var candidateModel in modelChain)
+                {
+                    try
+                    {
+                        var loaded = await _upscalerCore.IsAvailableAsync(cancellationToken);
+                        if (!loaded)
+                        {
+                            _logger.LogWarning("AI service unavailable, cannot load model {Model}", candidateModel);
+                            continue;
+                        }
+
+                        // Try to ensure this model is loaded on the Docker service
+                        var httpService = GetHttpUpscalerService();
+                        if (httpService != null)
+                        {
+                            var success = await httpService.EnsureModelLoadedAsync(candidateModel, cancellationToken);
+                            if (success)
+                            {
+                                loadedModel = candidateModel;
+                                modelLoaded = true;
+                                if (candidateModel != optimizedOptions.Model)
+                                {
+                                    _logger.LogInformation("Model fallback: {Original} -> {Fallback}", optimizedOptions.Model, candidateModel);
+                                    optimizedOptions.Model = candidateModel;
+                                }
+                                break;
+                            }
+                        }
+                        _logger.LogWarning("Failed to load model {Model}, trying next in fallback chain", candidateModel);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Model {Model} failed to load, trying next", candidateModel);
+                    }
+                }
+
+                if (!modelLoaded)
+                {
+                    _logger.LogWarning("No model in fallback chain could be loaded, proceeding with default");
+                }
+
                 // 4. Check multi-frame model support
                 var serviceStatus = await _upscalerCore.GetServiceStatusAsync();
                 int inputFrames = serviceStatus?.InputFrames ?? 1;
@@ -175,15 +223,25 @@ namespace JellyfinUpscalerPlugin.Services
                 UpdatePerformanceHistory(job);
                 
                 await _progressHub.SendJobCompleted(job.Id, Path.GetFileName(inputPath), result.Success, result.Error);
-                
-                // 7. Trigger library scan for new upscaled file
+
+                // 7. Fire webhook notification (fire-and-forget)
+                if (result.Success)
+                {
+                    _ = _upscalerCore.SendWebhookAsync("complete", Path.GetFileName(inputPath), true);
+                }
+                else
+                {
+                    _ = _upscalerCore.SendWebhookAsync("failure", Path.GetFileName(inputPath), false, result.Error);
+                }
+
+                // 8. Trigger library scan for new upscaled file
                 if (result.Success && !string.IsNullOrEmpty(outputPath))
                 {
                     await _libraryScanHelper.ScanUpscaledFile(inputPath, outputPath);
                 }
-                
+
                 _logger.LogInformation($"✅ Video processing completed: {result.Success}, Time: {job.ProcessingDuration.TotalSeconds:F1}s");
-                
+
                 return result;
             }
             catch (OperationCanceledException)
@@ -197,6 +255,10 @@ namespace JellyfinUpscalerPlugin.Services
                 _logger.LogError(ex, $"❌ Video processing failed: {jobId}");
                 job.Status = ProcessingStatus.Failed;
                 job.Error = ex.Message;
+
+                // Fire webhook notification (fire-and-forget)
+                _ = _upscalerCore.SendWebhookAsync("failure", Path.GetFileName(inputPath), false, ex.Message);
+
                 return new VideoProcessingResult { Success = false, Error = ex.Message };
             }
             finally
@@ -406,6 +468,31 @@ namespace JellyfinUpscalerPlugin.Services
             
             return optimized;
         }
+
+        /// <summary>
+        /// Build a model fallback chain for video processing.
+        /// Primary model first, then configured fallbacks from ModelFallbackChain config.
+        /// </summary>
+        private List<string> BuildVideoModelChain(string primaryModel)
+        {
+            var chain = new List<string> { primaryModel };
+            var fallbackConfig = Config.ModelFallbackChain;
+            if (!string.IsNullOrWhiteSpace(fallbackConfig))
+            {
+                var fallbacks = fallbackConfig.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                foreach (var fb in fallbacks)
+                {
+                    if (!chain.Contains(fb, StringComparer.OrdinalIgnoreCase))
+                        chain.Add(fb);
+                }
+            }
+            return chain;
+        }
+
+        /// <summary>
+        /// Get the HttpUpscalerService for model loading in fallback chain.
+        /// </summary>
+        private HttpUpscalerService? GetHttpUpscalerService() => _httpUpscalerService;
 
         /// <summary>
         /// Determine the best processing method
