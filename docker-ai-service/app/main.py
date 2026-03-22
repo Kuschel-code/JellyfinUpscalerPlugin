@@ -1863,6 +1863,67 @@ async def upscale_frame_endpoint(request: Request):
             _upscale_semaphore.release()
 
 
+@app.post("/upscale-video-chunk")
+async def upscale_video_chunk(request: Request):
+    """Multi-frame upscaling: receives N PNG frames, returns upscaled center frame."""
+    if state.current_model is None:
+        raise HTTPException(status_code=400, detail="No model loaded")
+
+    expected_frames = state.current_model_input_frames
+
+    # Semaphore with acquired flag
+    acquired = False
+    try:
+        await asyncio.wait_for(_upscale_semaphore.acquire(), timeout=0)
+        acquired = True
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=503, detail="Busy")
+
+    try:
+        state.processing_count += 1
+
+        # Parse multipart form
+        form = await request.form()
+        frame_files = []
+        for i in range(expected_frames):
+            key = f"frame_{i}"
+            if key not in form:
+                raise HTTPException(status_code=400, detail=f"Missing {key}. Expected {expected_frames} frames.")
+            frame_files.append(form[key])
+
+        # Read all frames
+        frames = []
+        for ff in frame_files:
+            data = await ff.read()
+            img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+            if img is None:
+                raise HTTPException(status_code=400, detail="Invalid image data")
+            frames.append(img)
+
+        # If single-frame model loaded, transparent fallback: upscale center frame only
+        if expected_frames == 1 or state.current_model_input_frames == 1:
+            center = frames[len(frames) // 2]
+            loop = asyncio.get_running_loop()
+            result = await loop.run_in_executor(None, upscale_image_array, center)
+        else:
+            loop = asyncio.get_running_loop()
+            result = await loop.run_in_executor(None, upscale_multiframe, frames)
+
+        # Encode as PNG
+        _, buffer = cv2.imencode('.png', result)
+        return Response(content=buffer.tobytes(), media_type="image/png")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Multi-frame upscale error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        state.processing_count -= 1
+        if acquired:
+            _upscale_semaphore.release()
+
+
 def _run_frame_benchmark(width: int, height: int) -> dict:
     """Benchmark at actual capture resolution with JPEG encode/decode."""
     if state.current_model is None:
