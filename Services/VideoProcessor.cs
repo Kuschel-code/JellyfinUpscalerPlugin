@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -581,6 +582,150 @@ namespace JellyfinUpscalerPlugin.Services
                     Error = ex.Message,
                     Method = ProcessingMethod.FrameByFrame
                 };
+            }
+        }
+
+        /// <summary>
+        /// Multi-frame processing with sliding window for VSR models
+        /// </summary>
+        private async Task<VideoProcessingResult> ProcessMultiFrameAsync(
+            string inputPath,
+            string outputPath,
+            ProcessingJob job,
+            int inputFrames,
+            CancellationToken cancellationToken)
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), $"upscaler_mf_{Guid.NewGuid():N}");
+
+            try
+            {
+                var framesDir = Path.Combine(tempDir, "frames");
+                var processedDir = Path.Combine(tempDir, "processed");
+                Directory.CreateDirectory(framesDir);
+                Directory.CreateDirectory(processedDir);
+
+                // Extract frames (same as frame-by-frame)
+                var effectiveFps = job.InputInfo?.FrameRate ?? 24;
+                var extractArgs = $"-i \"{inputPath}\" -vf fps={effectiveFps} \"{framesDir}/frame_%06d.png\"";
+                _logger.LogInformation("Extracting frames for multi-frame processing: {Args}", extractArgs);
+
+                await Cli.Wrap(_ffmpegPath)
+                    .WithArguments(extractArgs)
+                    .WithValidation(CommandResultValidation.ZeroExitCode)
+                    .ExecuteAsync(cancellationToken);
+
+                var frameFiles = Directory.GetFiles(framesDir, "*.png")
+                    .OrderBy(f => f)
+                    .ToList();
+
+                if (frameFiles.Count == 0)
+                {
+                    throw new InvalidOperationException("No frames extracted");
+                }
+
+                _logger.LogInformation("Extracted {Count} frames. Processing with {InputFrames}-frame sliding window (SEQUENTIAL)",
+                    frameFiles.Count, inputFrames);
+
+                int halfWindow = inputFrames / 2;
+                int totalFrames = frameFiles.Count;
+                int processedCount = 0;
+
+                // SEQUENTIAL sliding window -- do NOT parallelize
+                for (int i = 0; i < totalFrames; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    try
+                    {
+                        // Build window with boundary padding
+                        var windowPaths = new List<string>();
+                        for (int j = i - halfWindow; j <= i + halfWindow; j++)
+                        {
+                            int idx = Math.Clamp(j, 0, totalFrames - 1);
+                            windowPaths.Add(frameFiles[idx]);
+                        }
+
+                        // Send window to AI service
+                        var serviceUrl = Config.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                        using var content = new MultipartFormDataContent();
+                        for (int k = 0; k < windowPaths.Count; k++)
+                        {
+                            var frameBytes = await File.ReadAllBytesAsync(windowPaths[k], cancellationToken);
+                            var byteContent = new ByteArrayContent(frameBytes);
+                            byteContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+                            content.Add(byteContent, $"frame_{k}", $"frame_{k}.png");
+                        }
+
+                        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(300) };
+                        var response = await client.PostAsync($"{serviceUrl}/upscale-video-chunk", content, cancellationToken);
+
+                        if (response.IsSuccessStatusCode)
+                        {
+                            var resultBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+                            var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFiles[i]));
+                            await File.WriteAllBytesAsync(outputFile, resultBytes, cancellationToken);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Multi-frame upscale failed for frame {Frame} (HTTP {Code}), using original",
+                                i, (int)response.StatusCode);
+                            var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFiles[i]));
+                            File.Copy(frameFiles[i], outputFile, true);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Multi-frame upscale error for frame {Frame}, using original", i);
+                        var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFiles[i]));
+                        File.Copy(frameFiles[i], outputFile, true);
+                    }
+
+                    processedCount++;
+                    var progress = (double)processedCount / totalFrames * 100;
+                    _logger.LogDebug("Multi-frame progress: {Progress:F1}% ({Processed}/{Total})",
+                        progress, processedCount, totalFrames);
+                }
+
+                // Reconstruct video (same as frame-by-frame)
+                _logger.LogInformation("Reconstructing video from {Count} processed frames", totalFrames);
+                var codec = Config.OutputCodec ?? "libx264";
+                var reconstructArgs = $"-framerate {effectiveFps} -i \"{processedDir}/frame_%06d.png\" -c:v {codec} -pix_fmt yuv420p \"{outputPath}\"";
+
+                await Cli.Wrap(_ffmpegPath)
+                    .WithArguments(reconstructArgs)
+                    .WithValidation(CommandResultValidation.ZeroExitCode)
+                    .ExecuteAsync(cancellationToken);
+
+                return new VideoProcessingResult
+                {
+                    Success = true,
+                    OutputPath = outputPath,
+                    ProcessingTime = DateTime.Now - job.StartTime,
+                    Method = ProcessingMethod.MultiFrame
+                };
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Multi-frame processing failed");
+                return new VideoProcessingResult
+                {
+                    Success = false,
+                    Error = ex.Message,
+                    Method = ProcessingMethod.MultiFrame
+                };
+            }
+            finally
+            {
+                // Cleanup temp directory
+                try
+                {
+                    if (Directory.Exists(tempDir))
+                        Directory.Delete(tempDir, true);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to cleanup temp directory: {Dir}", tempDir);
+                }
             }
         }
 
