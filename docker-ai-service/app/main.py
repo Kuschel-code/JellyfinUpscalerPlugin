@@ -1352,10 +1352,16 @@ def upscale_multiframe(frames: list) -> np.ndarray:
 
     for y in y_tiles:
         for x in x_tiles:
-            # Extract same tile position from all frames
+            # Extract same tile position from all frames, pad if edge tile is smaller than tile_size
             tile_list = []
             for frame_rgb in frames_rgb:
                 tile = frame_rgb[y:y+tile_size, x:x+tile_size, :]
+                # Pad undersized edge tiles to tile_size (e.g. when only one dimension > tile_size)
+                th_actual, tw_actual = tile.shape[:2]
+                if th_actual < tile_size or tw_actual < tile_size:
+                    padded = np.zeros((tile_size, tile_size, 3), dtype=tile.dtype)
+                    padded[:th_actual, :tw_actual, :] = tile
+                    tile = padded
                 tile_list.append(tile)
 
             out_tile = _onnx_infer_multiframe_tile(tile_list, session, input_name, output_name, num_frames)

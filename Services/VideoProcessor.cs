@@ -626,9 +626,14 @@ namespace JellyfinUpscalerPlugin.Services
                 _logger.LogInformation("Extracted {Count} frames. Processing with {InputFrames}-frame sliding window (SEQUENTIAL)",
                     frameFiles.Count, inputFrames);
 
-                int halfWindow = inputFrames / 2;
+                // Use (inputFrames - 1) / 2 to correctly handle both odd and even frame counts
+                int halfWindow = (inputFrames - 1) / 2;
                 int totalFrames = frameFiles.Count;
                 int processedCount = 0;
+                var serviceUrl = Config.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+
+                // Reuse a single HttpClient for the entire processing loop to avoid socket exhaustion
+                using var multiFrameClient = new HttpClient { Timeout = TimeSpan.FromSeconds(300) };
 
                 // SEQUENTIAL sliding window -- do NOT parallelize
                 for (int i = 0; i < totalFrames; i++)
@@ -637,16 +642,16 @@ namespace JellyfinUpscalerPlugin.Services
 
                     try
                     {
-                        // Build window with boundary padding
+                        // Build window with boundary padding — count-based to produce exactly inputFrames entries
                         var windowPaths = new List<string>();
-                        for (int j = i - halfWindow; j <= i + halfWindow; j++)
+                        int startIdx = i - halfWindow;
+                        for (int j = 0; j < inputFrames; j++)
                         {
-                            int idx = Math.Clamp(j, 0, totalFrames - 1);
+                            int idx = Math.Clamp(startIdx + j, 0, totalFrames - 1);
                             windowPaths.Add(frameFiles[idx]);
                         }
 
                         // Send window to AI service
-                        var serviceUrl = Config.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
                         using var content = new MultipartFormDataContent();
                         for (int k = 0; k < windowPaths.Count; k++)
                         {
@@ -656,8 +661,7 @@ namespace JellyfinUpscalerPlugin.Services
                             content.Add(byteContent, $"frame_{k}", $"frame_{k}.png");
                         }
 
-                        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(300) };
-                        var response = await client.PostAsync($"{serviceUrl}/upscale-video-chunk", content, cancellationToken);
+                        var response = await multiFrameClient.PostAsync($"{serviceUrl}/upscale-video-chunk", content, cancellationToken);
 
                         if (response.IsSuccessStatusCode)
                         {
