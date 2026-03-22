@@ -85,6 +85,9 @@ class AppState:
     # Last model load error (for surfacing in API responses)
     last_load_error: Optional[str] = None
 
+    # Multi-frame model support (e.g. EDVR uses 5 input frames)
+    current_model_input_frames: int = 1
+
 state = AppState()
 
 # Concurrency semaphore for upscaling requests (thread-safe)
@@ -96,6 +99,7 @@ _model_lock = threading.Lock()
 
 # Tile size for ONNX inference (prevents OOM on large images)
 ONNX_TILE_SIZE = int(os.getenv("ONNX_TILE_SIZE", "512"))
+ONNX_TILE_SIZE_MULTIFRAME = int(os.getenv("ONNX_TILE_SIZE_MULTIFRAME", "256"))
 
 # Available models with download URLs from PUBLIC sources
 # Note: Real-ESRGAN ONNX models need to be converted, using pre-converted from community
@@ -896,6 +900,7 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
                     state.current_model = model_name
                     state.current_model_type = "onnx"
                     state.onnx_model_scale = model_info.get("scale", 4)
+                    state.current_model_input_frames = model_info.get("input_frames", 1)
                     state.onnx_model_name = model_name
                     state.cv_model = None
                 state.providers = session.get_providers()
@@ -952,6 +957,7 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
                                 state.current_model = model_name
                                 state.current_model_type = "onnx"
                                 state.onnx_model_scale = model_info.get("scale", 4)
+                                state.current_model_input_frames = model_info.get("input_frames", 1)
                                 state.onnx_model_name = model_name
                                 state.use_gpu = True
                                 state.gpu_name = f"Apple Neural Engine ({platform.processor() or 'Apple Silicon'})"
@@ -1087,6 +1093,7 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
             state.onnx_session = session
             state.onnx_model_name = model_name
             state.onnx_model_scale = scale
+            state.current_model_input_frames = model_info.get("input_frames", 1)
             state.current_model = model_name
             state.current_model_type = "onnx"
             state.cv_model = None
@@ -1382,7 +1389,8 @@ async def status():
         "onnx_available": ONNX_AVAILABLE,
         "model_scale": scale,
         "cuda_available": has_cuda,
-        "tensorrt_available": has_tensorrt
+        "tensorrt_available": has_tensorrt,
+        "input_frames": state.current_model_input_frames
     }
 
 
