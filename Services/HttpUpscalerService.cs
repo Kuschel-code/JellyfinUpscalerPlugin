@@ -3,6 +3,7 @@ using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -339,5 +340,8 @@ namespace JellyfinUpscalerPlugin.Services
         public string[] LoadedModels { get; set; } = Array.Empty<string>();
         public int ProcessingCount { get; set; }
         public int MaxConcurrent { get; set; }
+
+        [JsonPropertyName("input_frames")]
+        public int InputFrames { get; set; } = 1;
     }
 }
