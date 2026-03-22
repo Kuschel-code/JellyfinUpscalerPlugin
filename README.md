@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.5.3.6
+# Jellyfin AI Upscaler Plugin v1.5.4.0
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -27,7 +27,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.5.3.6      │  │
+│  │  AI Upscaler Plugin v1.5.4.0      │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -231,6 +231,14 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 ---
 
 ## Changelog
+
+### v1.5.4.0 (Multi-Frame Video Super-Resolution)
+- **Added**: Multi-Frame VSR — 5-frame sliding window for batch upscaling (EDVR-M x4)
+- **Added**: `/upscale-video-chunk` endpoint for multi-frame inference
+- **Added**: Auto-detection of multi-frame models via `input_frames` metadata
+- **Added**: Sequential processing pipeline with boundary frame padding
+- **Added**: ONNX conversion tool for PyTorch → ONNX model export
+- **Added**: `ONNX_TILE_SIZE_MULTIFRAME` env var (default 256) for multi-frame VRAM control
 
 ### v1.5.3.6 (30 Models — Video-Optimized Community Models)
 - **Added**: 12 new community ONNX models with verified download URLs
