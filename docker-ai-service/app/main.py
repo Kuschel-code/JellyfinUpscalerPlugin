@@ -447,6 +447,21 @@ AVAILABLE_MODELS = {
         "available": True
     },
 
+    # ============================================================
+    # === VIDEO SR Models (Multi-Frame) ===
+    # ============================================================
+    "edvr-m-x4": {
+        "name": "EDVR-M x4 (Video SR - 5 Frame)",
+        "url": "https://huggingface.co/kuscheltier/jellyfin-vsr-models/resolve/main/edvr_m_x4.onnx",
+        "scale": 4,
+        "description": "EDVR-M — Multi-frame video super-resolution. Uses 5 frames for temporal consistency. Best batch quality.",
+        "type": "onnx",
+        "category": "video-sr",
+        "model_type": "edvr",
+        "input_frames": 5,
+        "available": True
+    },
+
 }
 
 
