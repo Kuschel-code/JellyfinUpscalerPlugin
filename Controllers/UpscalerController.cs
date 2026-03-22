@@ -381,6 +381,114 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
+        /// <summary>
+        /// Upscale all images for a library item (poster, backdrop, thumbnail, logo).
+        /// Saves upscaled images alongside originals with "_upscaled" suffix.
+        /// </summary>
+        [HttpPost("upscale-images/{itemId}")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult<object>> UpscaleItemImages(
+            string itemId,
+            [FromQuery] string model = "auto",
+            [FromQuery] int scale = 2,
+            [FromQuery] string? imageTypes = null)
+        {
+            try
+            {
+                if (!Guid.TryParse(itemId, out var itemGuid))
+                    return BadRequest(new { success = false, error = "Invalid item ID format" });
+
+                var item = _libraryManager.GetItemById(itemGuid);
+                if (item == null)
+                    return NotFound(new { success = false, error = "Item not found" });
+
+                // Parse which image types to upscale (default: all available)
+                var targetTypes = new List<ImageType> { ImageType.Primary, ImageType.Backdrop, ImageType.Thumb, ImageType.Logo, ImageType.Banner };
+                if (!string.IsNullOrEmpty(imageTypes))
+                {
+                    targetTypes = imageTypes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Select(t => Enum.TryParse<ImageType>(t, true, out var parsed) ? parsed : (ImageType?)null)
+                        .Where(t => t.HasValue)
+                        .Select(t => t!.Value)
+                        .ToList();
+                }
+
+                var results = new List<object>();
+                int successCount = 0, failCount = 0;
+
+                foreach (var imageType in targetTypes)
+                {
+                    var images = item.GetImages(imageType).ToList();
+                    if (images.Count == 0) continue;
+
+                    for (int idx = 0; idx < images.Count; idx++)
+                    {
+                        var imagePath = images[idx].Path;
+                        if (string.IsNullOrEmpty(imagePath) || !IOFile.Exists(imagePath))
+                            continue;
+
+                        try
+                        {
+                            var originalData = await IOFile.ReadAllBytesAsync(imagePath);
+                            var upscaledData = await _upscalerCore.UpscaleImageAsync(originalData, model, scale);
+
+                            if (upscaledData != null && upscaledData.Length > 0)
+                            {
+                                // Save upscaled image alongside original
+                                var dir = Path.GetDirectoryName(imagePath) ?? "";
+                                var ext = Path.GetExtension(imagePath);
+                                var baseName = Path.GetFileNameWithoutExtension(imagePath);
+                                var outputPath = Path.Combine(dir, baseName + "_upscaled" + ext);
+                                await IOFile.WriteAllBytesAsync(outputPath, upscaledData);
+
+                                successCount++;
+                                results.Add(new
+                                {
+                                    type = imageType.ToString(),
+                                    index = idx,
+                                    original = Path.GetFileName(imagePath),
+                                    upscaled = Path.GetFileName(outputPath),
+                                    original_size = originalData.Length,
+                                    upscaled_size = upscaledData.Length,
+                                    success = true
+                                });
+                            }
+                            else
+                            {
+                                failCount++;
+                                results.Add(new { type = imageType.ToString(), index = idx, success = false, error = "Upscaling returned empty result" });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            failCount++;
+                            results.Add(new { type = imageType.ToString(), index = idx, success = false, error = ex.Message });
+                            _logger.LogWarning(ex, "Failed to upscale {Type} image {Index} for item {ItemId}", imageType, idx, itemId);
+                        }
+                    }
+                }
+
+                return Ok(new
+                {
+                    success = true,
+                    item_id = itemId,
+                    item_name = item.Name,
+                    model,
+                    scale,
+                    total_processed = successCount + failCount,
+                    success_count = successCount,
+                    fail_count = failCount,
+                    results
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to upscale images for item {ItemId}", itemId);
+                return StatusCode(500, new { success = false, error = ex.Message });
+            }
+        }
+
         [HttpPost("process")]
         [Authorize(Policy = "RequiresElevation")]
         [Consumes(MediaTypeNames.Application.Json)]
