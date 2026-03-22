@@ -40,7 +40,8 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 │  │  Python + FastAPI + OpenCV DNN     │  │
 │  │  CUDA / ROCm / OpenVINO / CPU     │  │
 │  │  Real-ESRGAN, SPAN, SwinIR, DAT2 │  │
-│  │  EDSR, FSRCNN, ESPCN (30 models) │  │
+│  │  EDVR-M, RealBasicVSR, AnimeSR  │  │
+│  │  EDSR, FSRCNN, ESPCN (33 models) │  │
 │  │  Web UI for Model Management      │  │
 │  └────────────────────────────────────┘  │
 └──────────────────────────────────────────┘
@@ -50,16 +51,25 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 
 ## How It Works
 
-The plugin supports three upscaling modes:
+The plugin supports four upscaling modes:
 
 ### Pre-Upscaling (Batch Processing)
 The **Scheduled Task** ("Scan & Upscale Library") runs daily at 3 AM and:
 1. Scans your library for videos below the configured resolution (default: 1080p)
 2. Skips already upscaled files (files with `_upscaled` suffix)
-3. For each low-res video: extracts frames via FFmpeg → upscales each frame through the AI service → reassembles into a new video
-4. Saves the upscaled version alongside the original (e.g., `Movie_upscaled.mkv`)
+3. **Auto-selects the best model** per video based on genre (anime vs live-action), resolution, and available multi-frame models
+4. For each low-res video: extracts frames via FFmpeg → upscales through AI → reassembles into a new video
+5. With multi-frame VSR models (EDVR-M, RealBasicVSR, AnimeSR): uses 5-frame sliding window for temporal consistency
+6. Saves the upscaled version alongside the original (e.g., `Movie_upscaled.mkv`)
 
 This is ideal for users **without powerful servers** — upscaling happens overnight.
+
+### Image Upscaling (NEW in v1.5.4.0)
+The **Scheduled Task** ("Scan & Upscale Library Images") runs weekly on Sunday at 4 AM and:
+1. Scans all library items for low-resolution posters, backdrops, thumbnails, logos, and banners
+2. Uses different thresholds: posters < 600x900, backdrops < 1280x720
+3. Auto-scales: 4x for very low-res images, 2x otherwise
+4. Also available on-demand via `POST /api/upscaler/upscale-images/{itemId}`
 
 ### Real-Time Upscaling During Playback (NEW in v1.5.3.3)
 When you press play, the plugin automatically enhances the video in real-time using a **two-tier system**:
@@ -76,7 +86,7 @@ When you press play, the plugin automatically enhances the video in real-time us
 
 ### Player Integration
 The in-player button lets you:
-- Select from **18 AI models** across 7 categories (Real-ESRGAN, SPAN, SwinIR, EDSR, LapSRN, FSRCNN, ESPCN)
+- Select from **33 AI models** across 9 categories (Real-ESRGAN, SPAN, SwinIR, DAT2, EDVR-M, RealBasicVSR, AnimeSR, EDSR, LapSRN, FSRCNN, ESPCN)
 - Choose scale factor (2x, 3x, 4x, 8x)
 - Toggle real-time upscaling and switch modes
 - Quick access via keyboard shortcuts (Alt+U, Alt+M)
@@ -232,13 +242,22 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 ## Changelog
 
-### v1.5.4.0 (Multi-Frame Video Super-Resolution)
-- **Added**: Multi-Frame VSR — 5-frame sliding window for batch upscaling (EDVR-M x4)
+### v1.5.4.0 (Multi-Frame VSR + Auto-Model + Image Upscaling)
+- **Added**: Multi-Frame VSR — 5-frame sliding window for batch upscaling (EDVR-M, RealBasicVSR, AnimeSR v2)
 - **Added**: `/upscale-video-chunk` endpoint for multi-frame inference
 - **Added**: Auto-detection of multi-frame models via `input_frames` metadata
 - **Added**: Sequential processing pipeline with boundary frame padding
-- **Added**: ONNX conversion tool for PyTorch → ONNX model export
+- **Added**: Intelligent auto-model selection — picks best model per content (anime/live-action, resolution, batch/real-time)
+- **Added**: Image upscaling for posters, backdrops, thumbnails, logos, banners
+- **Added**: Scheduled task "Scan & Upscale Library Images" (weekly Sunday 4 AM)
+- **Added**: `POST /upscale-images/{itemId}` endpoint for batch image upscaling
+- **Added**: `GET /recommend-model` endpoint for model recommendation API
+- **Added**: `EnableAutoModelSelection` config option (default: true)
+- **Added**: ONNX conversion tool for PyTorch → ONNX model export (EDVR-M, RealBasicVSR, AnimeSR)
 - **Added**: `ONNX_TILE_SIZE_MULTIFRAME` env var (default 256) for multi-frame VRAM control
+- **Fixed**: Socket exhaustion — HttpClient now reused across multi-frame processing loop
+- **Fixed**: Window frame count for even `inputFrames` values (count-based loop)
+- **Fixed**: Edge tile ONNX shape error when one dimension < tile_size
 
 ### v1.5.3.6 (30 Models — Video-Optimized Community Models)
 - **Added**: 12 new community ONNX models with verified download URLs
