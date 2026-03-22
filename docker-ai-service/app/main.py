@@ -1188,6 +1188,23 @@ def _onnx_infer_tile(img_rgb_float: np.ndarray, session, input_name: str, output
     return result
 
 
+def _onnx_infer_multiframe_tile(tiles: list, session, input_name: str, output_name: str, num_frames: int) -> np.ndarray:
+    """Infer a multi-frame tile stack. tiles = list of num_frames arrays, each (H,W,3) float32 [0,1]."""
+    stacked = np.stack(tiles, axis=0)                    # (T, H, W, 3)
+    stacked = np.transpose(stacked, (0, 3, 1, 2))       # (T, 3, H, W)
+    batch = np.expand_dims(stacked, axis=0).astype(np.float32)  # (1, T, 3, H, W)
+
+    result = session.run([output_name], {input_name: batch})[0]
+
+    # Handle models that output all T frames: (1, T, 3, H*s, W*s)
+    if result.ndim == 5:
+        result = result[:, num_frames // 2, :, :, :]     # center frame only
+
+    result = np.squeeze(result, axis=0)                  # (3, H*s, W*s)
+    result = np.transpose(result, (1, 2, 0))             # (H*s, W*s, 3)
+    return result
+
+
 def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
     """Upscale an image using the loaded ONNX model (Real-ESRGAN).
 
