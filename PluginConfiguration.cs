@@ -5,7 +5,7 @@ using MediaBrowser.Model.Plugins;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// Plugin Configuration - v1.5.3.6 (Docker-based AI Service + Real-Time Upscaling)
+    /// Plugin Configuration - v1.5.4.0 (Docker-based AI Service + Multi-Frame VSR)
     /// </summary>
     public class PluginConfiguration : BasePluginConfiguration
     {
@@ -67,7 +67,7 @@ namespace JellyfinUpscalerPlugin
         public string OutputCodec { get; set; } = "libx264"; // "libx264", "libx265", "copy"
 
         // Version tracking
-        public string PluginVersion { get; set; } = "1.5.3.6";
+        public string PluginVersion { get; set; } = "1.5.4.0";
 
         public PluginConfiguration()
         {

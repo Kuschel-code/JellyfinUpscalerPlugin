@@ -11,8 +11,8 @@ using Microsoft.Extensions.Logging;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// AI Upscaler Plugin for Jellyfin v1.5.3.6
-    /// v1.5.3.6 - Real-time upscaling during playback (WebGL + Server AI tiers)
+    /// AI Upscaler Plugin for Jellyfin v1.5.4.0
+    /// v1.5.4.0 - Multi-Frame Video Super-Resolution (EDVR-M x4)
     /// </summary>
     public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     {
