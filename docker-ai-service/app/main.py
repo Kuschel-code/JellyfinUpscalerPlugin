@@ -1293,6 +1293,88 @@ def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
     return cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
 
 
+def upscale_multiframe(frames: list) -> np.ndarray:
+    """Upscale using multi-frame model. frames = list of np.ndarray BGR images. Returns upscaled center frame BGR."""
+    num_frames = len(frames)
+
+    # Acquire model references once under lock
+    with _model_lock:
+        session = state.onnx_session
+        if session is None:
+            raise ValueError("No ONNX model loaded")
+        input_name = session.get_inputs()[0].name
+        output_name = session.get_outputs()[0].name
+        scale = state.onnx_model_scale or 4
+
+    # Convert all frames BGR -> RGB float32
+    frames_rgb = []
+    for f in frames:
+        rgb = cv2.cvtColor(f, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+        frames_rgb.append(rgb)
+
+    h, w, _ = frames_rgb[0].shape
+    tile_size = ONNX_TILE_SIZE_MULTIFRAME
+    overlap = 32
+
+    # Small image fast path: no tiling needed
+    if w <= tile_size and h <= tile_size:
+        result_rgb = _onnx_infer_multiframe_tile(frames_rgb, session, input_name, output_name, num_frames)
+        result_rgb = np.clip(result_rgb * 255.0, 0, 255).astype(np.uint8)
+        return cv2.cvtColor(result_rgb, cv2.COLOR_RGB2BGR)
+
+    # Tiled processing — same grid for all frames
+    out_h, out_w = h * scale, w * scale
+    output = np.zeros((out_h, out_w, 3), dtype=np.float64)
+    weight = np.zeros((out_h, out_w, 3), dtype=np.float64)
+
+    step = tile_size - overlap
+    y_tiles = list(range(0, max(h - tile_size, 0) + 1, step))
+    if not y_tiles or y_tiles[-1] + tile_size < h:
+        y_tiles.append(max(h - tile_size, 0))
+    x_tiles = list(range(0, max(w - tile_size, 0) + 1, step))
+    if not x_tiles or x_tiles[-1] + tile_size < w:
+        x_tiles.append(max(w - tile_size, 0))
+
+    for y in y_tiles:
+        for x in x_tiles:
+            # Extract same tile position from all frames
+            tile_list = []
+            for frame_rgb in frames_rgb:
+                tile = frame_rgb[y:y+tile_size, x:x+tile_size, :]
+                tile_list.append(tile)
+
+            out_tile = _onnx_infer_multiframe_tile(tile_list, session, input_name, output_name, num_frames)
+
+            # Build blend weights (same as single-frame tiling)
+            th, tw = out_tile.shape[:2]
+            blend_y = np.ones(th, dtype=np.float64)
+            blend_x = np.ones(tw, dtype=np.float64)
+            ramp = overlap * scale
+            if ramp > 0:
+                for i in range(min(ramp, th)):
+                    blend_y[i] = i / ramp
+                    blend_y[th - 1 - i] = i / ramp
+                for i in range(min(ramp, tw)):
+                    blend_x[i] = i / ramp
+                    blend_x[tw - 1 - i] = i / ramp
+            blend_w = blend_y[:, None] * blend_x[None, :]
+            blend_w3 = blend_w[:, :, None]
+
+            oy, ox = y * scale, x * scale
+            oy_end = min(oy + th, out_h)
+            ox_end = min(ox + tw, out_w)
+            actual_th = oy_end - oy
+            actual_tw = ox_end - ox
+
+            output[oy:oy_end, ox:ox_end] += out_tile[:actual_th, :actual_tw].astype(np.float64) * blend_w3[:actual_th, :actual_tw]
+            weight[oy:oy_end, ox:ox_end] += blend_w3[:actual_th, :actual_tw]
+
+    weight = np.maximum(weight, 1e-8)
+    output = output / weight
+    output = np.clip(output * 255.0, 0, 255).astype(np.uint8)
+    return cv2.cvtColor(output, cv2.COLOR_RGB2BGR)
+
+
 def upscale_image_array(img: np.ndarray) -> np.ndarray:
     """Upscale a numpy image array using the loaded model. Avoids double encode/decode for frame pipeline."""
     with _model_lock:
