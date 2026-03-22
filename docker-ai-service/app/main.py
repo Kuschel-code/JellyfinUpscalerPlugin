@@ -1062,11 +1062,17 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
 
                 if state.use_gpu and gpu_providers:
                     # GPU is active — verify with a real inference test
+                    # Build test tensor from actual model input shape (handles both
+                    # single-frame (1,3,H,W) and multi-frame (1,5,3,H,W) models)
                     try:
-                        test_input = np.random.rand(1, 3, 16, 16).astype(np.float32)
-                        input_name = session.get_inputs()[0].name
+                        model_input = session.get_inputs()[0]
+                        input_name = model_input.name
+                        input_shape = model_input.shape  # e.g. [1, 3, 'height', 'width'] or [1, 5, 3, 'h', 'w']
+                        # Replace dynamic dims (strings/None) with small test size 16
+                        test_shape = [d if isinstance(d, int) and d > 0 else 16 for d in input_shape]
+                        test_input = np.random.rand(*test_shape).astype(np.float32)
                         session.run(None, {input_name: test_input})
-                        logger.info(f"GPU inference verification passed ({gpu_providers[0]})")
+                        logger.info(f"GPU inference verification passed ({gpu_providers[0]}) input_shape={input_shape}")
                     except Exception as verify_err:
                         logger.warning(f"GPU inference verification failed: {verify_err}")
                         session = None
@@ -1681,15 +1687,18 @@ async def gpu_verify():
     # SKIP_TENSORRT setting
     diagnostics["skip_tensorrt"] = os.getenv("SKIP_TENSORRT", "false").lower() == "true"
 
-    # ONNX inference test
+    # ONNX inference test — build test tensor from actual model input shape
     if ONNX_AVAILABLE and state.onnx_session is not None:
         try:
-            test_input = np.random.rand(1, 3, 16, 16).astype(np.float32)
-            input_name = state.onnx_session.get_inputs()[0].name
+            model_input = state.onnx_session.get_inputs()[0]
+            input_name = model_input.name
+            input_shape = model_input.shape
+            test_shape = [d if isinstance(d, int) and d > 0 else 16 for d in input_shape]
+            test_input = np.random.rand(*test_shape).astype(np.float32)
             start = time.time()
             state.onnx_session.run(None, {input_name: test_input})
             elapsed = time.time() - start
-            diagnostics["inference_test"] = {"status": "ok", "time_ms": round(elapsed * 1000, 2)}
+            diagnostics["inference_test"] = {"status": "ok", "time_ms": round(elapsed * 1000, 2), "input_shape": str(input_shape)}
         except Exception as e:
             diagnostics["inference_test"] = {"status": "failed", "error": str(e)}
     else:
