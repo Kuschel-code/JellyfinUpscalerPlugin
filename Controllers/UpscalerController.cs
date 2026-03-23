@@ -71,28 +71,39 @@ namespace JellyfinUpscalerPlugin.Controllers
 
         [HttpGet("models")]
         [Produces(MediaTypeNames.Application.Json)]
-        public ActionResult<List<object>> GetAvailableModels()
+        public async Task<ActionResult> GetAvailableModels()
         {
-            // Models must match the Docker AI service AVAILABLE_MODELS exactly
+            // Proxy the Docker AI service's /models endpoint to get the full model list (34 models)
+            var config = Plugin.Instance?.Configuration;
+            var baseUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+
+            try
+            {
+                var response = await _aiServiceClient.GetAsync($"{baseUrl}/models");
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    return Content(json, "application/json");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Could not reach Docker AI service for model list, using fallback");
+            }
+
+            // Fallback: return hardcoded base models if Docker service is unavailable
             return Ok(new List<object>
             {
-                // Real-ESRGAN (ONNX GPU - Best Quality)
-                new { id = "realesrgan-x4", name = "Real-ESRGAN x4 (Best Quality)", description = "Best quality 4x for photos & anime (67MB ONNX)", scale = new[] { 4 }, category = "realesrgan", type = "onnx" },
-                new { id = "realesrgan-x4-256", name = "Real-ESRGAN x4 (256px optimized)", description = "Optimized for 256px tiles, better for low VRAM", scale = new[] { 4 }, category = "realesrgan", type = "onnx" },
-                // Fast Models (OpenCV - Real-time)
-                new { id = "fsrcnn-x2", name = "FSRCNN x2 (Fast)", description = "Very fast 2x upscaling, good for real-time", scale = new[] { 2 }, category = "fast", type = "pb" },
+                new { id = "realesrgan-x4", name = "Real-ESRGAN x4 (Best Quality)", description = "Best quality 4x (67MB ONNX)", scale = new[] { 4 }, category = "realesrgan", type = "onnx" },
+                new { id = "realesrgan-x4-256", name = "Real-ESRGAN x4 (256px optimized)", description = "Optimized for 256px tiles, low VRAM", scale = new[] { 4 }, category = "realesrgan", type = "onnx" },
+                new { id = "span-x2", name = "SPAN x2 (Fast Quality)", description = "NTIRE 2023 winner 2x", scale = new[] { 2 }, category = "nextgen", type = "onnx" },
+                new { id = "span-x4", name = "SPAN x4 (Fast Quality)", description = "NTIRE 2023 winner 4x", scale = new[] { 4 }, category = "nextgen", type = "onnx" },
+                new { id = "fsrcnn-x2", name = "FSRCNN x2 (Fast)", description = "Very fast 2x upscaling", scale = new[] { 2 }, category = "fast", type = "pb" },
                 new { id = "fsrcnn-x3", name = "FSRCNN x3 (Fast)", description = "Fast 3x upscaling", scale = new[] { 3 }, category = "fast", type = "pb" },
-                new { id = "fsrcnn-x4", name = "FSRCNN x4 (Fast)", description = "Fast 4x upscaling, lower quality but quick", scale = new[] { 4 }, category = "fast", type = "pb" },
-                new { id = "espcn-x2", name = "ESPCN x2 (Fastest)", description = "Fastest model, minimal quality improvement", scale = new[] { 2 }, category = "fast", type = "pb" },
-                new { id = "espcn-x3", name = "ESPCN x3 (Fastest)", description = "Fastest 3x model", scale = new[] { 3 }, category = "fast", type = "pb" },
-                new { id = "espcn-x4", name = "ESPCN x4 (Fastest)", description = "Fastest 4x model", scale = new[] { 4 }, category = "fast", type = "pb" },
-                // Quality Models (OpenCV - High Quality)
-                new { id = "lapsrn-x2", name = "LapSRN x2 (Quality)", description = "Good quality 2x upscaling", scale = new[] { 2 }, category = "quality", type = "pb" },
-                new { id = "lapsrn-x4", name = "LapSRN x4 (Quality)", description = "Good quality 4x upscaling", scale = new[] { 4 }, category = "quality", type = "pb" },
-                new { id = "lapsrn-x8", name = "LapSRN x8 (Quality)", description = "Extreme 8x upscaling", scale = new[] { 8 }, category = "quality", type = "pb" },
-                new { id = "edsr-x2", name = "EDSR x2 (Best OpenCV)", description = "Best quality 2x with OpenCV", scale = new[] { 2 }, category = "quality", type = "pb" },
-                new { id = "edsr-x3", name = "EDSR x3 (Best OpenCV)", description = "Best quality 3x with OpenCV", scale = new[] { 3 }, category = "quality", type = "pb" },
-                new { id = "edsr-x4", name = "EDSR x4 (Best OpenCV)", description = "Best quality 4x with OpenCV, slowest but best", scale = new[] { 4 }, category = "quality", type = "pb" }
+                new { id = "fsrcnn-x4", name = "FSRCNN x4 (Fast)", description = "Fast 4x, lower quality", scale = new[] { 4 }, category = "fast", type = "pb" },
+                new { id = "espcn-x2", name = "ESPCN x2 (Fastest)", description = "Fastest model", scale = new[] { 2 }, category = "fast", type = "pb" },
+                new { id = "espcn-x4", name = "ESPCN x4 (Fastest)", description = "Fastest 4x", scale = new[] { 4 }, category = "fast", type = "pb" },
+                new { id = "edsr-x4", name = "EDSR x4 (Best OpenCV)", description = "Best quality 4x OpenCV", scale = new[] { 4 }, category = "quality", type = "pb" }
             });
         }
 

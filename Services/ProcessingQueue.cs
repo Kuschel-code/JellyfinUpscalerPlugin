@@ -24,7 +24,7 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly ConcurrentDictionary<string, QueuedJob> _completedJobs = new();
         private readonly object _queueLock = new();
         private readonly SemaphoreSlim _signal = new(0);
-        private bool _paused;
+        private volatile bool _paused;
         private int _maxQueueSize = 100;
         private string? _persistPath;
 

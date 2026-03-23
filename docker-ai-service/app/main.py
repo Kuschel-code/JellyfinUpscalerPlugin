@@ -466,6 +466,16 @@ AVAILABLE_MODELS = {
         "model_type": "rrdb",
         "available": True
     },
+    "apisr-x3": {
+        "name": "APISR x3 (General Quality)",
+        "url": "https://huggingface.co/Xenova/3x_APISR_RRDB_GAN_generator-onnx/resolve/main/onnx/model.onnx",
+        "scale": 3,
+        "description": "CVPR 2024 — general 3x for photos & video. Ideal for 720p to 1080p. ~25MB.",
+        "type": "onnx",
+        "category": "nextgen",
+        "model_type": "rrdb",
+        "available": True
+    },
 
     # ============================================================
     # === VIDEO SR Models (Multi-Frame) ===
@@ -2171,9 +2181,10 @@ async def prometheus_metrics():
 # ============================================================
 
 def _record_success(model_name: str, duration_ms: float):
-    """Record a successful job for metrics and health tracking."""
+    """Record a successful job for metrics and health tracking.
+    Note: total_frames_processed is NOT incremented here — each endpoint
+    controls its own frame count (1 for single-frame, N for multi-frame)."""
     state.total_jobs += 1
-    state.total_frames_processed += 1
     state.total_processing_time_ms += duration_ms
     state.last_job_time_ms = duration_ms
     state.consecutive_failures = 0

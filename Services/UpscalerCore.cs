@@ -26,6 +26,9 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly IFileSystem _fileSystem;
         private readonly IApplicationPaths _appPaths;
         private readonly HttpUpscalerService _httpUpscaler;
+
+        // Shared HttpClient for webhook delivery — reused to avoid socket exhaustion
+        private static readonly System.Net.Http.HttpClient _webhookClient = new() { Timeout = TimeSpan.FromSeconds(10) };
         
         // Hardware detection cache (avoid repeated HTTP calls)
         private static HardwareProfile? _cachedHardwareProfile;
@@ -155,7 +158,6 @@ namespace JellyfinUpscalerPlugin.Services
 
             try
             {
-                using var client = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(10) };
                 var payload = new Dictionary<string, object>
                 {
                     ["event"] = eventType,
@@ -168,7 +170,7 @@ namespace JellyfinUpscalerPlugin.Services
 
                 var json = System.Text.Json.JsonSerializer.Serialize(payload);
                 var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
-                await client.PostAsync(webhookUrl, content);
+                await _webhookClient.PostAsync(webhookUrl, content);
                 _logger.LogDebug("Webhook sent: {Event} for {Item}", eventType, itemName);
             }
             catch (Exception ex)
