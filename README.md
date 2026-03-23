@@ -8,7 +8,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker4 / v1.5.5):**
+**Docker Images (docker4 / v1.5.4.0):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker4` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker4-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker4-intel` (Intel Arc/iGPU OpenVINO)
@@ -41,7 +41,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 │  │  CUDA / ROCm / OpenVINO / CPU     │  │
 │  │  Real-ESRGAN, SPAN, SwinIR, DAT2 │  │
 │  │  EDVR-M, RealBasicVSR, AnimeSR  │  │
-│  │  EDSR, FSRCNN, ESPCN (33 models) │  │
+│  │  EDSR, FSRCNN, ESPCN (35 models) │  │
 │  │  Web UI for Model Management      │  │
 │  └────────────────────────────────────┘  │
 └──────────────────────────────────────────┘
@@ -86,7 +86,7 @@ When you press play, the plugin automatically enhances the video in real-time us
 
 ### Player Integration
 The in-player button lets you:
-- Select from **33 AI models** across 9 categories (Real-ESRGAN, SPAN, SwinIR, DAT2, EDVR-M, RealBasicVSR, AnimeSR, EDSR, LapSRN, FSRCNN, ESPCN)
+- Select from **35 AI models** across 9 categories (Real-ESRGAN, SPAN, SwinIR, DAT2, EDVR-M, RealBasicVSR, AnimeSR, APISR, EDSR, LapSRN, FSRCNN, ESPCN)
 - Choose scale factor (2x, 3x, 4x, 8x)
 - Toggle real-time upscaling and switch modes
 - Quick access via keyboard shortcuts (Alt+U, Alt+M)
@@ -175,34 +175,41 @@ To batch-upscale your low-resolution content:
 
 ## Features
 
+- **35 AI Models**: Real-ESRGAN, SPAN, SwinIR, DAT2, EDVR-M, RealBasicVSR, AnimeSR, APISR, EDSR, FSRCNN, ESPCN, LapSRN (2x–8x)
+- **Multi-Frame VSR**: 5-frame sliding window for temporal consistency (EDVR-M, RealBasicVSR, AnimeSR v2)
+- **Auto-Model Selection**: Picks best model per video based on genre (anime/live-action), resolution, and mode
 - **Real-Time Upscaling**: Two-tier system — WebGL client-side shader + Server AI frame pipeline with auto-fallback
 - **Pre-Upscaling**: Scheduled task batch-processes low-res videos overnight
-- **Docker Microservice**: AI runs isolated in a container (no DLL conflicts)
-- **18 AI Models**: Real-ESRGAN, SPAN, SwinIR, EDSR, FSRCNN, ESPCN, LapSRN (2x–8x)
+- **Image Upscaling**: Scheduled task for posters, backdrops, thumbnails, logos, banners
+- **Model Fallback Chain**: Comma-separated models — tries next on failure (images + videos)
+- **Priority Queue**: Pause/resume, priority 1-10, optional persistence across restarts
+- **Prometheus Metrics**: `/metrics` endpoint with per-model jobs, failures, frames, timing
+- **Circuit Breaker**: Auto-opens after consecutive failures, resets after timeout
+- **Health Monitoring**: `/health/detailed` with GPU health, circuit breaker state, model info
+- **Webhook Notifications**: HTTP POST on job complete/failure
+- **Model Management**: Disk usage tracking, LRU cleanup of unused models
+- **Docker Microservice**: AI runs isolated in a container (no DLL conflicts, ~1.6 MB plugin)
 - **5 GPU Architectures**: NVIDIA CUDA/TensorRT, AMD ROCm, Intel OpenVINO, Apple Silicon, CPU
-- **Player Integration**: In-player button with quick settings menu, FPS overlay, and keyboard shortcuts (Alt+U, Alt+M)
-- **Benchmark-Driven**: Automatic tier selection based on real-time server benchmarks
-- **GPU Diagnostics**: `/gpu-verify` endpoint with troubleshooting tips
+- **Player Integration**: In-player button with quick settings menu, FPS overlay, keyboard shortcuts (Alt+U, Alt+M)
 - **SSH Remote Transcoding**: Offload FFmpeg to GPU containers via SSH
 - **Web UI**: Model management at `http://YOUR_SERVER_IP:5000`
-- **Dashboard**: Job monitoring in Jellyfin sidebar
 
 ---
 
-## AI Models
+## AI Models (35 Total)
 
-| Category | Model | Scale | Speed | Quality |
-|----------|-------|-------|-------|---------|
-| Real-ESRGAN | realesrgan-x4 | 4x | Slow | Best |
-| Real-ESRGAN | realesrgan-x4-256 | 4x | Slow | Best (Low VRAM) |
-| Real-ESRGAN | realesrgan-x2plus | 2x | Slow | Best (Photos) |
-| Real-ESRGAN | realesrgan-animevideo-x4 | 4x | Slow | Best (Anime) |
-| SPAN | span-x2/x4 | 2-4x | Fast | High |
-| SwinIR | swinir-x4 | 4x | Slow | Best (Photos) |
-| EDSR | edsr-x2/x3/x4 | 2-4x | Medium | High |
-| LapSRN | lapsrn-x2/x4/x8 | 2-8x | Medium | Good |
-| FSRCNN | fsrcnn-x2/x3/x4 | 2-4x | Fast | Good |
-| ESPCN | espcn-x2/x3/x4 | 2-4x | Fastest | Fair |
+| Category | Models | Scale | Speed | Best For |
+|----------|--------|-------|-------|----------|
+| **Real-ESRGAN** | realesrgan-x4, x4-256, x2-plus, animevideo-x4 | 2-4x | Slow | Best overall quality |
+| **SPAN** | span-x2, span-x4 | 2-4x | Fast | Real-time video |
+| **SwinIR** | swinir-x4, swinir-small-x2/x4 | 2-4x | Medium | Photos & live-action |
+| **APISR** | apisr-x3, apisr-anime-x2 | 2-3x | Medium | CVPR 2024, general & anime |
+| **Video Real-Time** | clearreality-x4, nomosuni-compact-x2, lsdir-compact-x4 | 2-4x | Fast | Low-latency video |
+| **Video Quality** | ultrasharp-v2-x4, nomos2-dat2-x4, nomos2-realplksr-x4 | 4x | Slow | Maximum detail |
+| **Film Restoration** | fsdedither-x4, nomos8k-hat-x4 | 4x | Medium | DVD/VHS cleanup |
+| **Anime** | anime-compact-x4 | 4x | Fast | Lightweight anime |
+| **Multi-Frame VSR** | edvr-m-x4, realbasicvsr-x4, animesr-v2-x4 | 4x | Slow | Temporal consistency (5 frames) |
+| **OpenCV Classic** | edsr-x2/x3/x4, lapsrn-x2/x4/x8, fsrcnn-x2/x3/x4, espcn-x2/x3/x4 | 2-8x | Fast-Medium | CPU-only, lightweight |
 
 ---
 
@@ -214,16 +221,24 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 |---------|-------------|
 | **AI Service URL** | URL to Docker container (e.g., `http://192.168.1.100:5000`) |
 | **Enable Plugin** | Global on/off switch |
-| **AI Model** | Choose upscaling model (FSRCNN fastest, Real-ESRGAN best quality) |
+| **AI Model** | Choose upscaling model (`auto` = intelligent selection per content) |
 | **Scale Factor** | 2x, 3x, or 4x |
 | **Min Resolution** | Threshold for scheduled task (default: 1920x1080) |
+| **Model Fallback Chain** | Comma-separated fallback models (e.g., `realesrgan-x4,span-x4,edsr-x4`) |
+| **Preferred Anime Model** | Model for anime content when auto-selection is enabled |
+| **Preferred Live-Action Model** | Model for live-action content when auto-selection is enabled |
+| **Enable Processing Queue** | Priority queue with pause/resume (default: true) |
+| **Max Queue Size** | Maximum items in queue (default: 100) |
+| **Pause Queue During Playback** | Pause processing when user is watching (default: true) |
+| **Webhook URL** | HTTP POST notifications on job complete/failure |
+| **Enable Health Monitoring** | Circuit breaker + health checks (default: true) |
+| **Circuit Breaker Threshold** | Consecutive failures before circuit opens (default: 5) |
+| **Model Disk Quota MB** | Max disk space for cached models (default: 2048) |
+| **Enable Model Auto Cleanup** | LRU cleanup of unused models (default: true) |
 | **Player Button** | Show/hide AI button in video player |
-| **Button Position** | Left, Center, or Right |
 | **Real-Time Upscaling** | Enable/disable real-time enhancement during playback |
-| **Real-Time Mode** | Auto (benchmark decides), WebGL only, or Server AI only |
-| **Capture Width** | Resolution for server frame capture (default: 480px) |
-| **Output Codec** | Codec for upscaled videos: H.264, H.265, or copy (default: H.264) |
-| **MaxItemsPerScan** | Limit number of items processed per scan run (default: unlimited) |
+| **Output Codec** | Codec for upscaled videos: H.264, H.265, or copy |
+| **MaxItemsPerScan** | Limit items per scan run (default: unlimited) |
 | **Remote Transcoding** | Enable SSH-based remote transcoding |
 
 ---
@@ -270,6 +285,12 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 - **Fixed**: Blend weight normalization using actual content size, not padded tile size
 - **Fixed**: Scale parameter validation (1-8) on upscale-images endpoint
 - **Fixed**: Real-time model selection inverted (2x for real-time, 4x for batch)
+- **Fixed**: GPU verification uses model's actual input shape (fixes #46 — RTX A2000)
+- **Fixed**: Prometheus `total_frames_processed` double-counted in metrics
+- **Fixed**: Webhook `HttpClient` socket exhaustion (now uses static shared client)
+- **Fixed**: `/api/upscaler/models` returned only 14 of 35 models (now proxies Docker service)
+- **Fixed**: `ProcessingQueue._paused` not volatile (thread visibility issue)
+- **Added**: APISR x3 (CVPR 2024) — general 3x model for 720p→1080p video
 
 ### v1.5.3.6 (30 Models — Video-Optimized Community Models)
 - **Added**: 12 new community ONNX models with verified download URLs
