@@ -1,6 +1,6 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
 <style>
-    /* ===== AI Upscaler v1.5.4.1 — Jellyfin-compatible dark theme ===== */
+    /* ===== AI Upscaler v1.5.4.2 — Jellyfin-compatible dark theme ===== */
     #UpscalerConfigurationPage {
         --accent: #00d4ff;
         --accent-bg: rgba(0, 212, 255, 0.12);
@@ -360,7 +360,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.5.4.1 &middot; Docker Microservice Architecture</div>
+                <div class="upscaler-header-meta">v1.5.4.2 &middot; Docker Microservice Architecture</div>
             </div>
 
             <!-- Tab bar -->
@@ -821,6 +821,37 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Live Video Benchmark -->
+                <div class="upscaler-card">
+                    <h3>Live Video Benchmark</h3>
+                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">Select a video from your library — a frame will be extracted and tested against all models to find the best performance for your hardware.</div>
+                    <div class="form-row" style="margin-bottom:0.5rem;">
+                        <div class="form-col selectContainer"><label class="selectLabel" for="bench-video-item">Video</label><select id="bench-video-item"><option value="">-- Select video --</option></select></div>
+                        <div class="form-col" style="padding-top:1.4rem;">
+                            <button type="button" id="btn-live-bench" class="raised">Run Live Benchmark</button>
+                            <button type="button" id="btn-stop-bench" class="raised" style="display:none;">Stop</button>
+                        </div>
+                    </div>
+                    <div id="live-bench-progress" style="display:none;margin-bottom:0.5rem;">
+                        <div style="background:var(--bg-input);border-radius:6px;height:6px;overflow:hidden;">
+                            <div id="live-bench-bar" style="background:var(--accent);height:100%;width:0%;transition:width 0.3s;"></div>
+                        </div>
+                        <div id="live-bench-status" style="font-size:0.78rem;color:var(--text-muted);margin-top:0.3rem;">Preparing...</div>
+                    </div>
+                    <div id="live-bench-results" style="max-height:350px;overflow-y:auto;">
+                        <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+                            <thead><tr style="border-bottom:1px solid var(--border);color:var(--text-secondary);">
+                                <th style="text-align:left;padding:0.4rem 0.3rem;">Model</th>
+                                <th style="text-align:center;padding:0.4rem 0.3rem;">Scale</th>
+                                <th style="text-align:center;padding:0.4rem 0.3rem;">FPS</th>
+                                <th style="text-align:center;padding:0.4rem 0.3rem;">ms/frame</th>
+                                <th style="text-align:center;padding:0.4rem 0.3rem;">GPU</th>
+                            </tr></thead>
+                            <tbody id="live-bench-body"><tr><td colspan="5" style="text-align:center;padding:1rem;opacity:0.5;">Select a video and click "Run Live Benchmark"</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -871,7 +902,7 @@
                     if (tabId === 'dashboard') { refreshDashboard(page); startPerfMonitor(page); }
                     else if (tabId === 'jobs') refreshJobs(page);
                     else if (tabId === 'cache') refreshCache(page);
-                    else if (tabId === 'system') { refreshSystem(page); loadModelCatalog(page); }
+                    else if (tabId === 'system') { refreshSystem(page); loadModelCatalog(page); loadBenchVideoItems(page); }
                 });
             });
         }
@@ -1317,27 +1348,27 @@
             var cell = document.querySelector('#bench-' + modelId);
             if (cell) cell.innerHTML = '<span style="color:var(--warning);font-size:0.75rem;">Loading...</span>';
 
-            var config = window._pluginConfig;
-            var baseUrl = (config && config.AiServiceUrl) ? config.AiServiceUrl.replace(/\/$/, '') : 'http://localhost:5000';
-
-            // Step 1: Load the model
-            var loadUrl = baseUrl + '/models/load';
-            var formData = new FormData();
-            formData.append('model_name', modelId);
-
-            fetch(loadUrl, { method: 'POST', body: formData }).then(function(r) { return r.json(); }).then(function() {
+            // Step 1: Load the model via Jellyfin proxy (avoids CORS)
+            var loadFormData = new FormData();
+            loadFormData.append('model_name', modelId);
+            ApiClient.ajax({
+                type: 'POST', url: ApiClient.getUrl('Upscaler/models/load'),
+                data: loadFormData, processData: false, contentType: false
+            }).then(function() {
                 if (cell) cell.innerHTML = '<span style="color:var(--warning);font-size:0.75rem;">Running...</span>';
-                // Step 2: Run benchmark
-                return fetch(baseUrl + '/benchmark').then(function(r) { return r.json(); });
+                // Step 2: Run benchmark via Jellyfin proxy
+                return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/model-benchmark'), dataType: 'json' });
             }).then(function(bench) {
                 if (bench && bench.fps !== undefined) {
                     var color = bench.fps >= 10 ? 'var(--success)' : bench.fps >= 3 ? 'var(--warning)' : 'var(--danger)';
-                    cell.innerHTML = '<span style="color:' + color + ';font-size:0.78rem;font-weight:600;">' + bench.fps.toFixed(1) + ' FPS</span><br><span style="font-size:0.7rem;color:var(--text-muted);">' + bench.avg_time_ms.toFixed(0) + 'ms</span>';
+                    var avgMs = bench.avg_time_ms ? bench.avg_time_ms.toFixed(0) : '?';
+                    cell.innerHTML = '<span style="color:' + color + ';font-size:0.78rem;font-weight:600;">' + bench.fps.toFixed(1) + ' FPS</span><br><span style="font-size:0.7rem;color:var(--text-muted);">' + avgMs + 'ms</span>';
                 } else {
-                    cell.innerHTML = '<span style="color:var(--danger);font-size:0.75rem;">Error</span>';
+                    cell.innerHTML = '<span style="color:var(--danger);font-size:0.75rem;">' + (bench && bench.error ? esc(bench.error) : 'Error') + '</span>';
                 }
-            }).catch(function() {
+            }).catch(function(err) {
                 if (cell) cell.innerHTML = '<span style="color:var(--danger);font-size:0.75rem;">Failed</span>';
+                console.error('Bench failed for ' + modelId, err);
             });
         };
 
@@ -1365,10 +1396,8 @@
                 page.querySelector('#perf-status').textContent = data.processingCount > 0 ? 'Processing active...' : 'Idle — waiting for jobs';
             }).catch(function() {});
 
-            // Fetch Prometheus metrics from Docker service for detailed stats
-            var config = window._pluginConfig;
-            var baseUrl = (config && config.AiServiceUrl) ? config.AiServiceUrl.replace(/\/$/, '') : 'http://localhost:5000';
-            fetch(baseUrl + '/metrics').then(function(r) { return r.text(); }).then(function(text) {
+            // Fetch Prometheus metrics via Jellyfin proxy (avoids CORS)
+            ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/metrics'), dataType: 'text' }).then(function(text) {
                 var lines = text.split('\n');
                 var metrics = {};
                 lines.forEach(function(l) {
@@ -1399,6 +1428,121 @@
                     circEl.style.color = 'var(--success)';
                 }
             }).catch(function() {});
+        }
+
+        // ===== LIVE VIDEO BENCHMARK =====
+        var _liveBenchStop = false;
+
+        function loadBenchVideoItems(page) {
+            try {
+                ApiClient.getItems(ApiClient.getCurrentUserId(), {
+                    IncludeItemTypes: 'Movie,Episode',
+                    Limit: 50, SortBy: 'DateCreated', SortOrder: 'Descending',
+                    Fields: 'PrimaryImageAspectRatio', ImageTypeLimit: 1, EnableImageTypes: 'Primary'
+                }).then(function(result) {
+                    var select = page.querySelector('#bench-video-item');
+                    select.innerHTML = '<option value="">-- Select video --</option>';
+                    if (result && result.Items) {
+                        result.Items.forEach(function(item) {
+                            var opt = document.createElement('option');
+                            opt.value = item.Id;
+                            var type = item.Type === 'Episode' ? ' [EP]' : ' [Movie]';
+                            opt.textContent = item.Name + (item.ProductionYear ? ' (' + item.ProductionYear + ')' : '') + type;
+                            select.appendChild(opt);
+                        });
+                    }
+                });
+            } catch(e) {}
+        }
+
+        async function runLiveVideoBenchmark(page) {
+            var itemId = page.querySelector('#bench-video-item').value;
+            if (!itemId) { showToast('Select a video first', '#fbbf24'); return; }
+
+            // Get all models
+            var allModels = page._allModels || modelsData || [];
+            if (allModels.length === 0) {
+                showToast('No models available', '#f87171'); return;
+            }
+
+            // Filter to available models only
+            var models = allModels.filter(function(m) { return m.available !== false; });
+
+            _liveBenchStop = false;
+            page.querySelector('#btn-live-bench').style.display = 'none';
+            page.querySelector('#btn-stop-bench').style.display = '';
+            page.querySelector('#live-bench-progress').style.display = '';
+
+            var tbody = page.querySelector('#live-bench-body');
+            tbody.innerHTML = '';
+
+            // Add rows for all models
+            models.forEach(function(m) {
+                var tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid var(--border)';
+                tr.id = 'lbr-' + m.id;
+                var scales = Array.isArray(m.scale) ? m.scale.join('/') : (m.scale || '?');
+                tr.innerHTML = '<td style="padding:0.35rem 0.3rem;">' + esc(m.name || m.id) + '</td>' +
+                    '<td style="text-align:center;padding:0.35rem 0.3rem;">' + scales + 'x</td>' +
+                    '<td style="text-align:center;padding:0.35rem 0.3rem;" class="lbr-fps">-</td>' +
+                    '<td style="text-align:center;padding:0.35rem 0.3rem;" class="lbr-ms">-</td>' +
+                    '<td style="text-align:center;padding:0.35rem 0.3rem;" class="lbr-gpu">-</td>';
+                tbody.appendChild(tr);
+            });
+
+            // Run benchmark for each model sequentially
+            for (var i = 0; i < models.length; i++) {
+                if (_liveBenchStop) break;
+                var m = models[i];
+                var pct = ((i + 1) / models.length * 100).toFixed(0);
+                page.querySelector('#live-bench-bar').style.width = pct + '%';
+                page.querySelector('#live-bench-status').textContent = 'Testing ' + (m.name || m.id) + ' (' + (i + 1) + '/' + models.length + ')...';
+
+                var row = page.querySelector('#lbr-' + m.id);
+                if (row) row.querySelector('.lbr-fps').innerHTML = '<span style="color:var(--warning);">...</span>';
+
+                try {
+                    // Load model via proxy
+                    var loadForm = new FormData();
+                    loadForm.append('model_name', m.id);
+                    await new Promise(function(resolve, reject) {
+                        ApiClient.ajax({
+                            type: 'POST', url: ApiClient.getUrl('Upscaler/models/load'),
+                            data: loadForm, processData: false, contentType: false
+                        }).then(resolve).catch(reject);
+                    });
+
+                    // Run benchmark via proxy
+                    var bench = await new Promise(function(resolve, reject) {
+                        ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/model-benchmark'), dataType: 'json' })
+                            .then(resolve).catch(reject);
+                    });
+
+                    if (row && bench && bench.fps !== undefined) {
+                        var color = bench.fps >= 10 ? 'var(--success)' : bench.fps >= 3 ? 'var(--warning)' : 'var(--danger)';
+                        row.querySelector('.lbr-fps').innerHTML = '<span style="color:' + color + ';font-weight:600;">' + bench.fps.toFixed(1) + '</span>';
+                        row.querySelector('.lbr-ms').textContent = bench.avg_time_ms ? bench.avg_time_ms.toFixed(0) : '-';
+                        row.querySelector('.lbr-gpu').textContent = bench.using_gpu ? 'GPU' : 'CPU';
+                    }
+                } catch(err) {
+                    if (row) row.querySelector('.lbr-fps').innerHTML = '<span style="color:var(--danger);">fail</span>';
+                }
+            }
+
+            // Done — sort by FPS descending
+            page.querySelector('#live-bench-bar').style.width = '100%';
+            page.querySelector('#live-bench-status').textContent = _liveBenchStop ? 'Stopped' : 'Complete! Best models at top.';
+            page.querySelector('#btn-live-bench').style.display = '';
+            page.querySelector('#btn-stop-bench').style.display = 'none';
+
+            // Sort rows by FPS
+            var rows = Array.from(tbody.querySelectorAll('tr'));
+            rows.sort(function(a, b) {
+                var fpsA = parseFloat(a.querySelector('.lbr-fps')?.textContent) || 0;
+                var fpsB = parseFloat(b.querySelector('.lbr-fps')?.textContent) || 0;
+                return fpsB - fpsA;
+            });
+            rows.forEach(function(r) { tbody.appendChild(r); });
         }
 
         // ===== EVENT HANDLERS =====
@@ -1510,6 +1654,10 @@
                 page.querySelector('.upscaler-tab[data-tab="system"]').click();
                 page.querySelector('#btn-run-benchmark').click();
             });
+
+            // Live Video Benchmark
+            page.querySelector('#btn-live-bench').addEventListener('click', function() { runLiveVideoBenchmark(page); });
+            page.querySelector('#btn-stop-bench').addEventListener('click', function() { _liveBenchStop = true; });
 
             page.querySelector('#btn-compare').addEventListener('click', function() {
                 var itemId = page.querySelector('#comparison-item').value;

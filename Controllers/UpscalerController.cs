@@ -1129,6 +1129,76 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
+        /// Proxy: Load a model on the Docker AI service.
+        /// </summary>
+        [HttpPost("models/load")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult> LoadModel([FromForm] string model_name)
+        {
+            try
+            {
+                var config = Plugin.Instance?.Configuration;
+                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                var formContent = new MultipartFormDataContent();
+                formContent.Add(new StringContent(model_name), "model_name");
+                var response = await _aiServiceClient.PostAsync($"{serviceUrl}/models/load", formContent);
+                var content = await response.Content.ReadAsStringAsync();
+                return Content(content, "application/json");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load model {Model}", model_name);
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Proxy: Run benchmark on the currently loaded model.
+        /// </summary>
+        [HttpGet("model-benchmark")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult> ModelBenchmark()
+        {
+            try
+            {
+                var config = Plugin.Instance?.Configuration;
+                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                var response = await _aiServiceClient.GetAsync($"{serviceUrl}/benchmark");
+                var content = await response.Content.ReadAsStringAsync();
+                return Content(content, "application/json");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to run model benchmark");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Proxy: Get Prometheus metrics from Docker AI service.
+        /// </summary>
+        [HttpGet("metrics")]
+        [Produces("text/plain")]
+        public async Task<ActionResult> GetMetrics()
+        {
+            try
+            {
+                var config = Plugin.Instance?.Configuration;
+                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                var response = await _aiServiceClient.GetAsync($"{serviceUrl}/metrics");
+                var content = await response.Content.ReadAsStringAsync();
+                return Content(content, "text/plain");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to get metrics");
+                return Content("# metrics unavailable\n", "text/plain");
+            }
+        }
+
+        /// <summary>
         /// Proxy: Real-time frame upscaling. Raw JPEG body in, JPEG out. Returns 503 when AI service is busy.
         /// </summary>
         [HttpPost("upscale-frame")]
