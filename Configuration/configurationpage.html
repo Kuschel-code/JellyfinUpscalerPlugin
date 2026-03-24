@@ -1337,6 +1337,9 @@
                 });
                 tbody.innerHTML = html;
 
+                // Store all models for live benchmark
+                page._allModels = models;
+
                 // Update header count
                 var h3 = page.querySelector('#model-catalog-table')?.closest('.upscaler-card')?.querySelector('h3');
                 if (h3) h3.textContent = 'Model Catalog (' + models.length + ' Models)';
@@ -1349,11 +1352,8 @@
             if (cell) cell.innerHTML = '<span style="color:var(--warning);font-size:0.75rem;">Loading...</span>';
 
             // Step 1: Load the model via Jellyfin proxy (avoids CORS)
-            var loadFormData = new FormData();
-            loadFormData.append('model_name', modelId);
             ApiClient.ajax({
-                type: 'POST', url: ApiClient.getUrl('Upscaler/models/load'),
-                data: loadFormData, processData: false, contentType: false
+                type: 'POST', url: ApiClient.getUrl('Upscaler/models/load') + '?model_name=' + encodeURIComponent(modelId)
             }).then(function() {
                 if (cell) cell.innerHTML = '<span style="color:var(--warning);font-size:0.75rem;">Running...</span>';
                 // Step 2: Run benchmark via Jellyfin proxy
@@ -1503,12 +1503,9 @@
 
                 try {
                     // Load model via proxy
-                    var loadForm = new FormData();
-                    loadForm.append('model_name', m.id);
                     await new Promise(function(resolve, reject) {
                         ApiClient.ajax({
-                            type: 'POST', url: ApiClient.getUrl('Upscaler/models/load'),
-                            data: loadForm, processData: false, contentType: false
+                            type: 'POST', url: ApiClient.getUrl('Upscaler/models/load') + '?model_name=' + encodeURIComponent(m.id)
                         }).then(resolve).catch(reject);
                     });
 

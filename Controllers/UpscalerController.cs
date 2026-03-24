@@ -1130,25 +1130,53 @@ namespace JellyfinUpscalerPlugin.Controllers
 
         /// <summary>
         /// Proxy: Load a model on the Docker AI service.
+        /// Accepts model_name as query param, form field, or JSON body.
         /// </summary>
         [HttpPost("models/load")]
         [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
-        public async Task<ActionResult> LoadModel([FromForm] string model_name)
+        public async Task<ActionResult> LoadModel([FromQuery] string? model_name = null)
         {
             try
             {
+                // Try to get model_name from query, form body, or JSON body
+                var modelId = model_name;
+                if (string.IsNullOrEmpty(modelId) && Request.HasFormContentType)
+                {
+                    var form = await Request.ReadFormAsync();
+                    modelId = form["model_name"].FirstOrDefault();
+                }
+                if (string.IsNullOrEmpty(modelId))
+                {
+                    try
+                    {
+                        using var reader = new StreamReader(Request.Body);
+                        var body = await reader.ReadToEndAsync();
+                        var json = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(body);
+                        if (json != null && json.ContainsKey("model_name"))
+                            modelId = json["model_name"];
+                    }
+                    catch { }
+                }
+
+                if (string.IsNullOrEmpty(modelId))
+                    return BadRequest(new { error = "model_name is required" });
+
                 var config = Plugin.Instance?.Configuration;
                 var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
-                var formContent = new MultipartFormDataContent();
-                formContent.Add(new StringContent(model_name), "model_name");
+
+                // Docker AI service expects form-urlencoded POST
+                var formContent = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("model_name", modelId)
+                });
                 var response = await _aiServiceClient.PostAsync($"{serviceUrl}/models/load", formContent);
                 var content = await response.Content.ReadAsStringAsync();
                 return Content(content, "application/json");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load model {Model}", model_name);
+                _logger.LogError(ex, "Failed to load model {model_name}", model_name);
                 return StatusCode(500, new { error = ex.Message });
             }
         }
