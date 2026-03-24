@@ -113,7 +113,7 @@ state = AppState()
 # Concurrency semaphore — created lazily in lifespan() to avoid
 # asyncio.Semaphore before event loop exists (breaks Python 3.10+)
 import asyncio as _asyncio
-_upscale_semaphore: _asyncio.Semaphore = None  # type: ignore — initialized in lifespan()
+_upscale_semaphore = _asyncio.Semaphore(4)  # safe default, overwritten in lifespan() with actual config
 
 # Threading lock to prevent model-swap data races between load and inference
 _model_lock = threading.Lock()
@@ -785,10 +785,13 @@ async def lifespan(app: FastAPI):
     state.max_concurrent = int(os.getenv("MAX_CONCURRENT_REQUESTS", "4"))
     state.gpu_device_id = int(os.getenv("GPU_DEVICE_ID", "0"))
 
-    # Re-create semaphore with actual env var value
+    # Re-create semaphore with actual env var value (inside event loop)
     global _upscale_semaphore
     _upscale_semaphore = _asyncio.Semaphore(state.max_concurrent)
-    
+
+    # Track service uptime
+    state.service_start_time = time.time()
+
     logger.info(f"GPU Enabled: {state.use_gpu}")
     logger.info(f"ONNX Runtime Available: {ONNX_AVAILABLE}")
     
@@ -2356,7 +2359,4 @@ async def models_cleanup(max_age_days: int = 30, dry_run: bool = True):
     }
 
 
-@app.on_event("startup")
-async def _track_startup():
-    """Record service start time for uptime tracking."""
-    state.service_start_time = time.time()
+# service_start_time is set in lifespan() — no deprecated on_event("startup") needed

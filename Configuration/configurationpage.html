@@ -1355,7 +1355,7 @@
                 type: 'POST', url: ApiClient.getUrl('Upscaler/models/load') + '?model_name=' + encodeURIComponent(modelId),
                 dataType: 'json'
             }).then(function(loadResult) {
-                if (loadResult && loadResult.error) throw new Error(loadResult.error);
+                if (loadResult && (loadResult.error || loadResult.detail)) throw new Error(loadResult.error || loadResult.detail);
                 if (cell) cell.innerHTML = '<span style="color:var(--warning);font-size:0.75rem;">Running...</span>';
                 // Step 2: Run benchmark via Jellyfin proxy
                 return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/model-benchmark'), dataType: 'json' });
