@@ -360,7 +360,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.5.2.9 &middot; Docker Microservice Architecture</div>
+                <div class="upscaler-header-meta">v1.5.4.0 &middot; Docker Microservice Architecture</div>
             </div>
 
             <!-- Tab bar -->
@@ -413,6 +413,21 @@
                         <div class="info-row"><span class="label">Latency</span><span class="value" id="svc-latency"><span class="skeleton" style="width:45px;height:14px;"></span></span></div>
                         <div class="info-row"><span class="label">Model</span><span class="value" id="svc-model"><span class="skeleton" style="width:70px;height:14px;"></span></span></div>
                         <div class="info-row"><span class="label">Processing</span><span class="value" id="svc-processing"><span class="skeleton" style="width:35px;height:14px;"></span></span></div>
+                    </div>
+                </div>
+
+                <!-- Live Performance Monitor -->
+                <div class="upscaler-card" id="perf-monitor-card">
+                    <h3>Live Performance Monitor</h3>
+                    <div id="perf-monitor">
+                        <div class="stat-row">
+                            <div class="stat-card" style="width:18%;min-width:90px;"><div class="stat-value" style="color:var(--accent);" id="perf-model">-</div><div class="stat-label">Current Model</div></div>
+                            <div class="stat-card" style="width:18%;min-width:90px;"><div class="stat-value" style="color:var(--success);" id="perf-fps">-</div><div class="stat-label">FPS</div></div>
+                            <div class="stat-card" style="width:18%;min-width:90px;"><div class="stat-value" style="color:var(--warning);" id="perf-frametime">-</div><div class="stat-label">Avg Frame (ms)</div></div>
+                            <div class="stat-card" style="width:18%;min-width:90px;"><div class="stat-value" style="color:var(--accent);" id="perf-frames">0</div><div class="stat-label">Frames Total</div></div>
+                            <div class="stat-card" style="width:18%;min-width:90px;"><div class="stat-value" id="perf-circuit">Closed</div><div class="stat-label">Circuit Breaker</div></div>
+                        </div>
+                        <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.4rem;" id="perf-status">Polling service metrics every 5s...</div>
                     </div>
                 </div>
 
@@ -769,6 +784,24 @@
                     </div>
                 </div>
 
+                <!-- Model Catalog -->
+                <div class="upscaler-card">
+                    <h3>Model Catalog (35 Models)</h3>
+                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">All available AI upscaling models. Click "Load & Bench" to benchmark a specific model.</div>
+                    <div id="model-catalog-table" style="max-height:400px;overflow-y:auto;">
+                        <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+                            <thead><tr style="border-bottom:1px solid var(--border);color:var(--text-secondary);">
+                                <th style="text-align:left;padding:0.4rem 0.3rem;">Model</th>
+                                <th style="text-align:center;padding:0.4rem 0.3rem;">Scale</th>
+                                <th style="text-align:center;padding:0.4rem 0.3rem;">Type</th>
+                                <th style="text-align:center;padding:0.4rem 0.3rem;">Status</th>
+                                <th style="text-align:center;padding:0.4rem 0.3rem;">Bench</th>
+                            </tr></thead>
+                            <tbody id="model-catalog-body"><tr><td colspan="5" style="text-align:center;padding:1rem;opacity:0.5;">Loading models...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <div class="upscaler-card">
                     <h3>AI Comparison View</h3>
                     <div class="form-row" style="margin-bottom:0.5rem;">
@@ -835,10 +868,10 @@
                     var target = page.querySelector('#tab-' + tabId);
                     if (target) target.style.display = '';
 
-                    if (tabId === 'dashboard') refreshDashboard(page);
+                    if (tabId === 'dashboard') { refreshDashboard(page); startPerfMonitor(page); }
                     else if (tabId === 'jobs') refreshJobs(page);
                     else if (tabId === 'cache') refreshCache(page);
-                    else if (tabId === 'system') refreshSystem(page);
+                    else if (tabId === 'system') { refreshSystem(page); loadModelCatalog(page); }
                 });
             });
         }
@@ -1035,16 +1068,37 @@
         // ===== MODELS =====
         function loadModels(page) {
             return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/models'), dataType: 'json' }).then(function(data) {
-                modelsData = data || [];
+                // Docker service returns { models: [...] }, fallback returns plain array
+                modelsData = (data && data.models) ? data.models : (Array.isArray(data) ? data : []);
                 var select = page.querySelector('#Model');
                 select.innerHTML = '';
+
+                // Group models by category for optgroups
+                var categories = {};
                 modelsData.forEach(function(m) {
-                    var opt = document.createElement('option');
-                    opt.value = m.id;
-                    opt.textContent = m.name;
-                    select.appendChild(opt);
+                    var cat = m.category || 'other';
+                    if (!categories[cat]) categories[cat] = [];
+                    categories[cat].push(m);
                 });
+
+                var catNames = { realesrgan: 'Real-ESRGAN', fast: 'Fast (OpenCV)', quality: 'Quality (OpenCV)', nextgen: 'Next-Gen (SPAN/SwinIR)', community: 'Community Models', vsr: 'Video SR (Multi-Frame)', anime: 'Anime', film: 'Film Restoration', other: 'Other' };
+                Object.keys(categories).forEach(function(cat) {
+                    var group = document.createElement('optgroup');
+                    group.label = catNames[cat] || cat;
+                    categories[cat].forEach(function(m) {
+                        var opt = document.createElement('option');
+                        opt.value = m.id;
+                        var status = m.loaded ? ' [loaded]' : (m.downloaded ? ' [ready]' : '');
+                        opt.textContent = m.name + status;
+                        group.appendChild(opt);
+                    });
+                    select.appendChild(group);
+                });
+
                 select.addEventListener('change', function() { updateScaleOptions(page); });
+
+                // Store for benchmark table
+                if (page._allModels !== undefined) page._allModels = modelsData;
             });
         }
 
@@ -1076,24 +1130,24 @@
         function loadMediaItems(page) {
             try {
                 ApiClient.getItems(ApiClient.getCurrentUserId(), {
-                    IncludeItemTypes: 'Movie,Episode',
-                    Limit: 30,
+                    IncludeItemTypes: 'Movie,Episode,Series',
+                    Limit: 50,
                     SortBy: 'DateCreated',
                     SortOrder: 'Descending',
-                    Fields: 'PrimaryImageAspectRatio',
+                    Fields: 'PrimaryImageAspectRatio,MediaStreams',
                     ImageTypeLimit: 1,
-                    EnableImageTypes: 'Primary'
+                    EnableImageTypes: 'Primary,Thumb'
                 }).then(function(result) {
                     var select = page.querySelector('#comparison-item');
                     select.innerHTML = '<option value="">-- Select item --</option>';
                     if (result && result.Items) {
                         result.Items.forEach(function(item) {
-                            if (item.ImageTags && item.ImageTags.Primary) {
-                                var opt = document.createElement('option');
-                                opt.value = item.Id;
-                                opt.textContent = item.Name + (item.ProductionYear ? ' (' + item.ProductionYear + ')' : '');
-                                select.appendChild(opt);
-                            }
+                            var opt = document.createElement('option');
+                            opt.value = item.Id;
+                            var label = item.Name + (item.ProductionYear ? ' (' + item.ProductionYear + ')' : '');
+                            var type = item.Type === 'Episode' ? ' [EP]' : item.Type === 'Series' ? ' [Series]' : ' [Movie]';
+                            opt.textContent = label + type;
+                            select.appendChild(opt);
                         });
                     }
                 });
@@ -1103,6 +1157,9 @@
         // ===== CONFIG LOAD/SAVE =====
         function loadConfig(page) {
             ApiClient.getPluginConfiguration(pluginId).then(function(config) {
+                // Store config globally for perf monitor / benchmark fetch calls
+                window._pluginConfig = config;
+
                 var fields = ['AiServiceUrl','RemoteHost','RemoteSshPort','RemoteUser','RemoteSshKeyFile',
                     'LocalMediaMountPoint','RemoteMediaMountPoint','RemoteTranscodePath',
                     'MaxVRAMUsage','CpuThreads','MaxConcurrentStreams','MaxCacheAgeDays','CacheSizeMB',
@@ -1223,6 +1280,124 @@
                 page.querySelector('#wrapper-status').textContent = 'Error';
                 page.querySelector('#wrapper-status').style.color = '#f87171';
             });
+        }
+
+        // ===== MODEL CATALOG =====
+        function loadModelCatalog(page) {
+            ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/models'), dataType: 'json' }).then(function(data) {
+                var models = (data && data.models) ? data.models : (Array.isArray(data) ? data : []);
+                var tbody = page.querySelector('#model-catalog-body');
+                if (!tbody || models.length === 0) {
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1rem;opacity:0.5;">No models found — is Docker AI service running?</td></tr>';
+                    return;
+                }
+                var html = '';
+                models.forEach(function(m) {
+                    var status = m.loaded ? '<span style="color:var(--success);">Loaded</span>' : m.downloaded ? '<span style="color:var(--accent);">Ready</span>' : '<span style="color:var(--text-muted);">Not DL</span>';
+                    var scales = Array.isArray(m.scale) ? m.scale.join('/') : (m.scale || '?');
+                    html += '<tr style="border-bottom:1px solid var(--border);">';
+                    html += '<td style="padding:0.35rem 0.3rem;">' + esc(m.name || m.id) + '</td>';
+                    html += '<td style="text-align:center;padding:0.35rem 0.3rem;">' + scales + 'x</td>';
+                    html += '<td style="text-align:center;padding:0.35rem 0.3rem;">' + esc(m.type || '?') + '</td>';
+                    html += '<td style="text-align:center;padding:0.35rem 0.3rem;">' + status + '</td>';
+                    html += '<td style="text-align:center;padding:0.35rem 0.3rem;" id="bench-' + esc(m.id) + '"><button type="button" class="raised" style="font-size:0.72rem;padding:2px 8px;" onclick="window._benchModel(\'' + esc(m.id) + '\')">Bench</button></td>';
+                    html += '</tr>';
+                });
+                tbody.innerHTML = html;
+
+                // Update header count
+                var h3 = page.querySelector('#model-catalog-table')?.closest('.upscaler-card')?.querySelector('h3');
+                if (h3) h3.textContent = 'Model Catalog (' + models.length + ' Models)';
+            }).catch(function() {});
+        }
+
+        // Benchmark a single model: load it, run benchmark, show result
+        window._benchModel = function(modelId) {
+            var cell = document.querySelector('#bench-' + modelId);
+            if (cell) cell.innerHTML = '<span style="color:var(--warning);font-size:0.75rem;">Loading...</span>';
+
+            var config = window._pluginConfig;
+            var baseUrl = (config && config.AiServiceUrl) ? config.AiServiceUrl.replace(/\/$/, '') : 'http://localhost:5000';
+
+            // Step 1: Load the model
+            var loadUrl = baseUrl + '/models/load';
+            var formData = new FormData();
+            formData.append('model_name', modelId);
+
+            fetch(loadUrl, { method: 'POST', body: formData }).then(function(r) { return r.json(); }).then(function() {
+                if (cell) cell.innerHTML = '<span style="color:var(--warning);font-size:0.75rem;">Running...</span>';
+                // Step 2: Run benchmark
+                return fetch(baseUrl + '/benchmark').then(function(r) { return r.json(); });
+            }).then(function(bench) {
+                if (bench && bench.fps !== undefined) {
+                    var color = bench.fps >= 10 ? 'var(--success)' : bench.fps >= 3 ? 'var(--warning)' : 'var(--danger)';
+                    cell.innerHTML = '<span style="color:' + color + ';font-size:0.78rem;font-weight:600;">' + bench.fps.toFixed(1) + ' FPS</span><br><span style="font-size:0.7rem;color:var(--text-muted);">' + bench.avg_time_ms.toFixed(0) + 'ms</span>';
+                } else {
+                    cell.innerHTML = '<span style="color:var(--danger);font-size:0.75rem;">Error</span>';
+                }
+            }).catch(function() {
+                if (cell) cell.innerHTML = '<span style="color:var(--danger);font-size:0.75rem;">Failed</span>';
+            });
+        };
+
+        // ===== LIVE PERFORMANCE MONITOR =====
+        var perfInterval = null;
+
+        function startPerfMonitor(page) {
+            if (perfInterval) return;
+            updatePerfMonitor(page);
+            perfInterval = setInterval(function() { updatePerfMonitor(page); }, 5000);
+        }
+
+        function stopPerfMonitor() {
+            if (perfInterval) { clearInterval(perfInterval); perfInterval = null; }
+        }
+
+        function updatePerfMonitor(page) {
+            // Fetch service health for current model + processing count
+            ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/service-health'), dataType: 'json' }).then(function(data) {
+                if (!data || !data.available) {
+                    page.querySelector('#perf-status').textContent = 'Service offline';
+                    return;
+                }
+                page.querySelector('#perf-model').textContent = data.currentModel || '-';
+                page.querySelector('#perf-status').textContent = data.processingCount > 0 ? 'Processing active...' : 'Idle — waiting for jobs';
+            }).catch(function() {});
+
+            // Fetch Prometheus metrics from Docker service for detailed stats
+            var config = window._pluginConfig;
+            var baseUrl = (config && config.AiServiceUrl) ? config.AiServiceUrl.replace(/\/$/, '') : 'http://localhost:5000';
+            fetch(baseUrl + '/metrics').then(function(r) { return r.text(); }).then(function(text) {
+                var lines = text.split('\n');
+                var metrics = {};
+                lines.forEach(function(l) {
+                    if (l && !l.startsWith('#')) {
+                        var parts = l.split(' ');
+                        if (parts.length >= 2) metrics[parts[0]] = parseFloat(parts[1]);
+                    }
+                });
+                var frames = metrics['upscaler_frames_total'] || 0;
+                var avgMs = metrics['upscaler_processing_time_avg_ms'] || 0;
+                var fps = avgMs > 0 ? (1000 / avgMs) : 0;
+                var circuitOpen = metrics['upscaler_circuit_open'] || 0;
+                var failures = metrics['upscaler_consecutive_failures'] || 0;
+
+                page.querySelector('#perf-fps').textContent = fps > 0 ? fps.toFixed(1) : '-';
+                page.querySelector('#perf-frametime').textContent = avgMs > 0 ? avgMs.toFixed(0) : '-';
+                page.querySelector('#perf-frames').textContent = frames;
+
+                var circEl = page.querySelector('#perf-circuit');
+                if (circuitOpen > 0) {
+                    circEl.textContent = 'OPEN (' + failures + ')';
+                    circEl.style.color = 'var(--danger)';
+                } else if (failures > 0) {
+                    circEl.textContent = 'Closed (' + failures + ')';
+                    circEl.style.color = 'var(--warning)';
+                } else {
+                    circEl.textContent = 'Closed';
+                    circEl.style.color = 'var(--success)';
+                }
+            }).catch(function() {});
         }
 
         // ===== EVENT HANDLERS =====
@@ -1436,6 +1611,7 @@
             loadMediaItems(page);
             loadGpuList(page);
             refreshDashboard(page);
+            startPerfMonitor(page);
 
             if (refreshInterval) clearInterval(refreshInterval);
             refreshInterval = setInterval(function() {

@@ -8,5 +8,5 @@
     "framework": "net9.0",
     "owner": "Kuschel-code",
     "category": "Video Enhancement",
-    "changelog": "v1.5.4.0: Multi-Frame VSR (EDVR-M, RealBasicVSR, AnimeSR v2), auto-model selection, image upscaling, priority queue, Prometheus metrics, circuit breaker, webhooks, model fallback chain, 34 AI models."
+    "changelog": "v1.5.4.0: Multi-Frame VSR (EDVR-M, RealBasicVSR, AnimeSR v2), auto-model selection, image upscaling, priority queue, Prometheus metrics, circuit breaker, webhooks, model fallback chain, 35 AI models. Full settings dashboard with live performance monitor."
 }
