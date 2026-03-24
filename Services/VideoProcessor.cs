@@ -160,35 +160,21 @@ namespace JellyfinUpscalerPlugin.Services
 
                 // 3b. Model fallback chain: try primary model, fall back to alternatives
                 var modelChain = BuildVideoModelChain(optimizedOptions.Model);
-                string loadedModel = optimizedOptions.Model;
                 bool modelLoaded = false;
                 foreach (var candidateModel in modelChain)
                 {
                     try
                     {
-                        var loaded = await _upscalerCore.IsAvailableAsync(cancellationToken);
-                        if (!loaded)
+                        var success = await _httpUpscalerService.EnsureModelLoadedAsync(candidateModel, cancellationToken);
+                        if (success)
                         {
-                            _logger.LogWarning("AI service unavailable, cannot load model {Model}", candidateModel);
-                            continue;
-                        }
-
-                        // Try to ensure this model is loaded on the Docker service
-                        var httpService = GetHttpUpscalerService();
-                        if (httpService != null)
-                        {
-                            var success = await httpService.EnsureModelLoadedAsync(candidateModel, cancellationToken);
-                            if (success)
+                            modelLoaded = true;
+                            if (candidateModel != optimizedOptions.Model)
                             {
-                                loadedModel = candidateModel;
-                                modelLoaded = true;
-                                if (candidateModel != optimizedOptions.Model)
-                                {
-                                    _logger.LogInformation("Model fallback: {Original} -> {Fallback}", optimizedOptions.Model, candidateModel);
-                                    optimizedOptions.Model = candidateModel;
-                                }
-                                break;
+                                _logger.LogInformation("Model fallback: {Original} -> {Fallback}", optimizedOptions.Model, candidateModel);
+                                optimizedOptions.Model = candidateModel;
                             }
+                            break;
                         }
                         _logger.LogWarning("Failed to load model {Model}, trying next in fallback chain", candidateModel);
                     }
@@ -432,18 +418,21 @@ namespace JellyfinUpscalerPlugin.Services
                 optimized.ScaleFactor = inputInfo.Width <= 720 ? 3 : 2;
             }
             
-            // Adjust quality based on hardware capabilities
-            if (hardwareProfile.SupportsCUDA && hardwareProfile.VramMB > 8192)
-            {
-                optimized.QualityLevel = "high";
-            }
-            else if (hardwareProfile.SupportsDirectML)
-            {
-                optimized.QualityLevel = "medium";
-            }
-            else
+            // Normalize "low" quality to "fast" (UI offers "low" but backend uses "fast")
+            if (string.Equals(optimized.QualityLevel, "low", StringComparison.OrdinalIgnoreCase))
             {
                 optimized.QualityLevel = "fast";
+            }
+
+            // Only auto-select quality if not explicitly configured by user
+            if (string.IsNullOrEmpty(optimized.QualityLevel) || optimized.QualityLevel == "auto")
+            {
+                if (hardwareProfile.SupportsCUDA && hardwareProfile.VramMB > 8192)
+                    optimized.QualityLevel = "high";
+                else if (hardwareProfile.SupportsDirectML)
+                    optimized.QualityLevel = "medium";
+                else
+                    optimized.QualityLevel = "fast";
             }
             
             // Enable hardware acceleration if available
@@ -488,11 +477,6 @@ namespace JellyfinUpscalerPlugin.Services
             }
             return chain;
         }
-
-        /// <summary>
-        /// Get the HttpUpscalerService for model loading in fallback chain.
-        /// </summary>
-        private HttpUpscalerService? GetHttpUpscalerService() => _httpUpscalerService;
 
         /// <summary>
         /// Determine the best processing method
@@ -777,15 +761,9 @@ namespace JellyfinUpscalerPlugin.Services
                         progress, processedCount, totalFrames);
                 }
 
-                // Reconstruct video (same as frame-by-frame)
-                _logger.LogInformation("Reconstructing video from {Count} processed frames", totalFrames);
-                var codec = Config.OutputCodec ?? "libx264";
-                var reconstructArgs = $"-framerate {effectiveFps} -i \"{processedDir}/frame_%06d.png\" -c:v {codec} -pix_fmt yuv420p \"{outputPath}\"";
-
-                await Cli.Wrap(_ffmpegPath)
-                    .WithArguments(reconstructArgs)
-                    .WithValidation(CommandResultValidation.ZeroExitCode)
-                    .ExecuteAsync(cancellationToken);
+                // Reconstruct video with audio (uses same method as frame-by-frame)
+                _logger.LogInformation("Reconstructing video from {Count} processed frames with audio", totalFrames);
+                await ReconstructVideoAsync(processedDir, inputPath, outputPath, job.OptimizedOptions, effectiveFps, cancellationToken);
 
                 return new VideoProcessingResult
                 {

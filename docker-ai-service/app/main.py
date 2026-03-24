@@ -47,7 +47,7 @@ CACHE_DIR = Path("/app/cache")
 STATIC_DIR = Path("/app/static")
 
 # Version
-VERSION = "1.5.5"
+VERSION = "1.5.4.1"
 
 # Global state
 class AppState:
@@ -2240,7 +2240,7 @@ async def health_detailed():
     if state.use_gpu and state.onnx_session:
         try:
             providers = state.onnx_session.get_providers()
-            gpu_healthy = any("CUDA" in p or "TensorRT" in p or "CoreML" in p or "DirectML" in p for p in providers)
+            gpu_healthy = any("CUDA" in p or "Tensorrt" in p or "CoreML" in p or "DirectML" in p for p in providers)
         except Exception as e:
             gpu_healthy = False
             gpu_error = str(e)
