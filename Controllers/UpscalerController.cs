@@ -1135,12 +1135,13 @@ namespace JellyfinUpscalerPlugin.Controllers
         [HttpPost("models/load")]
         [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
-        public async Task<ActionResult> LoadModel([FromQuery] string? model_name = null)
+        public async Task<ActionResult> LoadModel()
         {
             try
             {
-                // Try to get model_name from query, form body, or JSON body
-                var modelId = model_name;
+                // Read model_name from query string, form body, or JSON body
+                // (not using [FromQuery] because .NET 9 treats nullable as required)
+                string? modelId = Request.Query["model_name"].FirstOrDefault();
                 if (string.IsNullOrEmpty(modelId) && Request.HasFormContentType)
                 {
                     var form = await Request.ReadFormAsync();
@@ -1180,7 +1181,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load model {model_name}", model_name);
+                _logger.LogError(ex, "Failed to load model via proxy: {Error}", ex.Message);
                 return StatusCode(500, new { error = ex.Message });
             }
         }
