@@ -532,6 +532,110 @@
                         </div>
                     </details>
 
+                    <!-- Auto Model Selection & Fallback -->
+                    <details>
+                        <summary>Auto Model Selection &amp; Fallback</summary>
+                        <div class="details-body">
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableAutoModelSelection" /> Enable Auto Model Selection</label></div>
+                            <div class="fieldDescription" style="margin-bottom:0.5rem;">Automatically picks the best model based on content genre (anime/live-action), resolution, and processing mode.</div>
+                            <div class="inputContainer"><label class="inputLabel" for="ModelFallbackChain">Model Fallback Chain</label><input type="text" id="ModelFallbackChain" placeholder="realesrgan-x4,span-x4,edsr-x4" /><div class="fieldDescription">Comma-separated model names. If primary fails, tries next in chain.</div></div>
+                            <div class="form-row" style="margin-top:0.5rem;">
+                                <div class="form-col inputContainer"><label class="inputLabel" for="PreferredAnimeModel">Preferred Anime Model</label><input type="text" id="PreferredAnimeModel" placeholder="auto" /><div class="fieldDescription">Override for anime content (empty = auto)</div></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="PreferredLiveActionModel">Preferred Live-Action Model</label><input type="text" id="PreferredLiveActionModel" placeholder="auto" /><div class="fieldDescription">Override for live-action (empty = auto)</div></div>
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- Library Scan Settings -->
+                    <details>
+                        <summary>Library Scan</summary>
+                        <div class="details-body">
+                            <div class="form-row">
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MinResolutionWidth">Min Resolution Width</label><input type="number" id="MinResolutionWidth" min="0" max="7680" /><div class="fieldDescription">Videos below this width are upscaled (default: 1920)</div></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MinResolutionHeight">Min Resolution Height</label><input type="number" id="MinResolutionHeight" min="0" max="4320" /><div class="fieldDescription">Videos below this height are upscaled (default: 1080)</div></div>
+                            </div>
+                            <div class="form-row" style="margin-top:0.5rem;">
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxItemsPerScan">Max Items Per Scan</label><input type="number" id="MaxItemsPerScan" min="0" /><div class="fieldDescription">0 = unlimited</div></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxUpscaledFileSizeMB">Max Output File Size (MB)</label><input type="number" id="MaxUpscaledFileSizeMB" min="0" /><div class="fieldDescription">0 = unlimited. Skip if output would exceed.</div></div>
+                            </div>
+                            <div class="checkboxContainer" style="margin-top:0.5rem;"><label><input type="checkbox" id="RestrictToUnwatchedContent" /> Only upscale unwatched content</label></div>
+                            <div class="selectContainer" style="margin-top:0.5rem;">
+                                <label class="selectLabel" for="OutputCodec">Output Codec</label>
+                                <select id="OutputCodec">
+                                    <option value="libx264">H.264 (libx264)</option>
+                                    <option value="libx265">H.265 (libx265)</option>
+                                    <option value="copy">Stream Copy</option>
+                                </select>
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- Processing Queue -->
+                    <details>
+                        <summary>Processing Queue</summary>
+                        <div class="details-body">
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableProcessingQueue" /> Enable Processing Queue</label></div>
+                            <div class="form-row" style="margin-top:0.5rem;">
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxQueueSize">Max Queue Size</label><input type="number" id="MaxQueueSize" min="1" max="10000" /><div class="fieldDescription">Max pending jobs (default: 100)</div></div>
+                            </div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="PauseQueueDuringPlayback" /> Pause queue during playback</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="PersistQueueAcrossRestarts" /> Persist queue across restarts</label></div>
+                        </div>
+                    </details>
+
+                    <!-- Webhooks -->
+                    <details>
+                        <summary>Webhook Notifications</summary>
+                        <div class="details-body">
+                            <div class="inputContainer"><label class="inputLabel" for="WebhookUrl">Webhook URL</label><input type="url" id="WebhookUrl" placeholder="https://example.com/webhook" /><div class="fieldDescription">HTTP POST on job complete/failure. Leave empty to disable.</div></div>
+                            <div class="checkboxContainer" style="margin-top:0.5rem;"><label><input type="checkbox" id="WebhookOnComplete" /> Notify on completion</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="WebhookOnFailure" /> Notify on failure</label></div>
+                        </div>
+                    </details>
+
+                    <!-- Model Management -->
+                    <details>
+                        <summary>Model Management</summary>
+                        <div class="details-body">
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableModelPreloading" /> Preload preferred model on startup</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableModelAutoCleanup" /> Auto-cleanup unused models</label></div>
+                            <div class="form-row" style="margin-top:0.5rem;">
+                                <div class="form-col inputContainer"><label class="inputLabel" for="ModelDiskQuotaMB">Disk Quota (MB)</label><input type="number" id="ModelDiskQuotaMB" min="0" /><div class="fieldDescription">Max disk for models. 0 = unlimited.</div></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="ModelCleanupDays">Cleanup After (days)</label><input type="number" id="ModelCleanupDays" min="1" /><div class="fieldDescription">Remove unused models after N days.</div></div>
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- Health & Circuit Breaker -->
+                    <details>
+                        <summary>Health &amp; Circuit Breaker</summary>
+                        <div class="details-body">
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableHealthMonitoring" /> Enable health monitoring</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableGpuFallbackToCpu" /> GPU fallback to CPU on lockup</label></div>
+                            <div class="form-row" style="margin-top:0.5rem;">
+                                <div class="form-col inputContainer"><label class="inputLabel" for="HealthCheckIntervalSeconds">Health Check Interval (s)</label><input type="number" id="HealthCheckIntervalSeconds" min="10" /><div class="fieldDescription">Seconds between health checks.</div></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="CircuitBreakerThreshold">Circuit Breaker Threshold</label><input type="number" id="CircuitBreakerThreshold" min="1" /><div class="fieldDescription">Consecutive failures before circuit opens.</div></div>
+                            </div>
+                            <div class="inputContainer" style="margin-top:0.5rem;"><label class="inputLabel" for="CircuitBreakerResetSeconds">Circuit Breaker Reset (s)</label><input type="number" id="CircuitBreakerResetSeconds" min="10" /><div class="fieldDescription">Time before circuit half-opens and retries.</div></div>
+                        </div>
+                    </details>
+
+                    <!-- Real-Time Upscaling -->
+                    <details>
+                        <summary>Real-Time Upscaling</summary>
+                        <div class="details-body">
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableRealtimeUpscaling" /> Enable Real-Time Upscaling</label></div>
+                            <div class="form-row" style="margin-top:0.5rem;">
+                                <div class="form-col selectContainer">
+                                    <label class="selectLabel" for="RealtimeMode">Mode</label>
+                                    <select id="RealtimeMode"><option value="auto">Auto</option><option value="webgl">WebGL Only</option><option value="server">Server AI Only</option></select>
+                                </div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="RealtimeTargetFps">Target FPS</label><input type="number" id="RealtimeTargetFps" min="1" max="120" /></div>
+                            </div>
+                            <div class="inputContainer" style="margin-top:0.5rem;"><label class="inputLabel" for="RealtimeCaptureWidth">Capture Width</label><input type="number" id="RealtimeCaptureWidth" min="160" max="1920" /><div class="fieldDescription">Resolution for server-side capture (default: 480)</div></div>
+                        </div>
+                    </details>
+
                     <!-- Features -->
                     <details>
                         <summary>Features</summary>
@@ -1001,7 +1105,12 @@
             ApiClient.getPluginConfiguration(pluginId).then(function(config) {
                 var fields = ['AiServiceUrl','RemoteHost','RemoteSshPort','RemoteUser','RemoteSshKeyFile',
                     'LocalMediaMountPoint','RemoteMediaMountPoint','RemoteTranscodePath',
-                    'MaxVRAMUsage','CpuThreads','MaxConcurrentStreams','MaxCacheAgeDays','CacheSizeMB'];
+                    'MaxVRAMUsage','CpuThreads','MaxConcurrentStreams','MaxCacheAgeDays','CacheSizeMB',
+                    'ModelFallbackChain','PreferredAnimeModel','PreferredLiveActionModel','WebhookUrl',
+                    'MinResolutionWidth','MinResolutionHeight','MaxItemsPerScan','MaxUpscaledFileSizeMB',
+                    'MaxQueueSize','ModelDiskQuotaMB','ModelCleanupDays',
+                    'HealthCheckIntervalSeconds','CircuitBreakerThreshold','CircuitBreakerResetSeconds',
+                    'RealtimeTargetFps','RealtimeCaptureWidth'];
                 fields.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el && config[f] !== undefined) el.value = config[f];
@@ -1009,7 +1118,11 @@
 
                 var checks = ['EnablePlugin','PlayerButton','HardwareAcceleration','Notifications','AutoRetryButton',
                     'EnableComparisonView','EnablePerformanceMetrics','EnableAutoBenchmarking',
-                    'EnablePreProcessingCache','EnableRemoteTranscoding'];
+                    'EnablePreProcessingCache','EnableRemoteTranscoding',
+                    'EnableAutoModelSelection','EnableProcessingQueue','PauseQueueDuringPlayback',
+                    'PersistQueueAcrossRestarts','WebhookOnComplete','WebhookOnFailure',
+                    'EnableModelPreloading','EnableModelAutoCleanup','EnableHealthMonitoring',
+                    'EnableGpuFallbackToCpu','RestrictToUnwatchedContent','EnableRealtimeUpscaling'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) {
@@ -1019,7 +1132,7 @@
                     }
                 });
 
-                var selects = ['Model','QualityLevel','ButtonPosition'];
+                var selects = ['Model','QualityLevel','ButtonPosition','OutputCodec','RealtimeMode'];
                 selects.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el && config[f]) el.value = config[f];
@@ -1040,21 +1153,36 @@
         function saveConfig(page) {
             ApiClient.getPluginConfiguration(pluginId).then(function(config) {
                 var fields = ['AiServiceUrl','RemoteHost','RemoteSshKeyFile','LocalMediaMountPoint',
-                    'RemoteMediaMountPoint','RemoteTranscodePath'];
+                    'RemoteMediaMountPoint','RemoteTranscodePath',
+                    'ModelFallbackChain','PreferredAnimeModel','PreferredLiveActionModel','WebhookUrl'];
                 fields.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) config[f] = el.value;
                 });
 
-                var nums = ['RemoteSshPort','MaxVRAMUsage','CpuThreads','MaxConcurrentStreams','MaxCacheAgeDays','CacheSizeMB','ScaleFactor','GpuDeviceIndex'];
+                var nums = ['RemoteSshPort','MaxVRAMUsage','CpuThreads','MaxConcurrentStreams','MaxCacheAgeDays','CacheSizeMB','ScaleFactor','GpuDeviceIndex',
+                    'MinResolutionWidth','MinResolutionHeight','MaxItemsPerScan','MaxQueueSize',
+                    'ModelDiskQuotaMB','ModelCleanupDays','HealthCheckIntervalSeconds',
+                    'CircuitBreakerThreshold','CircuitBreakerResetSeconds',
+                    'RealtimeTargetFps','RealtimeCaptureWidth'];
                 nums.forEach(function(f) {
+                    var el = page.querySelector('#' + f);
+                    if (el) { var parsed = parseInt(el.value, 10); if (!isNaN(parsed)) config[f] = parsed; }
+                });
+
+                var longs = ['MaxUpscaledFileSizeMB'];
+                longs.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) { var parsed = parseInt(el.value, 10); if (!isNaN(parsed)) config[f] = parsed; }
                 });
 
                 var checks = ['EnablePlugin','PlayerButton','HardwareAcceleration','Notifications','AutoRetryButton',
                     'EnableComparisonView','EnablePerformanceMetrics','EnableAutoBenchmarking',
-                    'EnablePreProcessingCache','EnableRemoteTranscoding'];
+                    'EnablePreProcessingCache','EnableRemoteTranscoding',
+                    'EnableAutoModelSelection','EnableProcessingQueue','PauseQueueDuringPlayback',
+                    'PersistQueueAcrossRestarts','WebhookOnComplete','WebhookOnFailure',
+                    'EnableModelPreloading','EnableModelAutoCleanup','EnableHealthMonitoring',
+                    'EnableGpuFallbackToCpu','RestrictToUnwatchedContent','EnableRealtimeUpscaling'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) config[f] = !!el.checked;
@@ -1063,8 +1191,10 @@
                 config.Model = page.querySelector('#Model').value;
                 config.QualityLevel = page.querySelector('#QualityLevel').value;
                 config.ButtonPosition = page.querySelector('#ButtonPosition').value;
+                config.OutputCodec = page.querySelector('#OutputCodec').value;
+                config.RealtimeMode = page.querySelector('#RealtimeMode').value;
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
-                config.PluginVersion = '1.5.2.9';
+                config.PluginVersion = '1.5.4.0';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
