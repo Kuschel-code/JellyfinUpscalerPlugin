@@ -824,12 +824,11 @@
 
                 <!-- Live Video Benchmark -->
                 <div class="upscaler-card">
-                    <h3>Live Video Benchmark</h3>
-                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">Select a video from your library — a frame will be extracted and tested against all models to find the best performance for your hardware.</div>
+                    <h3>Live Model Benchmark</h3>
+                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">Test all AI models on your hardware. Each model is loaded, warmed up, and benchmarked with 5 inference passes. Results show actual FPS your GPU/CPU can achieve.</div>
                     <div class="form-row" style="margin-bottom:0.5rem;">
-                        <div class="form-col selectContainer"><label class="selectLabel" for="bench-video-item">Video</label><select id="bench-video-item"><option value="">-- Select video --</option></select></div>
-                        <div class="form-col" style="padding-top:1.4rem;">
-                            <button type="button" id="btn-live-bench" class="raised">Run Live Benchmark</button>
+                        <div class="form-col" style="padding-top:0.4rem;">
+                            <button type="button" id="btn-live-bench" class="raised">Run All-Model Benchmark</button>
                             <button type="button" id="btn-stop-bench" class="raised" style="display:none;">Stop</button>
                         </div>
                     </div>
@@ -902,7 +901,7 @@
                     if (tabId === 'dashboard') { refreshDashboard(page); startPerfMonitor(page); }
                     else if (tabId === 'jobs') refreshJobs(page);
                     else if (tabId === 'cache') refreshCache(page);
-                    else if (tabId === 'system') { refreshSystem(page); loadModelCatalog(page); loadBenchVideoItems(page); }
+                    else if (tabId === 'system') { refreshSystem(page); loadModelCatalog(page); }
                 });
             });
         }
@@ -1353,8 +1352,10 @@
 
             // Step 1: Load the model via Jellyfin proxy (avoids CORS)
             ApiClient.ajax({
-                type: 'POST', url: ApiClient.getUrl('Upscaler/models/load') + '?model_name=' + encodeURIComponent(modelId)
-            }).then(function() {
+                type: 'POST', url: ApiClient.getUrl('Upscaler/models/load') + '?model_name=' + encodeURIComponent(modelId),
+                dataType: 'json'
+            }).then(function(loadResult) {
+                if (loadResult && loadResult.error) throw new Error(loadResult.error);
                 if (cell) cell.innerHTML = '<span style="color:var(--warning);font-size:0.75rem;">Running...</span>';
                 // Step 2: Run benchmark via Jellyfin proxy
                 return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/model-benchmark'), dataType: 'json' });
@@ -1403,7 +1404,11 @@
                 lines.forEach(function(l) {
                     if (l && !l.startsWith('#')) {
                         var parts = l.split(' ');
-                        if (parts.length >= 2) metrics[parts[0]] = parseFloat(parts[1]);
+                        if (parts.length >= 2) {
+                            // Strip labels: "metric_name{labels}" -> "metric_name"
+                            var key = parts[0].replace(/\{[^}]*\}/, '');
+                            metrics[key] = parseFloat(parts[1]);
+                        }
                     }
                 });
                 var frames = metrics['upscaler_frames_total'] || 0;
@@ -1456,17 +1461,15 @@
         }
 
         async function runLiveVideoBenchmark(page) {
-            var itemId = page.querySelector('#bench-video-item').value;
-            if (!itemId) { showToast('Select a video first', '#fbbf24'); return; }
-
             // Get all models
-            var allModels = page._allModels || modelsData || [];
+            var allModels = page._allModels || [];
             if (allModels.length === 0) {
-                showToast('No models available', '#f87171'); return;
+                showToast('No models available — is Docker AI service running?', '#f87171'); return;
             }
 
             // Filter to available models only
             var models = allModels.filter(function(m) { return m.available !== false; });
+            if (models.length === 0) models = allModels;
 
             _liveBenchStop = false;
             page.querySelector('#btn-live-bench').style.display = 'none';
@@ -1502,12 +1505,16 @@
                 if (row) row.querySelector('.lbr-fps').innerHTML = '<span style="color:var(--warning);">...</span>';
 
                 try {
-                    // Load model via proxy
-                    await new Promise(function(resolve, reject) {
+                    // Load model via proxy — validate response
+                    var loadResult = await new Promise(function(resolve, reject) {
                         ApiClient.ajax({
-                            type: 'POST', url: ApiClient.getUrl('Upscaler/models/load') + '?model_name=' + encodeURIComponent(m.id)
+                            type: 'POST', url: ApiClient.getUrl('Upscaler/models/load') + '?model_name=' + encodeURIComponent(m.id),
+                            dataType: 'json'
                         }).then(resolve).catch(reject);
                     });
+                    if (loadResult && loadResult.error) {
+                        throw new Error(loadResult.error);
+                    }
 
                     // Run benchmark via proxy
                     var bench = await new Promise(function(resolve, reject) {
@@ -1652,9 +1659,9 @@
                 page.querySelector('#btn-run-benchmark').click();
             });
 
-            // Live Video Benchmark
-            page.querySelector('#btn-live-bench').addEventListener('click', function() { runLiveVideoBenchmark(page); });
-            page.querySelector('#btn-stop-bench').addEventListener('click', function() { _liveBenchStop = true; });
+            // Live Model Benchmark
+            page.querySelector('#btn-live-bench')?.addEventListener('click', function() { runLiveVideoBenchmark(page); });
+            page.querySelector('#btn-stop-bench')?.addEventListener('click', function() { _liveBenchStop = true; });
 
             page.querySelector('#btn-compare').addEventListener('click', function() {
                 var itemId = page.querySelector('#comparison-item').value;
@@ -1748,10 +1755,8 @@
 
             loadModels(page).then(function() {
                 loadConfig(page);
-                setTimeout(function() { loadConfig(page); }, 500);
             }).catch(function() {
                 loadConfig(page);
-                setTimeout(function() { loadConfig(page); }, 500);
             });
             loadWrapperStatus(page);
             loadMediaItems(page);
@@ -1792,6 +1797,8 @@
                     clearInterval(refreshInterval);
                     refreshInterval = null;
                 }
+                // Stop perf monitor polling to prevent interval accumulation in SPA
+                stopPerfMonitor();
                 _initialized = false;
             }
         });

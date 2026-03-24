@@ -37,7 +37,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Shared HttpClient for AI service proxy calls (UpscaleFrame, BenchmarkFrame, GetGpuList).
         /// Avoids socket exhaustion from creating a new HttpClient per request.
         /// </summary>
-        private static readonly HttpClient _aiServiceClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        private static readonly HttpClient _aiServiceClient = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
         private static readonly HttpClient _multiFrameClient = new HttpClient { Timeout = TimeSpan.FromSeconds(300) };
 
         private readonly ILogger<UpscalerController> _logger;
@@ -1165,10 +1165,14 @@ namespace JellyfinUpscalerPlugin.Controllers
                 var config = Plugin.Instance?.Configuration;
                 var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
 
-                // Docker AI service expects form-urlencoded POST
+                // Docker AI service expects form-urlencoded POST — forward GPU settings
+                var useGpu = config?.HardwareAcceleration ?? true;
+                var gpuDeviceId = config?.GpuDeviceIndex ?? 0;
                 var formContent = new FormUrlEncodedContent(new[]
                 {
-                    new KeyValuePair<string, string>("model_name", modelId)
+                    new KeyValuePair<string, string>("model_name", modelId),
+                    new KeyValuePair<string, string>("use_gpu", useGpu.ToString().ToLower()),
+                    new KeyValuePair<string, string>("gpu_device_id", gpuDeviceId.ToString())
                 });
                 var response = await _aiServiceClient.PostAsync($"{serviceUrl}/models/load", formContent);
                 var content = await response.Content.ReadAsStringAsync();

@@ -110,9 +110,10 @@ class AppState:
 
 state = AppState()
 
-# Concurrency semaphore for upscaling requests (thread-safe)
+# Concurrency semaphore — created lazily in lifespan() to avoid
+# asyncio.Semaphore before event loop exists (breaks Python 3.10+)
 import asyncio as _asyncio
-_upscale_semaphore = _asyncio.Semaphore(state.max_concurrent)
+_upscale_semaphore: _asyncio.Semaphore = None  # type: ignore — initialized in lifespan()
 
 # Threading lock to prevent model-swap data races between load and inference
 _model_lock = threading.Lock()
