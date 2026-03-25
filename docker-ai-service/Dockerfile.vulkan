@@ -13,13 +13,15 @@ ENV VULKAN_BACKEND=true
 
 WORKDIR /app
 
-# Install system dependencies: Vulkan SDK + Mesa drivers + OpenCV deps + SSH
+# Install system dependencies: Vulkan SDK + Mesa drivers + OpenCV deps + SSH + build tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    # Vulkan runtime and ICD loaders
+    # Vulkan runtime, ICD loaders, and development headers
     libvulkan1 \
     libvulkan-dev \
     vulkan-tools \
     mesa-vulkan-drivers \
+    # Vulkan shader compiler (required by ncnn build)
+    glslang-tools \
     # Mesa for AMD RADV + Intel ANV Vulkan drivers
     libgl1-mesa-dri \
     # OpenCV dependencies
@@ -28,9 +30,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsm6 \
     libxext6 \
     libxrender1 \
-    # Build tools for ncnn (if pip wheel unavailable)
+    # Build tools for ncnn compilation from source
     cmake \
     build-essential \
+    ninja-build \
+    git \
     # Utilities
     curl \
     openssh-server \
@@ -46,12 +50,42 @@ RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/
 # Copy requirements first for better caching
 COPY requirements-vulkan.txt ./requirements.txt
 
-# Install Python dependencies
-# Note: realsr-ncnn-vulkan-python may need to build from source if no wheel
-RUN pip install --no-cache-dir -r requirements.txt || \
-    (echo "Falling back: installing ncnn-vulkan from source..." && \
-     pip install --no-cache-dir ncnn-vulkan && \
-     pip install --no-cache-dir -r requirements.txt)
+# Upgrade pip and install build tools
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# Install Python dependencies in two stages:
+# 1. Core deps (FastAPI, OpenCV, ONNX CPU)
+# 2. ncnn-vulkan (may need to compile from source)
+RUN pip install --no-cache-dir \
+    fastapi==0.109.0 \
+    "uvicorn[standard]==0.27.0" \
+    python-multipart==0.0.6 \
+    aiofiles==23.2.1 \
+    "onnxruntime>=1.17.0" \
+    "numpy>=1.24.0,<2.0.0" \
+    opencv-contrib-python==4.9.0.80 \
+    "pydantic>=2.0.0" \
+    "httpx>=0.26.0"
+
+# Install ncnn-vulkan — try pre-built wheel first, then build from source
+RUN pip install --no-cache-dir realsr-ncnn-vulkan-python 2>/dev/null || \
+    pip install --no-cache-dir ncnn-vulkan 2>/dev/null || \
+    (echo "Building ncnn from source with Vulkan support..." && \
+     pip install --no-cache-dir pybind11 && \
+     git clone --depth 1 https://github.com/Tencent/ncnn.git /tmp/ncnn && \
+     cd /tmp/ncnn && mkdir build && cd build && \
+     cmake -G Ninja \
+       -DCMAKE_BUILD_TYPE=Release \
+       -DNCNN_VULKAN=ON \
+       -DNCNN_BUILD_EXAMPLES=OFF \
+       -DNCNN_BUILD_TOOLS=ON \
+       -DNCNN_BUILD_BENCHMARK=OFF \
+       -DNCNN_PYTHON=ON \
+       .. && \
+     ninja -j$(nproc) && ninja install && \
+     cd /tmp/ncnn/python && pip install . && \
+     rm -rf /tmp/ncnn) || \
+    echo "WARNING: ncnn-vulkan not available, Vulkan models will be disabled"
 
 # Copy application code
 COPY app/ ./app/
