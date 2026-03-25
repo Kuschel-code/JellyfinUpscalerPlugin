@@ -34,6 +34,20 @@ except ImportError:
     ONNX_AVAILABLE = False
     ort = None
 
+# ncnn-Vulkan for GPU super-resolution on AMD pre-RDNA2, Intel, etc.
+try:
+    from realsr_ncnn_vulkan_python import RealSR
+    NCNN_AVAILABLE = True
+except ImportError:
+    try:
+        import ncnn
+        NCNN_AVAILABLE = True
+        RealSR = None
+    except ImportError:
+        NCNN_AVAILABLE = False
+        RealSR = None
+        ncnn = None
+
 # Configure logging
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
@@ -61,8 +75,14 @@ class AppState:
     onnx_model_name: Optional[str] = None
     onnx_model_scale: int = 4
     
+    # ncnn-Vulkan model (for Vulkan GPU acceleration)
+    ncnn_upscaler: Any = None
+    ncnn_model_name: Optional[str] = None
+    ncnn_model_scale: int = 4
+    ncnn_gpu_id: int = 0
+
     current_model: Optional[str] = None
-    current_model_type: str = "opencv"  # "opencv" or "onnx"
+    current_model_type: str = "opencv"  # "opencv", "onnx", or "ncnn"
     providers: list = []
     use_gpu: bool = True
     processing_count: int = 0
@@ -515,6 +535,43 @@ AVAILABLE_MODELS = {
         "available": True
     },
 
+    # ============================================================
+    # === VULKAN Models (ncnn — for AMD pre-RDNA2, Intel iGPU) ===
+    # ============================================================
+    "ncnn-realesrgan-x4": {
+        "name": "Real-ESRGAN x4 (Vulkan GPU)",
+        "url": "",
+        "scale": 4,
+        "description": "Real-ESRGAN x4 via ncnn-Vulkan. Works on any Vulkan GPU (AMD RX 5700, Intel Arc, etc.). Bundled with realsr-ncnn-vulkan.",
+        "type": "ncnn",
+        "category": "vulkan",
+        "model_type": "realesrgan",
+        "ncnn_model": "realesrgan-x4plus",
+        "available": NCNN_AVAILABLE
+    },
+    "ncnn-realesrgan-anime-x4": {
+        "name": "Real-ESRGAN Anime x4 (Vulkan GPU)",
+        "url": "",
+        "scale": 4,
+        "description": "Real-ESRGAN Anime optimized via ncnn-Vulkan. Best for anime content on Vulkan GPUs.",
+        "type": "ncnn",
+        "category": "vulkan",
+        "model_type": "realesrgan",
+        "ncnn_model": "realesrgan-x4plus-anime",
+        "available": NCNN_AVAILABLE
+    },
+    "ncnn-realsr-x4": {
+        "name": "RealSR x4 (Vulkan GPU)",
+        "url": "",
+        "scale": 4,
+        "description": "RealSR DF2K x4 via ncnn-Vulkan. Photo-realistic super-resolution on Vulkan GPUs.",
+        "type": "ncnn",
+        "category": "vulkan",
+        "model_type": "realsr",
+        "ncnn_model": "realsr-df2k-x4",
+        "available": NCNN_AVAILABLE
+    },
+
 }
 
 
@@ -794,7 +851,8 @@ async def lifespan(app: FastAPI):
 
     logger.info(f"GPU Enabled: {state.use_gpu}")
     logger.info(f"ONNX Runtime Available: {ONNX_AVAILABLE}")
-    
+    logger.info(f"ncnn-Vulkan Available: {NCNN_AVAILABLE}")
+
     # Count available models
     available_count = sum(1 for m in AVAILABLE_MODELS.values() if m.get("available", True))
     logger.info(f"Available Models: {available_count}/{len(AVAILABLE_MODELS)}")
@@ -892,9 +950,114 @@ async def load_model(model_name: str) -> bool:
         return await load_opencv_model(model_name, model_info, model_path)
     elif model_type == "onnx":
         return await load_onnx_model(model_name, model_info, model_path)
+    elif model_type == "ncnn":
+        return await load_ncnn_model(model_name, model_info, model_path)
     else:
         logger.error(f"Model type {model_type} not yet supported")
         return False
+
+
+async def load_ncnn_model(model_name: str, model_info: dict, model_path: Path) -> bool:
+    """Load a model using ncnn-Vulkan backend for GPU inference on Vulkan-capable GPUs.
+    Supports pre-RDNA2 AMD (RX 5700 etc.), Intel iGPUs, and any Vulkan device.
+    Uses realsr-ncnn-vulkan-python wrapper or raw ncnn bindings."""
+    if not NCNN_AVAILABLE:
+        logger.error("ncnn/Vulkan not available — install realsr-ncnn-vulkan-python or ncnn-vulkan")
+        state.last_load_error = "ncnn-Vulkan not installed"
+        return False
+
+    scale = model_info.get("scale", 4)
+    ncnn_model_name = model_info.get("ncnn_model", "realesrgan-x4plus")
+    gpu_id = state.gpu_device_id
+
+    try:
+        if RealSR is not None:
+            # Use the realsr-ncnn-vulkan-python high-level wrapper
+            upscaler = RealSR(gpuid=gpu_id, model=ncnn_model_name, scale=scale)
+            logger.info(f"ncnn-Vulkan: Loaded {model_name} via RealSR wrapper (GPU {gpu_id})")
+        else:
+            # Fallback: raw ncnn bindings (requires .param + .bin files)
+            param_path = model_path.with_suffix('.param')
+            bin_path = model_path.with_suffix('.bin')
+            if not param_path.exists() or not bin_path.exists():
+                logger.error(f"ncnn model files not found: {param_path}, {bin_path}")
+                state.last_load_error = f"Missing .param/.bin files for {model_name}"
+                return False
+
+            net = ncnn.Net()
+            net.opt.use_vulkan_compute = True
+            net.opt.num_threads = 4
+            net.load_param(str(param_path))
+            net.load_model(str(bin_path))
+            upscaler = net
+            logger.info(f"ncnn-Vulkan: Loaded {model_name} via raw ncnn (GPU {gpu_id})")
+
+        with _model_lock:
+            state.ncnn_upscaler = upscaler
+            state.ncnn_model_name = model_name
+            state.ncnn_model_scale = scale
+            state.ncnn_gpu_id = gpu_id
+            state.current_model = model_name
+            state.current_model_type = "ncnn"
+            state.current_model_input_frames = model_info.get("input_frames", 1)
+            state.onnx_model_scale = scale  # For compatibility with benchmark
+            state.providers = ["VulkanComputeProvider"]
+            state.last_load_error = None
+
+        # Update model usage tracking
+        state.model_last_used[model_name] = time.time()
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to load ncnn model {model_name}: {e}")
+        state.last_load_error = str(e)
+        return False
+
+
+def upscale_with_ncnn(img: np.ndarray) -> np.ndarray:
+    """Upscale image using ncnn-Vulkan backend.
+    Uses RealSR wrapper (tile-based internally) or raw ncnn inference."""
+    with _model_lock:
+        upscaler = state.ncnn_upscaler
+        scale = state.ncnn_model_scale
+
+    if upscaler is None:
+        raise ValueError("No ncnn model loaded")
+
+    if RealSR is not None and isinstance(upscaler, RealSR):
+        # RealSR wrapper handles tiling internally
+        # Convert BGR (OpenCV) to PIL Image for the wrapper
+        from PIL import Image as PILImage
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        pil_img = PILImage.fromarray(img_rgb)
+        result_pil = upscaler.process(pil_img)
+        result_rgb = np.array(result_pil)
+        return cv2.cvtColor(result_rgb, cv2.COLOR_RGB2BGR)
+    else:
+        # Raw ncnn — manual tile-based inference
+        h, w = img.shape[:2]
+        tile_size = ONNX_TILE_SIZE
+        overlap = 32
+        out_h, out_w = h * scale, w * scale
+        output = np.zeros((out_h, out_w, 3), dtype=np.uint8)
+
+        for y in range(0, h, tile_size - overlap):
+            for x in range(0, w, tile_size - overlap):
+                ty = min(y, h - tile_size) if y + tile_size > h else y
+                tx = min(x, w - tile_size) if x + tile_size > w else x
+                tile = img[ty:ty+tile_size, tx:tx+tile_size]
+
+                # ncnn inference
+                mat_in = ncnn.Mat.from_pixels(tile, ncnn.Mat.PixelType.PIXEL_BGR, tile.shape[1], tile.shape[0])
+                ex = upscaler.create_extractor()
+                ex.input("data", mat_in)
+                _, mat_out = ex.extract("output")
+                result_tile = np.array(mat_out).reshape(tile_size * scale, tile_size * scale, 3)
+
+                oy, ox = ty * scale, tx * scale
+                output[oy:oy+tile_size*scale, ox:ox+tile_size*scale] = result_tile
+
+        return output
 
 
 def _probe_tensorrt_subprocess(model_path_str: str, device_id: int) -> bool:
@@ -1247,9 +1410,12 @@ def upscale_image(image_bytes: bytes) -> bytes:
     elif state.current_model_type == "onnx" and state.onnx_session is not None:
         # Upscale using ONNX Runtime (Real-ESRGAN)
         result = upscale_with_onnx(img)
+    elif state.current_model_type == "ncnn" and state.ncnn_upscaler is not None:
+        # Upscale using ncnn-Vulkan
+        result = upscale_with_ncnn(img)
     else:
         raise ValueError("No model loaded")
-    
+
     # Encode as PNG
     _, buffer = cv2.imencode('.png', result)
     return buffer.tobytes()
@@ -1472,6 +1638,8 @@ def upscale_image_array(img: np.ndarray) -> np.ndarray:
         return cv_model.upsample(img)
     elif model_type == "onnx" and onnx_session is not None:
         return upscale_with_onnx(img)
+    elif model_type == "ncnn" and state.ncnn_upscaler is not None:
+        return upscale_with_ncnn(img)
     else:
         raise ValueError("No model loaded")
 

@@ -1,0 +1,77 @@
+# Vulkan GPU Dockerfile for AI Upscaler Service
+# For AMD pre-RDNA2 (RX 5700, etc.), Intel iGPUs, or any Vulkan-capable GPU
+# Uses ncnn framework with Vulkan compute shaders for super-resolution
+
+FROM python:3.11-slim-bookworm
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
+ENV USE_GPU=true
+ENV VULKAN_BACKEND=true
+
+WORKDIR /app
+
+# Install system dependencies: Vulkan SDK + Mesa drivers + OpenCV deps + SSH
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Vulkan runtime and ICD loaders
+    libvulkan1 \
+    libvulkan-dev \
+    vulkan-tools \
+    mesa-vulkan-drivers \
+    # Mesa for AMD RADV + Intel ANV Vulkan drivers
+    libgl1-mesa-dri \
+    # OpenCV dependencies
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    # Build tools for ncnn (if pip wheel unavailable)
+    cmake \
+    build-essential \
+    # Utilities
+    curl \
+    openssh-server \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Configure SSH (key-based auth only, no passwords)
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
+    && sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config \
+    && sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config \
+    && sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords no/' /etc/ssh/sshd_config
+
+# Copy requirements first for better caching
+COPY requirements-vulkan.txt ./requirements.txt
+
+# Install Python dependencies
+# Note: realsr-ncnn-vulkan-python may need to build from source if no wheel
+RUN pip install --no-cache-dir -r requirements.txt || \
+    (echo "Falling back: installing ncnn-vulkan from source..." && \
+     pip install --no-cache-dir ncnn-vulkan && \
+     pip install --no-cache-dir -r requirements.txt)
+
+# Copy application code
+COPY app/ ./app/
+COPY static/ ./static/
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Create directories for models and cache
+RUN mkdir -p /app/models /app/cache /run/sshd
+
+# Create Vulkan ICD directory for runtime GPU detection
+RUN mkdir -p /etc/vulkan/icd.d
+
+# Expose ports (API and SSH)
+EXPOSE 5000 22
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:5000/health || exit 1
+
+# Run the application via entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000"]

@@ -73,22 +73,25 @@ namespace JellyfinUpscalerPlugin.Controllers
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult> GetAvailableModels()
         {
-            // Proxy the Docker AI service's /models endpoint to get the full model list (34 models)
+            // Proxy the Docker AI service's /models endpoint to get the full model list (35+ models)
             var config = Plugin.Instance?.Configuration;
             var baseUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
 
             try
             {
-                var response = await _aiServiceClient.GetAsync($"{baseUrl}/models");
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var response = await _aiServiceClient.GetAsync($"{baseUrl}/models", cts.Token);
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadAsStringAsync();
+                    _logger.LogDebug("Models proxy success from {Url}: {Length} chars", baseUrl, json.Length);
                     return Content(json, "application/json");
                 }
+                _logger.LogWarning("Models proxy failed: HTTP {Status} from {Url}", (int)response.StatusCode, baseUrl);
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Could not reach Docker AI service for model list, using fallback");
+                _logger.LogWarning("Could not reach Docker AI service at {Url}/models: {Error}", baseUrl, ex.Message);
             }
 
             // Fallback: return hardcoded base models if Docker service is unavailable
