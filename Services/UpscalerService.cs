@@ -43,7 +43,8 @@ namespace JellyfinUpscalerPlugin.Services
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("AI Upscaler Service v1.5.4.3: Starting background service");
+            var version = typeof(Plugin).Assembly.GetName().Version?.ToString(4) ?? "unknown";
+            _logger.LogInformation("AI Upscaler Service v{Version}: Starting background service", version);
 
             // Initialize queue with plugin data path
             var dataPath = Plugin.Instance?.DataFolderPath;

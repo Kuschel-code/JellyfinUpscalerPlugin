@@ -157,7 +157,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 hardwareAcceleration = config.HardwareAcceleration,
                 maxConcurrentStreams = config.MaxConcurrentStreams,
                 isProcessing = false, // Placeholder for actual processing state
-                version = typeof(Plugin).Assembly.GetName().Version?.ToString(4) ?? "1.5.2.9"
+                version = typeof(Plugin).Assembly.GetName().Version?.ToString(4) ?? "unknown"
             });
         }
 
