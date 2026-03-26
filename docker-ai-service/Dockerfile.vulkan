@@ -77,7 +77,10 @@ COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Create non-root user for running the service
-RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
+# Add to render + video groups for Vulkan GPU device access (/dev/dri/renderD*)
+RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser && \
+    usermod -aG render appuser 2>/dev/null || true && \
+    usermod -aG video appuser 2>/dev/null || true
 
 # Create directories for models and cache
 RUN mkdir -p /app/models /app/cache && \
