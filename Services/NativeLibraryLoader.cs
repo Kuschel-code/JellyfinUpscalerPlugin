@@ -32,11 +32,11 @@ namespace JellyfinUpscalerPlugin.Services
 
             if (!Directory.Exists(runtimesPath))
             {
-                _logger.LogWarning($"Native library directory not found: {runtimesPath}");
+                _logger.LogWarning("Native library directory not found: {RuntimesPath}", runtimesPath);
                 return;
             }
 
-            _logger.LogInformation($"Loading native libraries from: {runtimesPath}");
+            _logger.LogInformation("Loading native libraries from: {RuntimesPath}", runtimesPath);
 
             var extension = _platformService.GetNativeLibraryExtension();
             var nativeFiles = Directory.GetFiles(runtimesPath, $"*{extension}");
@@ -47,16 +47,16 @@ namespace JellyfinUpscalerPlugin.Services
                 {
                     if (NativeLibrary.TryLoad(nativeFile, out var handle))
                     {
-                        _logger.LogInformation($"Successfully loaded native library: {Path.GetFileName(nativeFile)}");
+                        _logger.LogInformation("Successfully loaded native library: {LibraryName}", Path.GetFileName(nativeFile));
                     }
                     else
                     {
-                        _logger.LogWarning($"Failed to load native library: {Path.GetFileName(nativeFile)}");
+                        _logger.LogWarning("Failed to load native library: {LibraryName}", Path.GetFileName(nativeFile));
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"Error loading native library: {Path.GetFileName(nativeFile)}");
+                    _logger.LogError(ex, "Error loading native library: {LibraryName}", Path.GetFileName(nativeFile));
                 }
             }
         }
@@ -71,7 +71,7 @@ namespace JellyfinUpscalerPlugin.Services
 
             if (!File.Exists(libraryPath))
             {
-                _logger.LogWarning($"Library not found: {libraryPath}");
+                _logger.LogWarning("Library not found: {LibraryPath}", libraryPath);
                 return false;
             }
 
@@ -80,17 +80,17 @@ namespace JellyfinUpscalerPlugin.Services
                 var success = NativeLibrary.TryLoad(libraryPath, out handle);
                 if (success)
                 {
-                    _logger.LogInformation($"Successfully loaded library: {libraryName}");
+                    _logger.LogInformation("Successfully loaded library: {LibraryName}", libraryName);
                 }
                 else
                 {
-                    _logger.LogWarning($"Failed to load library: {libraryName}");
+                    _logger.LogWarning("Failed to load library: {LibraryName}", libraryName);
                 }
                 return success;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error loading library: {libraryName}");
+                _logger.LogError(ex, "Error loading library: {LibraryName}", libraryName);
                 return false;
             }
         }

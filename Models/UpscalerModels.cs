@@ -106,7 +106,7 @@ namespace JellyfinUpscalerPlugin.Models
         public VideoProcessingResult Result { get; set; } = new();
         public string Error { get; set; } = "";
         
-        public TimeSpan ProcessingDuration => EndTime > StartTime ? EndTime - StartTime : DateTime.Now - StartTime;
+        public TimeSpan ProcessingDuration => EndTime > StartTime ? EndTime - StartTime : DateTime.UtcNow - StartTime;
     }
 
     /// <summary>

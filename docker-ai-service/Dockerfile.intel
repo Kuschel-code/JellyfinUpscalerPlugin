@@ -28,7 +28,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pciutils \
     gpg-agent \
     software-properties-common \
-    openssh-server \
     ocl-icd-libopencl1 \
     clinfo \
     && rm -rf /var/lib/apt/lists/*
@@ -60,12 +59,6 @@ RUN usermod -aG render root 2>/dev/null || true && \
     usermod -aG render openvino 2>/dev/null || true && \
     usermod -aG video openvino 2>/dev/null || true
 
-# Configure SSH (key-based auth only, no passwords)
-RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
-    && sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config \
-    && sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config \
-    && sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords no/' /etc/ssh/sshd_config
-
 # Copy requirements first for better caching
 COPY requirements-intel.txt ./requirements.txt
 
@@ -78,25 +71,18 @@ COPY static/ ./static/
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Create directories for models and cache and ensure SSH directories exist
-RUN mkdir -p /app/models /app/cache /run/sshd && \
-    chown -R openvino:openvino /app /entrypoint.sh /etc/ssh /run/sshd
+# Create directories for models and cache
+RUN mkdir -p /app/models /app/cache && \
+    chown -R openvino:openvino /app /entrypoint.sh
 
-# Switch back to non-root user
-# NOTE: To run SSHD usually requires root. For this container we might need to stay root 
-# or configure non-root SSH. For simplicity in this plugin architecture (where user expects root-like access for transcoding),
-# we will try to run as root OR user needs to map user. 
-# Reverting to ROOT for SSHD compatibility for now, or user 'openvino' needs rights.
-# Standard SSHD needs root to start.
-# Keeping USER root is safest for SSHD. 
+# Run as non-root openvino user for security
+USER openvino
 
-# USER openvino  <-- Commented out to allow SSHD startup
-
-# Expose ports (API and SSH)
-EXPOSE 5000 22
+# Expose API port
+EXPOSE 5000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
 # Run the application via entrypoint

@@ -53,7 +53,7 @@ namespace JellyfinUpscalerPlugin.Services
                     System.Threading.CancellationToken.None
                 );
 
-                _logger.LogDebug($"📊 Progress update sent: {message.FileName} - {message.Progress:F1}%");
+                _logger.LogDebug("Progress update sent: {FileName} - {Progress:F1}%", message.FileName, message.Progress);
             }
             catch (Exception ex)
             {

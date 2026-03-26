@@ -26,13 +26,13 @@ namespace JellyfinUpscalerPlugin.Services
         {
             try
             {
-                _logger.LogInformation("🔧 Attempting to configure FFmpeg wrapper...");
+                _logger.LogInformation("Attempting to configure FFmpeg wrapper...");
 
                 // Locate Jellyfin config directory
                 var configDir = FindJellyfinConfigDir();
                 if (string.IsNullOrEmpty(configDir))
                 {
-                    _logger.LogWarning("⚠️ Could not locate Jellyfin config directory");
+                    _logger.LogWarning("Could not locate Jellyfin config directory");
                     CreateWrapperInstructionsFile();
                     return;
                 }
@@ -43,7 +43,7 @@ namespace JellyfinUpscalerPlugin.Services
                 var wrapperPath = DeployWrapperScripts(configDir);
                 if (string.IsNullOrEmpty(wrapperPath))
                 {
-                    _logger.LogWarning("⚠️ Failed to deploy wrapper scripts");
+                    _logger.LogWarning("Failed to deploy wrapper scripts");
                     return;
                 }
 
@@ -57,11 +57,11 @@ namespace JellyfinUpscalerPlugin.Services
                     CreateEncodingXml(encodingXmlPath, wrapperPath);
                 }
 
-                _logger.LogInformation($"✅ FFmpeg wrapper configured at: {wrapperPath}");
+                _logger.LogInformation("FFmpeg wrapper configured at: {WrapperPath}", wrapperPath);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to setup FFmpeg wrapper");
+                _logger.LogError(ex, "Failed to setup FFmpeg wrapper");
                 CreateWrapperInstructionsFile();
             }
         }
@@ -85,7 +85,7 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
                 {
-                    _logger.LogInformation($"📁 Found Jellyfin config directory: {path}");
+                    _logger.LogInformation("Found Jellyfin config directory: {ConfigPath}", path);
                     return path;
                 }
             }
@@ -127,7 +127,7 @@ namespace JellyfinUpscalerPlugin.Services
                         catch { }
                     }
 
-                    _logger.LogInformation($"📋 Deployed wrapper script to: {targetWrapper}");
+                    _logger.LogInformation("Deployed wrapper script to: {TargetWrapper}", targetWrapper);
                     return targetWrapper;
                 }
 
@@ -164,7 +164,7 @@ namespace JellyfinUpscalerPlugin.Services
                 }
 
                 File.WriteAllText(xmlPath, xml);
-                _logger.LogInformation($"✅ Updated encoding.xml with wrapper path");
+                _logger.LogInformation("Updated encoding.xml with wrapper path");
             }
             catch (Exception ex)
             {
@@ -190,7 +190,7 @@ namespace JellyfinUpscalerPlugin.Services
 </EncodingOptions>";
 
                 File.WriteAllText(xmlPath, xml);
-                _logger.LogInformation($"✅ Created encoding.xml with wrapper path");
+                _logger.LogInformation("Created encoding.xml with wrapper path");
             }
             catch (Exception ex)
             {
@@ -240,7 +240,7 @@ For support, visit: https://github.com/Kuschel-code/JellyfinUpscalerPlugin
 ";
 
                 File.WriteAllText(instructionsPath, instructions);
-                _logger.LogInformation($"📄 Created setup instructions at: {instructionsPath}");
+                _logger.LogInformation("Created setup instructions at: {InstructionsPath}", instructionsPath);
             }
             catch (Exception ex)
             {

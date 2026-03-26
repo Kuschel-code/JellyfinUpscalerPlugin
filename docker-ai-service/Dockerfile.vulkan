@@ -13,7 +13,7 @@ ENV VULKAN_BACKEND=true
 
 WORKDIR /app
 
-# Install system dependencies: Vulkan SDK + Mesa drivers + OpenCV deps + SSH + build tools
+# Install system dependencies: Vulkan SDK + Mesa drivers + OpenCV deps + build tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # Vulkan runtime, ICD loaders, and development headers
     libvulkan1 \
@@ -37,15 +37,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     # Utilities
     curl \
-    openssh-server \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-# Configure SSH (key-based auth only, no passwords)
-RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
-    && sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config \
-    && sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config \
-    && sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords no/' /etc/ssh/sshd_config
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
 COPY requirements-vulkan.txt ./requirements.txt
@@ -59,7 +52,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir \
     fastapi==0.109.0 \
     "uvicorn[standard]==0.27.0" \
-    python-multipart==0.0.6 \
+    python-multipart>=0.0.7 \
     aiofiles==23.2.1 \
     "onnxruntime>=1.17.0" \
     "numpy>=1.24.0,<2.0.0" \
@@ -72,7 +65,7 @@ RUN pip install --no-cache-dir realsr-ncnn-vulkan-python 2>/dev/null || \
     pip install --no-cache-dir ncnn-vulkan 2>/dev/null || \
     (echo "Building ncnn from source with Vulkan support..." && \
      pip install --no-cache-dir pybind11 && \
-     git clone --depth 1 https://github.com/Tencent/ncnn.git /tmp/ncnn && \
+     git clone --depth 1 --branch 20250503 --single-branch https://github.com/Tencent/ncnn.git /tmp/ncnn && \
      cd /tmp/ncnn && mkdir build && cd build && \
      cmake -G Ninja \
        -DCMAKE_BUILD_TYPE=Release \
@@ -93,17 +86,24 @@ COPY static/ ./static/
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+# Create non-root user for running the service
+RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
+
 # Create directories for models and cache
-RUN mkdir -p /app/models /app/cache /run/sshd
+RUN mkdir -p /app/models /app/cache && \
+    chown -R appuser:appuser /app
 
 # Create Vulkan ICD directory for runtime GPU detection
 RUN mkdir -p /etc/vulkan/icd.d
 
-# Expose ports (API and SSH)
-EXPOSE 5000 22
+# Expose API port
+EXPOSE 5000
+
+# Run as non-root user
+USER appuser
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
 # Run the application via entrypoint

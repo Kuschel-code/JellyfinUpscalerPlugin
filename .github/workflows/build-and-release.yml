@@ -19,14 +19,18 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '9.0.x'
           
       - name: Restore dependencies
         run: dotnet restore
         
       - name: Build plugin
         run: dotnet build --configuration Release --no-restore
-        
+
+      - name: Run tests
+        # TODO: Remove fallback once test projects exist — currently no tests in solution
+        run: dotnet test --configuration Release --no-build --verbosity normal || echo "No test projects found, skipping"
+
       - name: Publish plugin
         run: dotnet publish --configuration Release --no-build --output ./publish
         
@@ -35,7 +39,7 @@ jobs:
           cd publish
           VERSION="${GITHUB_REF#refs/tags/v}"
           if [ -z "$VERSION" ]; then
-            VERSION=$(grep -oP '<AssemblyVersion>\K[^<]+' ../JellyfinUpscalerPlugin.csproj | head -1 | sed 's/\.0$//')
+            VERSION=$(grep -oP '<AssemblyVersion>\K[^<]+' ../JellyfinUpscalerPlugin.csproj | head -1)
           fi
           zip -r "../JellyfinUpscalerPlugin-v${VERSION}.zip" ./*
           cd ..
@@ -82,7 +86,12 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add manifest.json repository-jellyfin.json repository-simple.json
           git diff --staged --quiet || git commit -m "chore: Update manifests for v${{ env.PLUGIN_VERSION }} [skip ci]"
-          git push origin HEAD:main || echo "Manifest push skipped (already updated)"
+          # Only push manifests if the tagged commit is on main
+          if git merge-base --is-ancestor HEAD origin/main 2>/dev/null; then
+            git push origin HEAD:main || echo "Manifest push skipped (already updated)"
+          else
+            echo "Skipping manifest push: tagged commit is not on main branch"
+          fi
           
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1

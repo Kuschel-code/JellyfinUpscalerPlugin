@@ -98,8 +98,8 @@ namespace JellyfinUpscalerPlugin.Services
                 }
             }
 
-            _logger.LogInformation($"Generated FFmpeg wrapper script at: {wrapperPath}");
-            if (_platformService.IsWindows) _logger.LogInformation($"Generated PowerShell logic script at: {psScriptPath}");
+            _logger.LogInformation("Generated FFmpeg wrapper script at: {WrapperPath}", wrapperPath);
+            if (_platformService.IsWindows) _logger.LogInformation("Generated PowerShell logic script at: {PsScriptPath}", psScriptPath);
             
             return wrapperPath;
         }
@@ -270,8 +270,8 @@ exec ""$REAL_FFMPEG"" ""$@""
                 var activeMarkerPath = Path.Combine(_pluginDirectory, "wrapper_active");
                 await File.WriteAllTextAsync(activeMarkerPath, DateTime.UtcNow.ToString("O"));
 
-                _logger.LogInformation($"FFmpeg wrapper installed at: {wrapperPath}");
-                _logger.LogInformation("IMPORTANT: Update Jellyfin's FFmpeg path to: " + wrapperPath);
+                _logger.LogInformation("FFmpeg wrapper installed at: {WrapperPath}", wrapperPath);
+                _logger.LogInformation("IMPORTANT: Update Jellyfin's FFmpeg path to: {WrapperPath}", wrapperPath);
                 
                 return true;
             }

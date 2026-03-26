@@ -25,7 +25,7 @@ namespace JellyfinUpscalerPlugin.Services
             _logger = logger;
             _upscalerCore = upscalerCore;
             
-            _logger.LogInformation("🎬 TranscodingProfileManager initialized for AI upscaling");
+            _logger.LogInformation("TranscodingProfileManager initialized for AI upscaling");
         }
 
         /// <summary>

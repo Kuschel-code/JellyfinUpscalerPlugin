@@ -30,16 +30,8 @@ namespace JellyfinUpscalerPlugin.Controllers
     [ApiController]
     [Authorize]
     [Route("api/[controller]")]
-    [Route("[controller]")]
     public class UpscalerController : ControllerBase
     {
-        /// <summary>
-        /// Shared HttpClient for AI service proxy calls (UpscaleFrame, BenchmarkFrame, GetGpuList).
-        /// Avoids socket exhaustion from creating a new HttpClient per request.
-        /// </summary>
-        private static readonly HttpClient _aiServiceClient = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
-        private static readonly HttpClient _multiFrameClient = new HttpClient { Timeout = TimeSpan.FromSeconds(300) };
-
         private readonly ILogger<UpscalerController> _logger;
         private readonly ILibraryManager _libraryManager;
         private readonly ISessionManager _sessionManager;
@@ -48,6 +40,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         private readonly VideoProcessor _videoProcessor;
         private readonly CacheManager _cacheManager;
         private readonly ProcessingQueue _processingQueue;
+        private readonly IHttpClientFactory _httpClientFactory;
 
         public UpscalerController(
             ILogger<UpscalerController> logger,
@@ -57,7 +50,8 @@ namespace JellyfinUpscalerPlugin.Controllers
             UpscalerCore upscalerCore,
             VideoProcessor videoProcessor,
             CacheManager cacheManager,
-            ProcessingQueue processingQueue)
+            ProcessingQueue processingQueue,
+            IHttpClientFactory httpClientFactory)
         {
             _logger = logger;
             _libraryManager = libraryManager;
@@ -67,7 +61,15 @@ namespace JellyfinUpscalerPlugin.Controllers
             _videoProcessor = videoProcessor;
             _cacheManager = cacheManager;
             _processingQueue = processingQueue;
+            _httpClientFactory = httpClientFactory;
         }
+
+        /// <summary>
+        /// Get an HttpClient from the factory for AI service proxy calls.
+        /// Uses IHttpClientFactory for proper DNS refresh and connection pooling.
+        /// </summary>
+        private HttpClient GetAiServiceClient() => _httpClientFactory.CreateClient("AiUpscaler");
+        private HttpClient GetMultiFrameClient() => _httpClientFactory.CreateClient("AiUpscalerLongTimeout");
 
         [HttpGet("models")]
         [Produces(MediaTypeNames.Application.Json)]
@@ -80,7 +82,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             try
             {
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                var response = await _aiServiceClient.GetAsync($"{baseUrl}/models", cts.Token);
+                var response = await GetAiServiceClient().GetAsync($"{baseUrl}/models", cts.Token);
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadAsStringAsync();
@@ -133,7 +135,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Failed to serve JS component: {name}");
+                _logger.LogError(ex, "Failed to serve JS component: {Name}", name);
                 return StatusCode(500);
             }
         }
@@ -395,7 +397,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Failed to generate comparison data for item {itemId}");
+                _logger.LogError(ex, "Failed to generate comparison data for item {ItemId}", itemId);
                 return StatusCode(500, new { message = "Comparison failed", error = ex.Message });
             }
         }
@@ -618,7 +620,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Failed to process item {itemId}");
+                _logger.LogError(ex, "Failed to process item {ItemId}", itemId);
                 return StatusCode(500, new { success = false, error = ex.Message });
             }
         }
@@ -640,6 +642,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpPost("jobs/{jobId}/pause")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> PauseJob(string jobId)
         {
@@ -657,12 +660,13 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Failed to pause job {jobId}");
+                _logger.LogError(ex, "Failed to pause job {JobId}", jobId);
                 return StatusCode(500, new { success = false, error = ex.Message });
             }
         }
 
         [HttpPost("jobs/{jobId}/resume")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> ResumeJob(string jobId)
         {
@@ -680,12 +684,13 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Failed to resume job {jobId}");
+                _logger.LogError(ex, "Failed to resume job {JobId}", jobId);
                 return StatusCode(500, new { success = false, error = ex.Message });
             }
         }
 
         [HttpPost("jobs/{jobId}/cancel")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> CancelJob(string jobId)
         {
@@ -703,7 +708,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Failed to cancel job {jobId}");
+                _logger.LogError(ex, "Failed to cancel job {JobId}", jobId);
                 return StatusCode(500, new { success = false, error = ex.Message });
             }
         }
@@ -714,6 +719,7 @@ namespace JellyfinUpscalerPlugin.Controllers
 
         /// <summary>Get queue status — pending, active, completed jobs.</summary>
         [HttpGet("queue")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetQueueStatus()
         {
@@ -733,6 +739,16 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             if (string.IsNullOrEmpty(inputPath))
                 return BadRequest(new { success = false, error = "inputPath required" });
+
+            // Path traversal protection — normalize and block system paths
+            inputPath = Path.GetFullPath(inputPath);
+            var blockedPrefixes = new[] { "/etc", "/usr", "/bin", "/sbin", "/boot", "/proc", "/sys", "/dev",
+                @"C:\Windows", @"C:\Program Files", @"C:\Program Files (x86)" };
+            if (blockedPrefixes.Any(p => inputPath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+                return BadRequest(new { success = false, error = "Access to system paths is not allowed" });
+
+            if (outputPath != null)
+                outputPath = Path.GetFullPath(outputPath);
 
             var effectiveOutput = outputPath ?? Path.Combine(
                 Path.GetDirectoryName(inputPath) ?? "",
@@ -905,13 +921,23 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
+                if (string.IsNullOrEmpty(request.InputPath))
+                    return BadRequest(new { success = false, error = "InputPath required" });
+
+                // Path traversal protection
+                var normalizedPath = Path.GetFullPath(request.InputPath);
+                var blockedPrefixes = new[] { "/etc", "/usr", "/bin", "/sbin", "/boot", "/proc", "/sys",
+                    @"C:\Windows", @"C:\Program Files", @"C:\Program Files (x86)" };
+                if (blockedPrefixes.Any(p => normalizedPath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+                    return BadRequest(new { success = false, error = "Access to system paths is not allowed" });
+
                 var success = await _cacheManager.PreProcessContentAsync(
-                    request.InputPath,
+                    normalizedPath,
                     request.Model ?? "auto",
                     request.Scale ?? 2,
                     request.Quality ?? "medium",
                     _videoProcessor);
-                
+
                 return Ok(new { success = success });
             }
             catch (Exception ex)
@@ -970,10 +996,10 @@ namespace JellyfinUpscalerPlugin.Controllers
                         config.CpuThreads,
                         config.AiServiceUrl,
                         config.EnableRemoteTranscoding,
-                        config.RemoteHost,
-                        config.RemoteSshPort,
-                        config.RemoteUser,
-                        config.RemoteSshKeyFile,
+                        RemoteHost = "[REDACTED]",
+                        RemoteSshPort = "[REDACTED]",
+                        RemoteUser = "[REDACTED]",
+                        RemoteSshKeyFile = "[REDACTED]",
                         config.LocalMediaMountPoint,
                         config.RemoteMediaMountPoint,
                         config.RemoteTranscodePath,
@@ -1118,7 +1144,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             {
                 var config = Plugin.Instance?.Configuration;
                 var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
-                var response = await _aiServiceClient.GetAsync($"{serviceUrl}/gpus");
+                var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/gpus");
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
@@ -1180,7 +1206,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                     new KeyValuePair<string, string>("use_gpu", useGpu.ToString().ToLower()),
                     new KeyValuePair<string, string>("gpu_device_id", gpuDeviceId.ToString())
                 });
-                var response = await _aiServiceClient.PostAsync($"{serviceUrl}/models/load", formContent);
+                var response = await GetAiServiceClient().PostAsync($"{serviceUrl}/models/load", formContent);
                 var content = await response.Content.ReadAsStringAsync();
                 return new ContentResult { Content = content, ContentType = "application/json", StatusCode = (int)response.StatusCode };
             }
@@ -1203,7 +1229,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             {
                 var config = Plugin.Instance?.Configuration;
                 var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
-                var response = await _aiServiceClient.GetAsync($"{serviceUrl}/benchmark");
+                var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/benchmark");
                 var content = await response.Content.ReadAsStringAsync();
                 return new ContentResult { Content = content, ContentType = "application/json", StatusCode = (int)response.StatusCode };
             }
@@ -1218,6 +1244,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Proxy: Get Prometheus metrics from Docker AI service.
         /// </summary>
         [HttpGet("metrics")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces("text/plain")]
         public async Task<ActionResult> GetMetrics()
         {
@@ -1225,7 +1252,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             {
                 var config = Plugin.Instance?.Configuration;
                 var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
-                var response = await _aiServiceClient.GetAsync($"{serviceUrl}/metrics");
+                var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/metrics");
                 var content = await response.Content.ReadAsStringAsync();
                 return Content(content, "text/plain");
             }
@@ -1237,9 +1264,135 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
+        /// Proxy: GPU verification diagnostics from Docker service.
+        /// </summary>
+        [HttpGet("gpu-verify")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult> GpuVerify()
+        {
+            try
+            {
+                var config = Plugin.Instance?.Configuration;
+                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/gpu-verify");
+                var content = await response.Content.ReadAsStringAsync();
+                return Content(content, "application/json");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to get GPU verify");
+                return StatusCode(503, new { error = "AI service unavailable" });
+            }
+        }
+
+        /// <summary>
+        /// Proxy: Detailed health endpoint from Docker service (includes circuit breaker state).
+        /// </summary>
+        [HttpGet("health/detailed")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult> HealthDetailed()
+        {
+            try
+            {
+                var config = Plugin.Instance?.Configuration;
+                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/health/detailed");
+                var content = await response.Content.ReadAsStringAsync();
+                return Content(content, "application/json");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to get detailed health");
+                return StatusCode(503, new { error = "AI service unavailable" });
+            }
+        }
+
+        /// <summary>
+        /// Proxy: Update Docker AI service configuration (max_concurrent, GPU settings).
+        /// </summary>
+        [HttpPost("service-config")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult> UpdateServiceConfig([FromQuery] bool? use_gpu, [FromQuery] int? max_concurrent, [FromQuery] int? gpu_device_id)
+        {
+            try
+            {
+                var config = Plugin.Instance?.Configuration;
+                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+
+                var formData = new List<KeyValuePair<string, string>>();
+                if (use_gpu.HasValue) formData.Add(new("use_gpu", use_gpu.Value.ToString().ToLower()));
+                if (max_concurrent.HasValue) formData.Add(new("max_concurrent", max_concurrent.Value.ToString()));
+                if (gpu_device_id.HasValue) formData.Add(new("gpu_device_id", gpu_device_id.Value.ToString()));
+
+                using var content = new FormUrlEncodedContent(formData);
+                var response = await GetAiServiceClient().PostAsync($"{serviceUrl}/config", content);
+                var result = await response.Content.ReadAsStringAsync();
+                return Content(result, "application/json");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to update service config");
+                return StatusCode(503, new { error = "AI service unavailable" });
+            }
+        }
+
+        /// <summary>
+        /// Proxy: Model disk usage from Docker service.
+        /// </summary>
+        [HttpGet("models/disk-usage")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult> ModelsDiskUsage()
+        {
+            try
+            {
+                var config = Plugin.Instance?.Configuration;
+                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/models/disk-usage");
+                var content = await response.Content.ReadAsStringAsync();
+                return Content(content, "application/json");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to get model disk usage");
+                return StatusCode(503, new { error = "AI service unavailable" });
+            }
+        }
+
+        /// <summary>
+        /// Proxy: Model cleanup on Docker service (LRU removal of unused models).
+        /// </summary>
+        [HttpPost("models/cleanup")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult> ModelsCleanup([FromQuery] int max_age_days = 30, [FromQuery] bool dry_run = true)
+        {
+            try
+            {
+                var config = Plugin.Instance?.Configuration;
+                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                var response = await GetAiServiceClient().PostAsync(
+                    $"{serviceUrl}/models/cleanup?max_age_days={max_age_days}&dry_run={dry_run.ToString().ToLower()}",
+                    null);
+                var content = await response.Content.ReadAsStringAsync();
+                return Content(content, "application/json");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to cleanup models");
+                return StatusCode(503, new { error = "AI service unavailable" });
+            }
+        }
+
+        /// <summary>
         /// Proxy: Real-time frame upscaling. Raw JPEG body in, JPEG out. Returns 503 when AI service is busy.
         /// </summary>
         [HttpPost("upscale-frame")]
+        [Authorize(Policy = "RequiresElevation")]
+        [RequestSizeLimit(52_428_800)]
         public async Task<ActionResult> UpscaleFrame()
         {
             try
@@ -1258,7 +1411,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 using var content = new ByteArrayContent(body);
                 content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
 
-                var response = await _aiServiceClient.PostAsync($"{serviceUrl}/upscale-frame", content);
+                var response = await GetAiServiceClient().PostAsync($"{serviceUrl}/upscale-frame", content);
 
                 if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
                     return StatusCode(503, "AI service busy");
@@ -1284,6 +1437,8 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Proxy: Multi-frame video chunk upscaling. Forwards multipart form with N PNG frames to Docker service.
         /// </summary>
         [HttpPost("upscale-video-chunk")]
+        [Authorize(Policy = "RequiresElevation")]
+        [RequestSizeLimit(52_428_800)]
         public async Task<ActionResult> UpscaleVideoChunk()
         {
             var config = Plugin.Instance?.Configuration;
@@ -1306,7 +1461,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                     content.Add(byteContent, file.Name, file.FileName ?? file.Name);
                 }
 
-                var response = await _multiFrameClient.PostAsync($"{serviceUrl}/upscale-video-chunk", content);
+                var response = await GetMultiFrameClient().PostAsync($"{serviceUrl}/upscale-video-chunk", content);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -1330,6 +1485,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Proxy: Benchmark frame upscaling at a specific capture resolution.
         /// </summary>
         [HttpGet("benchmark-frame")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> BenchmarkFrame([FromQuery] int width = 480, [FromQuery] int height = 270)
         {
@@ -1338,7 +1494,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 var config = Plugin.Instance?.Configuration;
                 var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
 
-                var response = await _aiServiceClient.GetAsync($"{serviceUrl}/benchmark-frame?width={width}&height={height}");
+                var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/benchmark-frame?width={width}&height={height}");
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -1351,7 +1507,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Frame benchmark proxy failed");
-                return Ok(new { error = ex.Message });
+                return StatusCode(500, new { error = ex.Message });
             }
         }
 

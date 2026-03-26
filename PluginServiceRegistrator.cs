@@ -26,6 +26,10 @@ namespace JellyfinUpscalerPlugin
             // HTTP-based AI Service (Docker)
             serviceCollection.AddSingleton<HttpUpscalerService>();
 
+            // Named HttpClients for controller proxy calls (DNS refresh + connection pooling)
+            serviceCollection.AddHttpClient("AiUpscaler", c => c.Timeout = TimeSpan.FromSeconds(120));
+            serviceCollection.AddHttpClient("AiUpscalerLongTimeout", c => c.Timeout = TimeSpan.FromSeconds(300));
+
             // Background / Hosted Services
             serviceCollection.AddSingleton<HardwareBenchmarkService>();
             serviceCollection.AddHostedService<UpscalerService>();

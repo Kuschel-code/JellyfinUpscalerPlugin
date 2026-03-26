@@ -1,6 +1,6 @@
 """
 AI Upscaler Service - FastAPI Application
-Jellyfin AI Upscaler Plugin - Microservice Component v1.5.5
+Jellyfin AI Upscaler Plugin - Microservice Component v1.5.4.3
 Supports OpenCV DNN (.pb) and ONNX Runtime models with GPU detection
 Multi-GPU selection, robust TensorRT/CUDA/OpenVINO fallback
 """
@@ -13,7 +13,8 @@ import asyncio
 import platform
 import subprocess
 import threading
-import multiprocessing
+import hmac
+import urllib.parse
 from pathlib import Path
 from typing import Optional, Any, List
 from contextlib import asynccontextmanager
@@ -130,17 +131,28 @@ class AppState:
 
 state = AppState()
 
+
+class ModelNotReadyError(ValueError):
+    """Raised when no model is loaded and upscaling is attempted."""
+    pass
+
+
 # Concurrency semaphore — created lazily in lifespan() to avoid
 # asyncio.Semaphore before event loop exists (breaks Python 3.10+)
 import asyncio as _asyncio
-_upscale_semaphore = _asyncio.Semaphore(4)  # safe default, overwritten in lifespan() with actual config
+_upscale_semaphore: Optional[_asyncio.Semaphore] = None  # created in lifespan() to avoid event loop issues on Python 3.10+
 
 # Threading lock to prevent model-swap data races between load and inference
 _model_lock = threading.Lock()
 
+# Threading lock for circuit breaker state mutations
+_circuit_lock = threading.Lock()
+
 # Tile size for ONNX inference (prevents OOM on large images)
 ONNX_TILE_SIZE = int(os.getenv("ONNX_TILE_SIZE", "512"))
 ONNX_TILE_SIZE_MULTIFRAME = int(os.getenv("ONNX_TILE_SIZE_MULTIFRAME", "256"))
+
+MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(50 * 1024 * 1024)))  # 50 MB default
 
 # Available models with download URLs from PUBLIC sources
 # Note: Real-ESRGAN ONNX models need to be converted, using pre-converted from community
@@ -875,16 +887,28 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Middleware: reject oversized requests before reading body into memory
+@app.middleware("http")
+async def limit_body_size(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > MAX_UPLOAD_BYTES:
+        return JSONResponse(status_code=413, content={"detail": f"Request too large ({content_length} bytes, max {MAX_UPLOAD_BYTES})"})
+    return await call_next(request)
+
 # Mount static files
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 def get_model_path(model_name: str) -> Path:
-    """Get the file path for a model."""
+    """Get the file path for a model, with path traversal protection."""
     model_info = AVAILABLE_MODELS.get(model_name, {})
     ext = model_info.get("type", "pb")
-    return MODELS_DIR / f"{model_name}.{ext}"
+    safe_name = Path(model_name).name  # strip directory components
+    path = (MODELS_DIR / f"{safe_name}.{ext}").resolve()
+    if not str(path).startswith(str(MODELS_DIR.resolve())):
+        raise ValueError(f"Invalid model path for: {model_name}")
+    return path
 
 
 async def load_opencv_model(model_name: str, model_info: dict, model_path: Path) -> bool:
@@ -1074,7 +1098,7 @@ try:
     opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
     providers = ['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider']
     provider_options = [
-        {'device_id': dev_id, 'trt_max_workspace_size': '2147483648'},
+        {'device_id': int(dev_id), 'trt_max_workspace_size': 2147483648},
         {'device_id': dev_id},
         {}
     ]
@@ -1312,7 +1336,7 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
                         str(model_path), trt_opts,
                         providers=['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider'],
                         provider_options=[
-                            {'device_id': str(device_id), 'trt_max_workspace_size': '2147483648'},
+                            {'device_id': int(device_id), 'trt_max_workspace_size': 2147483648},
                             {'device_id': str(device_id)},
                             {}
                         ]
@@ -1369,34 +1393,48 @@ async def download_model(model_name: str) -> bool:
         logger.info(f"Model {model_name} already exists")
         return True
     
+    temp_path = model_path.with_suffix(".tmp")
     try:
         download_url = model_info.get("url")
-        
+
+        # Validate download URL against allowlist
+        _ALLOWED_DOWNLOAD_PREFIXES = (
+            "https://huggingface.co/",
+            "https://github.com/",
+            "https://raw.githubusercontent.com/",
+        )
+        if not download_url or not download_url.startswith(_ALLOWED_DOWNLOAD_PREFIXES):
+            raise ValueError("Download URL not from allowed domain")
+
         logger.info(f"Downloading model {model_name} from {download_url}")
-        
+
         async with httpx.AsyncClient(timeout=600.0, follow_redirects=True) as dl_client:
             async with dl_client.stream("GET", download_url) as response:
                 response.raise_for_status()
-                with open(model_path, "wb") as f:
+                with open(temp_path, "wb") as f:
                     async for chunk in response.aiter_bytes(chunk_size=65536):
                         f.write(chunk)
-        
+
+        # Atomic rename — prevents partial files surviving crashes
+        temp_path.rename(model_path)
+
         size_mb = model_path.stat().st_size / 1024 / 1024
         logger.info(f"Model {model_name} downloaded ({size_mb:.1f} MB)")
         return True
-        
+
     except Exception as e:
         logger.error(f"Failed to download model {model_name}: {e}")
-        if model_path.exists():
-            model_path.unlink()
+        # Only clean up temp file — never delete a pre-existing valid model
+        if temp_path.exists():
+            temp_path.unlink()
         return False
 
 
 def upscale_image(image_bytes: bytes) -> bytes:
     """Upscale an image using the loaded model (OpenCV or ONNX)."""
     if state.current_model is None:
-        raise ValueError("No model loaded")
-    
+        raise ModelNotReadyError("No model loaded")
+
     # Decode image
     nparr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -1414,7 +1452,7 @@ def upscale_image(image_bytes: bytes) -> bytes:
         # Upscale using ncnn-Vulkan
         result = upscale_with_ncnn(img)
     else:
-        raise ValueError("No model loaded")
+        raise ModelNotReadyError("No model loaded")
 
     # Encode as PNG
     _, buffer = cv2.imencode('.png', result)
@@ -1480,16 +1518,16 @@ def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
     # Tile-based processing for large images
     step = tile_size - overlap
     out_h, out_w = h * scale, w * scale
-    output = np.zeros((out_h, out_w, 3), dtype=np.float64)
-    weight = np.zeros((out_h, out_w, 3), dtype=np.float64)
+    output = np.zeros((out_h, out_w, 3), dtype=np.float32)
+    weight = np.zeros((out_h, out_w, 3), dtype=np.float32)
 
     # Build a per-tile blending mask (linear ramp on overlap borders)
     def _make_blend_weight(th: int, tw: int) -> np.ndarray:
         """Create a 2D blending weight array that tapers at edges for seamless stitching."""
-        wy = np.ones(th, dtype=np.float64)
-        wx = np.ones(tw, dtype=np.float64)
+        wy = np.ones(th, dtype=np.float32)
+        wx = np.ones(tw, dtype=np.float32)
         if overlap > 0:
-            ramp = np.linspace(0, 1, overlap, dtype=np.float64)
+            ramp = np.linspace(0, 1, overlap, dtype=np.float32)
             # Top / left ramp
             wy[:overlap] = ramp
             wx[:overlap] = ramp
@@ -1525,7 +1563,7 @@ def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
             blend_w = _make_blend_weight(actual_oh, actual_ow)
             blend_w3 = blend_w[:, :, None]  # broadcast to 3 channels
 
-            output[oy_start:oy_end, ox_start:ox_end] += out_tile.astype(np.float64) * blend_w3
+            output[oy_start:oy_end, ox_start:ox_end] += out_tile.astype(np.float32) * blend_w3
             weight[oy_start:oy_end, ox_start:ox_end] += blend_w3
 
     # Normalize by accumulated weight
@@ -1567,8 +1605,8 @@ def upscale_multiframe(frames: list) -> np.ndarray:
 
     # Tiled processing — same grid for all frames
     out_h, out_w = h * scale, w * scale
-    output = np.zeros((out_h, out_w, 3), dtype=np.float64)
-    weight = np.zeros((out_h, out_w, 3), dtype=np.float64)
+    output = np.zeros((out_h, out_w, 3), dtype=np.float32)
+    weight = np.zeros((out_h, out_w, 3), dtype=np.float32)
 
     step = tile_size - overlap
     y_tiles = list(range(0, max(h - tile_size, 0) + 1, step))
@@ -1603,8 +1641,8 @@ def upscale_multiframe(frames: list) -> np.ndarray:
 
             # Build blend weights using ACTUAL content size, not padded tile size
             # This prevents brightness artifacts at edges where tiles were zero-padded
-            blend_y = np.ones(actual_th, dtype=np.float64)
-            blend_x = np.ones(actual_tw, dtype=np.float64)
+            blend_y = np.ones(actual_th, dtype=np.float32)
+            blend_x = np.ones(actual_tw, dtype=np.float32)
             ramp = overlap * scale
             if ramp > 0:
                 for i in range(min(ramp, actual_th)):
@@ -1616,7 +1654,7 @@ def upscale_multiframe(frames: list) -> np.ndarray:
             blend_w = blend_y[:, None] * blend_x[None, :]
             blend_w3 = blend_w[:, :, None]
 
-            output[oy:oy_end, ox:ox_end] += out_tile[:actual_th, :actual_tw].astype(np.float64) * blend_w3
+            output[oy:oy_end, ox:ox_end] += out_tile[:actual_th, :actual_tw].astype(np.float32) * blend_w3
             weight[oy:oy_end, ox:ox_end] += blend_w3
 
     weight = np.maximum(weight, 1e-8)
@@ -1629,7 +1667,7 @@ def upscale_image_array(img: np.ndarray) -> np.ndarray:
     """Upscale a numpy image array using the loaded model. Avoids double encode/decode for frame pipeline."""
     with _model_lock:
         if state.current_model is None:
-            raise ValueError("No model loaded")
+            raise ModelNotReadyError("No model loaded")
         model_type = state.current_model_type
         cv_model = state.cv_model
         onnx_session = state.onnx_session
@@ -1641,7 +1679,7 @@ def upscale_image_array(img: np.ndarray) -> np.ndarray:
     elif model_type == "ncnn" and state.ncnn_upscaler is not None:
         return upscale_with_ncnn(img)
     else:
-        raise ValueError("No model loaded")
+        raise ModelNotReadyError("No model loaded")
 
 
 def run_benchmark(test_size: int = 256) -> dict:
@@ -1676,8 +1714,13 @@ def run_benchmark(test_size: int = 256) -> dict:
     avg_time = sum(times) / len(times)
     fps = 1.0 / avg_time if avg_time > 0 else 0
     
-    scale = state.onnx_model_scale if state.current_model_type == "onnx" else state.cv_model_scale
-    
+    if state.current_model_type == "onnx":
+        scale = state.onnx_model_scale
+    elif state.current_model_type == "ncnn":
+        scale = state.ncnn_model_scale
+    else:
+        scale = state.cv_model_scale
+
     result = {
         "model": state.current_model,
         "model_type": state.current_model_type,
@@ -1707,21 +1750,30 @@ async def root():
 @app.get("/health")
 async def health():
     """Health check endpoint."""
-    return {
-        "status": "healthy",
+    status_data = {
+        "status": "degraded" if state.circuit_open else "healthy",
         "model_loaded": state.current_model is not None,
         "model_name": state.current_model,
         "model_type": state.current_model_type,
         "providers": state.providers,
         "using_gpu": state.use_gpu,
-        "gpu_name": state.gpu_name
+        "gpu_name": state.gpu_name,
+        "circuit_open": state.circuit_open
     }
+    if state.circuit_open:
+        return JSONResponse(status_code=503, content=status_data)
+    return status_data
 
 
 @app.get("/status")
 async def status():
     """Get service status."""
-    scale = state.onnx_model_scale if state.current_model_type == "onnx" else (state.cv_model_scale if state.cv_model else None)
+    if state.current_model_type == "onnx":
+        scale = state.onnx_model_scale
+    elif state.current_model_type == "ncnn":
+        scale = state.ncnn_model_scale
+    else:
+        scale = state.cv_model_scale if state.cv_model else None
     
     # Check if CUDA is active
     has_cuda = any("CUDA" in p for p in state.providers)
@@ -1916,6 +1968,11 @@ async def register_connection(
     jellyfin_url: str = Form(...)
 ):
     """Register a plugin connection."""
+    # Validate jellyfin_url scheme
+    parsed = urllib.parse.urlparse(jellyfin_url)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="Invalid URL scheme. Only http:// and https:// are allowed.")
+
     connection = {
         "plugin_id": plugin_id,
         "jellyfin_url": jellyfin_url,
@@ -2025,11 +2082,16 @@ async def upscale_endpoint(
     """Upscale an image. Scale is determined by the loaded model; the scale parameter is validated for consistency."""
     _check_circuit_breaker()
 
-    if state.cv_model is None and state.onnx_session is None:
+    if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
         raise HTTPException(status_code=400, detail="No model loaded. Please load a model first.")
 
     # Validate scale against loaded model's native scale
-    model_scale = state.onnx_model_scale if state.current_model_type == "onnx" else state.cv_model_scale
+    if state.current_model_type == "onnx":
+        model_scale = state.onnx_model_scale
+    elif state.current_model_type == "ncnn":
+        model_scale = state.ncnn_model_scale
+    else:
+        model_scale = state.cv_model_scale
     if scale != model_scale:
         logger.warning(f"Requested scale={scale} differs from loaded model scale={model_scale}. Using model's native scale={model_scale}.")
 
@@ -2047,6 +2109,8 @@ async def upscale_endpoint(
     try:
         # Read image
         image_bytes = await file.read()
+        if len(image_bytes) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail=f"Image too large ({len(image_bytes)} bytes, max {MAX_UPLOAD_BYTES})")
 
         # Upscale in thread pool to not block async
         loop = asyncio.get_running_loop()
@@ -2056,9 +2120,10 @@ async def upscale_endpoint(
         _record_success(model_name, duration_ms)
         return Response(content=result, media_type="image/png")
 
-    except ValueError as e:
+    except ModelNotReadyError as e:
         _record_failure(model_name)
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning(f"Upscale input error: {e}")
+        raise HTTPException(status_code=400, detail="Invalid input or model not ready")
     except Exception as e:
         _record_failure(model_name)
         logger.error(f"Upscale failed: {e}")
@@ -2072,9 +2137,9 @@ async def upscale_endpoint(
 @app.get("/benchmark")
 async def benchmark_endpoint():
     """Run a benchmark on the current model."""
-    if state.cv_model is None and state.onnx_session is None:
+    if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
         raise HTTPException(status_code=400, detail="No model loaded")
-    
+
     loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(None, run_benchmark, 256)
     return result
@@ -2085,7 +2150,7 @@ async def upscale_frame_endpoint(request: Request):
     """Fast frame upscaling for real-time playback. Raw JPEG in, JPEG out. Returns 503 when busy."""
     _check_circuit_breaker()
 
-    if state.cv_model is None and state.onnx_session is None:
+    if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
         raise HTTPException(status_code=400, detail="No model loaded")
 
     # Return 503 immediately if busy — client skips this frame (try-acquire)
@@ -2104,6 +2169,8 @@ async def upscale_frame_endpoint(request: Request):
         body = await request.body()
         if not body:
             raise HTTPException(status_code=400, detail="Empty body")
+        if len(body) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail=f"Image too large ({len(body)} bytes, max {MAX_UPLOAD_BYTES})")
 
         # Decode JPEG to numpy array
         nparr = np.frombuffer(body, np.uint8)
@@ -2198,7 +2265,7 @@ async def upscale_video_chunk(request: Request):
     except Exception as e:
         _record_failure(model_name)
         logger.error(f"Multi-frame upscale error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Multi-frame upscaling failed")
     finally:
         if acquired:
             state.processing_count -= 1
@@ -2245,15 +2312,15 @@ def _run_frame_benchmark(width: int, height: int) -> dict:
         "using_gpu": state.use_gpu,
         "capture_width": width,
         "capture_height": height,
-        "output_width": width * (state.onnx_model_scale if state.current_model_type == "onnx" else state.cv_model_scale),
-        "output_height": height * (state.onnx_model_scale if state.current_model_type == "onnx" else state.cv_model_scale)
+        "output_width": width * (state.onnx_model_scale if state.current_model_type == "onnx" else (state.ncnn_model_scale if state.current_model_type == "ncnn" else state.cv_model_scale)),
+        "output_height": height * (state.onnx_model_scale if state.current_model_type == "onnx" else (state.ncnn_model_scale if state.current_model_type == "ncnn" else state.cv_model_scale))
     }
 
 
 @app.get("/benchmark-frame")
 async def benchmark_frame_endpoint(width: int = 480, height: int = 270):
     """Benchmark at actual capture resolution for real-time upscaling feasibility."""
-    if state.cv_model is None and state.onnx_session is None:
+    if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
         raise HTTPException(status_code=400, detail="No model loaded")
 
     if state.current_model is None:
@@ -2280,8 +2347,8 @@ async def update_config(
     if max_concurrent is not None:
         state.max_concurrent = max_concurrent
         global _upscale_semaphore
-        _upscale_semaphore = _asyncio.Semaphore(max_concurrent)
-        logger.info(f"Updated max_concurrent to {max_concurrent}")
+        _upscale_semaphore = asyncio.Semaphore(max_concurrent)
+        logger.info(f"max_concurrent changed to {max_concurrent}, semaphore recreated")
     if gpu_device_id is not None:
         state.gpu_device_id = gpu_device_id
         logger.info(f"GPU device ID updated to {gpu_device_id}")
@@ -2360,50 +2427,53 @@ def _record_success(model_name: str, duration_ms: float):
     """Record a successful job for metrics and health tracking.
     Note: total_frames_processed is NOT incremented here — each endpoint
     controls its own frame count (1 for single-frame, N for multi-frame)."""
-    state.total_jobs += 1
-    state.total_processing_time_ms += duration_ms
-    state.last_job_time_ms = duration_ms
-    state.consecutive_failures = 0
-    state.model_usage_count[model_name] = state.model_usage_count.get(model_name, 0) + 1
-    state.model_last_used[model_name] = time.time()
+    with _circuit_lock:
+        state.total_jobs += 1
+        state.total_processing_time_ms += duration_ms
+        state.last_job_time_ms = duration_ms
+        state.consecutive_failures = 0
+        state.model_usage_count[model_name] = state.model_usage_count.get(model_name, 0) + 1
+        state.model_last_used[model_name] = time.time()
 
-    # Close circuit breaker on success
-    if state.circuit_open:
-        state.circuit_open = False
-        logger.info("Circuit breaker CLOSED after successful job")
+        # Close circuit breaker on success
+        if state.circuit_open:
+            state.circuit_open = False
+            logger.info("Circuit breaker CLOSED after successful job")
 
 
 def _record_failure(model_name: str):
     """Record a failed job for metrics and health tracking."""
-    state.total_jobs += 1
-    state.total_failures += 1
-    state.consecutive_failures += 1
-    state.model_failure_count[model_name] = state.model_failure_count.get(model_name, 0) + 1
+    with _circuit_lock:
+        state.total_jobs += 1
+        state.total_failures += 1
+        state.consecutive_failures += 1
+        state.model_failure_count[model_name] = state.model_failure_count.get(model_name, 0) + 1
 
-    # Open circuit breaker after threshold failures
-    if state.consecutive_failures >= state.circuit_breaker_threshold and not state.circuit_open:
-        state.circuit_open = True
-        state.circuit_open_at = time.time()
-        logger.warning(f"Circuit breaker OPEN after {state.consecutive_failures} consecutive failures")
+        # Open circuit breaker after threshold failures
+        if state.consecutive_failures >= state.circuit_breaker_threshold and not state.circuit_open:
+            state.circuit_open = True
+            state.circuit_open_at = time.time()
+            logger.warning(f"Circuit breaker OPEN after {state.consecutive_failures} consecutive failures")
 
 
 def _check_circuit_breaker():
     """Check if circuit breaker allows processing. Raises 503 if open."""
-    if not state.circuit_open:
-        return
+    with _circuit_lock:
+        if not state.circuit_open:
+            return
 
-    elapsed = time.time() - state.circuit_open_at
-    if elapsed >= state.circuit_breaker_reset_seconds:
-        # Half-open: allow one request through
-        state.circuit_open = False
-        logger.info("Circuit breaker HALF-OPEN, allowing request through")
-        return
+        elapsed = time.time() - state.circuit_open_at
+        if elapsed >= state.circuit_breaker_reset_seconds:
+            # Half-open: allow one request through
+            state.circuit_open = False
+            logger.info("Circuit breaker HALF-OPEN, allowing request through")
+            return
 
-    raise HTTPException(
-        status_code=503,
-        detail=f"Circuit breaker open — {state.consecutive_failures} consecutive failures. "
-               f"Retry in {int(state.circuit_breaker_reset_seconds - elapsed)}s"
-    )
+        raise HTTPException(
+            status_code=503,
+            detail=f"Circuit breaker open — {state.consecutive_failures} consecutive failures. "
+                   f"Retry in {int(state.circuit_breaker_reset_seconds - elapsed)}s"
+        )
 
 
 @app.get("/health/detailed")
@@ -2486,8 +2556,15 @@ async def models_disk_usage():
 
 
 @app.post("/models/cleanup")
-async def models_cleanup(max_age_days: int = 30, dry_run: bool = True):
-    """Clean up models not used within max_age_days. Use dry_run=false to actually delete."""
+async def models_cleanup(max_age_days: int = 30, dry_run: bool = True, request: Request = None):
+    """Clean up models not used within max_age_days. Use dry_run=false to actually delete.
+    Requires X-Api-Token header matching API_TOKEN env var for destructive operations."""
+    # Require API token for non-dry-run (destructive) operations
+    if not dry_run:
+        expected_token = os.getenv("API_TOKEN", "")
+        provided_token = request.headers.get("x-api-token", "") if request else ""
+        if not expected_token or not hmac.compare_digest(provided_token, expected_token):
+            return JSONResponse(status_code=403, content={"error": "API token required for destructive cleanup operations"})
     models_dir = os.getenv("MODEL_DIR", "/app/models")
     if not os.path.isdir(models_dir):
         return {"cleaned": 0, "message": "Models directory not found"}

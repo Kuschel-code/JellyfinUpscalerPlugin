@@ -34,7 +34,8 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly HttpUpscalerService _httpUpscalerService;
         private readonly UpscalerProgressHub _progressHub;
         private readonly LibraryScanHelper _libraryScanHelper;
-        
+        private readonly IHttpClientFactory _httpClientFactory;
+
         // Processing queue for concurrent streams
         private readonly SemaphoreSlim _processingSemaphore;
         private readonly System.Collections.Concurrent.ConcurrentDictionary<string, ProcessingJob> _activeJobs = new();
@@ -57,7 +58,8 @@ namespace JellyfinUpscalerPlugin.Services
             UpscalerCore upscalerCore,
             HttpUpscalerService httpUpscalerService,
             UpscalerProgressHub progressHub,
-            LibraryScanHelper libraryScanHelper)
+            LibraryScanHelper libraryScanHelper,
+            IHttpClientFactory httpClientFactory)
         {
             _logger = logger;
             _mediaEncoder = mediaEncoder;
@@ -65,9 +67,10 @@ namespace JellyfinUpscalerPlugin.Services
             _httpUpscalerService = httpUpscalerService;
             _progressHub = progressHub;
             _libraryScanHelper = libraryScanHelper;
+            _httpClientFactory = httpClientFactory;
             
             // Limit concurrent processing based on hardware
-            _processingSemaphore = new SemaphoreSlim(Config.MaxConcurrentStreams);
+            _processingSemaphore = new SemaphoreSlim(Math.Max(1, Config.MaxConcurrentStreams));
             
             // Initialize FFmpeg
             InitializeFFmpeg();
@@ -79,7 +82,7 @@ namespace JellyfinUpscalerPlugin.Services
                     TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
             }
             
-            _logger.LogInformation("🎬 VideoProcessor initialized with FFmpeg integration");
+            _logger.LogInformation("VideoProcessor initialized with FFmpeg integration");
         }
 
         /// <summary>
@@ -94,7 +97,7 @@ namespace JellyfinUpscalerPlugin.Services
                 
                 if (string.IsNullOrEmpty(_ffmpegPath))
                 {
-                    _logger.LogWarning("⚠️ FFmpeg path not available from MediaEncoder");
+                    _logger.LogWarning("FFmpeg path not available from MediaEncoder");
                     return;
                 }
                 
@@ -105,11 +108,11 @@ namespace JellyfinUpscalerPlugin.Services
                     TemporaryFilesFolder = Path.GetTempPath()
                 });
                 
-                _logger.LogInformation($"✅ FFmpeg configured: {_ffmpegPath}");
+                _logger.LogInformation("FFmpeg configured: {FfmpegPath}", _ffmpegPath);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to initialize FFmpeg");
+                _logger.LogError(ex, "Failed to initialize FFmpeg");
             }
         }
 
@@ -133,7 +136,7 @@ namespace JellyfinUpscalerPlugin.Services
                 InputPath = inputPath,
                 OutputPath = outputPath,
                 Options = options,
-                StartTime = DateTime.Now,
+                StartTime = DateTime.UtcNow,
                 Status = ProcessingStatus.Starting
             };
             
@@ -144,7 +147,7 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 await _processingSemaphore.WaitAsync(cancellationToken);
                 semaphoreAcquired = true;
-                _logger.LogInformation($"🚀 Starting video processing: {Path.GetFileName(inputPath)}");
+                _logger.LogInformation("Starting video processing: {FileName}", Path.GetFileName(inputPath));
 
                 // 1. Analyze input video
                 var inputInfo = await AnalyzeVideoAsync(inputPath);
@@ -202,7 +205,7 @@ namespace JellyfinUpscalerPlugin.Services
                 var result = await ExecuteProcessingAsync(inputPath, outputPath, job, inputFrames, cancellationToken);
                 
                 job.Status = result.Success ? ProcessingStatus.Completed : ProcessingStatus.Failed;
-                job.EndTime = DateTime.Now;
+                job.EndTime = DateTime.UtcNow;
                 job.Result = result;
                 
                 // 6. Update performance history
@@ -210,14 +213,16 @@ namespace JellyfinUpscalerPlugin.Services
                 
                 await _progressHub.SendJobCompleted(job.Id, Path.GetFileName(inputPath), result.Success, result.Error);
 
-                // 7. Fire webhook notification (fire-and-forget)
+                // 7. Fire webhook notification (fire-and-forget with error logging)
                 if (result.Success)
                 {
-                    _ = _upscalerCore.SendWebhookAsync("complete", Path.GetFileName(inputPath), true);
+                    _ = _upscalerCore.SendWebhookAsync("complete", Path.GetFileName(inputPath), true)
+                        .ContinueWith(t => _logger.LogWarning(t.Exception, "Webhook notification failed"), TaskContinuationOptions.OnlyOnFaulted);
                 }
                 else
                 {
-                    _ = _upscalerCore.SendWebhookAsync("failure", Path.GetFileName(inputPath), false, result.Error);
+                    _ = _upscalerCore.SendWebhookAsync("failure", Path.GetFileName(inputPath), false, result.Error)
+                        .ContinueWith(t => _logger.LogWarning(t.Exception, "Webhook notification failed"), TaskContinuationOptions.OnlyOnFaulted);
                 }
 
                 // 8. Trigger library scan for new upscaled file
@@ -226,24 +231,25 @@ namespace JellyfinUpscalerPlugin.Services
                     await _libraryScanHelper.ScanUpscaledFile(inputPath, outputPath);
                 }
 
-                _logger.LogInformation($"✅ Video processing completed: {result.Success}, Time: {job.ProcessingDuration.TotalSeconds:F1}s");
+                _logger.LogInformation("Video processing completed: {Success}, Time: {Duration}s", result.Success, job.ProcessingDuration.TotalSeconds.ToString("F1"));
 
                 return result;
             }
             catch (OperationCanceledException)
             {
-                _logger.LogInformation($"ℹ️ Video processing cancelled: {jobId}");
+                _logger.LogInformation("Video processing cancelled: {JobId}", jobId);
                 job.Status = ProcessingStatus.Cancelled;
                 return new VideoProcessingResult { Success = false, Error = "Processing cancelled" };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"❌ Video processing failed: {jobId}");
+                _logger.LogError(ex, "Video processing failed: {JobId}", jobId);
                 job.Status = ProcessingStatus.Failed;
                 job.Error = ex.Message;
 
-                // Fire webhook notification (fire-and-forget)
-                _ = _upscalerCore.SendWebhookAsync("failure", Path.GetFileName(inputPath), false, ex.Message);
+                // Fire webhook notification (fire-and-forget with error logging)
+                _ = _upscalerCore.SendWebhookAsync("failure", Path.GetFileName(inputPath), false, ex.Message)
+                    .ContinueWith(t => _logger.LogWarning(t.Exception, "Webhook notification failed"), TaskContinuationOptions.OnlyOnFaulted);
 
                 return new VideoProcessingResult { Success = false, Error = ex.Message };
             }
@@ -292,7 +298,7 @@ namespace JellyfinUpscalerPlugin.Services
             }
 
             _pausedJobs[jobId] = true;
-            _logger.LogInformation($"⏸️ Job {jobId} paused");
+            _logger.LogInformation("Job {JobId} paused", jobId);
             return true;
         }
 
@@ -307,7 +313,7 @@ namespace JellyfinUpscalerPlugin.Services
             }
 
             _pausedJobs[jobId] = false;
-            _logger.LogInformation($"▶️ Job {jobId} resumed");
+            _logger.LogInformation("Job {JobId} resumed", jobId);
             return true;
         }
 
@@ -322,7 +328,7 @@ namespace JellyfinUpscalerPlugin.Services
             }
 
             cts.Cancel();
-            _logger.LogInformation($"🛑 Job {jobId} cancelled");
+            _logger.LogInformation("Job {JobId} cancelled", jobId);
             return true;
         }
 
@@ -340,7 +346,7 @@ namespace JellyfinUpscalerPlugin.Services
 
             if (job.Status == ProcessingStatus.Processing && job.InputInfo != null && job.InputInfo.Duration.TotalSeconds > 0)
             {
-                var elapsed = (DateTime.Now - job.StartTime).TotalSeconds;
+                var elapsed = (DateTime.UtcNow - job.StartTime).TotalSeconds;
                 var estimatedTotal = job.InputInfo.Duration.TotalSeconds * 0.5; // rough: processing ~2x realtime
                 if (estimatedTotal <= 0) estimatedTotal = 60;
                 return Math.Min(95, (elapsed / estimatedTotal) * 100);
@@ -385,13 +391,13 @@ namespace JellyfinUpscalerPlugin.Services
                 info.IsHDR = IsHDRVideo(videoStream);
                 info.AspectRatio = info.Height > 0 ? (double)info.Width / info.Height : 0;
                 
-                _logger.LogInformation($"📊 Video analysis: {info.Width}x{info.Height} @ {info.FrameRate:F1}fps, {info.Codec}, {info.BitRate}kbps");
+                _logger.LogInformation("Video analysis: {Width}x{Height} @ {Fps}fps, {Codec}, {BitRate}kbps", info.Width, info.Height, info.FrameRate.ToString("F1"), info.Codec, info.BitRate);
                 
                 return info;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Video analysis failed");
+                _logger.LogError(ex, "Video analysis failed");
                 throw;
             }
         }
@@ -453,7 +459,7 @@ namespace JellyfinUpscalerPlugin.Services
                 optimized.HardwareAcceleration = "directml";
             }
             
-            _logger.LogInformation($"🎯 Optimized options: {optimized.Model} @ {optimized.ScaleFactor}x, {optimized.QualityLevel} quality, {optimized.HardwareAcceleration} accel");
+            _logger.LogInformation("Optimized options: {Model} @ {Scale}x, {Quality} quality, {Accel} accel", optimized.Model, optimized.ScaleFactor, optimized.QualityLevel, optimized.HardwareAcceleration);
             
             return optimized;
         }
@@ -542,7 +548,7 @@ namespace JellyfinUpscalerPlugin.Services
         {
             try
             {
-                _logger.LogInformation("⚡ Starting real-time processing");
+                _logger.LogInformation("Starting real-time processing");
                 
                 var args = BuildFFmpegCommand(inputPath, outputPath, job.OptimizedOptions, job.HardwareProfile);
                 
@@ -555,21 +561,21 @@ namespace JellyfinUpscalerPlugin.Services
 
                 if (!success)
                 {
-                    _logger.LogError("❌ Real-time FFmpeg processing failed with exit code {ExitCode} for {InputPath}", result.ExitCode, inputPath);
+                    _logger.LogError("Real-time FFmpeg processing failed with exit code {ExitCode} for {InputPath}", result.ExitCode, inputPath);
                 }
 
                 return new VideoProcessingResult
                 {
                     Success = success,
                     OutputPath = outputPath,
-                    ProcessingTime = DateTime.Now - job.StartTime,
+                    ProcessingTime = DateTime.UtcNow - job.StartTime,
                     Method = ProcessingMethod.RealTime,
                     Error = success ? string.Empty : $"FFmpeg exited with code {result.ExitCode}"
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Real-time processing failed");
+                _logger.LogError(ex, "Real-time processing failed");
                 return new VideoProcessingResult
                 {
                     Success = false,
@@ -590,7 +596,7 @@ namespace JellyfinUpscalerPlugin.Services
         {
             try
             {
-                _logger.LogInformation("🎬 Starting frame-by-frame processing");
+                _logger.LogInformation("Starting frame-by-frame processing");
                 
                 var tempDir = Path.Combine(Path.GetTempPath(), "JellyfinUpscaler", job.Id);
                 Directory.CreateDirectory(tempDir);
@@ -627,7 +633,7 @@ namespace JellyfinUpscalerPlugin.Services
                     {
                         Success = true,
                         OutputPath = outputPath,
-                        ProcessingTime = DateTime.Now - job.StartTime,
+                        ProcessingTime = DateTime.UtcNow - job.StartTime,
                         Method = ProcessingMethod.FrameByFrame
                     };
                 }
@@ -640,13 +646,13 @@ namespace JellyfinUpscalerPlugin.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ Failed to cleanup temp directory");
+                        _logger.LogWarning(ex, "Failed to cleanup temp directory");
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Frame-by-frame processing failed");
+                _logger.LogError(ex, "Frame-by-frame processing failed");
                 return new VideoProcessingResult
                 {
                     Success = false,
@@ -703,8 +709,8 @@ namespace JellyfinUpscalerPlugin.Services
                 int processedCount = 0;
                 var serviceUrl = Config.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
 
-                // Reuse a single HttpClient for the entire processing loop to avoid socket exhaustion
-                using var multiFrameClient = new HttpClient { Timeout = TimeSpan.FromSeconds(300) };
+                // Use IHttpClientFactory named client for proper DNS refresh and connection pooling
+                var multiFrameClient = _httpClientFactory.CreateClient("AiUpscalerLongTimeout");
 
                 // SEQUENTIAL sliding window -- do NOT parallelize
                 for (int i = 0; i < totalFrames; i++)
@@ -769,7 +775,7 @@ namespace JellyfinUpscalerPlugin.Services
                 {
                     Success = true,
                     OutputPath = outputPath,
-                    ProcessingTime = DateTime.Now - job.StartTime,
+                    ProcessingTime = DateTime.UtcNow - job.StartTime,
                     Method = ProcessingMethod.MultiFrame
                 };
             }
@@ -809,7 +815,7 @@ namespace JellyfinUpscalerPlugin.Services
         {
             try
             {
-                _logger.LogInformation("📦 Starting batch AI processing (redirecting to frame-by-frame pipeline)");
+                _logger.LogInformation("Starting batch AI processing (redirecting to frame-by-frame pipeline)");
                 
                 // For v1.4.1, we use the stable frame-by-frame pipeline for batch processing
                 // as it provides the most consistent AI quality and progress tracking.
@@ -819,14 +825,14 @@ namespace JellyfinUpscalerPlugin.Services
                 {
                     Success = result.Success,
                     OutputPath = result.OutputPath,
-                    ProcessingTime = DateTime.Now - job.StartTime,
+                    ProcessingTime = DateTime.UtcNow - job.StartTime,
                     Method = ProcessingMethod.Batch,
                     Error = result.Error
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Batch processing failed");
+                _logger.LogError(ex, "Batch processing failed");
                 return new VideoProcessingResult
                 {
                     Success = false,
@@ -852,7 +858,7 @@ namespace JellyfinUpscalerPlugin.Services
             
             if (result.ExitCode != 0)
             {
-                throw new Exception($"Frame extraction failed with exit code {result.ExitCode}");
+                throw new InvalidOperationException($"Frame extraction failed with exit code {result.ExitCode}");
             }
         }
 
@@ -882,11 +888,11 @@ namespace JellyfinUpscalerPlugin.Services
             using var semaphore = new SemaphoreSlim(maxConcurrency);
             var tasks = new List<Task>();
 
-            _logger.LogInformation($"🚀 Processing {totalFrames} frames with max concurrency: {maxConcurrency}");
+            _logger.LogInformation("Processing {TotalFrames} frames with max concurrency: {MaxConcurrency}", totalFrames, maxConcurrency);
 
             var processedFrames = 0;
-            var startTime = DateTime.Now;
-            long lastProgressTicks = DateTime.Now.Ticks;
+            var startTime = DateTime.UtcNow;
+            long lastProgressTicks = DateTime.UtcNow.Ticks;
 
             for (int i = 0; i < totalFrames; i++)
             {
@@ -907,19 +913,27 @@ namespace JellyfinUpscalerPlugin.Services
                         
                         var frameData = await File.ReadAllBytesAsync(frameFile, cancellationToken);
                         var upscaledData = await _upscalerCore.UpscaleImageAsync(frameData, options.Model, options.ScaleFactor);
-                        
+
                         var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFile));
-                        await File.WriteAllBytesAsync(outputFile, upscaledData, cancellationToken);
+                        if (upscaledData != null && upscaledData.Length > 0)
+                        {
+                            await File.WriteAllBytesAsync(outputFile, upscaledData, cancellationToken);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("AI service returned null for frame {Frame}, using original", Path.GetFileName(frameFile));
+                            File.Copy(frameFile, outputFile, true);
+                        }
                         
                         Interlocked.Increment(ref processedFrames);
                         
-                        var nowTicks = DateTime.Now.Ticks;
+                        var nowTicks = DateTime.UtcNow.Ticks;
                         var prevTicks = Interlocked.Read(ref lastProgressTicks);
                         if ((nowTicks - prevTicks) >= TimeSpan.TicksPerSecond * 2 || index == totalFrames - 1)
                         {
                             if (Interlocked.CompareExchange(ref lastProgressTicks, nowTicks, prevTicks) == prevTicks)
                             {
-                                var elapsed = (DateTime.Now - startTime).TotalSeconds;
+                                var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
                                 var fps = elapsed > 0 ? processedFrames / elapsed : 0;
 
                                 await _progressHub.SendFrameProgress(
@@ -930,7 +944,7 @@ namespace JellyfinUpscalerPlugin.Services
                                     fps
                                 );
 
-                                _logger.LogInformation($"📸 Processed {processedFrames}/{totalFrames} frames ({fps:F1} FPS)");
+                                _logger.LogInformation("Processed {ProcessedFrames}/{TotalFrames} frames ({Fps} FPS)", processedFrames, totalFrames, fps.ToString("F1"));
                             }
                         }
                     }
@@ -978,17 +992,24 @@ namespace JellyfinUpscalerPlugin.Services
 
                 if (!hasAudio)
                 {
-                    _logger.LogInformation("ℹ️ No audio track found in source video");
+                    _logger.LogInformation("No audio track found in source video");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "⚠️ Failed to extract audio, continuing without audio");
+                _logger.LogWarning(ex, "Failed to extract audio, continuing without audio");
                 hasAudio = false;
             }
             
             // Reconstruct video with or without audio
             var outputCodec = Config.OutputCodec ?? "libx264";
+            // Allowlist codecs to prevent FFmpeg argument injection
+            var allowedCodecs = new HashSet<string> { "libx264", "libx265", "hevc_nvenc", "h264_nvenc", "h264_qsv", "hevc_qsv", "copy" };
+            if (!allowedCodecs.Contains(outputCodec))
+            {
+                _logger.LogWarning("Invalid output codec '{Codec}' in ReconstructVideoAsync, falling back to libx264", outputCodec);
+                outputCodec = "libx264";
+            }
             var codecArgs = outputCodec == "copy" ? "-c:v copy" : $"-c:v {outputCodec} -pix_fmt yuv420p";
 
             string reconstructArgs;
@@ -1021,7 +1042,7 @@ namespace JellyfinUpscalerPlugin.Services
             
             if (result.ExitCode != 0)
             {
-                throw new Exception($"Video reconstruction failed with exit code {result.ExitCode}");
+                throw new InvalidOperationException($"Video reconstruction failed with exit code {result.ExitCode}");
             }
         }
 
@@ -1034,7 +1055,7 @@ namespace JellyfinUpscalerPlugin.Services
             VideoProcessingOptions options,
             HardwareProfile hardwareProfile)
         {
-            _logger.LogInformation("🛠️ Building FFmpeg command for hardware acceleration...");
+            _logger.LogInformation("Building FFmpeg command for hardware acceleration...");
             var args = new List<string>();
             
             // Hardware acceleration
@@ -1071,7 +1092,7 @@ namespace JellyfinUpscalerPlugin.Services
                     // NVIDIA RTX: Use Video Super Resolution (VSR) or CUDA scaling
                     if (useAdvancedUpscaling && hardwareProfile.GpuName?.Contains("RTX") == true)
                     {
-                        _logger.LogInformation("🎯 Using NVIDIA VSR (Video Super Resolution)");
+                        _logger.LogInformation("Using NVIDIA VSR (Video Super Resolution)");
                         filters.Add($"hwupload_cuda");
                         filters.Add($"scale_cuda={options.ScaleFactor}*iw:{options.ScaleFactor}*ih:interp_algo=lanczos");
                         filters.Add($"unsharp_cuda=luma_amount=1.5:chroma_amount=0.5"); // AI-enhanced sharpening
@@ -1088,7 +1109,7 @@ namespace JellyfinUpscalerPlugin.Services
                     // AMD/Intel: Use FSR-like upscaling with VAAPI
                     if (useAdvancedUpscaling)
                     {
-                        _logger.LogInformation("🎯 Using AMD FSR-style upscaling");
+                        _logger.LogInformation("Using AMD FSR-style upscaling");
                         filters.Add($"hwupload");
                         filters.Add($"scale_vaapi=w={options.ScaleFactor}*iw:h={options.ScaleFactor}*ih");
                         filters.Add($"sharpen_vaapi"); // FSR-like sharpening
@@ -1109,12 +1130,12 @@ namespace JellyfinUpscalerPlugin.Services
                     // Software: Use Anime4K or FSR via libplacebo if available
                     if (useAdvancedUpscaling && options.Model?.Contains("anime") == true)
                     {
-                        _logger.LogInformation("🎯 Using Anime4K-style shader upscaling");
+                        _logger.LogInformation("Using Anime4K-style shader upscaling");
                         filters.Add($"libplacebo=w={options.ScaleFactor}*iw:h={options.ScaleFactor}*ih:upscaler=ewa_lanczos:downscaler=ewa_lanczos");
                     }
                     else if (useAdvancedUpscaling)
                     {
-                        _logger.LogInformation("🎯 Using FSR (FidelityFX Super Resolution)");
+                        _logger.LogInformation("Using FSR (FidelityFX Super Resolution)");
                         filters.Add($"libplacebo=w={options.ScaleFactor}*iw:h={options.ScaleFactor}*ih:upscaler=ewa_lanczos");
                     }
                     else
@@ -1158,6 +1179,13 @@ namespace JellyfinUpscalerPlugin.Services
             else
             {
                 var outputCodec = Config.OutputCodec ?? "libx264";
+                // Allowlist codecs to prevent FFmpeg argument injection
+                var allowedCodecs = new HashSet<string> { "libx264", "libx265", "hevc_nvenc", "h264_nvenc", "h264_qsv", "hevc_qsv", "copy" };
+                if (!allowedCodecs.Contains(outputCodec))
+                {
+                    _logger.LogWarning("Invalid output codec '{Codec}', falling back to libx264", outputCodec);
+                    outputCodec = "libx264";
+                }
                 if (outputCodec == "copy")
                 {
                     args.Add("-c:v copy");
@@ -1175,7 +1203,7 @@ namespace JellyfinUpscalerPlugin.Services
             args.Add($"-y \"{outputPath}\"");
             
             var fullCommand = string.Join(" ", args);
-            _logger.LogDebug($"💻 Generated FFmpeg Command: ffmpeg {fullCommand}");
+            _logger.LogDebug("Generated FFmpeg Command: ffmpeg {Command}", fullCommand);
             
             return fullCommand;
         }
@@ -1227,7 +1255,7 @@ namespace JellyfinUpscalerPlugin.Services
                 Scale = job.OptimizedOptions?.ScaleFactor ?? 1,
                 Method = job.ProcessingMethod,
                 Success = job.Result?.Success ?? false,
-                Timestamp = DateTime.Now
+                Timestamp = DateTime.UtcNow
             };
             
             _performanceHistory[job.Id] = metrics;
@@ -1251,7 +1279,7 @@ namespace JellyfinUpscalerPlugin.Services
                 var completedJobs = _performanceHistory.Count(m => m.Value.Success);
                 var failedJobs = _performanceHistory.Count(m => !m.Value.Success);
                 
-                _logger.LogDebug($"📊 Stats: {activeJobs} active, {completedJobs} completed, {failedJobs} failed");
+                _logger.LogDebug("Stats: {ActiveJobs} active, {CompletedJobs} completed, {FailedJobs} failed", activeJobs, completedJobs, failedJobs);
             }
             catch (Exception ex)
             {
@@ -1273,8 +1301,6 @@ namespace JellyfinUpscalerPlugin.Services
                 catch { /* Ignore cancellation errors */ }
             }
 
-            // Brief wait for tasks to observe cancellation
-            Thread.Sleep(500);
 
             foreach (var kvp in _jobCancellationTokens)
             {

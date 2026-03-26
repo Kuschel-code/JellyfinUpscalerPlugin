@@ -35,17 +35,17 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 if (!File.Exists(upscaledPath))
                 {
-                    _logger.LogWarning($"⚠️ Upscaled file not found, skipping scan: {upscaledPath}");
+                    _logger.LogWarning("Upscaled file not found, skipping scan: {UpscaledPath}", upscaledPath);
                     return;
                 }
 
-                _logger.LogInformation($"📚 Triggering library scan for: {Path.GetFileName(upscaledPath)}");
+                _logger.LogInformation("Triggering library scan for: {FileName}", Path.GetFileName(upscaledPath));
 
                 // Get the directory containing the upscaled file
                 var directory = Path.GetDirectoryName(upscaledPath);
                 if (string.IsNullOrEmpty(directory))
                 {
-                    _logger.LogWarning("⚠️ Could not determine directory for library scan");
+                    _logger.LogWarning("Could not determine directory for library scan");
                     return;
                 }
 
@@ -57,7 +57,7 @@ namespace JellyfinUpscalerPlugin.Services
 
                 if (targetFolder != null)
                 {
-                    _logger.LogInformation($"📁 Scanning library: {targetFolder.Name}");
+                    _logger.LogInformation("Scanning library: {LibraryName}", targetFolder.Name);
                     
                     // Trigger a targeted scan of the directory
                     await _libraryManager.ValidateMediaLibrary(
@@ -65,14 +65,14 @@ namespace JellyfinUpscalerPlugin.Services
                         CancellationToken.None
                     );
 
-                    _logger.LogInformation($"✅ Library scan completed for {targetFolder.Name}");
+                    _logger.LogInformation("Library scan completed for {LibraryName}", targetFolder.Name);
                 }
                 else
                 {
-                    _logger.LogWarning($"⚠️ No library folder found containing: {directory}");
+                    _logger.LogWarning("No library folder found containing: {Directory}", directory);
                     
                     // Fallback: Scan all libraries
-                    _logger.LogInformation("📚 Performing full library scan...");
+                    _logger.LogInformation("Performing full library scan...");
                     await _libraryManager.ValidateMediaLibrary(
                         new Progress<double>(), 
                         CancellationToken.None
@@ -81,7 +81,7 @@ namespace JellyfinUpscalerPlugin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to scan library after upscaling");
+                _logger.LogError(ex, "Failed to scan library after upscaling");
             }
         }
 
@@ -93,24 +93,24 @@ namespace JellyfinUpscalerPlugin.Services
         {
             try
             {
-                _logger.LogInformation($"🔗 Linking versions: {Path.GetFileName(originalPath)} → {Path.GetFileName(upscaledPath)}");
+                _logger.LogInformation("Linking versions: {OriginalFileName} -> {UpscaledFileName}", Path.GetFileName(originalPath), Path.GetFileName(upscaledPath));
 
                 // Find the original item in library
                 var originalItem = _libraryManager.FindByPath(originalPath, false);
                 if (originalItem == null)
                 {
-                    _logger.LogWarning($"⚠️ Original item not found in library: {originalPath}");
+                    _logger.LogWarning("Original item not found in library: {OriginalPath}", originalPath);
                     return;
                 }
 
                 // Trigger scan to add upscaled version
                 await ScanUpscaledFile(originalPath, upscaledPath);
 
-                _logger.LogInformation($"✅ Versions linked successfully");
+                _logger.LogInformation("Versions linked successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to link video versions");
+                _logger.LogError(ex, "Failed to link video versions");
             }
         }
 
@@ -124,17 +124,17 @@ namespace JellyfinUpscalerPlugin.Services
                 var item = _libraryManager.FindByPath(filePath, false);
                 if (item != null)
                 {
-                    _logger.LogInformation($"🔄 Refreshing metadata for: {item.Name}");
+                    _logger.LogInformation("Refreshing metadata for: {ItemName}", item.Name);
                     
                     // Simplified metadata refresh without DirectoryService
                     await item.RefreshMetadata(CancellationToken.None);
 
-                    _logger.LogInformation($"✅ Metadata refreshed");
+                    _logger.LogInformation("Metadata refreshed");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to refresh item metadata");
+                _logger.LogError(ex, "Failed to refresh item metadata");
             }
         }
     }

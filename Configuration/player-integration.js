@@ -1,4 +1,4 @@
-// AI Upscaler Plugin - Player Integration v1.5.4.0
+// AI Upscaler Plugin - Player Integration v1.5.4.3
 // Global script injection (loaded via index.html like Intro Skipper)
 // Compatible with Jellyfin 10.11+
 
@@ -7,25 +7,82 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.5.4.0';
+    const PLUGIN_VERSION = '1.5.4.3';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
     window._aiUpscalerLoaded = true;
 
-    // All available models grouped by category
+    // All available models grouped by category (synced with Python AVAILABLE_MODELS)
     const MODEL_CATALOG = {
         realesrgan: {
             label: 'Real-ESRGAN',
-            desc: 'Best Quality',
+            desc: 'Best Quality (ONNX)',
             models: [
                 { id: 'realesrgan-x4', name: 'Real-ESRGAN x4', scale: 4, badge: 'Best' },
                 { id: 'realesrgan-x4-256', name: 'Real-ESRGAN x4 (256px)', scale: 4, badge: 'Low VRAM' }
             ]
         },
+        nextgen: {
+            label: 'Next-Gen',
+            desc: 'Modern Architectures (ONNX)',
+            models: [
+                { id: 'span-x2', name: 'SPAN x2', scale: 2, badge: 'Fast Quality' },
+                { id: 'span-x4', name: 'SPAN x4', scale: 4 },
+                { id: 'realesrgan-x2-plus', name: 'Real-ESRGAN x2+', scale: 2 },
+                { id: 'realesrgan-animevideo-x4', name: 'Real-ESRGAN AnimeVideo x4', scale: 4 },
+                { id: 'swinir-x4', name: 'SwinIR x4', scale: 4 },
+                { id: 'apisr-x3', name: 'APISR x3', scale: 3 }
+            ]
+        },
+        'video-fast': {
+            label: 'Video Real-Time',
+            desc: 'Ultra-Fast for Playback',
+            models: [
+                { id: 'clearreality-x4', name: 'ClearReality x4', scale: 4, badge: 'Ultra-Fast' },
+                { id: 'nomosuni-compact-x2', name: 'NomosUni Compact x2', scale: 2 },
+                { id: 'lsdir-compact-x4', name: 'LSDIR Compact x4', scale: 4 },
+                { id: 'swinir-small-x2', name: 'SwinIR-S x2', scale: 2 },
+                { id: 'swinir-small-x4', name: 'SwinIR-S x4', scale: 4 }
+            ]
+        },
+        'video-quality': {
+            label: 'Video Quality',
+            desc: 'Best Single-Frame for Video',
+            models: [
+                { id: 'ultrasharp-v2-x4', name: 'UltraSharp V2 x4', scale: 4, badge: 'Best Photo/Video' },
+                { id: 'nomos2-dat2-x4', name: 'Nomos2 DAT2 x4', scale: 4 },
+                { id: 'nomos2-realplksr-x4', name: 'Nomos2 RealPLKSR x4', scale: 4 }
+            ]
+        },
+        'film-restore': {
+            label: 'Film Restoration',
+            desc: 'Old Movies, DVDs, VHS',
+            models: [
+                { id: 'fsdedither-x4', name: 'FSDedither x4', scale: 4 },
+                { id: 'nomos8k-hat-x4', name: 'Nomos8k HAT-S x4', scale: 4 }
+            ]
+        },
+        anime: {
+            label: 'Anime',
+            desc: 'Anime Specialist',
+            models: [
+                { id: 'anime-compact-x4', name: 'Real-ESRGAN Anime Compact x4', scale: 4, badge: 'Fast Anime' },
+                { id: 'apisr-anime-x2', name: 'APISR x2 Anime', scale: 2 }
+            ]
+        },
+        'video-sr': {
+            label: 'Video SR',
+            desc: 'Multi-Frame (Best Batch Quality)',
+            models: [
+                { id: 'edvr-m-x4', name: 'EDVR-M x4 (5 Frame)', scale: 4 },
+                { id: 'realbasicvsr-x4', name: 'RealBasicVSR x4 (5 Frame)', scale: 4 },
+                { id: 'animesr-v2-x4', name: 'AnimeSR v2 x4 (5 Frame)', scale: 4 }
+            ]
+        },
         edsr: {
             label: 'EDSR',
-            desc: 'High Quality',
+            desc: 'High Quality (OpenCV)',
             models: [
                 { id: 'edsr-x2', name: 'EDSR x2', scale: 2 },
                 { id: 'edsr-x3', name: 'EDSR x3', scale: 3 },
@@ -34,7 +91,7 @@
         },
         lapsrn: {
             label: 'LapSRN',
-            desc: 'Good Quality',
+            desc: 'Good Quality (OpenCV)',
             models: [
                 { id: 'lapsrn-x2', name: 'LapSRN x2', scale: 2 },
                 { id: 'lapsrn-x4', name: 'LapSRN x4', scale: 4 },
@@ -43,7 +100,7 @@
         },
         fsrcnn: {
             label: 'FSRCNN',
-            desc: 'Fast',
+            desc: 'Fast (OpenCV)',
             models: [
                 { id: 'fsrcnn-x2', name: 'FSRCNN x2', scale: 2 },
                 { id: 'fsrcnn-x3', name: 'FSRCNN x3', scale: 3 },
@@ -52,11 +109,20 @@
         },
         espcn: {
             label: 'ESPCN',
-            desc: 'Fastest',
+            desc: 'Fastest (OpenCV)',
             models: [
                 { id: 'espcn-x2', name: 'ESPCN x2', scale: 2 },
                 { id: 'espcn-x3', name: 'ESPCN x3', scale: 3 },
                 { id: 'espcn-x4', name: 'ESPCN x4', scale: 4 }
+            ]
+        },
+        vulkan: {
+            label: 'Vulkan GPU',
+            desc: 'ncnn (AMD/Intel)',
+            models: [
+                { id: 'ncnn-realesrgan-x4', name: 'Real-ESRGAN x4 (Vulkan)', scale: 4 },
+                { id: 'ncnn-realesrgan-anime-x4', name: 'Real-ESRGAN Anime x4 (Vulkan)', scale: 4 },
+                { id: 'ncnn-realsr-x4', name: 'RealSR x4 (Vulkan)', scale: 4 }
             ]
         }
     };
@@ -278,7 +344,7 @@
             canvas.toBlob(function(blob) {
                 if (!blob || !self._active) { self._pendingFrame = false; return; }
 
-                fetch('/api/upscaler/upscale-frame', {
+                fetch(ApiClient.getUrl('Upscaler/upscale-frame'), {
                     method: 'POST',
                     body: blob
                 }).then(function(resp) {
@@ -580,7 +646,9 @@
                     var newConfig = Object.assign({}, config, updates);
                     PlayerIntegration._cachedConfig = newConfig;
                     PlayerIntegration._configCacheTime = Date.now();
-                    window.ApiClient.updatePluginConfiguration(PLUGIN_ID, newConfig);
+                    return window.ApiClient.updatePluginConfiguration(PLUGIN_ID, newConfig);
+                }).catch(function(err) {
+                    console.error('Failed to save plugin config:', err);
                 });
             }
         },
@@ -608,6 +676,10 @@
             // Read config to get position + current model + scale
             this.getPluginConfig().then(function(config) {
                 PlayerIntegration._buildMenu(config);
+            }).catch(function(err) {
+                console.error('Failed to load plugin config for menu:', err);
+                // Build menu with defaults so button is never silently dead
+                PlayerIntegration._buildMenu({});
             });
         },
 
@@ -842,10 +914,6 @@
 
         startRealtimeUpscaling: function() {
             this.getPluginConfig().then(function(config) {
-                if (!config.EnableRealtimeUpscaling && config.EnableRealtimeUpscaling !== undefined) {
-                    console.log('AI Upscaler RT: Disabled in config');
-                    return;
-                }
                 if (config.EnableRealtimeUpscaling === false) return;
 
                 var video = PlayerIntegration.findVideoElement();
@@ -866,7 +934,7 @@
                 if (mode === 'auto' || mode === 'server') {
                     var captureW = config.RealtimeCaptureWidth || 480;
                     var captureH = Math.round(captureW * (video.videoHeight / video.videoWidth));
-                    fetch('/api/upscaler/benchmark-frame?width=' + captureW + '&height=' + captureH)
+                    fetch(ApiClient.getUrl('Upscaler/benchmark-frame') + '?width=' + captureW + '&height=' + captureH)
                         .then(function(r) { return r.json(); })
                         .then(function(bench) {
                             console.log('AI Upscaler RT: Benchmark result', bench);
@@ -927,6 +995,18 @@
                 }
             });
             this._mutationObserver.observe(document.body, { childList: true, subtree: true });
+
+            // Clean up observer on SPA page navigation
+            if (!this._viewHideCleanupBound) {
+                this._viewHideCleanupBound = true;
+                document.addEventListener('viewbeforehide', function() {
+                    if (PlayerIntegration._mutationObserver) {
+                        PlayerIntegration._mutationObserver.disconnect();
+                        PlayerIntegration._mutationObserver = null;
+                    }
+                    PlayerIntegration._buttonInjected = false;
+                });
+            }
         },
 
         _stopMutationObserver: function() {

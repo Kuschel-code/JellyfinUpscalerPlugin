@@ -1,7 +1,7 @@
 # FastAPI and Server
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
-python-multipart==0.0.6
+fastapi>=0.115.0,<1.0
+uvicorn[standard]>=0.32.0,<1.0
+python-multipart>=0.0.7
 aiofiles==23.2.1
 
 # AI/ML - ONNX Runtime CPU fallback
@@ -13,7 +13,7 @@ numpy>=1.24.0,<2.0.0
 realsr-ncnn-vulkan-python>=1.0.0
 
 # Image Processing - OpenCV with DNN Super Resolution
-opencv-contrib-python==4.9.0.80
+opencv-contrib-python>=4.10.0,<5.0
 
 # Utilities
 pydantic>=2.0.0

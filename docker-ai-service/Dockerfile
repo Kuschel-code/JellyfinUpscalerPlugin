@@ -17,7 +17,7 @@ ENV SKIP_TENSORRT=true
 
 WORKDIR /app
 
-# Install Python and system dependencies for OpenCV + FULL TensorRT + OpenSSH
+# Install Python and system dependencies for OpenCV + FULL TensorRT
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
@@ -27,20 +27,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     libxrender1 \
     curl \
-    openssh-server \
     # TensorRT Runtime Libraries (for ONNX Runtime TensorRT EP)
     libnvinfer10 \
     libnvinfer-plugin10 \
     libnvonnxparsers10 \
-    && rm -rf /var/lib/apt/lists/* \
     && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
     && ln -s /usr/bin/python3 /usr/bin/python
-
-# Configure SSH (key-based auth only, no passwords)
-RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
-    && sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config \
-    && sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config \
-    && sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords no/' /etc/ssh/sshd_config
 
 # Copy requirements first for better caching
 COPY requirements.txt .
@@ -54,14 +47,21 @@ COPY static/ ./static/
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Create directories for models, cache, and SSH runtime
-RUN mkdir -p /app/models /app/cache /run/sshd
+# Create non-root user for running the service
+RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
 
-# Expose ports (API and SSH)
-EXPOSE 5000 22
+# Create directories for models and cache
+RUN mkdir -p /app/models /app/cache && \
+    chown -R appuser:appuser /app
+
+# Expose API port
+EXPOSE 5000
+
+# Run as non-root user
+USER appuser
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
 # Run the application via entrypoint

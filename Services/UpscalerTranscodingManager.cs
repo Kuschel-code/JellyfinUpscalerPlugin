@@ -24,7 +24,7 @@ namespace JellyfinUpscalerPlugin.Services
             _logger = logger;
             _upscalerCore = upscalerCore;
             
-            _logger.LogInformation("🎬 UpscalerTranscodingHelper initialized");
+            _logger.LogInformation("UpscalerTranscodingHelper initialized");
         }
 
         /// <summary>
@@ -37,11 +37,11 @@ namespace JellyfinUpscalerPlugin.Services
                 // Only process if plugin is enabled
                 if (!Config.EnablePlugin)
                 {
-                    _logger.LogDebug("⏭️ Plugin disabled");
+                    _logger.LogDebug("Plugin disabled");
                     return string.Empty;
                 }
 
-                _logger.LogInformation($"🔧 Building upscale arguments for {(isLiveStream ? "live stream" : "video")}");
+                _logger.LogInformation("Building upscale arguments for {StreamType}", isLiveStream ? "live stream" : "video");
                 
                 // Determine best upscaling method
                 var upscaleMethod = DetermineUpscaleMethod(hardware, isLiveStream);
@@ -49,13 +49,13 @@ namespace JellyfinUpscalerPlugin.Services
                 // Build filter arguments
                 var filterArgs = BuildUpscaleFilter(upscaleMethod, hardware, scaleFactor);
                 
-                _logger.LogInformation($"✅ Generated {upscaleMethod} upscaling filter");
+                _logger.LogInformation("Generated {UpscaleMethod} upscaling filter", upscaleMethod);
                 
                 return filterArgs;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to build upscale arguments");
+                _logger.LogError(ex, "Failed to build upscale arguments");
                 return string.Empty;
             }
         }
@@ -149,7 +149,7 @@ namespace JellyfinUpscalerPlugin.Services
             }
             
             // Fallback to FSR if shader not found
-            _logger.LogWarning("⚠️ Anime4K shader not found, falling back to FSR");
+            _logger.LogWarning("Anime4K shader not found, falling back to FSR");
             return BuildAMDFSRFilter(scale);
         }
 

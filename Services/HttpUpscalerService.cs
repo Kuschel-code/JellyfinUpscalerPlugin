@@ -334,11 +334,21 @@ namespace JellyfinUpscalerPlugin.Services
     public class ServiceStatus
     {
         public string Status { get; set; } = string.Empty;
+        [JsonPropertyName("current_model")]
         public string? CurrentModel { get; set; }
+        [JsonPropertyName("available_providers")]
         public string[] AvailableProviders { get; set; } = Array.Empty<string>();
+
+        [JsonPropertyName("using_gpu")]
         public bool UsingGpu { get; set; }
+
+        [JsonPropertyName("loaded_models")]
         public string[] LoadedModels { get; set; } = Array.Empty<string>();
+
+        [JsonPropertyName("processing_count")]
         public int ProcessingCount { get; set; }
+
+        [JsonPropertyName("max_concurrent")]
         public int MaxConcurrent { get; set; }
 
         [JsonPropertyName("input_frames")]

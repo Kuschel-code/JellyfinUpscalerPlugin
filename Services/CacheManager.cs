@@ -64,7 +64,7 @@ namespace JellyfinUpscalerPlugin.Services
             // Start stats timer (every 5 minutes)
             _statsTimer = new Timer(StatsCallback, null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
             
-            _logger.LogInformation($"📦 Cache manager initialized: {_cacheDirectory}");
+            _logger.LogInformation("Cache manager initialized: {CacheDirectory}", _cacheDirectory);
         }
 
         /// <summary>
@@ -90,11 +90,11 @@ namespace JellyfinUpscalerPlugin.Services
                     }
                 }
                 
-                _logger.LogInformation($"📁 Cache directory structure initialized");
+                _logger.LogInformation("Cache directory structure initialized");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to initialize cache directory");
+                _logger.LogError(ex, "Failed to initialize cache directory");
             }
         }
 
@@ -107,7 +107,7 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 if (!File.Exists(_indexFile))
                 {
-                    _logger.LogInformation("📋 No cache index found, starting fresh");
+                    _logger.LogInformation("No cache index found, starting fresh");
                     return;
                 }
                 
@@ -124,12 +124,12 @@ namespace JellyfinUpscalerPlugin.Services
                     // Validate cache entries
                     ValidateCacheEntries();
                     
-                    _logger.LogInformation($"📋 Loaded {_cacheIndex.Count} cache entries");
+                    _logger.LogInformation("Loaded {EntryCount} cache entries", _cacheIndex.Count);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to load cache index");
+                _logger.LogError(ex, "Failed to load cache index");
             }
         }
 
@@ -142,14 +142,17 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 var entries = _cacheIndex.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
                 var jsonContent = JsonSerializer.Serialize(entries, new JsonSerializerOptions { WriteIndented = true });
+
+                // Atomic write: write to temp file then rename to prevent corruption on crash
+                var tempFile = _indexFile + ".tmp";
+                await File.WriteAllTextAsync(tempFile, jsonContent);
+                File.Move(tempFile, _indexFile, overwrite: true);
                 
-                await File.WriteAllTextAsync(_indexFile, jsonContent);
-                
-                _logger.LogDebug("💾 Cache index saved");
+                _logger.LogDebug("Cache index saved");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to save cache index");
+                _logger.LogError(ex, "Failed to save cache index");
             }
         }
 
@@ -198,7 +201,7 @@ namespace JellyfinUpscalerPlugin.Services
             
             if (invalidEntries.Count > 0)
             {
-                _logger.LogInformation($"🗑️ Removed {invalidEntries.Count} invalid cache entries");
+                _logger.LogInformation("Removed {InvalidCount} invalid cache entries", invalidEntries.Count);
             }
         }
 
@@ -208,7 +211,7 @@ namespace JellyfinUpscalerPlugin.Services
         private bool IsEntryExpired(CacheEntry entry)
         {
             var maxAge = TimeSpan.FromDays(Config.MaxCacheAgeDays);
-            return DateTime.Now - entry.CreatedAt > maxAge;
+            return DateTime.UtcNow - entry.CreatedAt > maxAge;
         }
 
         /// <summary>
@@ -235,7 +238,7 @@ namespace JellyfinUpscalerPlugin.Services
                 if (File.Exists(entry.FilePath) && !IsEntryExpired(entry))
                 {
                     // Update access time
-                    entry.LastAccessedAt = DateTime.Now;
+                    entry.LastAccessedAt = DateTime.UtcNow;
                     entry.AccessCount++;
                     
                     lock (_statsLock)
@@ -243,7 +246,7 @@ namespace JellyfinUpscalerPlugin.Services
                         _cacheHits++;
                     }
                     
-                    _logger.LogDebug($"🎯 Cache hit: {Path.GetFileName(inputPath)}");
+                    _logger.LogDebug("Cache hit: {FileName}", Path.GetFileName(inputPath));
                     
                     return Task.FromResult(new CacheResult
                     {
@@ -264,7 +267,7 @@ namespace JellyfinUpscalerPlugin.Services
                 _cacheMisses++;
             }
 
-            _logger.LogDebug($"❌ Cache miss: {Path.GetFileName(inputPath)}");
+            _logger.LogDebug("Cache miss: {FileName}", Path.GetFileName(inputPath));
 
             return Task.FromResult(new CacheResult { Hit = false });
         }
@@ -288,7 +291,7 @@ namespace JellyfinUpscalerPlugin.Services
                 // Check cache size limit
                 if (!CheckCacheSizeLimit())
                 {
-                    _logger.LogWarning("⚠️ Cache size limit exceeded, cleaning up");
+                    _logger.LogWarning("Cache size limit exceeded, cleaning up");
                     await CleanupOldEntriesAsync();
                 }
                 
@@ -308,8 +311,8 @@ namespace JellyfinUpscalerPlugin.Services
                     Scale = scale,
                     Quality = quality,
                     FileSize = new FileInfo(cacheFilePath).Length,
-                    CreatedAt = DateTime.Now,
-                    LastAccessedAt = DateTime.Now,
+                    CreatedAt = DateTime.UtcNow,
+                    LastAccessedAt = DateTime.UtcNow,
                     AccessCount = 1,
                     ProcessingTime = processingTime,
                     Metadata = metadata ?? new Dictionary<string, object>()
@@ -323,13 +326,13 @@ namespace JellyfinUpscalerPlugin.Services
                 // Save index
                 await SaveCacheIndexAsync();
                 
-                _logger.LogInformation($"💾 Cached: {Path.GetFileName(inputPath)} -> {fileName} ({entry.FileSize / 1024 / 1024:F1}MB)");
+                _logger.LogInformation("Cached: {InputFileName} -> {CacheFileName} ({SizeMB:F1}MB)", Path.GetFileName(inputPath), fileName, entry.FileSize / 1024 / 1024);
                 
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"❌ Failed to cache content: {inputPath}");
+                _logger.LogError(ex, "Failed to cache content: {InputPath}", inputPath);
                 return false;
             }
         }
@@ -360,11 +363,11 @@ namespace JellyfinUpscalerPlugin.Services
                 var cacheResult = await GetCachedContentAsync(inputPath, model, scale, quality);
                 if (cacheResult.Hit)
                 {
-                    _logger.LogDebug($"🎯 Content already cached: {Path.GetFileName(inputPath)}");
+                    _logger.LogDebug("Content already cached: {FileName}", Path.GetFileName(inputPath));
                     return true;
                 }
                 
-                _logger.LogInformation($"🔄 Pre-processing: {Path.GetFileName(inputPath)}");
+                _logger.LogInformation("Pre-processing: {FileName}", Path.GetFileName(inputPath));
                 
                 // Generate temp output path
                 var tempPath = Path.Combine(_cacheDirectory, "temp", $"{Guid.NewGuid()}.mp4");
@@ -401,13 +404,13 @@ namespace JellyfinUpscalerPlugin.Services
                 }
                 else
                 {
-                    _logger.LogError($"❌ Pre-processing failed: {result.Error}");
+                    _logger.LogError("Pre-processing failed: {Error}", result.Error);
                     return false;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"❌ Pre-processing failed: {inputPath}");
+                _logger.LogError(ex, "Pre-processing failed: {InputPath}", inputPath);
                 return false;
             }
         }
@@ -427,7 +430,7 @@ namespace JellyfinUpscalerPlugin.Services
                     return;
                 }
                 
-                _logger.LogInformation($"🗑️ Cleaning up cache ({currentSize / 1024 / 1024:F1}MB > {maxCacheSize / 1024 / 1024:F1}MB)");
+                _logger.LogInformation("Cleaning up cache ({CurrentSizeMB:F1}MB > {MaxSizeMB:F1}MB)", currentSize / 1024 / 1024, maxCacheSize / 1024 / 1024);
                 
                 // Sort by last accessed time and access count
                 var entriesToRemove = _cacheIndex.Values
@@ -463,12 +466,12 @@ namespace JellyfinUpscalerPlugin.Services
                 if (removedCount > 0)
                 {
                     await SaveCacheIndexAsync();
-                    _logger.LogInformation($"🗑️ Removed {removedCount} cache entries, freed {freedSpace / 1024 / 1024:F1}MB");
+                    _logger.LogInformation("Removed {RemovedCount} cache entries, freed {FreedMB:F1}MB", removedCount, freedSpace / 1024 / 1024);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Cache cleanup failed");
+                _logger.LogError(ex, "Cache cleanup failed");
             }
         }
 
@@ -502,7 +505,7 @@ namespace JellyfinUpscalerPlugin.Services
         {
             try
             {
-                _logger.LogInformation("🗑️ Clearing all cache");
+                _logger.LogInformation("Clearing all cache");
                 
                 // Remove all files
                 var videosDir = Path.Combine(_cacheDirectory, "videos");
@@ -535,11 +538,11 @@ namespace JellyfinUpscalerPlugin.Services
                 
                 await SaveCacheIndexAsync();
                 
-                _logger.LogInformation("✅ Cache cleared");
+                _logger.LogInformation("Cache cleared");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to clear cache");
+                _logger.LogError(ex, "Failed to clear cache");
             }
         }
 
@@ -556,7 +559,7 @@ namespace JellyfinUpscalerPlugin.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "❌ Cleanup timer failed");
+                    _logger.LogError(ex, "Cleanup timer failed");
                 }
             });
         }
@@ -569,7 +572,7 @@ namespace JellyfinUpscalerPlugin.Services
             try
             {
                 var stats = GetCacheStatistics();
-                _logger.LogInformation($"📊 Cache stats: {stats.TotalEntries} entries, {stats.TotalSize / 1024 / 1024:F1}MB ({stats.UsagePercentage:F1}%), {stats.HitRate:F1}% hit rate");
+                _logger.LogInformation("Cache stats: {TotalEntries} entries, {TotalSizeMB:F1}MB ({UsagePercentage:F1}%), {HitRate:F1}% hit rate", stats.TotalEntries, stats.TotalSize / 1024 / 1024, stats.UsagePercentage, stats.HitRate);
             }
             catch (Exception ex)
             {
@@ -594,7 +597,7 @@ namespace JellyfinUpscalerPlugin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to save cache index on dispose");
+                _logger.LogError(ex, "Failed to save cache index on dispose");
             }
         }
     }

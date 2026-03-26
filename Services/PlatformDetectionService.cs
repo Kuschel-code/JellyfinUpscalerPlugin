@@ -78,7 +78,7 @@ namespace JellyfinUpscalerPlugin.Services
                 _ => "unknown"
             };
 
-            _logger.LogInformation($"Runtime Identifier: {rid}");
+            _logger.LogInformation("Runtime Identifier: {RuntimeId}", rid);
             return rid;
         }
 

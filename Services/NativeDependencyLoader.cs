@@ -14,7 +14,8 @@ namespace JellyfinUpscalerPlugin.Services
     public class NativeDependencyLoader
     {
         private readonly ILogger<NativeDependencyLoader> _logger;
-        private static bool _initialized = false;
+        private static volatile bool _initialized;
+        private static readonly object _initLock = new();
 
         public NativeDependencyLoader(ILogger<NativeDependencyLoader> logger)
         {
@@ -32,9 +33,13 @@ namespace JellyfinUpscalerPlugin.Services
                 return;
             }
 
+            lock (_initLock)
+            {
+                if (_initialized) return;
+
             try
             {
-                _logger.LogInformation("🔧 Initializing native dependency isolation...");
+                _logger.LogInformation("Initializing native dependency isolation...");
 
                 var pluginDir = GetPluginDirectory();
                 var nativeDir = Path.Combine(pluginDir, "native");
@@ -42,7 +47,7 @@ namespace JellyfinUpscalerPlugin.Services
                 if (!Directory.Exists(nativeDir))
                 {
                     Directory.CreateDirectory(nativeDir);
-                    _logger.LogInformation($"📁 Created native library directory: {nativeDir}");
+                    _logger.LogInformation("Created native library directory: {NativeDir}", nativeDir);
                 }
 
                 // Platform-specific library path configuration
@@ -63,12 +68,13 @@ namespace JellyfinUpscalerPlugin.Services
                 ValidateDependencies(nativeDir);
 
                 _initialized = true;
-                _logger.LogInformation("✅ Native dependency isolation initialized");
+                _logger.LogInformation("Native dependency isolation initialized");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to initialize native dependencies");
+                _logger.LogError(ex, "Failed to initialize native dependencies");
             }
+            } // end lock
         }
 
         /// <summary>
@@ -76,7 +82,7 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         private void ValidateDependencies(string nativeDir)
         {
-            _logger.LogInformation("🔍 Validating native dependencies...");
+            _logger.LogInformation("Validating native dependencies...");
 
             var validationResults = new Dictionary<string, bool>();
 
@@ -106,21 +112,21 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 if (result.Value)
                 {
-                    _logger.LogInformation($"  ✅ {result.Key} - Found");
+                    _logger.LogInformation("  {LibraryName} - Found", result.Key);
                 }
                 else
                 {
-                    _logger.LogWarning($"  ⚠️ {result.Key} - Not found (will use system libraries)");
+                    _logger.LogWarning("  {LibraryName} - Not found (will use system libraries)", result.Key);
                 }
             }
 
             if (availableCount == 0)
             {
-                _logger.LogWarning("⚠️ No plugin-specific native libraries found. Using system libraries if available.");
+                _logger.LogWarning("No plugin-specific native libraries found. Using system libraries if available.");
             }
             else
             {
-                _logger.LogInformation($"📦 Native libraries validated: {availableCount}/{totalCount} found");
+                _logger.LogInformation("Native libraries validated: {AvailableCount}/{TotalCount} found", availableCount, totalCount);
             }
         }
 
@@ -161,19 +167,19 @@ namespace JellyfinUpscalerPlugin.Services
                 if (Directory.Exists(cudaPath))
                 {
                     SetDllDirectory(cudaPath);
-                    _logger.LogInformation($"✅ CUDA library path configured: {cudaPath}");
+                    _logger.LogInformation("CUDA library path configured: {CudaPath}", cudaPath);
                 }
 
                 if (Directory.Exists(onnxPath))
                 {
                     SetDllDirectory(onnxPath);
-                    _logger.LogInformation($"✅ ONNX Runtime library path configured: {onnxPath}");
+                    _logger.LogInformation("ONNX Runtime library path configured: {OnnxPath}", onnxPath);
                 }
 
                 if (Directory.Exists(opencvPath))
                 {
                     SetDllDirectory(opencvPath);
-                    _logger.LogInformation($"✅ OpenCV library path configured: {opencvPath}");
+                    _logger.LogInformation("OpenCV library path configured: {OpencvPath}", opencvPath);
                 }
 
                 // Add to PATH environment variable for current process
@@ -181,11 +187,11 @@ namespace JellyfinUpscalerPlugin.Services
                 var newPath = $"{nativeDir};{cudaPath};{onnxPath};{opencvPath};{currentPath}";
                 Environment.SetEnvironmentVariable("PATH", newPath);
 
-                _logger.LogInformation("✅ Windows library paths configured");
+                _logger.LogInformation("Windows library paths configured");
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "⚠️ Failed to configure Windows library paths");
+                _logger.LogWarning(ex, "Failed to configure Windows library paths");
             }
         }
 
@@ -205,11 +211,11 @@ namespace JellyfinUpscalerPlugin.Services
                 var newLdPath = $"{nativeDir}:{cudaPath}:{onnxPath}:{opencvPath}:{currentLdPath}";
                 Environment.SetEnvironmentVariable("LD_LIBRARY_PATH", newLdPath);
 
-                _logger.LogInformation($"✅ Linux library paths configured: LD_LIBRARY_PATH={newLdPath}");
+                _logger.LogInformation("Linux library paths configured: LD_LIBRARY_PATH={LdLibraryPath}", newLdPath);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "⚠️ Failed to configure Linux library paths");
+                _logger.LogWarning(ex, "Failed to configure Linux library paths");
             }
         }
 
@@ -229,11 +235,11 @@ namespace JellyfinUpscalerPlugin.Services
                 var newDyldPath = $"{nativeDir}:{cudaPath}:{onnxPath}:{opencvPath}:{currentDyldPath}";
                 Environment.SetEnvironmentVariable("DYLD_LIBRARY_PATH", newDyldPath);
 
-                _logger.LogInformation($"✅ macOS library paths configured: DYLD_LIBRARY_PATH={newDyldPath}");
+                _logger.LogInformation("macOS library paths configured: DYLD_LIBRARY_PATH={DyldLibraryPath}", newDyldPath);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "⚠️ Failed to configure macOS library paths");
+                _logger.LogWarning(ex, "Failed to configure macOS library paths");
             }
         }
 

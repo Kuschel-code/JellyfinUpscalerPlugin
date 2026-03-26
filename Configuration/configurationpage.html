@@ -946,6 +946,11 @@
                 var badge = page.querySelector('#service-badge');
                 badge.className = 'status-pill status-pill--offline';
                 badge.textContent = 'Error';
+                // Clear skeleton states for service info rows
+                ['#svc-docker','#svc-gpu','#svc-latency','#svc-model','#svc-processing'].forEach(function(sel) {
+                    var el = page.querySelector(sel);
+                    if (el) { el.textContent = 'Unavailable'; el.style.color = '#f87171'; }
+                });
             });
         }
 
@@ -1003,13 +1008,19 @@
                         page.querySelector('#active-jobs-list').innerHTML = '<div style="opacity:0.5;text-align:center;padding:1.5rem;">No active jobs</div>';
                     }
                 }
-            }).catch(function() {});
+            }).catch(function() {
+                var el = page.querySelector('#active-jobs-list');
+                if (el) el.innerHTML = '<div style="text-align:center;padding:1.5rem;"><span style="color:var(--accent-warn,#f87171);">Unavailable</span></div>';
+            });
 
             ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/cache/stats'), dataType: 'json' }).then(function(data) {
                 if (data) {
                     page.querySelector('#stat-cache-hit').textContent = data.HitRate ? data.HitRate.toFixed(1) + '%' : '0%';
                 }
-            }).catch(function() {});
+            }).catch(function() {
+                var el = page.querySelector('#stat-cache-hit');
+                if (el) el.innerHTML = '<span style="color:var(--accent-warn,#f87171);">Unavailable</span>';
+            });
         }
 
         // ===== JOBS =====
@@ -1076,7 +1087,13 @@
                     page.querySelector('#cache-hitrate').textContent = (data.HitRate || 0).toFixed(1) + '%';
                     page.querySelector('#cache-usage').textContent = (data.UsagePercentage || 0).toFixed(1) + '%';
                 }
-            }).catch(function() {});
+            }).catch(function() {
+                var ids = ['cache-size', 'cache-entries', 'cache-hitrate', 'cache-usage'];
+                ids.forEach(function(id) {
+                    var el = page.querySelector('#' + id);
+                    if (el) el.innerHTML = '<span style="color:var(--accent-warn,#f87171);">Unavailable</span>';
+                });
+            });
         }
 
         // ===== SYSTEM =====
@@ -1092,7 +1109,13 @@
                     page.querySelector('#hw-gpu').textContent = gpu;
                     page.querySelector('#hw-providers').textContent = (data.hardware.AvailableProviders || []).join(', ') || '-';
                 }
-            }).catch(function() {});
+            }).catch(function() {
+                var ids = ['hw-cpu', 'hw-platform', 'hw-container', 'hw-gpu', 'hw-providers'];
+                ids.forEach(function(id) {
+                    var el = page.querySelector('#' + id);
+                    if (el) el.innerHTML = '<span style="color:var(--accent-warn,#f87171);">Unavailable</span>';
+                });
+            });
         }
 
         // ===== MODELS =====
@@ -1239,6 +1262,11 @@
         }
 
         function saveConfig(page) {
+            var saveBtn = page.querySelector('#btn-save');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+            }
             ApiClient.getPluginConfiguration(pluginId).then(function(config) {
                 var fields = ['AiServiceUrl','RemoteHost','RemoteSshKeyFile','LocalMediaMountPoint',
                     'RemoteMediaMountPoint','RemoteTranscodePath',
@@ -1282,13 +1310,18 @@
                 config.OutputCodec = page.querySelector('#OutputCodec').value;
                 config.RealtimeMode = page.querySelector('#RealtimeMode').value;
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
-                config.PluginVersion = '1.5.4.1';
+                config.PluginVersion = '1.5.4.3';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
+                    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Settings'; }
                 }).catch(function() {
                     showToast('Failed to save settings', '#f87171');
+                    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Settings'; }
                 });
+            }).catch(function() {
+                showToast('Failed to load current settings', '#f87171');
+                if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Settings'; }
             });
         }
 
@@ -1331,10 +1364,22 @@
                     html += '<td style="text-align:center;padding:0.35rem 0.3rem;">' + scales + 'x</td>';
                     html += '<td style="text-align:center;padding:0.35rem 0.3rem;">' + esc(m.type || '?') + '</td>';
                     html += '<td style="text-align:center;padding:0.35rem 0.3rem;">' + status + '</td>';
-                    html += '<td style="text-align:center;padding:0.35rem 0.3rem;" id="bench-' + esc(m.id) + '"><button type="button" class="raised" style="font-size:0.72rem;padding:2px 8px;" onclick="window._benchModel(\'' + esc(m.id) + '\')">Bench</button></td>';
+                    html += '<td style="text-align:center;padding:0.35rem 0.3rem;" id="bench-' + esc(m.id) + '"><button type="button" class="raised" style="font-size:0.72rem;padding:2px 8px;" data-bench-model="' + esc(m.id) + '">Bench</button></td>';
                     html += '</tr>';
                 });
                 tbody.innerHTML = html;
+
+                    // Event delegation for bench buttons (XSS-safe, attached once)
+                    var catalogTable = page.querySelector('#model-catalog-table');
+                    if (catalogTable && !catalogTable._benchListenerAttached) {
+                        catalogTable._benchListenerAttached = true;
+                        catalogTable.addEventListener('click', function(e) {
+                            var btn = e.target.closest('[data-bench-model]');
+                            if (btn) {
+                                window._benchModel(btn.getAttribute('data-bench-model'));
+                            }
+                        });
+                    }
 
                 // Store all models for live benchmark
                 page._allModels = models;
@@ -1342,14 +1387,18 @@
                 // Update header count
                 var h3 = page.querySelector('#model-catalog-table')?.closest('.upscaler-card')?.querySelector('h3');
                 if (h3) h3.textContent = 'Model Catalog (' + models.length + ' Models)';
-            }).catch(function() {});
+            }).catch(function() {
+                var tbody = page.querySelector('#model-catalog-body');
+                if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1rem;"><span style="color:var(--accent-warn,#f87171);">Unavailable</span></td></tr>';
+            });
         }
 
         // Benchmark a single model: load it, run benchmark, show result
         window._benchModel = function(modelId) {
             var cell = document.querySelector('#bench-' + modelId);
             // Check if model needs downloading first
-            var modelInfo = (page._allModels || []).find(function(m) { return m.id === modelId; });
+            var configPage = document.querySelector('#UpscalerConfigurationPage');
+            var modelInfo = (configPage && configPage._allModels || []).find(function(m) { return m.id === modelId; });
             var needsDownload = modelInfo && !modelInfo.downloaded;
             if (cell) cell.innerHTML = '<span style="color:var(--warning);font-size:0.75rem;">' + (needsDownload ? 'Downloading...' : 'Loading...') + '</span>';
 
@@ -1381,7 +1430,7 @@
         var perfInterval = null;
 
         function startPerfMonitor(page) {
-            if (perfInterval) return;
+            stopPerfMonitor();
             updatePerfMonitor(page);
             perfInterval = setInterval(function() { updatePerfMonitor(page); }, 5000);
         }
@@ -1442,27 +1491,6 @@
         // ===== LIVE VIDEO BENCHMARK =====
         var _liveBenchStop = false;
 
-        function loadBenchVideoItems(page) {
-            try {
-                ApiClient.getItems(ApiClient.getCurrentUserId(), {
-                    IncludeItemTypes: 'Movie,Episode',
-                    Limit: 50, SortBy: 'DateCreated', SortOrder: 'Descending',
-                    Fields: 'PrimaryImageAspectRatio', ImageTypeLimit: 1, EnableImageTypes: 'Primary'
-                }).then(function(result) {
-                    var select = page.querySelector('#bench-video-item');
-                    select.innerHTML = '<option value="">-- Select video --</option>';
-                    if (result && result.Items) {
-                        result.Items.forEach(function(item) {
-                            var opt = document.createElement('option');
-                            opt.value = item.Id;
-                            var type = item.Type === 'Episode' ? ' [EP]' : ' [Movie]';
-                            opt.textContent = item.Name + (item.ProductionYear ? ' (' + item.ProductionYear + ')' : '') + type;
-                            select.appendChild(opt);
-                        });
-                    }
-                });
-            } catch(e) {}
-        }
 
         async function runLiveVideoBenchmark(page) {
             // Get all models
@@ -1647,14 +1675,14 @@
                         }
                         var html = '<div class="info-row"><span class="label">Duration</span><span class="value">' + (r.duration || 0).toFixed(1) + 's</span></div>';
                         if (r.optimalSettings) {
-                            html += '<div class="info-row"><span class="label">Rec. Model</span><span class="value">' + (r.optimalSettings.RecommendedModel || '-') + '</span></div>';
-                            html += '<div class="info-row"><span class="label">Max Res.</span><span class="value">' + (r.optimalSettings.RecommendedMaxResolution || '-') + '</span></div>';
-                            html += '<div class="info-row"><span class="label">Quality</span><span class="value">' + (r.optimalSettings.RecommendedQuality || '-') + '</span></div>';
-                            html += '<div class="info-row"><span class="label">Max Streams</span><span class="value">' + (r.optimalSettings.MaxConcurrentStreams || 1) + '</span></div>';
+                            html += '<div class="info-row"><span class="label">Rec. Model</span><span class="value">' + esc(r.optimalSettings.RecommendedModel || '-') + '</span></div>';
+                            html += '<div class="info-row"><span class="label">Max Res.</span><span class="value">' + esc(r.optimalSettings.RecommendedMaxResolution || '-') + '</span></div>';
+                            html += '<div class="info-row"><span class="label">Quality</span><span class="value">' + esc(r.optimalSettings.RecommendedQuality || '-') + '</span></div>';
+                            html += '<div class="info-row"><span class="label">Max Streams</span><span class="value">' + esc(String(r.optimalSettings.MaxConcurrentStreams || 1)) + '</span></div>';
                         }
                         result.innerHTML = html;
                     } else {
-                        result.innerHTML = '<div style="color:var(--danger);">' + (data.message || 'Benchmark failed') + '</div>';
+                        result.innerHTML = '<div style="color:var(--danger);">' + esc(data.message || 'Benchmark failed') + '</div>';
                     }
                 }).catch(function() {
                     result.innerHTML = '<div style="color:var(--danger);">Benchmark failed — check API connection</div>';
@@ -1678,8 +1706,12 @@
                 page.querySelector('#comparison-container').style.display = 'none';
                 page.querySelector('#btn-compare').textContent = 'Generating...';
                 ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/compare/' + itemId + '?model=' + model + '&scale=' + scale), dataType: 'json' }).then(function(data) {
-                    page.querySelector('#img-original').src = data.originalBase64;
-                    page.querySelector('#img-upscaled').src = data.upscaledBase64;
+                    if (data.originalBase64 && data.originalBase64.startsWith('data:image/')) {
+                        page.querySelector('#img-original').src = data.originalBase64;
+                    }
+                    if (data.upscaledBase64 && data.upscaledBase64.startsWith('data:image/')) {
+                        page.querySelector('#img-upscaled').src = data.upscaledBase64;
+                    }
                     page.querySelector('#comparison-container').style.display = '';
                     page.querySelector('#btn-compare').textContent = 'Generate Comparison';
                 }).catch(function() {
@@ -1750,9 +1782,14 @@
         }
 
         // ===== INITIALIZATION =====
+        var _pageShowRunning = false;
         function onPageShow() {
+            if (_pageShowRunning) return; // debounce double-fire from pageshow + setTimeout
+            _pageShowRunning = true;
+            setTimeout(function() { _pageShowRunning = false; }, 200);
+
             var page = document.querySelector('#UpscalerConfigurationPage');
-            if (!page) return;
+            if (!page) { _pageShowRunning = false; return; }
 
             if (!_initialized) {
                 initNav(page);
@@ -1772,6 +1809,7 @@
             startPerfMonitor(page);
 
             if (refreshInterval) clearInterval(refreshInterval);
+            refreshInterval = null;
             refreshInterval = setInterval(function() {
                 var activeTab = page.querySelector('.upscaler-tab.active');
                 if (activeTab) {

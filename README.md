@@ -42,7 +42,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 │  │  CUDA / ROCm / OpenVINO / CPU     │  │
 │  │  Real-ESRGAN, SPAN, SwinIR, DAT2 │  │
 │  │  EDVR-M, RealBasicVSR, AnimeSR  │  │
-│  │  EDSR, FSRCNN, ESPCN (35 models) │  │
+│  │  EDSR, FSRCNN, ESPCN (40+ models) │  │
 │  │  Web UI for Model Management      │  │
 │  └────────────────────────────────────┘  │
 └──────────────────────────────────────────┘
@@ -87,7 +87,7 @@ When you press play, the plugin automatically enhances the video in real-time us
 
 ### Player Integration
 The in-player button lets you:
-- Select from **35 AI models** across 9 categories (Real-ESRGAN, SPAN, SwinIR, DAT2, EDVR-M, RealBasicVSR, AnimeSR, APISR, EDSR, LapSRN, FSRCNN, ESPCN)
+- Select from **40+ AI models** across 13 categories (Real-ESRGAN, SPAN, SwinIR, DAT2, EDVR-M, RealBasicVSR, AnimeSR, APISR, EDSR, LapSRN, FSRCNN, ESPCN, ncnn-Vulkan)
 - Choose scale factor (2x, 3x, 4x, 8x)
 - Toggle real-time upscaling and switch modes
 - Quick access via keyboard shortcuts (Alt+U, Alt+M)
@@ -167,7 +167,7 @@ Verify the container is running: `curl http://YOUR_SERVER_IP:5000/health`
 ### Step 3: Use the Player Button
 
 After installation, play any video in a **web browser** (Chrome, Edge, Firefox). You will see an AI upscaler button (sparkle icon) in the player controls. Click it to access:
-- Quick model selection (Real-ESRGAN, SPAN, SwinIR, EDSR, FSRCNN, ESPCN, LapSRN)
+- Quick model selection across 13 categories (Real-ESRGAN, SPAN, SwinIR, DAT2, EDVR-M, RealBasicVSR, AnimeSR, APISR, EDSR, LapSRN, FSRCNN, ESPCN, ncnn-Vulkan)
 - Scale factor (2x, 3x, 4x)
 - Toggle upscaling on/off
 
@@ -187,7 +187,7 @@ To batch-upscale your low-resolution content:
 
 ## Features
 
-- **35 AI Models**: Real-ESRGAN, SPAN, SwinIR, DAT2, EDVR-M, RealBasicVSR, AnimeSR, APISR, EDSR, FSRCNN, ESPCN, LapSRN (2x–8x)
+- **40+ AI Models**: Real-ESRGAN, SPAN, SwinIR, DAT2, EDVR-M, RealBasicVSR, AnimeSR, APISR, EDSR, FSRCNN, ESPCN, LapSRN (2x–8x)
 - **Multi-Frame VSR**: 5-frame sliding window for temporal consistency (EDVR-M, RealBasicVSR, AnimeSR v2)
 - **Auto-Model Selection**: Picks best model per video based on genre (anime/live-action), resolution, and mode
 - **Real-Time Upscaling**: Two-tier system — WebGL client-side shader + Server AI frame pipeline with auto-fallback
@@ -208,7 +208,7 @@ To batch-upscale your low-resolution content:
 
 ---
 
-## AI Models (35 Total)
+## AI Models (40+ Total)
 
 | Category | Models | Scale | Speed | Best For |
 |----------|--------|-------|-------|----------|
@@ -279,7 +279,7 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 - **Fixed**: Live Video Benchmark now properly checks `loadResult.detail` for Docker errors
 
 ### v1.5.4.2 (CORS Fix + Live Video Benchmark)
-- **Added**: Live Video Benchmark — test all 35 models against your library content
+- **Added**: Live Video Benchmark — test all 40+ models against your library content
 - **Added**: 3 new CORS proxy endpoints (`models/load`, `model-benchmark`, `metrics`)
 - **Fixed**: CORS errors in model catalog and performance monitor on TrueNAS multi-container setups
 - **Fixed**: Frontend uses `ApiClient.getUrl()` instead of direct Docker fetch
@@ -320,7 +320,7 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 - **Fixed**: GPU verification uses model's actual input shape (fixes #46 — RTX A2000)
 - **Fixed**: Prometheus `total_frames_processed` double-counted in metrics
 - **Fixed**: Webhook `HttpClient` socket exhaustion (now uses static shared client)
-- **Fixed**: `/api/upscaler/models` returned only 14 of 35 models (now proxies Docker service)
+- **Fixed**: `/api/upscaler/models` returned only 14 of 40+ models (now proxies Docker service)
 - **Fixed**: `ProcessingQueue._paused` not volatile (thread visibility issue)
 - **Added**: APISR x3 (CVPR 2024) — general 3x model for 720p→1080p video
 
@@ -440,7 +440,7 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 1. Uninstall old versions (v1.4.x)
 2. Delete old plugin folder from Jellyfin plugins directory
 3. Restart Jellyfin
-4. Install v1.5.3.5 fresh from repository
+4. Install the latest version fresh from repository
 
 ### Player button not showing
 1. The button only works in **web browsers** (Chrome, Edge, Firefox)
