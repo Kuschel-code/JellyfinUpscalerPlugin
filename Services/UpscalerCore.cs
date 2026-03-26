@@ -154,6 +154,14 @@ namespace JellyfinUpscalerPlugin.Services
             if (string.IsNullOrWhiteSpace(webhookUrl))
                 return;
 
+            // SSRF prevention: only allow http/https webhook URLs
+            if (!Uri.TryCreate(webhookUrl, UriKind.Absolute, out var webhookUri) ||
+                (webhookUri.Scheme != "http" && webhookUri.Scheme != "https"))
+            {
+                _logger.LogWarning("Webhook URL rejected (invalid scheme): {Url}", webhookUrl);
+                return;
+            }
+
             if (eventType == "complete" && !Config.WebhookOnComplete) return;
             if (eventType == "failure" && !Config.WebhookOnFailure) return;
 

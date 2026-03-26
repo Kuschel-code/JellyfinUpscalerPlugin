@@ -143,62 +143,74 @@ namespace JellyfinUpscalerPlugin.Services
         }
 
         // Track which model is currently loaded on the AI service to avoid redundant load calls
-        private string? _currentlyLoadedModel;
-        private readonly object _modelLock = new();
+        private volatile string? _currentlyLoadedModel;
+        private readonly SemaphoreSlim _modelLoadSemaphore = new(1, 1);
 
         /// <summary>
         /// Ensure the specified model is downloaded and loaded on the AI service.
-        /// Skips if the model is already the active model.
+        /// Skips if the model is already the active model. Thread-safe via SemaphoreSlim.
         /// </summary>
         public async Task<bool> EnsureModelLoadedAsync(string modelName, CancellationToken cancellationToken = default)
         {
-            // Quick check: is this model already loaded?
-            lock (_modelLock)
+            // Quick volatile read: skip if already loaded (no lock needed)
+            if (_currentlyLoadedModel == modelName)
             {
+                return true;
+            }
+
+            // Serialize model loading to prevent concurrent load races
+            await _modelLoadSemaphore.WaitAsync(cancellationToken);
+            try
+            {
+                // Double-check after acquiring semaphore
                 if (_currentlyLoadedModel == modelName)
                 {
                     return true;
                 }
-            }
 
-            // Check service status to see what's actually loaded
-            try
-            {
-                var status = await GetServiceStatusAsync(cancellationToken);
-                if (status?.CurrentModel == modelName)
+                // Check service status to see what's actually loaded
+                try
                 {
-                    lock (_modelLock) { _currentlyLoadedModel = modelName; }
-                    return true;
+                    var status = await GetServiceStatusAsync(cancellationToken);
+                    if (status?.CurrentModel == modelName)
+                    {
+                        _currentlyLoadedModel = modelName;
+                        return true;
+                    }
                 }
+                catch { /* proceed to load */ }
+
+                _logger.LogInformation("Switching AI model to: {Model}", modelName);
+
+                // Download model if needed (idempotent — skips if already downloaded)
+                var downloaded = await DownloadModelAsync(modelName, cancellationToken);
+                if (!downloaded)
+                {
+                    _logger.LogWarning("Failed to download model {Model}, attempting load anyway", modelName);
+                }
+
+                // Load the model
+                var config = Plugin.Instance?.Configuration;
+                var useGpu = config?.HardwareAcceleration ?? true;
+                var gpuDeviceId = config?.GpuDeviceIndex ?? 0;
+
+                var loaded = await LoadModelAsync(modelName, useGpu, gpuDeviceId, cancellationToken);
+                if (loaded)
+                {
+                    _currentlyLoadedModel = modelName;
+                    _logger.LogInformation("Model {Model} loaded successfully", modelName);
+                }
+                else
+                {
+                    _logger.LogError("Failed to load model {Model}", modelName);
+                }
+
+                return loaded;
             }
-            catch { /* proceed to load */ }
-
-            _logger.LogInformation("Switching AI model to: {Model}", modelName);
-
-            // Download model if needed (idempotent — skips if already downloaded)
-            var downloaded = await DownloadModelAsync(modelName, cancellationToken);
-            if (!downloaded)
+            finally
             {
-                _logger.LogWarning("Failed to download model {Model}, attempting load anyway", modelName);
+                _modelLoadSemaphore.Release();
             }
-
-            // Load the model
-            var config = Plugin.Instance?.Configuration;
-            var useGpu = config?.HardwareAcceleration ?? true;
-            var gpuDeviceId = config?.GpuDeviceIndex ?? 0;
-
-            var loaded = await LoadModelAsync(modelName, useGpu, gpuDeviceId, cancellationToken);
-            if (loaded)
-            {
-                lock (_modelLock) { _currentlyLoadedModel = modelName; }
-                _logger.LogInformation("Model {Model} loaded successfully", modelName);
-            }
-            else
-            {
-                _logger.LogError("Failed to load model {Model}", modelName);
-            }
-
-            return loaded;
         }
 
         /// <summary>

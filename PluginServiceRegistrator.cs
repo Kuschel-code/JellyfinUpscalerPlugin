@@ -44,7 +44,6 @@ namespace JellyfinUpscalerPlugin
 
             // Platform & Interop
             serviceCollection.AddSingleton<IPlatformDetectionService, PlatformDetectionService>();
-            serviceCollection.AddSingleton<INativeLibraryLoader, NativeLibraryLoader>();
             serviceCollection.AddSingleton<IFFmpegWrapperService, FFmpegWrapperService>();
         }
     }

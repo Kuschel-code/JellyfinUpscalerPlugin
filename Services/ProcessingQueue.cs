@@ -138,11 +138,17 @@ namespace JellyfinUpscalerPlugin.Services
                 job.Error = error;
                 _completedJobs[jobId] = job;
 
-                // Keep only last 100 completed jobs
-                if (_completedJobs.Count > 100)
+                // Keep completed jobs bounded with hysteresis to avoid O(n log n) sort on every call
+                if (_completedJobs.Count > 150)
                 {
-                    var oldest = _completedJobs.Values.OrderBy(j => j.CompletedAt).First();
-                    _completedJobs.TryRemove(oldest.JobId, out _);
+                    var toRemove = _completedJobs.Values
+                        .OrderBy(j => j.CompletedAt)
+                        .Take(_completedJobs.Count - 100)
+                        .ToList();
+                    foreach (var old in toRemove)
+                    {
+                        _completedJobs.TryRemove(old.JobId, out _);
+                    }
                 }
 
                 PersistQueue();

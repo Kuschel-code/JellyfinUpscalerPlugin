@@ -287,7 +287,8 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                         // Clean up partial output
                         if (File.Exists(outputPath))
                         {
-                            try { File.Delete(outputPath); } catch { }
+                            try { File.Delete(outputPath); }
+                            catch (Exception ex) { _logger.LogWarning(ex, "AI Upscaler: Failed to cleanup partial output: {Path}", outputPath); }
                         }
                     }
                 }
@@ -307,7 +308,8 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                     // Clean up partial output
                     if (File.Exists(outputPath))
                     {
-                        try { File.Delete(outputPath); } catch { }
+                        try { File.Delete(outputPath); }
+                        catch (Exception ex) { _logger.LogWarning(ex, "AI Upscaler: Failed to cleanup partial output: {Path}", outputPath); }
                     }
                 }
             }
