@@ -1,6 +1,6 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
 <style>
-    /* ===== AI Upscaler v1.5.4.2 — Jellyfin-compatible dark theme ===== */
+    /* ===== AI Upscaler v1.5.4.3 — Jellyfin-compatible dark theme ===== */
     #UpscalerConfigurationPage {
         --accent: #00d4ff;
         --accent-bg: rgba(0, 212, 255, 0.12);
@@ -360,7 +360,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.5.4.2 &middot; Docker Microservice Architecture</div>
+                <div class="upscaler-header-meta">v1.5.4.3 &middot; Docker Microservice Architecture</div>
             </div>
 
             <!-- Tab bar -->
@@ -1348,15 +1348,19 @@
         // Benchmark a single model: load it, run benchmark, show result
         window._benchModel = function(modelId) {
             var cell = document.querySelector('#bench-' + modelId);
-            if (cell) cell.innerHTML = '<span style="color:var(--warning);font-size:0.75rem;">Loading...</span>';
+            // Check if model needs downloading first
+            var modelInfo = (page._allModels || []).find(function(m) { return m.id === modelId; });
+            var needsDownload = modelInfo && !modelInfo.downloaded;
+            if (cell) cell.innerHTML = '<span style="color:var(--warning);font-size:0.75rem;">' + (needsDownload ? 'Downloading...' : 'Loading...') + '</span>';
 
-            // Step 1: Load the model via Jellyfin proxy (avoids CORS)
+            // Step 1: Load the model via Jellyfin proxy (auto-downloads if needed)
             ApiClient.ajax({
                 type: 'POST', url: ApiClient.getUrl('Upscaler/models/load') + '?model_name=' + encodeURIComponent(modelId),
-                dataType: 'json'
+                dataType: 'json',
+                timeout: 180000
             }).then(function(loadResult) {
                 if (loadResult && (loadResult.error || loadResult.detail)) throw new Error(loadResult.error || loadResult.detail);
-                if (cell) cell.innerHTML = '<span style="color:var(--warning);font-size:0.75rem;">Running...</span>';
+                if (cell) cell.innerHTML = '<span style="color:var(--warning);font-size:0.75rem;">Benchmarking...</span>';
                 // Step 2: Run benchmark via Jellyfin proxy
                 return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/model-benchmark'), dataType: 'json' });
             }).then(function(bench) {
@@ -1505,15 +1509,18 @@
                 if (row) row.querySelector('.lbr-fps').innerHTML = '<span style="color:var(--warning);">...</span>';
 
                 try {
-                    // Load model via proxy — validate response
+                    // Load model via proxy (auto-downloads if needed) — validate response
+                    var needsDl = !m.downloaded;
+                    if (needsDl && row) row.querySelector('.lbr-fps').innerHTML = '<span style="color:var(--warning);">downloading...</span>';
                     var loadResult = await new Promise(function(resolve, reject) {
                         ApiClient.ajax({
                             type: 'POST', url: ApiClient.getUrl('Upscaler/models/load') + '?model_name=' + encodeURIComponent(m.id),
-                            dataType: 'json'
+                            dataType: 'json',
+                            timeout: 180000
                         }).then(resolve).catch(reject);
                     });
-                    if (loadResult && loadResult.error) {
-                        throw new Error(loadResult.error);
+                    if (loadResult && (loadResult.error || loadResult.detail)) {
+                        throw new Error(loadResult.error || loadResult.detail);
                     }
 
                     // Run benchmark via proxy

@@ -3,10 +3,10 @@
     "name": "AI Upscaler Plugin",
     "overview": "AI-Powered Video Upscaling Plugin with Docker Microservice Architecture",
     "description": "Revolutionary AI upscaling plugin with Docker-based AI processing. Supports NVIDIA CUDA/TensorRT, Intel OpenVINO, AMD ROCm, and CPU. Features automated hardware benchmarking, intelligent fallback system, pre-processing cache, and sidebar integration.",
-    "version": "1.5.4.2",
+    "version": "1.5.4.3",
     "targetAbi": "10.11.0.0",
     "framework": "net9.0",
     "owner": "Kuschel-code",
     "category": "Video Enhancement",
-    "changelog": "v1.5.4.2: Fix multi-frame audio loss, model fallback chain, scale dropdown crash, uptime metrics, TensorRT detection, model categories. Full settings dashboard with 35 AI models, live performance monitor, model catalog."
+    "changelog": "v1.5.4.3: Fix bench buttons — auto-download models on load, forward Docker error codes, consistent fallback format. Better download/benchmark UX indicators."
 }

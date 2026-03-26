@@ -61,7 +61,7 @@ CACHE_DIR = Path("/app/cache")
 STATIC_DIR = Path("/app/static")
 
 # Version
-VERSION = "1.5.4.1"
+VERSION = "1.5.4.3"
 
 # Global state
 class AppState:
@@ -1990,8 +1990,12 @@ async def load_model_endpoint(
 
     model_path = get_model_path(model_name)
 
+    # Auto-download model if not present
     if not model_path.exists():
-        raise HTTPException(status_code=404, detail=f"Model {model_name} not downloaded")
+        logger.info(f"Model {model_name} not downloaded — auto-downloading...")
+        dl_success = await download_model(model_name)
+        if not dl_success:
+            raise HTTPException(status_code=500, detail=f"Failed to auto-download model {model_name}")
 
     state.use_gpu = use_gpu
     if gpu_device_id is not None:
