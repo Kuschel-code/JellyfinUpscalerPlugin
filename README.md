@@ -294,6 +294,25 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 - **Improved**: CI pipeline with test step and branch-safe manifest push
 - **Updated**: FastAPI >=0.115, uvicorn >=0.32, OpenCV >=4.10, python-multipart CVE fix
 
+### v1.5.4.4 (Docker Deep Scan — 20+ Bug Fixes)
+- **Fixed**: Thread-safe model dispatch — snapshot state under lock before inference
+- **Fixed**: Circuit breaker half-open probe re-opens on failure (was stranding)
+- **Fixed**: Per-model async download locks with UUID temp files (no concurrent corruption)
+- **Fixed**: Semaphore capture pattern — release targets same instance after `/config` recreates it
+- **Fixed**: Model switch clears ALL backend refs (cv_model, onnx_session, ncnn_upscaler)
+- **Fixed**: ONNX tile blend weight clamped for small tiles (division by zero)
+- **Fixed**: ncnn-Vulkan tile blending with weighted overlap and dynamic reshape
+- **Fixed**: ncnn bundled models skip download/file-exists check
+- **Fixed**: `/models/cleanup` uses equality instead of substring match
+- **Fixed**: `/health/detailed` checks all 3 backends (opencv, onnx, ncnn)
+- **Fixed**: `use_gpu` rollback on model load failure
+- **Fixed**: Vulkan Dockerfile — appuser added to render/video groups for GPU access
+- **Fixed**: Intel Dockerfile — missing `apt-get clean` in first apt block
+- **Fixed**: AMD Dockerfile — base image tag corrected, onnxruntime-rocm pinned ≤1.22.99
+- **Fixed**: NVIDIA Dockerfile — removed non-existent TensorRT packages, python -m pip
+- **Improved**: All 6 Dockerfiles verified against Docker Hub for correct base image tags
+- **Improved**: All 6 requirements files updated with flexible version pins
+
 ### v1.5.4.3 (Bench Button Fix + Auto-Download)
 - **Fixed**: Bench buttons all showing "Failed" — models now auto-download when you click Bench
 - **Fixed**: Controller proxy returns actual Docker HTTP status codes (was always 200)

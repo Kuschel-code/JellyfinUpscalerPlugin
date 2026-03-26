@@ -17,7 +17,10 @@ LABEL version="1.5.4.4"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV USE_GPU=true
-ENV HSA_OVERRIDE_GFX_VERSION=11.0.0
+# HSA_OVERRIDE_GFX_VERSION: Set this at runtime for YOUR specific GPU if needed.
+# Example: HSA_OVERRIDE_GFX_VERSION=11.0.0 for RX 7900 (gfx1100)
+# Do NOT set a default — it breaks GPUs that aren't gfx1100.
+# ENV HSA_OVERRIDE_GFX_VERSION=11.0.0
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install system dependencies for OpenCV
@@ -52,7 +55,10 @@ COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Create non-root user for running the service
-RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
+# Add to video group for /dev/kfd and /dev/dri GPU access
+RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser && \
+    usermod -aG video appuser 2>/dev/null || true && \
+    usermod -aG render appuser 2>/dev/null || true
 
 # Create directories for models and cache
 RUN mkdir -p /app/models /app/cache && \
