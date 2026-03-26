@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.5.4.3
+# Jellyfin AI Upscaler Plugin v1.5.4.4
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -8,7 +8,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker4 / v1.5.4.3):**
+**Docker Images (docker4 / v1.5.4.4):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker4` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker4-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker4-intel` (Intel Arc/iGPU OpenVINO)
@@ -28,7 +28,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.5.4.3      │  │
+│  │  AI Upscaler Plugin v1.5.4.4      │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -269,6 +269,29 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 ---
 
 ## Changelog
+
+### v1.5.4.4 (Security & Quality Hardening)
+- **Security**: Path traversal protection on all queue/process/preprocess endpoints
+- **Security**: RequiresElevation on metrics, job control, and queue status endpoints
+- **Security**: Non-root containers (USER appuser) in all 6 Docker images
+- **Security**: SSH completely removed from all Docker images
+- **Security**: API token required for destructive model cleanup operations
+- **Security**: XSS prevention — all server data escaped in frontend HTML
+- **Security**: Download URL allowlist (HuggingFace/GitHub only)
+- **Fixed**: GPU detection — JsonPropertyName for snake_case deserialization
+- **Fixed**: Queue worker — full background processing loop implemented
+- **Fixed**: Circuit breaker thread safety with proper half-open state
+- **Fixed**: Cache size tracking race condition (Interlocked.Add)
+- **Fixed**: Benchmark scale factor for ncnn/Vulkan models
+- **Fixed**: Float32 blend buffers — halves RAM usage for 4K upscaling
+- **Fixed**: Atomic model downloads prevent corrupted partial files
+- **Improved**: Structured logging across entire C# codebase (no interpolation)
+- **Improved**: DateTime.UtcNow used consistently everywhere
+- **Improved**: IHttpClientFactory replaces static HttpClient instances
+- **Improved**: Health check start-period=60s for model download scenarios
+- **Improved**: MODEL_CATALOG synced to 40+ models across 12 categories
+- **Improved**: CI pipeline with test step and branch-safe manifest push
+- **Updated**: FastAPI >=0.115, uvicorn >=0.32, OpenCV >=4.10, python-multipart CVE fix
 
 ### v1.5.4.3 (Bench Button Fix + Auto-Download)
 - **Fixed**: Bench buttons all showing "Failed" — models now auto-download when you click Bench

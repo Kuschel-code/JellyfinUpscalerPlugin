@@ -1,6 +1,6 @@
 """
 AI Upscaler Service - FastAPI Application
-Jellyfin AI Upscaler Plugin - Microservice Component v1.5.4.3
+Jellyfin AI Upscaler Plugin - Microservice Component v1.5.4.4
 Supports OpenCV DNN (.pb) and ONNX Runtime models with GPU detection
 Multi-GPU selection, robust TensorRT/CUDA/OpenVINO fallback
 """
@@ -60,7 +60,7 @@ CACHE_DIR = Path("/app/cache")
 STATIC_DIR = Path("/app/static")
 
 # Version
-VERSION = "1.5.4.3"
+VERSION = "1.5.4.4"
 
 # Global state
 class AppState:
