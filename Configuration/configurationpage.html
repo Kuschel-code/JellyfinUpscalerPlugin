@@ -1363,7 +1363,7 @@
                     var scales = Array.isArray(m.scale) ? m.scale.join('/') : (m.scale || '?');
                     html += '<tr style="border-bottom:1px solid var(--border);">';
                     html += '<td style="padding:0.35rem 0.3rem;">' + esc(m.name || m.id) + '</td>';
-                    html += '<td style="text-align:center;padding:0.35rem 0.3rem;">' + scales + 'x</td>';
+                    html += '<td style="text-align:center;padding:0.35rem 0.3rem;">' + esc(String(scales)) + 'x</td>';
                     html += '<td style="text-align:center;padding:0.35rem 0.3rem;">' + esc(m.type || '?') + '</td>';
                     html += '<td style="text-align:center;padding:0.35rem 0.3rem;">' + status + '</td>';
                     html += '<td style="text-align:center;padding:0.35rem 0.3rem;" id="bench-' + esc(m.id) + '"><button type="button" class="raised" style="font-size:0.72rem;padding:2px 8px;" data-bench-model="' + esc(m.id) + '">Bench</button></td>';
@@ -1520,7 +1520,7 @@
                 tr.id = 'lbr-' + m.id;
                 var scales = Array.isArray(m.scale) ? m.scale.join('/') : (m.scale || '?');
                 tr.innerHTML = '<td style="padding:0.35rem 0.3rem;">' + esc(m.name || m.id) + '</td>' +
-                    '<td style="text-align:center;padding:0.35rem 0.3rem;">' + scales + 'x</td>' +
+                    '<td style="text-align:center;padding:0.35rem 0.3rem;">' + esc(String(scales)) + 'x</td>' +
                     '<td style="text-align:center;padding:0.35rem 0.3rem;" class="lbr-fps">-</td>' +
                     '<td style="text-align:center;padding:0.35rem 0.3rem;" class="lbr-ms">-</td>' +
                     '<td style="text-align:center;padding:0.35rem 0.3rem;" class="lbr-gpu">-</td>';
