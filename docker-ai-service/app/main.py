@@ -6,7 +6,6 @@ Multi-GPU selection, robust TensorRT/CUDA/OpenVINO fallback
 """
 
 import os
-import io
 import time
 import logging
 import asyncio
@@ -16,16 +15,15 @@ import threading
 import hmac
 import urllib.parse
 from pathlib import Path
-from typing import Optional, Any, List
+from typing import Optional, Any
 from contextlib import asynccontextmanager
 
 import numpy as np
 import cv2
 import httpx
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, BackgroundTasks, Request
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
 from fastapi.responses import Response, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 
 # Try to import ONNX Runtime (optional)
 try:
@@ -122,6 +120,7 @@ class AppState:
     # Health monitoring
     consecutive_failures: int = 0
     circuit_open: bool = False
+    circuit_half_open: bool = False
     circuit_open_at: float = 0
     circuit_breaker_threshold: int = 5
     circuit_breaker_reset_seconds: int = 60
@@ -837,8 +836,9 @@ async def lifespan(app: FastAPI):
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     
-    # Detect hardware
-    detect_hardware()
+    # Detect hardware (run in executor to avoid blocking event loop with subprocess calls)
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, detect_hardware)
     logger.info(f"CPU: {state.cpu_name} ({state.cpu_cores} cores)")
     logger.info(f"GPU: {state.gpu_name} ({state.gpu_memory})")
     
@@ -2436,6 +2436,7 @@ def _record_success(model_name: str, duration_ms: float):
         state.model_last_used[model_name] = time.time()
 
         # Close circuit breaker on success
+        state.circuit_half_open = False
         if state.circuit_open:
             state.circuit_open = False
             logger.info("Circuit breaker CLOSED after successful job")
@@ -2449,6 +2450,7 @@ def _record_failure(model_name: str):
         state.consecutive_failures += 1
         state.model_failure_count[model_name] = state.model_failure_count.get(model_name, 0) + 1
 
+        state.circuit_half_open = False
         # Open circuit breaker after threshold failures
         if state.consecutive_failures >= state.circuit_breaker_threshold and not state.circuit_open:
             state.circuit_open = True
@@ -2464,9 +2466,16 @@ def _check_circuit_breaker():
 
         elapsed = time.time() - state.circuit_open_at
         if elapsed >= state.circuit_breaker_reset_seconds:
-            # Half-open: allow one request through
+            if getattr(state, 'circuit_half_open', False):
+                # Another request is already probing — block this one
+                raise HTTPException(
+                    status_code=503,
+                    detail="Circuit breaker half-open — probe in progress, retry shortly"
+                )
+            # Half-open: allow exactly one request through
+            state.circuit_half_open = True
             state.circuit_open = False
-            logger.info("Circuit breaker HALF-OPEN, allowing request through")
+            logger.info("Circuit breaker HALF-OPEN, allowing one probe request")
             return
 
         raise HTTPException(
