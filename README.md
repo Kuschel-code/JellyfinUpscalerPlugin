@@ -105,7 +105,7 @@ Choose the command that matches your GPU:
 docker run -d \
   --name jellyfin-ai-upscaler \
   --gpus all \
-  -p 5000:5000 -p 2222:22 \
+  -p 5000:5000 \
   -v ai-models:/app/models \
   kuscheltier/jellyfin-ai-upscaler:docker4
 ```
@@ -116,7 +116,7 @@ docker run -d \
   --name jellyfin-ai-upscaler \
   --device=/dev/dri \
   --group-add=render \
-  -p 5000:5000 -p 2222:22 \
+  -p 5000:5000 \
   -v ai-models:/app/models \
   kuscheltier/jellyfin-ai-upscaler:docker4-intel
 ```
@@ -126,7 +126,7 @@ docker run -d \
 docker run -d \
   --name jellyfin-ai-upscaler \
   --device=/dev/kfd --device=/dev/dri \
-  -p 5000:5000 -p 2222:22 \
+  -p 5000:5000 \
   -v ai-models:/app/models \
   kuscheltier/jellyfin-ai-upscaler:docker4-amd
 ```
@@ -137,7 +137,7 @@ docker run -d \
   --name jellyfin-ai-upscaler \
   --device=/dev/dri \
   --group-add=render \
-  -p 5000:5000 -p 2222:22 \
+  -p 5000:5000 \
   -v ai-models:/app/models \
   kuscheltier/jellyfin-ai-upscaler:docker4-vulkan
 ```
@@ -146,7 +146,7 @@ docker run -d \
 ```bash
 docker run -d \
   --name jellyfin-ai-upscaler \
-  -p 5000:5000 -p 2222:22 \
+  -p 5000:5000 \
   -v ai-models:/app/models \
   kuscheltier/jellyfin-ai-upscaler:docker4-cpu
 ```
@@ -222,6 +222,7 @@ To batch-upscale your low-resolution content:
 | **Anime** | anime-compact-x4 | 4x | Fast | Lightweight anime |
 | **Multi-Frame VSR** | edvr-m-x4, realbasicvsr-x4, animesr-v2-x4 | 4x | Slow | Temporal consistency (5 frames) |
 | **OpenCV Classic** | edsr-x2/x3/x4, lapsrn-x2/x4/x8, fsrcnn-x2/x3/x4, espcn-x2/x3/x4 | 2-8x | Fast-Medium | CPU-only, lightweight |
+| **Vulkan/ncnn** | realesrgan-x4-vulkan, realesrgan-anime-x4-vulkan, span-x4-vulkan | 4x | Fast | AMD pre-RDNA2, Intel iGPU |
 
 ---
 
