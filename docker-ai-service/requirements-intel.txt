@@ -4,9 +4,10 @@ uvicorn[standard]>=0.32.0,<1.0
 python-multipart>=0.0.7
 aiofiles>=23.2.1,<25.0
 
-# AI/ML - ONNX Runtime with OpenVINO EP (included in base onnxruntime since 1.17)
+# AI/ML - ONNX Runtime with OpenVINO EP
 # The separate onnxruntime-openvino package is deprecated; use onnxruntime + system OpenVINO
-onnxruntime>=1.17.0,<1.24.0
+# Pin to match OpenVINO 2025.4.1 base image — 1.24.x includes built-in OpenVINO EP for 2025.x
+onnxruntime>=1.20.0
 numpy>=1.24.0,<2.0.0
 
 # Image Processing - OpenCV with DNN Super Resolution

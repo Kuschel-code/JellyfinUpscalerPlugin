@@ -859,7 +859,7 @@ async def lifespan(app: FastAPI):
         logger.warning("ONNX Runtime not available. Install with: pip install onnxruntime-gpu")
     
     state.use_gpu = os.getenv("USE_GPU", "true").lower() == "true"
-    state.max_concurrent = int(os.getenv("MAX_CONCURRENT_REQUESTS", "4"))
+    state.max_concurrent = max(1, int(os.getenv("MAX_CONCURRENT_REQUESTS", "4")))
     state.gpu_device_id = int(os.getenv("GPU_DEVICE_ID", "0"))
 
     # Re-create semaphore with actual env var value (inside event loop)
@@ -1086,10 +1086,10 @@ def upscale_with_ncnn(img: np.ndarray) -> np.ndarray:
             wy = np.ones(th, dtype=np.float32)
             wx = np.ones(tw, dtype=np.float32)
             if overlap > 0:
-                ramp = np.linspace(0, 1, min(overlap * scale, th), dtype=np.float32)
+                ramp = np.linspace(0, 1, min(overlap * scale, th // 2) if th > 1 else 0, dtype=np.float32)
                 wy[:len(ramp)] = ramp
                 wy[-len(ramp):] = ramp[::-1]
-                ramp_x = np.linspace(0, 1, min(overlap * scale, tw), dtype=np.float32)
+                ramp_x = np.linspace(0, 1, min(overlap * scale, tw // 2) if tw > 1 else 0, dtype=np.float32)
                 wx[:len(ramp_x)] = ramp_x
                 wx[-len(ramp_x):] = ramp_x[::-1]
             return wy[:, None] * wx[None, :]
@@ -1109,8 +1109,9 @@ def upscale_with_ncnn(img: np.ndarray) -> np.ndarray:
                 ex = upscaler.create_extractor()
                 ex.input("data", mat_in)
                 _, mat_out = ex.extract("output")
-                # Dynamic reshape based on actual tile size
-                result_tile = np.array(mat_out).reshape(th * scale, tw * scale, 3).astype(np.float32)
+                # ncnn outputs CHW planar layout — reshape to CHW then transpose to HWC
+                raw = np.array(mat_out)
+                result_tile = raw.reshape(3, th * scale, tw * scale).transpose(1, 2, 0).astype(np.float32)
 
                 oy, ox = y_start * scale, x_start * scale
                 oth, otw = th * scale, tw * scale
@@ -2441,6 +2442,8 @@ async def update_config(
     if use_gpu is not None:
         state.use_gpu = use_gpu
     if max_concurrent is not None:
+        if max_concurrent < 1:
+            raise HTTPException(status_code=400, detail="max_concurrent must be >= 1 (0 would deadlock)")
         state.max_concurrent = max_concurrent
         global _upscale_semaphore
         # Replace semaphore — new requests will use the new limit.
@@ -2534,9 +2537,10 @@ def _record_success(model_name: str, duration_ms: float):
         state.model_usage_count[model_name] = state.model_usage_count.get(model_name, 0) + 1
         state.model_last_used[model_name] = time.time()
 
-        # Close circuit breaker on success
+        # Close circuit breaker on success (handles both half-open probe and normal)
+        was_half_open = state.circuit_half_open
         state.circuit_half_open = False
-        if state.circuit_open:
+        if state.circuit_open or was_half_open:
             state.circuit_open = False
             logger.info("Circuit breaker CLOSED after successful job")
 
@@ -2568,29 +2572,37 @@ def _check_circuit_breaker():
     """Check if circuit breaker allows processing. Raises 503 if open."""
     exc = None
     with _circuit_lock:
-        if not state.circuit_open:
+        # If circuit is closed AND not in half-open probe, allow request
+        if not state.circuit_open and not state.circuit_half_open:
             return
 
-        elapsed = time.time() - state.circuit_open_at
-        if elapsed >= state.circuit_breaker_reset_seconds:
-            if getattr(state, 'circuit_half_open', False):
-                # Another request is already probing — block this one
-                exc = HTTPException(
-                    status_code=503,
-                    detail="Circuit breaker half-open — probe in progress, retry shortly"
-                )
-            else:
-                # Half-open: allow exactly one request through
-                state.circuit_half_open = True
-                state.circuit_open = False
-                logger.info("Circuit breaker HALF-OPEN, allowing one probe request")
-                return
-        else:
+        # If circuit is closed but half-open probe is in progress,
+        # block all non-probe requests until probe completes
+        if not state.circuit_open and state.circuit_half_open:
             exc = HTTPException(
                 status_code=503,
-                detail=f"Circuit breaker open — {state.consecutive_failures} consecutive failures. "
-                       f"Retry in {int(state.circuit_breaker_reset_seconds - elapsed)}s"
+                detail="Circuit breaker half-open — probe in progress, retry shortly"
             )
+        elif state.circuit_open:
+            elapsed = time.time() - state.circuit_open_at
+            if elapsed >= state.circuit_breaker_reset_seconds:
+                if state.circuit_half_open:
+                    # Another request is already probing — block this one
+                    exc = HTTPException(
+                        status_code=503,
+                        detail="Circuit breaker half-open — probe in progress, retry shortly"
+                    )
+                else:
+                    # Half-open: allow exactly one request through as probe
+                    state.circuit_half_open = True
+                    logger.info("Circuit breaker HALF-OPEN, allowing one probe request")
+                    return
+            else:
+                exc = HTTPException(
+                    status_code=503,
+                    detail=f"Circuit breaker open — {state.consecutive_failures} consecutive failures. "
+                           f"Retry in {int(state.circuit_breaker_reset_seconds - elapsed)}s"
+                )
     # Raise outside the lock to prevent deadlock if exception handlers acquire _circuit_lock
     if exc:
         raise exc
@@ -2599,11 +2611,14 @@ def _check_circuit_breaker():
 @app.get("/health/detailed")
 async def health_detailed():
     """Detailed health status including circuit breaker, GPU, and model state."""
-    gpu_healthy = True
+    gpu_healthy = None  # None = not applicable (GPU disabled)
     gpu_error = None
 
     # Quick GPU check — covers ONNX, ncnn, and OpenVINO backends
-    if state.use_gpu:
+    if not state.use_gpu:
+        gpu_healthy = None
+        gpu_error = "GPU disabled (CPU mode)"
+    elif state.use_gpu:
         if state.current_model_type == "ncnn":
             gpu_healthy = state.ncnn_upscaler is not None
             if not gpu_healthy:
@@ -2632,6 +2647,7 @@ async def health_detailed():
         "status": "healthy" if not state.circuit_open else "degraded",
         "circuit_breaker": {
             "open": state.circuit_open,
+            "half_open": state.circuit_half_open,
             "consecutive_failures": state.consecutive_failures,
             "threshold": state.circuit_breaker_threshold,
             "reset_seconds": state.circuit_breaker_reset_seconds

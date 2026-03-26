@@ -1015,7 +1015,7 @@ namespace JellyfinUpscalerPlugin.Services
             string reconstructArgs;
             if (hasAudio && File.Exists(tempAudioPath))
             {
-                reconstructArgs = $"-framerate {effectiveFps} -i \"{processedDir}/frame_%06d.png\" -i \"{tempAudioPath}\" {codecArgs} -r {effectiveFps} -c:a aac -b:a 192k -y \"{outputPath}\"";
+                reconstructArgs = $"-framerate {effectiveFps} -i \"{processedDir}/frame_%06d.png\" -i \"{tempAudioPath}\" {codecArgs} -r {effectiveFps} -c:a copy -y \"{outputPath}\"";
             }
             else
             {
