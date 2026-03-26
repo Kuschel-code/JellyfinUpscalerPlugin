@@ -2,7 +2,7 @@
 fastapi>=0.115.0,<1.0
 uvicorn[standard]>=0.32.0,<1.0
 python-multipart>=0.0.7
-aiofiles==23.2.1
+aiofiles>=23.2.1,<25.0
 
 # AI/ML - ONNX Runtime CPU only (for Real-ESRGAN)
 onnxruntime>=1.17.0

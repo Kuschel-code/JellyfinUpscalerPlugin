@@ -17,7 +17,10 @@ ENV SKIP_TENSORRT=true
 
 WORKDIR /app
 
-# Install Python and system dependencies for OpenCV + FULL TensorRT
+# Install Python and system dependencies for OpenCV
+# Note: TensorRT libraries are NOT installed — the CUDA base image does not include
+# the TensorRT apt repo and SKIP_TENSORRT=true is the default. If TensorRT is needed,
+# mount the TensorRT libs at runtime via -v or use the NVIDIA TensorRT container base.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
@@ -27,10 +30,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     libxrender1 \
     curl \
-    # TensorRT Runtime Libraries (for ONNX Runtime TensorRT EP)
-    libnvinfer10 \
-    libnvinfer-plugin10 \
-    libnvonnxparsers10 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && ln -s /usr/bin/python3 /usr/bin/python
@@ -39,7 +38,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 
 # Install Python dependencies (GPU version)
-RUN pip install --no-cache-dir -r requirements.txt
+# Use python -m pip because the CUDA base image has pip3 not pip in PATH
+RUN python -m pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY app/ ./app/

@@ -46,23 +46,13 @@ COPY requirements-vulkan.txt ./requirements.txt
 # Upgrade pip and install build tools
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Install Python dependencies in two stages:
-# 1. Core deps (FastAPI, OpenCV, ONNX CPU)
-# 2. ncnn-vulkan (may need to compile from source)
-RUN pip install --no-cache-dir \
-    fastapi==0.109.0 \
-    "uvicorn[standard]==0.27.0" \
-    python-multipart>=0.0.7 \
-    aiofiles==23.2.1 \
-    "onnxruntime>=1.17.0" \
-    "numpy>=1.24.0,<2.0.0" \
-    opencv-contrib-python==4.9.0.80 \
-    "pydantic>=2.0.0" \
-    "httpx>=0.26.0"
+# Install core Python dependencies from requirements file
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Install ncnn-vulkan — try pre-built wheel first, then build from source
+# Note: "ncnn-vulkan" is not a real PyPI package; the correct package is "ncnn"
 RUN pip install --no-cache-dir realsr-ncnn-vulkan-python 2>/dev/null || \
-    pip install --no-cache-dir ncnn-vulkan 2>/dev/null || \
+    pip install --no-cache-dir ncnn 2>/dev/null || \
     (echo "Building ncnn from source with Vulkan support..." && \
      pip install --no-cache-dir pybind11 && \
      git clone --depth 1 --branch 20250503 --single-branch https://github.com/Tencent/ncnn.git /tmp/ncnn && \
@@ -78,7 +68,7 @@ RUN pip install --no-cache-dir realsr-ncnn-vulkan-python 2>/dev/null || \
      ninja -j$(nproc) && ninja install && \
      cd /tmp/ncnn/python && pip install . && \
      rm -rf /tmp/ncnn) || \
-    echo "WARNING: ncnn-vulkan not available, Vulkan models will be disabled"
+    (echo "ERROR: ncnn-vulkan could not be installed — Vulkan models will be unavailable" && exit 1)
 
 # Copy application code
 COPY app/ ./app/

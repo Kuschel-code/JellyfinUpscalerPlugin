@@ -14,6 +14,7 @@ import subprocess
 import threading
 import hmac
 import urllib.parse
+import uuid
 from pathlib import Path
 from typing import Optional, Any
 from contextlib import asynccontextmanager
@@ -146,6 +147,10 @@ _model_lock = threading.Lock()
 
 # Threading lock for circuit breaker state mutations
 _circuit_lock = threading.Lock()
+
+# Per-model download lock — prevents concurrent downloads of the same model
+_download_locks: dict[str, asyncio.Lock] = {}
+_download_locks_guard = threading.Lock()
 
 # Tile size for ONNX inference (prevents OOM on large images)
 ONNX_TILE_SIZE = int(os.getenv("ONNX_TILE_SIZE", "512"))
@@ -939,11 +944,15 @@ async def load_opencv_model(model_name: str, model_info: dict, model_path: Path)
             state.cv_model_scale = scale
             state.current_model = model_name
             state.current_model_type = "opencv"
+            # Clear competing backends to prevent stale references
             state.onnx_session = None
-        
+            state.ncnn_upscaler = None
+            state.last_load_error = None
+
+        state.model_last_used[model_name] = time.time()
         logger.info(f"OpenCV model {model_name} loaded successfully (scale={scale})")
         return True
-        
+
     except Exception as e:
         state.last_load_error = str(e)
         logger.error(f"Failed to load OpenCV model {model_name}: {e}")
@@ -963,13 +972,13 @@ async def load_model(model_name: str) -> bool:
         return False
     
     model_path = get_model_path(model_name)
-    
-    if not model_path.exists():
+    model_type = model_info.get("type", "pb")
+
+    # ncnn models are bundled with the realsr-ncnn-vulkan package — no file on disk needed
+    if model_type != "ncnn" and not model_path.exists():
         logger.error(f"Model not found: {model_path}")
         return False
-    
-    model_type = model_info.get("type", "pb")
-    
+
     if model_type == "pb":
         return await load_opencv_model(model_name, model_info, model_path)
     elif model_type == "onnx":
@@ -1026,6 +1035,9 @@ async def load_ncnn_model(model_name: str, model_info: dict, model_path: Path) -
             state.current_model_input_frames = model_info.get("input_frames", 1)
             state.onnx_model_scale = scale  # For compatibility with benchmark
             state.providers = ["VulkanComputeProvider"]
+            # Clear competing backends to prevent stale references
+            state.cv_model = None
+            state.onnx_session = None
             state.last_load_error = None
 
         # Update model usage tracking
@@ -1058,29 +1070,54 @@ def upscale_with_ncnn(img: np.ndarray) -> np.ndarray:
         result_rgb = np.array(result_pil)
         return cv2.cvtColor(result_rgb, cv2.COLOR_RGB2BGR)
     else:
-        # Raw ncnn — manual tile-based inference
+        # Raw ncnn — manual tile-based inference with weighted blending
         h, w = img.shape[:2]
         tile_size = ONNX_TILE_SIZE
         overlap = 32
+        step = tile_size - overlap
         out_h, out_w = h * scale, w * scale
-        output = np.zeros((out_h, out_w, 3), dtype=np.uint8)
+        output = np.zeros((out_h, out_w, 3), dtype=np.float32)
+        weight = np.zeros((out_h, out_w, 3), dtype=np.float32)
 
-        for y in range(0, h, tile_size - overlap):
-            for x in range(0, w, tile_size - overlap):
-                ty = min(y, h - tile_size) if y + tile_size > h else y
-                tx = min(x, w - tile_size) if x + tile_size > w else x
-                tile = img[ty:ty+tile_size, tx:tx+tile_size]
+        def _ncnn_blend_weight(th: int, tw: int) -> np.ndarray:
+            wy = np.ones(th, dtype=np.float32)
+            wx = np.ones(tw, dtype=np.float32)
+            if overlap > 0:
+                ramp = np.linspace(0, 1, min(overlap * scale, th), dtype=np.float32)
+                wy[:len(ramp)] = ramp
+                wy[-len(ramp):] = ramp[::-1]
+                ramp_x = np.linspace(0, 1, min(overlap * scale, tw), dtype=np.float32)
+                wx[:len(ramp_x)] = ramp_x
+                wx[-len(ramp_x):] = ramp_x[::-1]
+            return wy[:, None] * wx[None, :]
+
+        for y in range(0, h, step):
+            for x in range(0, w, step):
+                # Clamp tile to image boundaries
+                y_end = min(y + tile_size, h)
+                x_end = min(x + tile_size, w)
+                y_start = max(y_end - tile_size, 0)
+                x_start = max(x_end - tile_size, 0)
+                tile = img[y_start:y_end, x_start:x_end]
+                th, tw = tile.shape[:2]
 
                 # ncnn inference
-                mat_in = ncnn.Mat.from_pixels(tile, ncnn.Mat.PixelType.PIXEL_BGR, tile.shape[1], tile.shape[0])
+                mat_in = ncnn.Mat.from_pixels(tile, ncnn.Mat.PixelType.PIXEL_BGR, tw, th)
                 ex = upscaler.create_extractor()
                 ex.input("data", mat_in)
                 _, mat_out = ex.extract("output")
-                result_tile = np.array(mat_out).reshape(tile_size * scale, tile_size * scale, 3)
+                # Dynamic reshape based on actual tile size
+                result_tile = np.array(mat_out).reshape(th * scale, tw * scale, 3).astype(np.float32)
 
-                oy, ox = ty * scale, tx * scale
-                output[oy:oy+tile_size*scale, ox:ox+tile_size*scale] = result_tile
+                oy, ox = y_start * scale, x_start * scale
+                oth, otw = th * scale, tw * scale
+                bw = _ncnn_blend_weight(oth, otw)[:, :, None]
 
+                output[oy:oy+oth, ox:ox+otw] += result_tile * bw
+                weight[oy:oy+oth, ox:ox+otw] += bw
+
+        weight = np.maximum(weight, 1e-8)
+        output = np.clip(output / weight, 0, 255).astype(np.uint8)
         return output
 
 
@@ -1360,11 +1397,15 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
             state.current_model_input_frames = model_info.get("input_frames", 1)
             state.current_model = model_name
             state.current_model_type = "onnx"
+            # Clear competing backends to prevent stale references
             state.cv_model = None
+            state.ncnn_upscaler = None
+            state.last_load_error = None
 
         # Update providers list with actual active providers
         actual_providers = session.get_providers()
         state.providers = actual_providers
+        state.model_last_used[model_name] = time.time()
         logger.info(f"ONNX model {model_name} loaded successfully with: {actual_providers}")
 
         return True
@@ -1376,79 +1417,105 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
 
 
 async def download_model(model_name: str) -> bool:
-    """Download a model from the repository."""
+    """Download a model from the repository. Thread-safe per model name."""
     if model_name not in AVAILABLE_MODELS:
         logger.error(f"Unknown model: {model_name}")
         return False
-    
+
     model_info = AVAILABLE_MODELS[model_name]
-    
+
     if not model_info.get("available", True):
         logger.error(f"Model {model_name} is not yet available for download")
         return False
-    
+
     model_path = get_model_path(model_name)
-    
+
     if model_path.exists():
         logger.info(f"Model {model_name} already exists")
         return True
-    
-    temp_path = model_path.with_suffix(".tmp")
-    try:
-        download_url = model_info.get("url")
 
-        # Validate download URL against allowlist
-        _ALLOWED_DOWNLOAD_PREFIXES = (
-            "https://huggingface.co/",
-            "https://github.com/",
-            "https://raw.githubusercontent.com/",
-        )
-        if not download_url or not download_url.startswith(_ALLOWED_DOWNLOAD_PREFIXES):
-            raise ValueError("Download URL not from allowed domain")
+    # Per-model async lock prevents concurrent downloads of the same model
+    with _download_locks_guard:
+        if model_name not in _download_locks:
+            _download_locks[model_name] = asyncio.Lock()
+        dl_lock = _download_locks[model_name]
 
-        logger.info(f"Downloading model {model_name} from {download_url}")
+    async with dl_lock:
+        # Re-check after acquiring lock (another coroutine may have completed download)
+        if model_path.exists():
+            logger.info(f"Model {model_name} already downloaded (by concurrent request)")
+            return True
 
-        async with httpx.AsyncClient(timeout=600.0, follow_redirects=True) as dl_client:
-            async with dl_client.stream("GET", download_url) as response:
-                response.raise_for_status()
-                with open(temp_path, "wb") as f:
-                    async for chunk in response.aiter_bytes(chunk_size=65536):
-                        f.write(chunk)
+        # Unique temp file avoids collisions with any lingering partial downloads
+        temp_path = model_path.with_suffix(f".tmp.{uuid.uuid4().hex[:8]}")
+        try:
+            download_url = model_info.get("url")
 
-        # Atomic rename — prevents partial files surviving crashes
-        temp_path.rename(model_path)
+            # ncnn models are bundled with the realsr-ncnn-vulkan package — no download needed
+            if not download_url:
+                if model_info.get("type") == "ncnn":
+                    logger.info(f"Model {model_name} is bundled (ncnn) — no download needed")
+                    return True
+                raise ValueError(f"No download URL for model {model_name}")
 
-        size_mb = model_path.stat().st_size / 1024 / 1024
-        logger.info(f"Model {model_name} downloaded ({size_mb:.1f} MB)")
-        return True
+            # Validate download URL against allowlist
+            _ALLOWED_DOWNLOAD_PREFIXES = (
+                "https://huggingface.co/",
+                "https://github.com/",
+                "https://raw.githubusercontent.com/",
+            )
+            if not download_url.startswith(_ALLOWED_DOWNLOAD_PREFIXES):
+                raise ValueError("Download URL not from allowed domain")
 
-    except Exception as e:
-        logger.error(f"Failed to download model {model_name}: {e}")
-        # Only clean up temp file — never delete a pre-existing valid model
-        if temp_path.exists():
-            temp_path.unlink()
-        return False
+            logger.info(f"Downloading model {model_name} from {download_url}")
+
+            async with httpx.AsyncClient(timeout=600.0, follow_redirects=True) as dl_client:
+                async with dl_client.stream("GET", download_url) as response:
+                    response.raise_for_status()
+                    with open(temp_path, "wb") as f:
+                        async for chunk in response.aiter_bytes(chunk_size=65536):
+                            f.write(chunk)
+
+            # Atomic rename — prevents partial files surviving crashes
+            temp_path.rename(model_path)
+
+            size_mb = model_path.stat().st_size / 1024 / 1024
+            logger.info(f"Model {model_name} downloaded ({size_mb:.1f} MB)")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to download model {model_name}: {e}")
+            # Only clean up temp file — never delete a pre-existing valid model
+            if temp_path.exists():
+                temp_path.unlink()
+            return False
 
 
 def upscale_image(image_bytes: bytes) -> bytes:
     """Upscale an image using the loaded model (OpenCV or ONNX)."""
-    if state.current_model is None:
-        raise ModelNotReadyError("No model loaded")
+    # Snapshot model state under lock for thread-safe dispatch
+    with _model_lock:
+        model_type = state.current_model_type
+        cv_model = state.cv_model
+        has_onnx = state.onnx_session is not None
+        has_ncnn = state.ncnn_upscaler is not None
+        if state.current_model is None:
+            raise ModelNotReadyError("No model loaded")
 
     # Decode image
     nparr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    
+
     if img is None:
         raise ValueError("Failed to decode image")
-    
-    if state.current_model_type == "opencv" and state.cv_model is not None:
+
+    if model_type == "opencv" and cv_model is not None:
         # Upscale using OpenCV DNN Super Resolution
-        result = state.cv_model.upsample(img)
-    elif state.current_model_type == "onnx" and state.onnx_session is not None:
+        result = cv_model.upsample(img)
+    elif model_type == "onnx" and has_onnx:
         # Upscale using ONNX Runtime (Real-ESRGAN)
         result = upscale_with_onnx(img)
-    elif state.current_model_type == "ncnn" and state.ncnn_upscaler is not None:
+    elif model_type == "ncnn" and has_ncnn:
         # Upscale using ncnn-Vulkan
         result = upscale_with_ncnn(img)
     else:
@@ -1527,13 +1594,17 @@ def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
         wy = np.ones(th, dtype=np.float32)
         wx = np.ones(tw, dtype=np.float32)
         if overlap > 0:
-            ramp = np.linspace(0, 1, overlap, dtype=np.float32)
-            # Top / left ramp
-            wy[:overlap] = ramp
-            wx[:overlap] = ramp
-            # Bottom / right ramp
-            wy[-overlap:] = ramp[::-1]
-            wx[-overlap:] = ramp[::-1]
+            # Clamp ramp length to prevent negative index wrap on tiles smaller than overlap
+            ramp_y = min(overlap, th // 2) if th > 1 else 0
+            ramp_x = min(overlap, tw // 2) if tw > 1 else 0
+            if ramp_y > 0:
+                ramp = np.linspace(0, 1, ramp_y, dtype=np.float32)
+                wy[:ramp_y] = ramp
+                wy[-ramp_y:] = ramp[::-1]
+            if ramp_x > 0:
+                ramp = np.linspace(0, 1, ramp_x, dtype=np.float32)
+                wx[:ramp_x] = ramp
+                wx[-ramp_x:] = ramp[::-1]
         return wy[:, None] * wx[None, :]  # (th, tw)
 
     for y in range(0, h, step):
@@ -1670,13 +1741,14 @@ def upscale_image_array(img: np.ndarray) -> np.ndarray:
             raise ModelNotReadyError("No model loaded")
         model_type = state.current_model_type
         cv_model = state.cv_model
-        onnx_session = state.onnx_session
+        has_onnx = state.onnx_session is not None
+        has_ncnn = state.ncnn_upscaler is not None
 
     if model_type == "opencv" and cv_model is not None:
         return cv_model.upsample(img)
-    elif model_type == "onnx" and onnx_session is not None:
+    elif model_type == "onnx" and has_onnx:
         return upscale_with_onnx(img)
-    elif model_type == "ncnn" and state.ncnn_upscaler is not None:
+    elif model_type == "ncnn" and has_ncnn:
         return upscale_with_ncnn(img)
     else:
         raise ModelNotReadyError("No model loaded")
@@ -2054,6 +2126,10 @@ async def load_model_endpoint(
         if not dl_success:
             raise HTTPException(status_code=500, detail=f"Failed to auto-download model {model_name}")
 
+    # Save previous GPU state for rollback on failure
+    prev_use_gpu = state.use_gpu
+    prev_device_id = state.gpu_device_id
+
     state.use_gpu = use_gpu
     if gpu_device_id is not None:
         state.gpu_device_id = gpu_device_id
@@ -2062,6 +2138,9 @@ async def load_model_endpoint(
     success = await load_model(model_name)
 
     if not success:
+        # Rollback GPU state on failure
+        state.use_gpu = prev_use_gpu
+        state.gpu_device_id = prev_device_id
         raise HTTPException(status_code=500, detail=f"Failed to load model: {state.last_load_error or 'unknown'}")
 
     return {
@@ -2095,10 +2174,12 @@ async def upscale_endpoint(
     if scale != model_scale:
         logger.warning(f"Requested scale={scale} differs from loaded model scale={model_scale}. Using model's native scale={model_scale}.")
 
-    # Atomic try-acquire to avoid TOCTOU race (same pattern as /upscale-frame)
+    # Capture semaphore reference so release always targets the same instance
+    # (protects against /config recreating the semaphore mid-request)
+    sem = _upscale_semaphore
     acquired = False
     try:
-        await asyncio.wait_for(_upscale_semaphore.acquire(), timeout=0)
+        await asyncio.wait_for(sem.acquire(), timeout=0)
         acquired = True
         state.processing_count += 1
     except asyncio.TimeoutError:
@@ -2131,7 +2212,7 @@ async def upscale_endpoint(
     finally:
         if acquired:
             state.processing_count -= 1
-            _upscale_semaphore.release()
+            sem.release()
 
 
 @app.get("/benchmark")
@@ -2153,11 +2234,11 @@ async def upscale_frame_endpoint(request: Request):
     if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
         raise HTTPException(status_code=400, detail="No model loaded")
 
-    # Return 503 immediately if busy — client skips this frame (try-acquire)
-    # Increment processing_count immediately after acquire to prevent negative count
+    # Capture semaphore reference for safe release
+    sem = _upscale_semaphore
     acquired = False
     try:
-        await asyncio.wait_for(_upscale_semaphore.acquire(), timeout=0)
+        await asyncio.wait_for(sem.acquire(), timeout=0)
         acquired = True
         state.processing_count += 1
     except asyncio.TimeoutError:
@@ -2199,7 +2280,7 @@ async def upscale_frame_endpoint(request: Request):
     finally:
         if acquired:
             state.processing_count -= 1
-            _upscale_semaphore.release()
+            sem.release()
 
 
 @app.post("/upscale-video-chunk")
@@ -2210,13 +2291,15 @@ async def upscale_video_chunk(request: Request):
     if state.current_model is None:
         raise HTTPException(status_code=400, detail="No model loaded")
 
-    expected_frames = state.current_model_input_frames
+    # Read expected_frames under model lock for consistency with the loaded model
+    with _model_lock:
+        expected_frames = state.current_model_input_frames
 
-    # Semaphore with acquired flag — increment processing_count immediately after acquire
-    # to prevent going negative if cancelled between acquire and inner try
+    # Capture semaphore reference for safe release
+    sem = _upscale_semaphore
     acquired = False
     try:
-        await asyncio.wait_for(_upscale_semaphore.acquire(), timeout=0)
+        await asyncio.wait_for(sem.acquire(), timeout=0)
         acquired = True
         state.processing_count += 1
     except asyncio.TimeoutError:
@@ -2244,7 +2327,7 @@ async def upscale_video_chunk(request: Request):
             frames.append(img)
 
         # If single-frame model loaded, transparent fallback: upscale center frame only
-        if expected_frames == 1 or state.current_model_input_frames == 1:
+        if expected_frames == 1:
             center = frames[len(frames) // 2]
             loop = asyncio.get_running_loop()
             result = await loop.run_in_executor(None, upscale_image_array, center)
@@ -2269,7 +2352,7 @@ async def upscale_video_chunk(request: Request):
     finally:
         if acquired:
             state.processing_count -= 1
-            _upscale_semaphore.release()
+            sem.release()
 
 
 def _run_frame_benchmark(width: int, height: int) -> dict:
@@ -2347,8 +2430,11 @@ async def update_config(
     if max_concurrent is not None:
         state.max_concurrent = max_concurrent
         global _upscale_semaphore
+        # Replace semaphore — new requests will use the new limit.
+        # In-flight requests still hold the old semaphore reference from their
+        # local 'acquired' variable, so they'll release correctly on completion.
         _upscale_semaphore = asyncio.Semaphore(max_concurrent)
-        logger.info(f"max_concurrent changed to {max_concurrent}, semaphore recreated")
+        logger.info(f"max_concurrent changed to {max_concurrent}, new semaphore active (in-flight requests unaffected)")
     if gpu_device_id is not None:
         state.gpu_device_id = gpu_device_id
         logger.info(f"GPU device ID updated to {gpu_device_id}")
@@ -2450,7 +2536,14 @@ def _record_failure(model_name: str):
         state.consecutive_failures += 1
         state.model_failure_count[model_name] = state.model_failure_count.get(model_name, 0) + 1
 
-        state.circuit_half_open = False
+        # If this was a half-open probe that failed, re-open the circuit
+        if state.circuit_half_open:
+            state.circuit_half_open = False
+            state.circuit_open = True
+            state.circuit_open_at = time.time()
+            logger.warning("Circuit breaker RE-OPENED after half-open probe failed")
+            return
+
         # Open circuit breaker after threshold failures
         if state.consecutive_failures >= state.circuit_breaker_threshold and not state.circuit_open:
             state.circuit_open = True
@@ -2491,14 +2584,31 @@ async def health_detailed():
     gpu_healthy = True
     gpu_error = None
 
-    # Quick GPU check
-    if state.use_gpu and state.onnx_session:
-        try:
-            providers = state.onnx_session.get_providers()
-            gpu_healthy = any("CUDA" in p or "Tensorrt" in p or "CoreML" in p or "DirectML" in p for p in providers)
-        except Exception as e:
+    # Quick GPU check — covers ONNX, ncnn, and OpenVINO backends
+    if state.use_gpu:
+        if state.current_model_type == "ncnn":
+            gpu_healthy = state.ncnn_upscaler is not None
+            if not gpu_healthy:
+                gpu_error = "ncnn-Vulkan upscaler not loaded"
+        elif state.onnx_session:
+            try:
+                providers = state.onnx_session.get_providers()
+                gpu_healthy = any(
+                    "CUDA" in p or "Tensorrt" in p or "CoreML" in p
+                    or "DirectML" in p or "OpenVINO" in p
+                    for p in providers
+                )
+                if not gpu_healthy:
+                    gpu_error = f"Only CPU providers active: {providers}"
+            except Exception as e:
+                gpu_healthy = False
+                gpu_error = str(e)
+        elif state.cv_model is not None:
+            # OpenCV DNN — GPU status is best-effort (no provider list)
+            gpu_healthy = True
+        else:
             gpu_healthy = False
-            gpu_error = str(e)
+            gpu_error = "No model loaded"
 
     return {
         "status": "healthy" if not state.circuit_open else "degraded",
@@ -2537,7 +2647,7 @@ async def health_detailed():
 @app.get("/models/disk-usage")
 async def models_disk_usage():
     """Show disk usage of downloaded models."""
-    models_dir = os.getenv("MODEL_DIR", "/app/models")
+    models_dir = str(MODELS_DIR)
     if not os.path.isdir(models_dir):
         return {"models_dir": models_dir, "total_size_mb": 0, "models": []}
 
@@ -2574,7 +2684,7 @@ async def models_cleanup(max_age_days: int = 30, dry_run: bool = True, request: 
         provided_token = request.headers.get("x-api-token", "") if request else ""
         if not expected_token or not hmac.compare_digest(provided_token, expected_token):
             return JSONResponse(status_code=403, content={"error": "API token required for destructive cleanup operations"})
-    models_dir = os.getenv("MODEL_DIR", "/app/models")
+    models_dir = str(MODELS_DIR)
     if not os.path.isdir(models_dir):
         return {"cleaned": 0, "message": "Models directory not found"}
 
@@ -2591,7 +2701,7 @@ async def models_cleanup(max_age_days: int = 30, dry_run: bool = True, request: 
         last_used = state.model_last_used.get(model_key, 0)
 
         # Don't delete the currently loaded model
-        if state.current_model and model_key in state.current_model:
+        if state.current_model and model_key == state.current_model:
             kept.append({"name": f, "reason": "currently loaded"})
             continue
 

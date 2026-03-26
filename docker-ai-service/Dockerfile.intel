@@ -2,7 +2,8 @@
 # Use this for Intel integrated GPUs (iGPU) or Intel Arc discrete GPUs
 # Requires: Docker with --device=/dev/dri for GPU access
 
-FROM openvino/ubuntu22_runtime:2024.0.0
+# OpenVINO 2025.4.1 — latest stable (2024.0.0 was outdated)
+FROM openvino/ubuntu22_runtime:2025.4.1
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -86,5 +87,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
 # Run the application via entrypoint
+# Note: uses python3 (not python) because the openvino base image doesn't create a python symlink
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python3", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000"]
