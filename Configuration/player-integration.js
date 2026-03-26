@@ -882,6 +882,9 @@
                     'Upscaling ' + (newState ? 'enabled' : 'disabled'),
                     newState ? 'success' : 'warning'
                 );
+            }).catch(function(err) {
+                console.error('AI Upscaler: config fetch failed', err);
+                PlayerIntegration.showPlayerNotification('Failed to toggle upscaling', 'error');
             });
             var menu = document.querySelector('#aiUpscalerQuickMenu');
             if (menu) menu.remove();
@@ -948,6 +951,8 @@
                     // WebGL mode, no benchmark needed
                     RealtimeUpscaler.start(video, config, null);
                 }
+            }).catch(function(err) {
+                console.error('AI Upscaler: config fetch failed for RT upscaling', err);
             });
         },
 

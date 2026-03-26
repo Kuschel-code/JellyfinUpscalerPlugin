@@ -28,8 +28,12 @@ jobs:
         run: dotnet build --configuration Release --no-restore
 
       - name: Run tests
-        # TODO: Remove fallback once test projects exist — currently no tests in solution
-        run: dotnet test --configuration Release --no-build --verbosity normal || echo "No test projects found, skipping"
+        run: |
+          if dotnet test --list-tests --configuration Release --no-build 2>/dev/null | grep -q "Test run"; then
+            dotnet test --configuration Release --no-build --verbosity normal
+          else
+            echo "No test projects found, skipping tests"
+          fi
 
       - name: Publish plugin
         run: dotnet publish --configuration Release --no-build --output ./publish

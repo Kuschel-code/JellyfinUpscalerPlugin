@@ -251,7 +251,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
-        [HttpGet("HardwareInfo")]
+        [HttpGet("hardware-info")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetHardwareInfo()
         {

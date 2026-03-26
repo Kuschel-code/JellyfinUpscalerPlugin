@@ -87,7 +87,7 @@ When you press play, the plugin automatically enhances the video in real-time us
 
 ### Player Integration
 The in-player button lets you:
-- Select from **40+ AI models** across 13 categories (Real-ESRGAN, SPAN, SwinIR, DAT2, EDVR-M, RealBasicVSR, AnimeSR, APISR, EDSR, LapSRN, FSRCNN, ESPCN, ncnn-Vulkan)
+- Select from **40+ AI models** across 12 categories (Real-ESRGAN, SPAN, SwinIR, DAT2, EDVR-M, RealBasicVSR, AnimeSR, APISR, EDSR, LapSRN, FSRCNN, ESPCN, ncnn-Vulkan)
 - Choose scale factor (2x, 3x, 4x, 8x)
 - Toggle real-time upscaling and switch modes
 - Quick access via keyboard shortcuts (Alt+U, Alt+M)
@@ -167,7 +167,7 @@ Verify the container is running: `curl http://YOUR_SERVER_IP:5000/health`
 ### Step 3: Use the Player Button
 
 After installation, play any video in a **web browser** (Chrome, Edge, Firefox). You will see an AI upscaler button (sparkle icon) in the player controls. Click it to access:
-- Quick model selection across 13 categories (Real-ESRGAN, SPAN, SwinIR, DAT2, EDVR-M, RealBasicVSR, AnimeSR, APISR, EDSR, LapSRN, FSRCNN, ESPCN, ncnn-Vulkan)
+- Quick model selection across 12 categories (Real-ESRGAN, SPAN, SwinIR, DAT2, EDVR-M, RealBasicVSR, AnimeSR, APISR, EDSR, LapSRN, FSRCNN, ESPCN, ncnn-Vulkan)
 - Scale factor (2x, 3x, 4x)
 - Toggle upscaling on/off
 

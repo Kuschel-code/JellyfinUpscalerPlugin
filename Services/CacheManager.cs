@@ -461,7 +461,7 @@ namespace JellyfinUpscalerPlugin.Services
                     removedCount++;
                 }
                 
-                Interlocked.Exchange(ref _totalCacheSize, currentSize);
+                Interlocked.Add(ref _totalCacheSize, -freedSpace);
                 
                 if (removedCount > 0)
                 {
