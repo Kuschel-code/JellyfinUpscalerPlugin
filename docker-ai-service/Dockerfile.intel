@@ -54,8 +54,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     clinfo --list 2>/dev/null || echo "clinfo: no platforms found (GPU may not be passed through)" && \
     ls -la /dev/dri/ 2>/dev/null || echo "/dev/dri not available at build time (expected)"
 
-# Add root to render and video groups for GPU access inside container
-RUN usermod -aG render root 2>/dev/null || true && \
+# Ensure render/video groups exist, then add root + openvino for GPU access
+RUN groupadd -f render && groupadd -f video && \
+    usermod -aG render root 2>/dev/null || true && \
     usermod -aG video root 2>/dev/null || true && \
     usermod -aG render openvino 2>/dev/null || true && \
     usermod -aG video openvino 2>/dev/null || true

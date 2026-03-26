@@ -148,6 +148,9 @@ _model_lock = threading.Lock()
 # Threading lock for circuit breaker state mutations
 _circuit_lock = threading.Lock()
 
+# Threading lock for processing_count (+=/-= is not atomic in CPython)
+_processing_count_lock = threading.Lock()
+
 # Per-model download lock — prevents concurrent downloads of the same model
 _download_locks: dict[str, asyncio.Lock] = {}
 _download_locks_guard = threading.Lock()
@@ -1716,10 +1719,13 @@ def upscale_multiframe(frames: list) -> np.ndarray:
             blend_x = np.ones(actual_tw, dtype=np.float32)
             ramp = overlap * scale
             if ramp > 0:
-                for i in range(min(ramp, actual_th)):
+                # Clamp ramp to half tile size to prevent overlapping writes at center
+                ramp_y = min(ramp, actual_th // 2) if actual_th > 1 else 0
+                ramp_x = min(ramp, actual_tw // 2) if actual_tw > 1 else 0
+                for i in range(ramp_y):
                     blend_y[i] = i / ramp
                     blend_y[actual_th - 1 - i] = i / ramp
-                for i in range(min(ramp, actual_tw)):
+                for i in range(ramp_x):
                     blend_x[i] = i / ramp
                     blend_x[actual_tw - 1 - i] = i / ramp
             blend_w = blend_y[:, None] * blend_x[None, :]
@@ -2119,8 +2125,9 @@ async def load_model_endpoint(
 
     model_path = get_model_path(model_name)
 
-    # Auto-download model if not present
-    if not model_path.exists():
+    # Auto-download model if not present (ncnn models are bundled, skip path check)
+    model_type = model_info.get("type", "pb")
+    if model_type != "ncnn" and not model_path.exists():
         logger.info(f"Model {model_name} not downloaded — auto-downloading...")
         dl_success = await download_model(model_name)
         if not dl_success:
@@ -2181,7 +2188,8 @@ async def upscale_endpoint(
     try:
         await asyncio.wait_for(sem.acquire(), timeout=0)
         acquired = True
-        state.processing_count += 1
+        with _processing_count_lock:
+            state.processing_count += 1
     except asyncio.TimeoutError:
         raise HTTPException(status_code=429, detail="Too many concurrent requests")
 
@@ -2211,7 +2219,8 @@ async def upscale_endpoint(
         raise HTTPException(status_code=500, detail="Upscaling failed")
     finally:
         if acquired:
-            state.processing_count -= 1
+            with _processing_count_lock:
+                state.processing_count -= 1
             sem.release()
 
 
@@ -2240,7 +2249,8 @@ async def upscale_frame_endpoint(request: Request):
     try:
         await asyncio.wait_for(sem.acquire(), timeout=0)
         acquired = True
-        state.processing_count += 1
+        with _processing_count_lock:
+            state.processing_count += 1
     except asyncio.TimeoutError:
         raise HTTPException(status_code=503, detail="Busy")
 
@@ -2279,7 +2289,8 @@ async def upscale_frame_endpoint(request: Request):
         raise HTTPException(status_code=500, detail="Frame upscaling failed")
     finally:
         if acquired:
-            state.processing_count -= 1
+            with _processing_count_lock:
+                state.processing_count -= 1
             sem.release()
 
 
@@ -2301,7 +2312,8 @@ async def upscale_video_chunk(request: Request):
     try:
         await asyncio.wait_for(sem.acquire(), timeout=0)
         acquired = True
-        state.processing_count += 1
+        with _processing_count_lock:
+            state.processing_count += 1
     except asyncio.TimeoutError:
         raise HTTPException(status_code=503, detail="Busy")
 
@@ -2351,7 +2363,8 @@ async def upscale_video_chunk(request: Request):
         raise HTTPException(status_code=500, detail="Multi-frame upscaling failed")
     finally:
         if acquired:
-            state.processing_count -= 1
+            with _processing_count_lock:
+                state.processing_count -= 1
             sem.release()
 
 
@@ -2553,6 +2566,7 @@ def _record_failure(model_name: str):
 
 def _check_circuit_breaker():
     """Check if circuit breaker allows processing. Raises 503 if open."""
+    exc = None
     with _circuit_lock:
         if not state.circuit_open:
             return
@@ -2561,21 +2575,25 @@ def _check_circuit_breaker():
         if elapsed >= state.circuit_breaker_reset_seconds:
             if getattr(state, 'circuit_half_open', False):
                 # Another request is already probing — block this one
-                raise HTTPException(
+                exc = HTTPException(
                     status_code=503,
                     detail="Circuit breaker half-open — probe in progress, retry shortly"
                 )
-            # Half-open: allow exactly one request through
-            state.circuit_half_open = True
-            state.circuit_open = False
-            logger.info("Circuit breaker HALF-OPEN, allowing one probe request")
-            return
-
-        raise HTTPException(
-            status_code=503,
-            detail=f"Circuit breaker open — {state.consecutive_failures} consecutive failures. "
-                   f"Retry in {int(state.circuit_breaker_reset_seconds - elapsed)}s"
-        )
+            else:
+                # Half-open: allow exactly one request through
+                state.circuit_half_open = True
+                state.circuit_open = False
+                logger.info("Circuit breaker HALF-OPEN, allowing one probe request")
+                return
+        else:
+            exc = HTTPException(
+                status_code=503,
+                detail=f"Circuit breaker open — {state.consecutive_failures} consecutive failures. "
+                       f"Retry in {int(state.circuit_breaker_reset_seconds - elapsed)}s"
+            )
+    # Raise outside the lock to prevent deadlock if exception handlers acquire _circuit_lock
+    if exc:
+        raise exc
 
 
 @app.get("/health/detailed")

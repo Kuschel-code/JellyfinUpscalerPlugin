@@ -4,9 +4,9 @@ uvicorn[standard]>=0.32.0,<1.0
 python-multipart>=0.0.7
 aiofiles>=23.2.1,<25.0
 
-# AI/ML - ONNX Runtime with OpenVINO support for Intel GPUs
-# This enables hardware acceleration on Intel iGPUs and discrete GPUs
-onnxruntime-openvino>=1.17.0
+# AI/ML - ONNX Runtime with OpenVINO EP (included in base onnxruntime since 1.17)
+# The separate onnxruntime-openvino package is deprecated; use onnxruntime + system OpenVINO
+onnxruntime>=1.17.0,<1.24.0
 numpy>=1.24.0,<2.0.0
 
 # Image Processing - OpenCV with DNN Super Resolution
