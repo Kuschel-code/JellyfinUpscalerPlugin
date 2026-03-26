@@ -103,7 +103,7 @@ namespace JellyfinUpscalerPlugin
         public bool SkipUpscaledOnRescan { get; set; } = true; // Skip items that already have _upscaled version
 
         // Version tracking
-        public string PluginVersion { get; set; } = "1.5.4.3";
+        public string PluginVersion { get; set; } = "1.5.5.0";
 
         public PluginConfiguration()
         {

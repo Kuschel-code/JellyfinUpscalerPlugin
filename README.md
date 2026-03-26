@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.5.4.4
+# Jellyfin AI Upscaler Plugin v1.5.5.0
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -8,7 +8,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker4 / v1.5.4.4):**
+**Docker Images (docker4 / v1.5.5.0):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker4` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker4-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker4-intel` (Intel Arc/iGPU OpenVINO)
@@ -28,7 +28,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.5.4.4      │  │
+│  │  AI Upscaler Plugin v1.5.5.0      │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -270,6 +270,17 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 ---
 
 ## Changelog
+
+### v1.5.5.0 (Critical Bug Fixes)
+- **Fixed**: Circuit breaker half-open bypass — probe no longer lets ALL requests through
+- **Fixed**: ncnn CHW/HWC reshape — output was garbled due to wrong memory layout
+- **Fixed**: ncnn blend weight clamp — ramp limited to half-tile prevents center overlap
+- **Fixed**: Audio passthrough — `-c:a copy` instead of re-encoding to AAC
+- **Fixed**: max_concurrent=0 deadlock — Semaphore(0) blocked all requests forever
+- **Fixed**: Health endpoint gpu_healthy — reports `null` when GPU disabled (was `true`)
+- **Fixed**: Health endpoint exposes circuit breaker half_open state
+- **Fixed**: requirements-intel ORT version compatible with OpenVINO 2025.4.1
+- **Docker**: All 6 images rebuilt with fixes and pushed to Docker Hub
 
 ### v1.5.4.4 (Security & Quality Hardening)
 - **Security**: Path traversal protection on all queue/process/preprocess endpoints
