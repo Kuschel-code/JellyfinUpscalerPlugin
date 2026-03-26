@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.5.4.0
+# Jellyfin AI Upscaler Plugin v1.5.4.3
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -8,11 +8,12 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker4 / v1.5.4.0):**
+**Docker Images (docker4 / v1.5.4.3):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker4` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker4-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker4-intel` (Intel Arc/iGPU OpenVINO)
 *   `kuscheltier/jellyfin-ai-upscaler:docker4-apple` (macOS Apple Silicon)
+*   `kuscheltier/jellyfin-ai-upscaler:docker4-vulkan` (Vulkan/ncnn — AMD pre-RDNA2, Intel iGPU)
 *   `kuscheltier/jellyfin-ai-upscaler:docker4-cpu` (CPU Only)
 
 **Report bugs:** [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
@@ -27,7 +28,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.5.4.0      │  │
+│  │  AI Upscaler Plugin v1.5.4.3      │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -130,6 +131,17 @@ docker run -d \
   kuscheltier/jellyfin-ai-upscaler:docker4-amd
 ```
 
+**Vulkan GPU (AMD RX 5700, Intel iGPU, etc.):**
+```bash
+docker run -d \
+  --name jellyfin-ai-upscaler \
+  --device=/dev/dri \
+  --group-add=render \
+  -p 5000:5000 -p 2222:22 \
+  -v ai-models:/app/models \
+  kuscheltier/jellyfin-ai-upscaler:docker4-vulkan
+```
+
 **CPU Only (any platform):**
 ```bash
 docker run -d \
@@ -189,7 +201,7 @@ To batch-upscale your low-resolution content:
 - **Webhook Notifications**: HTTP POST on job complete/failure
 - **Model Management**: Disk usage tracking, LRU cleanup of unused models
 - **Docker Microservice**: AI runs isolated in a container (no DLL conflicts, ~1.6 MB plugin)
-- **5 GPU Architectures**: NVIDIA CUDA/TensorRT, AMD ROCm, Intel OpenVINO, Apple Silicon, CPU
+- **6 GPU Architectures**: NVIDIA CUDA/TensorRT, AMD ROCm, Intel OpenVINO, Vulkan/ncnn, Apple Silicon, CPU
 - **Player Integration**: In-player button with quick settings menu, FPS overlay, keyboard shortcuts (Alt+U, Alt+M)
 - **SSH Remote Transcoding**: Offload FFmpeg to GPU containers via SSH
 - **Web UI**: Model management at `http://YOUR_SERVER_IP:5000`
@@ -251,11 +263,31 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 | `:docker4-amd` | AMD ROCm | RX 7000, RX 6000 |
 | `:docker4-intel` | Intel OpenVINO | Arc A-Series, Iris Xe |
 | `:docker4-apple` | ARM64 Optimized | Apple M1–M5 (Docker=CPU, native=CoreML) |
+| `:docker4-vulkan` | Vulkan (ncnn) | AMD pre-RDNA2, Intel iGPU, any Vulkan GPU |
 | `:docker4-cpu` | Multi-threaded CPU | Any platform |
 
 ---
 
 ## Changelog
+
+### v1.5.4.3 (Bench Button Fix + Auto-Download)
+- **Fixed**: Bench buttons all showing "Failed" — models now auto-download when you click Bench
+- **Fixed**: Controller proxy returns actual Docker HTTP status codes (was always 200)
+- **Fixed**: Fallback model list format now matches Docker's `{models: [...], total: N}` response
+- **Improved**: Bench cells show "Downloading..." / "Benchmarking..." status indicators
+- **Improved**: 180s timeout on model load requests for large model downloads
+- **Fixed**: Live Video Benchmark now properly checks `loadResult.detail` for Docker errors
+
+### v1.5.4.2 (CORS Fix + Live Video Benchmark)
+- **Added**: Live Video Benchmark — test all 35 models against your library content
+- **Added**: 3 new CORS proxy endpoints (`models/load`, `model-benchmark`, `metrics`)
+- **Fixed**: CORS errors in model catalog and performance monitor on TrueNAS multi-container setups
+- **Fixed**: Frontend uses `ApiClient.getUrl()` instead of direct Docker fetch
+
+### v1.5.4.1 (Multi-Frame Audio Fix)
+- **Fixed**: Multi-frame processing dropped audio track (now uses `ReconstructVideoAsync`)
+- **Fixed**: Model fallback chain for video processing
+- **Fixed**: Scale dropdown crash on missing model data
 
 ### v1.5.4.0 (Multi-Frame VSR + Auto-Model + Image Upscaling + Metrics + Health)
 - **Added**: Multi-Frame VSR — 5-frame sliding window for batch upscaling (EDVR-M, RealBasicVSR, AnimeSR v2)
