@@ -1311,14 +1311,13 @@ namespace JellyfinUpscalerPlugin.Services
             foreach (var kvp in _jobCancellationTokens)
             {
                 try { kvp.Value?.Cancel(); }
-                catch { /* Ignore cancellation errors */ }
+                catch (ObjectDisposedException) { /* Already disposed */ }
             }
-
 
             foreach (var kvp in _jobCancellationTokens)
             {
                 try { kvp.Value?.Dispose(); }
-                catch { /* Ignore disposal errors */ }
+                catch (ObjectDisposedException) { /* Already disposed */ }
             }
             _jobCancellationTokens.Clear();
             _processingSemaphore?.Dispose();

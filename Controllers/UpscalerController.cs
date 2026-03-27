@@ -352,6 +352,10 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
+                // Security: Validate model name
+                if (!ValidModelNameRegex.IsMatch(model))
+                    return BadRequest(new { message = "Invalid model name" });
+
                 if (!Guid.TryParse(itemId, out var itemGuid))
                 {
                     return BadRequest(new { message = "Invalid item ID format" });
@@ -429,6 +433,9 @@ namespace JellyfinUpscalerPlugin.Controllers
             {
                 if (scale < 1 || scale > 8)
                     return BadRequest(new { success = false, error = "Scale must be between 1 and 8" });
+
+                if (model != "auto" && !ValidModelNameRegex.IsMatch(model))
+                    return BadRequest(new { success = false, error = "Invalid model name" });
 
                 if (!Guid.TryParse(itemId, out var itemGuid))
                     return BadRequest(new { success = false, error = "Invalid item ID format" });
@@ -564,7 +571,6 @@ namespace JellyfinUpscalerPlugin.Controllers
                     return BadRequest(new { success = false, error = "Output path must be in the same directory as the input file" });
                 }
 
-                var outputDir = Path.GetDirectoryName(fullOutputPath);
                 if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
                 {
                     Directory.CreateDirectory(outputDir);
@@ -602,6 +608,9 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
+                if (model != null && model != "auto" && !ValidModelNameRegex.IsMatch(model))
+                    return BadRequest(new { message = "Invalid model name" });
+
                 if (!Guid.TryParse(itemId, out var itemGuid))
                 {
                     return BadRequest(new { message = "Invalid item ID format" });
@@ -760,6 +769,9 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             if (string.IsNullOrEmpty(inputPath))
                 return BadRequest(new { success = false, error = "inputPath required" });
+
+            if (model != null && model != "auto" && !ValidModelNameRegex.IsMatch(model))
+                return BadRequest(new { success = false, error = "Invalid model name" });
 
             // Path traversal protection — normalize and block system paths
             inputPath = Path.GetFullPath(inputPath);

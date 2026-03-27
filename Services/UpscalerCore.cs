@@ -36,7 +36,7 @@ namespace JellyfinUpscalerPlugin.Services
         private static readonly object _hwCacheLock = new();
         
         private PluginConfiguration Config => Plugin.Instance?.Configuration ?? new PluginConfiguration();
-        private bool _disposed;
+        private volatile bool _disposed;
         
         public UpscalerCore(
             ILogger<UpscalerCore> logger,

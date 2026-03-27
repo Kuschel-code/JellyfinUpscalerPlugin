@@ -19,7 +19,7 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly IHttpClientFactory? _httpClientFactory;
         private readonly HttpClient _fallbackClient;
         private readonly ILogger<HttpUpscalerService> _logger;
-        private bool _disposed;
+        private volatile bool _disposed;
 
         // Health check cache (30 seconds) with thread-safety lock
         private bool? _cachedHealthResult;
@@ -283,7 +283,8 @@ namespace JellyfinUpscalerPlugin.Services
 
                 if (attempt < maxRetries)
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                    // Exponential backoff: 1s, 2s
+                    await Task.Delay(TimeSpan.FromSeconds(1 << attempt), cancellationToken);
                 }
             }
 
