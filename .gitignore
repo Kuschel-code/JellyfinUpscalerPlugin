@@ -26,6 +26,11 @@ release-*/
 Thumbs.db
 desktop.ini
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
 # Temporary files
 *.tmp
 *.temp
