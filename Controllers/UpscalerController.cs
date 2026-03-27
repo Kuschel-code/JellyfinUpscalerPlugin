@@ -372,6 +372,9 @@ namespace JellyfinUpscalerPlugin.Controllers
                     imagePath = images[0].Path;
                 }
 
+                if (string.IsNullOrEmpty(imagePath))
+                    return BadRequest(new { message = "Image path is null or empty" });
+
                 if (!IOFile.Exists(imagePath)) return NotFound(new { message = "Image file not found" });
 
                 byte[] originalData = await IOFile.ReadAllBytesAsync(imagePath);
@@ -560,10 +563,12 @@ namespace JellyfinUpscalerPlugin.Controllers
 
                 // Whitelist: output must be in same directory as input (sibling file)
                 // or in a subdirectory of the input's parent
-                var inputDir = Path.GetDirectoryName(fullInputPath);
-                var outputDir = Path.GetDirectoryName(fullOutputPath);
+                var inputDir = Path.GetFullPath(Path.GetDirectoryName(fullInputPath) ?? string.Empty);
+                var outputDir = Path.GetFullPath(Path.GetDirectoryName(fullOutputPath) ?? string.Empty);
+                var inputDirWithSep = inputDir.EndsWith(Path.DirectorySeparatorChar) ? inputDir : inputDir + Path.DirectorySeparatorChar;
                 if (inputDir == null || outputDir == null ||
-                    !outputDir.StartsWith(inputDir, StringComparison.OrdinalIgnoreCase))
+                    (!outputDir.Equals(inputDir, StringComparison.OrdinalIgnoreCase) &&
+                     !outputDir.StartsWith(inputDirWithSep, StringComparison.OrdinalIgnoreCase)))
                 {
                     // Also allow output in media library paths by checking the input exists
                     // (if input is a valid library file, its directory is safe for output)
@@ -1214,15 +1219,28 @@ namespace JellyfinUpscalerPlugin.Controllers
                 {
                     try
                     {
+                        // Check Content-Length before reading to prevent memory exhaustion
+                        if (Request.ContentLength > 1024 * 1024)
+                        {
+                            return BadRequest(new { error = "Request body too large" });
+                        }
                         using var reader = new StreamReader(Request.Body);
                         var body = await reader.ReadToEndAsync();
+                        if (body.Length > 1024 * 1024) // 1MB payload limit (fallback for chunked transfers)
+                        {
+                            return BadRequest(new { error = "Request body too large" });
+                        }
                         var json = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(body);
                         if (json != null && json.ContainsKey("model_name"))
                             modelId = json["model_name"];
                     }
-                    catch (Exception ex)
+                    catch (System.Text.Json.JsonException ex)
                     {
                         _logger.LogDebug(ex, "Failed to parse JSON body for model_name, falling back to query/form");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Failed to read request body for model_name, falling back to query/form");
                     }
                 }
 

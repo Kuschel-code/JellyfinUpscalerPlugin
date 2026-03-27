@@ -109,17 +109,16 @@ namespace JellyfinUpscalerPlugin.Services
 
                 lock (_queueLock)
                 {
-                    if (_queue.Count > 0)
-                    {
-                        var job = _queue.Min!;
-                        _queue.Remove(job);
-                        job.Status = QueueJobStatus.Processing;
-                        job.StartedAt = DateTime.UtcNow;
-                        _activeJobs[job.JobId] = job;
-                        _jobLookup.TryRemove(job.JobId, out _);
-                        PersistQueue();
-                        return job;
-                    }
+                    if (_queue.Count == 0) continue;
+
+                    var job = _queue.Min!;
+                    _queue.Remove(job);
+                    job.Status = QueueJobStatus.Processing;
+                    job.StartedAt = DateTime.UtcNow;
+                    _activeJobs[job.JobId] = job;
+                    _jobLookup.TryRemove(job.JobId, out _);
+                    PersistQueue();
+                    return job;
                 }
             }
 
@@ -198,21 +197,23 @@ namespace JellyfinUpscalerPlugin.Services
 
         public void Pause()
         {
-            _paused = true;
+            lock (_queueLock)
+            {
+                _paused = true;
+            }
             _logger.LogInformation("Processing queue paused");
         }
 
         public void Resume()
         {
-            _paused = false;
-            _logger.LogInformation("Processing queue resumed");
-            // Wake up any waiting dequeue calls
             lock (_queueLock)
             {
+                _paused = false;
                 // Signal once to wake dequeue loop; it will process all available items
                 if (_queue.Count > 0)
                     _signal.Release();
             }
+            _logger.LogInformation("Processing queue resumed");
         }
 
         public bool IsPaused => _paused;

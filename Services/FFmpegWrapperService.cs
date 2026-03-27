@@ -48,7 +48,8 @@ namespace JellyfinUpscalerPlugin.Services
             var realFFmpegPath = _mediaEncoder.EncoderPath;
             if (string.IsNullOrEmpty(realFFmpegPath))
             {
-                 realFFmpegPath = _platformService.IsWindows ? "C:\\ProgramData\\Jellyfin\\Server\\ffmpeg.exe" : "/usr/lib/jellyfin-ffmpeg/ffmpeg";
+                _logger.LogError("FFmpeg path not found from IMediaEncoder. Cannot generate wrapper script without a valid FFmpeg path");
+                throw new InvalidOperationException("FFmpeg path not available. Ensure Jellyfin has a valid FFmpeg path configured.");
             }
             
             var logPath = Path.Combine(_pluginDirectory, "wrapper.log");

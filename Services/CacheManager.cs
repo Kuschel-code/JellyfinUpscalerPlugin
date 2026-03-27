@@ -239,12 +239,11 @@ namespace JellyfinUpscalerPlugin.Services
                 // Validate entry
                 if (File.Exists(entry.FilePath) && !IsEntryExpired(entry))
                 {
-                    // Update access time
-                    entry.LastAccessedAt = DateTime.UtcNow;
-                    entry.AccessCount++;
-                    
+                    // Update access time under lock to prevent race conditions
                     lock (_statsLock)
                     {
+                        entry.LastAccessedAt = DateTime.UtcNow;
+                        entry.AccessCount++;
                         _cacheHits++;
                     }
                     

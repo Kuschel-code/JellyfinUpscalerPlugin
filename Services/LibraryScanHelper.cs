@@ -29,14 +29,14 @@ namespace JellyfinUpscalerPlugin.Services
         /// <summary>
         /// Trigger library scan for upscaled video file
         /// </summary>
-        public async Task ScanUpscaledFile(string originalPath, string upscaledPath)
+        public async Task<bool> ScanUpscaledFile(string originalPath, string upscaledPath)
         {
             try
             {
                 if (!File.Exists(upscaledPath))
                 {
                     _logger.LogWarning("Upscaled file not found, skipping scan: {UpscaledPath}", upscaledPath);
-                    return;
+                    return false;
                 }
 
                 _logger.LogInformation("Triggering library scan for: {FileName}", Path.GetFileName(upscaledPath));
@@ -46,7 +46,7 @@ namespace JellyfinUpscalerPlugin.Services
                 if (string.IsNullOrEmpty(directory))
                 {
                     _logger.LogWarning("Could not determine directory for library scan");
-                    return;
+                    return false;
                 }
 
                 // Find the library folder containing this file
@@ -78,10 +78,13 @@ namespace JellyfinUpscalerPlugin.Services
                         CancellationToken.None
                     );
                 }
+
+                return true;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to scan library after upscaling");
+                return false;
             }
         }
 

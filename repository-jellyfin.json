@@ -9,11 +9,19 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.5.5.2",
+        "changelog": "v1.5.5.2: Deep scan round 2 — race conditions, SSRF private IP blocking, path traversal hardening, exception info leak fixes, checksum corrections, docker5 tag update.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.5.2/JellyfinUpscalerPlugin-v1.5.5.2.zip",
+        "checksum": "PLACEHOLDER_BUILD_AND_REPLACE",
+        "timestamp": "2026-03-27T17:00:00.000Z"
+      },
+      {
         "version": "1.5.5.0",
         "changelog": "v1.5.5.0: Critical bug fixes — circuit breaker half-open bypass, ncnn CHW/HWC reshape, audio passthrough, max_concurrent=0 deadlock, health endpoint accuracy.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.5.0/JellyfinUpscalerPlugin-v1.5.5.0.zip",
-        "checksum": "7cdf7098a12a6e390b1efbcf67b6571b",
+        "checksum": "41a31b4ee193f2eca03e1247807a6b9c",
         "timestamp": "2026-03-27T01:00:00.000Z"
       },
       {
@@ -37,7 +45,7 @@
         "changelog": "v1.5.4.2: Fix CORS errors in model catalog and performance monitor. Add live video benchmark.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.4.2/JellyfinUpscalerPlugin-v1.5.4.2.zip",
-        "checksum": "cee928a1c666e15370dedc9daced5df2",
+        "checksum": "7ebe7a601ce8bc82329686d2f815794a",
         "timestamp": "2026-03-24T01:39:40.000Z"
       },
       {
@@ -101,7 +109,7 @@
         "changelog": "v1.5.2.8: Fix API route mismatch (503 errors on all buttons), config page rebuild (Jellyfin 10.11+), horizontal tabs + collapsible sections, 15+ bug fixes, dark theme. Fixes #39 #36 #48.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.2.8/JellyfinUpscalerPlugin-v1.5.2.8.zip",
-        "checksum": "66eb91f23ad74883f2138bb08c1287a0",
+        "checksum": "fafdb76b5a555ce7a719c8d4a8353a9f",
         "timestamp": "2026-03-18T20:47:43.000Z"
       },
       {
@@ -109,7 +117,7 @@
         "changelog": "v1.5.2.7: Docker fixes (TensorRT/CUDA fallback, Intel OpenVINO GPU, multi-GPU selection), premium sidebar dashboard redesign, player button MutationObserver, health caching, retry logic.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.2.7/JellyfinUpscalerPlugin-v1.5.2.7.zip",
-        "checksum": "52df212468daaa8fd39e3153eee3caed",
+        "checksum": "4bdd8a251311794777e3a52abac8b938",
         "timestamp": "2026-03-15T22:11:17.000Z"
       },
       {
@@ -154,10 +162,10 @@
       },
       {
         "version": "1.5.1.0",
-        "changelog": "v1.5.0.2: Fixed settings not saving (#36) - AiServiceUrl now persists correctly",
+        "changelog": "v1.5.1.0: Real Remote Transcoding (SSH). Implements rffmpeg-style architecture with SSH tunneling, path mapping, and shared transcoding folder support.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.1.0/JellyfinUpscalerPlugin-v1.5.1.0.zip",
-        "checksum": "8191F7C8DED8430B63BD771775556A97",
+        "checksum": "cb24fa3cc31dd03a4296d89265151c52",
         "timestamp": "2026-02-06T01:56:50.000Z"
       },
       {
@@ -173,7 +181,7 @@
         "changelog": "v1.5.0.0: Docker Microservice Architecture - Eliminates native DLL conflicts. AI processing via external Docker container.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.0.0/JellyfinUpscalerPlugin-v1.5.0.0.zip",
-        "checksum": "18A0C858309DA94A6662B3B03CD9E36D",
+        "checksum": "18a0c858309da94a6662b3b03cd9e36d",
         "timestamp": "2026-01-31T17:40:00.000Z"
       },
       {
@@ -181,7 +189,7 @@
         "changelog": "v1.4.9.4: Final Release - Settings Page Fix, Cross-Platform Support, Complete DI Registration.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9.4/JellyfinUpscalerPlugin-v1.4.9.4.zip",
-        "checksum": "14595BAFE7AB2D9BBF89F450823D9B7B",
+        "checksum": "14595bafe7ab2d9bbf89f450823d9b7b",
         "timestamp": "2026-01-23T14:00:00.000Z"
       },
       {
@@ -189,7 +197,7 @@
         "changelog": "v1.4.9.3: Verified Service Registration and Settings Polish.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9.3/JellyfinUpscalerPlugin-v1.4.9.3.zip",
-        "checksum": "366344F460F2F9C8E3DBE7B011AC0E4F",
+        "checksum": "366344f460f2f9c8e3dbe7b011ac0e4f",
         "timestamp": "2026-01-22T13:45:00.000Z"
       },
       {
@@ -197,7 +205,7 @@
         "changelog": "v1.4.9.2: Critical Update. Implemented Real AI Upscaling with ONNX Runtime, Fixed Dependency Injection crashes, Added Model Manager, and Hardware Benchmarking.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9.2/JellyfinUpscalerPlugin-v1.4.9.2.zip",
-        "checksum": "9A8D0F32A1A97F9944FF087F83546381",
+        "checksum": "9a8d0f32a1a97f9944ff087f83546381",
         "timestamp": "2026-01-22T13:30:00.000Z"
       },
       {
@@ -205,7 +213,7 @@
         "changelog": "v1.4.9.1: Fixed sidebar integration and settings access. Dashboard now appears correctly in sidebar with working settings link.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9.1/JellyfinUpscalerPlugin-v1.4.9.1.zip",
-        "checksum": "AEDCD9218979979DAC702475154A073E",
+        "checksum": "aedcd9218979979dac702475154a073e",
         "timestamp": "2026-01-22T13:00:00.000Z"
       }
     ],

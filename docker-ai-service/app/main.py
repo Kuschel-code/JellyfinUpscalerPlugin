@@ -1,6 +1,6 @@
 """
 AI Upscaler Service - FastAPI Application
-Jellyfin AI Upscaler Plugin - Microservice Component v1.5.5.0
+Jellyfin AI Upscaler Plugin - Microservice Component v1.5.5.2
 Supports OpenCV DNN (.pb) and ONNX Runtime models with GPU detection
 Multi-GPU selection, robust TensorRT/CUDA/OpenVINO fallback
 """
@@ -61,7 +61,7 @@ CACHE_DIR = Path("/app/cache")
 STATIC_DIR = Path("/app/static")
 
 # Version
-VERSION = "1.5.5.1"
+VERSION = "1.5.5.2"
 
 # Global state
 class AppState:
@@ -159,17 +159,25 @@ _download_locks: dict[str, asyncio.Lock] = {}
 _download_locks_guard = threading.Lock()
 
 # Tile size for ONNX inference (prevents OOM on large images)
-def _safe_int_env(name: str, default: int) -> int:
-    """Parse integer from env var with fallback on invalid values."""
+def _safe_int_env(name: str, default: int, min_val: Optional[int] = None, max_val: Optional[int] = None) -> int:
+    """Parse integer from env var with fallback on invalid values.
+    Clamps result to [min_val, max_val] when bounds are provided."""
     try:
-        return int(os.getenv(name, str(default)))
+        value = int(os.getenv(name, str(default)))
     except ValueError:
         logger.warning(f"Invalid {name} env var, using default {default}")
-        return default
+        value = default
+    if min_val is not None and value < min_val:
+        logger.warning(f"{name}={value} below minimum {min_val}, clamping")
+        value = min_val
+    if max_val is not None and value > max_val:
+        logger.warning(f"{name}={value} exceeds maximum {max_val}, clamping")
+        value = max_val
+    return value
 
-ONNX_TILE_SIZE = _safe_int_env("ONNX_TILE_SIZE", 512)
-ONNX_TILE_SIZE_MULTIFRAME = _safe_int_env("ONNX_TILE_SIZE_MULTIFRAME", 256)
-MAX_UPLOAD_BYTES = _safe_int_env("MAX_UPLOAD_BYTES", 50 * 1024 * 1024)
+ONNX_TILE_SIZE = _safe_int_env("ONNX_TILE_SIZE", 512, min_val=64, max_val=2048)
+ONNX_TILE_SIZE_MULTIFRAME = _safe_int_env("ONNX_TILE_SIZE_MULTIFRAME", 256, min_val=64, max_val=1024)
+MAX_UPLOAD_BYTES = _safe_int_env("MAX_UPLOAD_BYTES", 50 * 1024 * 1024, min_val=1024, max_val=500 * 1024 * 1024)
 MAX_INPUT_FRAMES = 10  # Safety cap for multi-frame endpoints
 
 # Available models with download URLs from PUBLIC sources
@@ -2075,6 +2083,23 @@ async def register_connection(
     if parsed.scheme not in ("http", "https"):
         raise HTTPException(status_code=400, detail="Invalid URL scheme. Only http:// and https:// are allowed.")
 
+    # Block SSRF: reject private/loopback IP addresses
+    import ipaddress
+    hostname = parsed.hostname
+    if hostname:
+        # Reject well-known loopback/private hostnames
+        _blocked_hosts = {"localhost", "localhost.localdomain", "ip6-localhost", "ip6-loopback"}
+        if hostname.lower() in _blocked_hosts:
+            raise HTTPException(status_code=400, detail="Private/loopback URLs are not allowed.")
+        try:
+            addr = ipaddress.ip_address(hostname)
+            if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
+                raise HTTPException(status_code=400, detail="Private/loopback URLs are not allowed.")
+        except ValueError:
+            # hostname is a DNS name, not a raw IP — allow it (DNS may resolve to anything,
+            # but blocking raw private IPs covers the most exploitable SSRF vectors)
+            pass
+
     connection = {
         "plugin_id": plugin_id,
         "jellyfin_url": jellyfin_url,
@@ -2172,7 +2197,8 @@ async def load_model_endpoint(
         # Rollback GPU state on failure
         state.use_gpu = prev_use_gpu
         state.gpu_device_id = prev_device_id
-        raise HTTPException(status_code=500, detail=f"Failed to load model: {state.last_load_error or 'unknown'}")
+        logger.error(f"Model load failed: {state.last_load_error}")
+        raise HTTPException(status_code=500, detail="Failed to load model. Check server logs for details.")
 
     return {
         "status": "success",
@@ -2406,7 +2432,8 @@ def _run_frame_benchmark(width: int, height: int) -> dict:
     try:
         upscale_image_array(test_img)
     except Exception as e:
-        return {"error": f"Warmup failed: {str(e)}"}
+        logger.error(f"Benchmark warmup failed: {e}")
+        return {"error": "Warmup failed. Check server logs for details."}
 
     # Benchmark 5 iterations (JPEG decode → upscale → JPEG encode)
     times = []
@@ -2688,7 +2715,7 @@ async def health_detailed():
             "name": state.current_model,
             "type": state.current_model_type,
             "input_frames": state.current_model_input_frames,
-            "last_error": state.last_load_error
+            "last_error": bool(state.last_load_error)
         },
         "metrics": {
             "total_jobs": state.total_jobs,

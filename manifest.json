@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.5.5.2",
+        "changelog": "v1.5.5.2: Deep scan round 2 — race conditions, SSRF private IP blocking, path traversal hardening, exception info leak fixes, checksum corrections, docker5 tag update.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.5.2/JellyfinUpscalerPlugin-v1.5.5.2.zip",
+        "checksum": "PLACEHOLDER_BUILD_AND_REPLACE",
+        "timestamp": "2026-03-27T17:00:00.000Z"
+      },
+      {
         "version": "1.5.5.0",
         "changelog": "v1.5.5.0: Critical bug fixes — circuit breaker half-open bypass, ncnn CHW/HWC reshape, audio passthrough (-c:a copy), max_concurrent=0 deadlock, health endpoint accuracy. All 6 Docker images rebuilt.",
         "targetAbi": "10.11.0.0",
@@ -189,7 +197,7 @@
         "changelog": "v1.5.2.0: Intel GPU detection fix (Issue #45), TensorRT fallback fix (Issue #46), fixed model default, full multi-GPU provider chain, version alignment.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.2.0/JellyfinUpscalerPlugin_v1.5.2.0.zip",
-        "checksum": "0E8DA7E16602EFF5B399EC023141DBD1",
+        "checksum": "0e8da7e16602eff5b399ec023141dbd1",
         "timestamp": "2026-02-22T21:00:00.000Z"
       },
       {
@@ -237,7 +245,7 @@
         "changelog": "v1.5.0.6: Fixed IP/URL configuration ignoring changes until restart. Now uses dynamic URL resolution on every request.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.0.6/JellyfinUpscalerPlugin-v1.5.0.6.zip",
-        "checksum": "05E2E5B4DA299E11F57EFF3393447900",
+        "checksum": "05e2e5b4da299e11f57eff3393447900",
         "timestamp": "2026-02-04T01:00:00.000Z"
       },
       {
@@ -245,7 +253,7 @@
         "changelog": "v1.5.0.5: Compatibility fix for loading spinner (Jellyfin <10.9), Merged PR #40 (Comprehensive Dashboard Fixes including Hardware Status & Connection Check).",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.0.5/JellyfinUpscalerPlugin-v1.5.0.5.zip",
-        "checksum": "0624CA5693C0DF9763C8A56F448B5DBD",
+        "checksum": "0624ca5693c0df9763c8a56f448b5dbd",
         "timestamp": "2026-02-04T00:00:00.000Z"
       },
       {
@@ -253,7 +261,7 @@
         "changelog": "v1.5.0.4: Added Test Connection button, English UI text, save success notification.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.0.4/JellyfinUpscalerPlugin-v1.5.0.4.zip",
-        "checksum": "85F37337435C5ACE4F05250FFD716442",
+        "checksum": "85f37337435c5ace4f05250ffd716442",
         "timestamp": "2026-02-03T14:00:00.000Z"
       },
       {
@@ -261,7 +269,7 @@
         "changelog": "v1.5.0.3: Fixed Save Configuration button not working (Discussion #38). Added robust event initialization with fallback mechanisms and debug logging.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.0.3/JellyfinUpscalerPlugin-v1.5.0.3.zip",
-        "checksum": "73DE4B0F920A98A3CA643626C15A747E",
+        "checksum": "73de4b0f920a98a3ca643626c15a747e",
         "timestamp": "2026-02-03T11:00:00.000Z"
       },
       {
@@ -269,7 +277,7 @@
         "changelog": "v1.5.0.2: Fixed settings not saving (#36) - AiServiceUrl now persists correctly",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.0.2/JellyfinUpscalerPlugin-v1.5.0.2.zip",
-        "checksum": "D4763D7D4EC6C2A70131CC46DAC7E25A",
+        "checksum": "d4763d7d4ec6c2a70131cc46dac7e25a",
         "timestamp": "2026-02-01T15:00:00.000Z"
       },
       {
@@ -277,7 +285,7 @@
         "changelog": "v1.5.0.1: Hotfix - Fixed DI error (#34), Checksum fix (#33), Intel GPU/OpenVINO support (#32)",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.0.1/JellyfinUpscalerPlugin-v1.5.0.1.zip",
-        "checksum": "09A64241ED099371446D14C26CF6DE9D",
+        "checksum": "09a64241ed099371446d14c26cf6de9d",
         "timestamp": "2026-01-31T19:30:00.000Z"
       },
       {
@@ -285,7 +293,7 @@
         "changelog": "v1.5.0.0: Docker Microservice Architecture - Eliminates native DLL conflicts. AI processing via external Docker container.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.0.0/JellyfinUpscalerPlugin-v1.5.0.0.zip",
-        "checksum": "18A0C858309DA94A6662B3B03CD9E36D",
+        "checksum": "18a0c858309da94a6662b3b03cd9e36d",
         "timestamp": "2026-01-31T17:40:00.000Z"
       },
       {
@@ -293,7 +301,7 @@
         "changelog": "v1.4.9.4: Final Release - Settings Page Fix, Cross-Platform Support, Complete DI Registration.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9.4/JellyfinUpscalerPlugin-v1.4.9.4.zip",
-        "checksum": "14595BAFE7AB2D9BBF89F450823D9B7B",
+        "checksum": "14595bafe7ab2d9bbf89f450823d9b7b",
         "timestamp": "2026-01-23T14:00:00.000Z"
       },
       {
@@ -301,7 +309,7 @@
         "changelog": "v1.4.9.3: Verified Service Registration and Settings Polish.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9.3/JellyfinUpscalerPlugin-v1.4.9.3.zip",
-        "checksum": "366344F460F2F9C8E3DBE7B011AC0E4F",
+        "checksum": "366344f460f2f9c8e3dbe7b011ac0e4f",
         "timestamp": "2026-01-22T13:45:00.000Z"
       },
       {
@@ -309,7 +317,7 @@
         "changelog": "v1.4.9.2: Critical Update. Implemented Real AI Upscaling with ONNX Runtime, Fixed Dependency Injection crashes, Added Model Manager, and Hardware Benchmarking.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.4.9.2/JellyfinUpscalerPlugin-v1.4.9.2.zip",
-        "checksum": "9A8D0F32A1A97F9944FF087F83546381",
+        "checksum": "9a8d0f32a1a97f9944ff087f83546381",
         "timestamp": "2026-01-22T13:30:00.000Z"
       }
     ]

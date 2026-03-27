@@ -28,7 +28,11 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly HttpUpscalerService _httpUpscaler;
 
         // Shared HttpClient for webhook delivery — reused to avoid socket exhaustion
-        private static readonly System.Net.Http.HttpClient _webhookClient = new() { Timeout = TimeSpan.FromSeconds(10) };
+        private static readonly System.Net.Http.HttpClient _webhookClient = new(new System.Net.Http.SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.FromMinutes(2)
+        })
+        { Timeout = TimeSpan.FromSeconds(10) };
         
         // Hardware detection cache (avoid repeated HTTP calls)
         private static HardwareProfile? _cachedHardwareProfile;
@@ -154,12 +158,43 @@ namespace JellyfinUpscalerPlugin.Services
             if (string.IsNullOrWhiteSpace(webhookUrl))
                 return;
 
-            // SSRF prevention: only allow http/https webhook URLs
+            // SSRF prevention: only allow http/https webhook URLs, block private IPs
+            if (webhookUrl.Length > 2048)
+            {
+                _logger.LogWarning("Webhook URL rejected (exceeds 2048 chars)");
+                return;
+            }
+
             if (!Uri.TryCreate(webhookUrl, UriKind.Absolute, out var webhookUri) ||
                 (webhookUri.Scheme != "http" && webhookUri.Scheme != "https"))
             {
                 _logger.LogWarning("Webhook URL rejected (invalid scheme): {Url}", webhookUrl);
                 return;
+            }
+
+            // Block localhost and private IP ranges
+            var host = webhookUri.Host;
+            if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(host, "[::1]", StringComparison.OrdinalIgnoreCase) ||
+                host == "::1")
+            {
+                _logger.LogWarning("Webhook URL rejected (localhost): {Url}", webhookUrl);
+                return;
+            }
+
+            if (System.Net.IPAddress.TryParse(host, out var ip))
+            {
+                var bytes = ip.GetAddressBytes();
+                bool isPrivate = ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal ||
+                    (bytes.Length == 4 && bytes[0] == 127) ||                              // 127.x.x.x
+                    (bytes.Length == 4 && bytes[0] == 10) ||                                // 10.x.x.x
+                    (bytes.Length == 4 && bytes[0] == 192 && bytes[1] == 168) ||            // 192.168.x.x
+                    (bytes.Length == 4 && bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31); // 172.16-31.x.x
+                if (isPrivate)
+                {
+                    _logger.LogWarning("Webhook URL rejected (private IP): {Url}", webhookUrl);
+                    return;
+                }
             }
 
             if (eventType == "complete" && !Config.WebhookOnComplete) return;
