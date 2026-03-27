@@ -178,7 +178,10 @@ namespace JellyfinUpscalerPlugin.Services
                         return true;
                     }
                 }
-                catch { /* proceed to load */ }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Could not check service status, proceeding to load model");
+                }
 
                 _logger.LogInformation("Switching AI model to: {Model}", modelName);
 

@@ -896,7 +896,7 @@ namespace JellyfinUpscalerPlugin.Services
                 var profile = await _upscalerCore.DetectHardwareAsync();
                 maxConcurrency = Math.Max(1, profile.MaxConcurrentStreams);
             }
-            catch { }
+            catch (Exception ex) { _logger.LogDebug(ex, "Hardware detection failed, using default concurrency"); }
 
             using var semaphore = new SemaphoreSlim(maxConcurrency);
             var tasks = new List<Task>();

@@ -124,7 +124,7 @@ namespace JellyfinUpscalerPlugin.Services
                         {
                             System.Diagnostics.Process.Start("chmod", $"+x \"{targetWrapper}\"")?.WaitForExit();
                         }
-                        catch { }
+                        catch (Exception ex) { _logger.LogDebug(ex, "Failed to set executable permission on wrapper script"); }
                     }
 
                     _logger.LogInformation("Deployed wrapper script to: {TargetWrapper}", targetWrapper);
