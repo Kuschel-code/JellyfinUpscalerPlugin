@@ -61,62 +61,66 @@ CACHE_DIR = Path("/app/cache")
 STATIC_DIR = Path("/app/static")
 
 # Version
-VERSION = "1.5.5.0"
+VERSION = "1.5.5.1"
 
 # Global state
 class AppState:
-    # OpenCV DNN model
-    cv_model: Any = None
-    cv_model_name: Optional[str] = None
-    cv_model_scale: int = 2
-    
-    # ONNX model
-    onnx_session = None
-    onnx_model_name: Optional[str] = None
-    onnx_model_scale: int = 4
-    
-    # ncnn-Vulkan model (for Vulkan GPU acceleration)
-    ncnn_upscaler: Any = None
-    ncnn_model_name: Optional[str] = None
-    ncnn_model_scale: int = 4
-    ncnn_gpu_id: int = 0
+    """Global application state. Uses __init__ to avoid mutable class-level defaults
+    being shared across instances (Python gotcha with mutable defaults on class attributes)."""
 
-    current_model: Optional[str] = None
-    current_model_type: str = "opencv"  # "opencv", "onnx", or "ncnn"
-    providers: list = []
-    use_gpu: bool = True
-    processing_count: int = 0
-    max_concurrent: int = 4
-    gpu_device_id: int = 0  # GPU device index for multi-GPU systems
+    def __init__(self):
+        # OpenCV DNN model
+        self.cv_model: Any = None
+        self.cv_model_name: Optional[str] = None
+        self.cv_model_scale: int = 2
 
-    # Hardware info
-    gpu_name: str = "Unknown"
-    gpu_memory: str = "Unknown"
-    gpu_list: list = []  # List of detected GPUs for multi-GPU selection
-    cpu_name: str = "Unknown"
-    cpu_cores: int = 0
-    
-    # Plugin connections
-    plugin_connections: list = []
-    
-    # Benchmark results
-    last_benchmark: dict = {}
+        # ONNX model
+        self.onnx_session = None
+        self.onnx_model_name: Optional[str] = None
+        self.onnx_model_scale: int = 4
 
-    # Last model load error (for surfacing in API responses)
-    last_load_error: Optional[str] = None
+        # ncnn-Vulkan model (for Vulkan GPU acceleration)
+        self.ncnn_upscaler: Any = None
+        self.ncnn_model_name: Optional[str] = None
+        self.ncnn_model_scale: int = 4
+        self.ncnn_gpu_id: int = 0
 
-    # Multi-frame model support (e.g. EDVR uses 5 input frames)
-    current_model_input_frames: int = 1
+        self.current_model: Optional[str] = None
+        self.current_model_type: str = "opencv"  # "opencv", "onnx", or "ncnn"
+        self.providers: list = []
+        self.use_gpu: bool = True
+        self.processing_count: int = 0
+        self.max_concurrent: int = 4
+        self.gpu_device_id: int = 0  # GPU device index for multi-GPU systems
 
-    # Metrics tracking
-    total_jobs: int = 0
-    total_failures: int = 0
-    total_frames_processed: int = 0
-    total_processing_time_ms: float = 0
-    model_usage_count: dict = {}  # model_name -> count
-    model_failure_count: dict = {}  # model_name -> count
-    last_job_time_ms: float = 0
-    service_start_time: float = 0
+        # Hardware info
+        self.gpu_name: str = "Unknown"
+        self.gpu_memory: str = "Unknown"
+        self.gpu_list: list = []  # List of detected GPUs for multi-GPU selection
+        self.cpu_name: str = "Unknown"
+        self.cpu_cores: int = 0
+
+        # Plugin connections
+        self.plugin_connections: list = []
+
+        # Benchmark results
+        self.last_benchmark: dict = {}
+
+        # Last model load error (for surfacing in API responses)
+        self.last_load_error: Optional[str] = None
+
+        # Multi-frame model support (e.g. EDVR uses 5 input frames)
+        self.current_model_input_frames: int = 1
+
+        # Metrics tracking
+        self.total_jobs: int = 0
+        self.total_failures: int = 0
+        self.total_frames_processed: int = 0
+        self.total_processing_time_ms: float = 0
+        self.model_usage_count: dict = {}  # model_name -> count
+        self.model_failure_count: dict = {}  # model_name -> count
+        self.last_job_time_ms: float = 0
+        self.service_start_time: float = 0
 
     # Health monitoring
     consecutive_failures: int = 0
@@ -859,8 +863,16 @@ async def lifespan(app: FastAPI):
         logger.warning("ONNX Runtime not available. Install with: pip install onnxruntime-gpu")
     
     state.use_gpu = os.getenv("USE_GPU", "true").lower() == "true"
-    state.max_concurrent = max(1, int(os.getenv("MAX_CONCURRENT_REQUESTS", "4")))
-    state.gpu_device_id = int(os.getenv("GPU_DEVICE_ID", "0"))
+    try:
+        state.max_concurrent = max(1, int(os.getenv("MAX_CONCURRENT_REQUESTS", "4")))
+    except ValueError:
+        logger.warning("Invalid MAX_CONCURRENT_REQUESTS env var, using default 4")
+        state.max_concurrent = 4
+    try:
+        state.gpu_device_id = int(os.getenv("GPU_DEVICE_ID", "0"))
+    except ValueError:
+        logger.warning("Invalid GPU_DEVICE_ID env var, using default 0")
+        state.gpu_device_id = 0
 
     # Re-create semaphore with actual env var value (inside event loop)
     global _upscale_semaphore
@@ -899,8 +911,12 @@ app = FastAPI(
 @app.middleware("http")
 async def limit_body_size(request: Request, call_next):
     content_length = request.headers.get("content-length")
-    if content_length and int(content_length) > MAX_UPLOAD_BYTES:
-        return JSONResponse(status_code=413, content={"detail": f"Request too large ({content_length} bytes, max {MAX_UPLOAD_BYTES})"})
+    if content_length:
+        try:
+            if int(content_length) > MAX_UPLOAD_BYTES:
+                return JSONResponse(status_code=413, content={"detail": f"Request too large ({content_length} bytes, max {MAX_UPLOAD_BYTES})"})
+        except ValueError:
+            return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header"})
     return await call_next(request)
 
 # Mount static files
@@ -1923,8 +1939,8 @@ async def list_gpus():
                         "driver": parts[4] if len(parts) > 4 else "unknown",
                         "type": "nvidia"
                     })
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"NVIDIA GPU enumeration skipped: {e}")
 
     # Try Intel GPUs via render nodes
     try:
@@ -1950,8 +1966,8 @@ async def list_gpus():
                             "driver": "i915/xe",
                             "type": "intel"
                         })
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Intel GPU enumeration skipped: {e}")
 
     return {
         "gpus": gpus,

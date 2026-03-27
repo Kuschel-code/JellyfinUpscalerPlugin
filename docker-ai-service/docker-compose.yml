@@ -4,7 +4,7 @@ services:
   # GPU Version (NVIDIA CUDA) - Default
   # Uses Docker Hub image for easy auto-updates with Watchtower
   ai-upscaler:
-    image: kuscheltier/jellyfin-ai-upscaler:docker4
+    image: kuscheltier/jellyfin-ai-upscaler:docker5
     # Alternative: Build locally (uncomment below, comment image above)
     # build:
     #   context: .
@@ -12,7 +12,9 @@ services:
     container_name: jellyfin-ai-upscaler
     ports:
       - "5000:5000"
-      - "2222:22"
+      # SSH access disabled by default for security.
+      # Uncomment below if you need SSH into the container for debugging:
+      # - "2222:22"
     volumes:
       - ai-models:/app/models
       - ai-cache:/app/cache
@@ -24,6 +26,10 @@ services:
       - SKIP_TENSORRT=false
       - GPU_DEVICE_ID=0
     restart: unless-stopped
+    # Resource limits to prevent OOM on host
+    mem_limit: 8g
+    memswap_limit: 12g
+    cpus: 4.0
     # GPU support (requires nvidia-docker)
     # Compatible with: RTX 5000 series (Blackwell), RTX 4000, RTX 3000, RTX 2000
     # CUDA 12.8 + ONNX Runtime 1.20+ enables RTX 5000 (sm_120) support

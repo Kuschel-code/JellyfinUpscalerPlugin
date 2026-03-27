@@ -1,7 +1,7 @@
 # CPU-Only Dockerfile for AI Upscaler Service
 # Use this if you don't have an NVIDIA GPU
 
-FROM python:3.11-slim-bookworm
+FROM python:3.12-slim-bookworm
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1

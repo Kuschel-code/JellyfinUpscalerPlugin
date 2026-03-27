@@ -2,7 +2,7 @@
 # For AMD pre-RDNA2 (RX 5700, etc.), Intel iGPUs, or any Vulkan-capable GPU
 # Uses ncnn framework with Vulkan compute shaders for super-resolution
 
-FROM python:3.11-slim-bookworm
+FROM python:3.12-slim-bookworm
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
