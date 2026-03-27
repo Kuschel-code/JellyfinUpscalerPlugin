@@ -1098,13 +1098,40 @@ namespace JellyfinUpscalerPlugin.Controllers
                         config.AiServiceUrl = url;
                 }
                 if (settings.TryGetProperty("EnableRemoteTranscoding", out v)) config.EnableRemoteTranscoding = v.GetBoolean();
-                if (settings.TryGetProperty("RemoteHost", out v)) config.RemoteHost = v.GetString() ?? "";
+                if (settings.TryGetProperty("RemoteHost", out v))
+                {
+                    var host = v.GetString() ?? "";
+                    if (System.Text.RegularExpressions.Regex.IsMatch(host, @"^[a-zA-Z0-9.\-:]+$"))
+                        config.RemoteHost = host;
+                }
                 if (settings.TryGetProperty("RemoteSshPort", out v)) config.RemoteSshPort = v.GetInt32();
-                if (settings.TryGetProperty("RemoteUser", out v)) config.RemoteUser = v.GetString() ?? "";
-                if (settings.TryGetProperty("RemoteSshKeyFile", out v)) config.RemoteSshKeyFile = v.GetString() ?? "";
-                if (settings.TryGetProperty("LocalMediaMountPoint", out v)) config.LocalMediaMountPoint = v.GetString() ?? "";
-                if (settings.TryGetProperty("RemoteMediaMountPoint", out v)) config.RemoteMediaMountPoint = v.GetString() ?? "";
-                if (settings.TryGetProperty("RemoteTranscodePath", out v)) config.RemoteTranscodePath = v.GetString() ?? "";
+                if (settings.TryGetProperty("RemoteUser", out v))
+                {
+                    var user = v.GetString() ?? "";
+                    if (System.Text.RegularExpressions.Regex.IsMatch(user, @"^[a-zA-Z0-9._\-]+$"))
+                        config.RemoteUser = user;
+                }
+                if (settings.TryGetProperty("RemoteSshKeyFile", out v))
+                {
+                    var keyFile = v.GetString() ?? "";
+                    if (!string.IsNullOrEmpty(keyFile) && !keyFile.Contains("..") && Path.IsPathRooted(keyFile))
+                        config.RemoteSshKeyFile = keyFile;
+                }
+                if (settings.TryGetProperty("LocalMediaMountPoint", out v))
+                {
+                    var path = v.GetString() ?? "";
+                    if (!path.Contains("..")) config.LocalMediaMountPoint = path;
+                }
+                if (settings.TryGetProperty("RemoteMediaMountPoint", out v))
+                {
+                    var path = v.GetString() ?? "";
+                    if (!path.Contains("..")) config.RemoteMediaMountPoint = path;
+                }
+                if (settings.TryGetProperty("RemoteTranscodePath", out v))
+                {
+                    var path = v.GetString() ?? "";
+                    if (!path.Contains("..")) config.RemoteTranscodePath = path;
+                }
                 if (settings.TryGetProperty("PlayerButton", out v)) config.PlayerButton = v.GetBoolean();
                 if (settings.TryGetProperty("Notifications", out v)) config.Notifications = v.GetBoolean();
                 if (settings.TryGetProperty("AutoRetryButton", out v)) config.AutoRetryButton = v.GetBoolean();

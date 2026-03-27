@@ -72,6 +72,12 @@ namespace JellyfinUpscalerPlugin.Services
         {
             var config = Plugin.Instance?.Configuration;
             var url = config?.AiServiceUrl ?? "http://localhost:5000";
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+                (uri.Scheme != "http" && uri.Scheme != "https"))
+            {
+                _logger.LogWarning("Invalid AiServiceUrl in config, falling back to default");
+                return "http://localhost:5000";
+            }
             return url.TrimEnd('/');
         }
 
