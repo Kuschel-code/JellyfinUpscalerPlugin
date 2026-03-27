@@ -10,7 +10,7 @@
 
 ## 🌟 Features
 
-- **14 AI Models** - Real-ESRGAN, FSRCNN, ESPCN, LapSRN, EDSR
+- **40+ AI Models** - Real-ESRGAN, SPAN, SwinIR, FSRCNN, ESPCN, LapSRN, EDSR, and more
 - **NVIDIA GPU Support** - CUDA 12.8 + TensorRT acceleration
 - **AMD GPU Support** - ROCm 6.4 acceleration (RX 6000/7000, MI series)
 - **Intel GPU Support** - OpenVINO 2025.4 acceleration (Arc, iGPU)

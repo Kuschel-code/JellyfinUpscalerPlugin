@@ -1080,13 +1080,23 @@ namespace JellyfinUpscalerPlugin.Controllers
                 // Apply each setting if present
                 if (settings.TryGetProperty("EnablePlugin", out var v)) config.EnablePlugin = v.GetBoolean();
                 if (settings.TryGetProperty("Model", out v)) config.Model = v.GetString() ?? "realesrgan-x4";
-                if (settings.TryGetProperty("ScaleFactor", out v)) config.ScaleFactor = v.GetInt32();
+                if (settings.TryGetProperty("ScaleFactor", out v))
+                {
+                    var scale = v.GetInt32();
+                    var validScales = new[] { 2, 3, 4, 8 };
+                    config.ScaleFactor = validScales.Contains(scale) ? scale : 4;
+                }
                 if (settings.TryGetProperty("QualityLevel", out v)) config.QualityLevel = v.GetString() ?? "medium";
                 if (settings.TryGetProperty("HardwareAcceleration", out v)) config.HardwareAcceleration = v.GetBoolean();
                 if (settings.TryGetProperty("MaxConcurrentStreams", out v)) config.MaxConcurrentStreams = v.GetInt32();
                 if (settings.TryGetProperty("MaxVRAMUsage", out v)) config.MaxVRAMUsage = v.GetInt32();
                 if (settings.TryGetProperty("CpuThreads", out v)) config.CpuThreads = v.GetInt32();
-                if (settings.TryGetProperty("AiServiceUrl", out v)) config.AiServiceUrl = v.GetString() ?? "http://localhost:5000";
+                if (settings.TryGetProperty("AiServiceUrl", out v))
+                {
+                    var url = v.GetString() ?? "http://localhost:5000";
+                    if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && (uri.Scheme == "http" || uri.Scheme == "https"))
+                        config.AiServiceUrl = url;
+                }
                 if (settings.TryGetProperty("EnableRemoteTranscoding", out v)) config.EnableRemoteTranscoding = v.GetBoolean();
                 if (settings.TryGetProperty("RemoteHost", out v)) config.RemoteHost = v.GetString() ?? "";
                 if (settings.TryGetProperty("RemoteSshPort", out v)) config.RemoteSshPort = v.GetInt32();
@@ -1601,6 +1611,13 @@ namespace JellyfinUpscalerPlugin.Controllers
                     var resolvedKeyPath = Path.GetFullPath(request.KeyFile);
                     if (!IOFile.Exists(resolvedKeyPath))
                         return BadRequest(new { success = false, message = "SSH key file not found." });
+
+                    // Security: Reject symbolic links to prevent symlink bypass
+                    var keyFileInfo = new FileInfo(resolvedKeyPath);
+                    if (keyFileInfo.LinkTarget != null)
+                    {
+                        return BadRequest(new { success = false, message = "Symbolic links are not allowed for SSH key files." });
+                    }
 
                     // Security: Restrict key file to .ssh directories or plugin data path
                     var sshDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh");

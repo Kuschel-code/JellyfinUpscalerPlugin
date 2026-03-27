@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.5.5.2
+# Jellyfin AI Upscaler Plugin v1.5.5.3
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -8,7 +8,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker5 / v1.5.5.2):**
+**Docker Images (docker5 / v1.5.5.3):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker5` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker5-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker5-intel` (Intel Arc/iGPU OpenVINO)
@@ -28,7 +28,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.5.5.2      │  │
+│  │  AI Upscaler Plugin v1.5.5.3      │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │

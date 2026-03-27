@@ -1,6 +1,6 @@
 """
 AI Upscaler Service - FastAPI Application
-Jellyfin AI Upscaler Plugin - Microservice Component v1.5.5.2
+Jellyfin AI Upscaler Plugin - Microservice Component v1.5.5.3
 Supports OpenCV DNN (.pb) and ONNX Runtime models with GPU detection
 Multi-GPU selection, robust TensorRT/CUDA/OpenVINO fallback
 """
@@ -61,7 +61,7 @@ CACHE_DIR = Path("/app/cache")
 STATIC_DIR = Path("/app/static")
 
 # Version
-VERSION = "1.5.5.2"
+VERSION = "1.5.5.3"
 
 # Global state
 class AppState:
@@ -1159,6 +1159,9 @@ def upscale_with_ncnn(img: np.ndarray) -> np.ndarray:
 def _probe_tensorrt_subprocess(model_path_str: str, device_id: int) -> bool:
     """Test TensorRT in an isolated subprocess to avoid poisoning the CUDA context.
     Returns True if TensorRT works, False otherwise."""
+    if not isinstance(device_id, int) or device_id < 0 or device_id > 99:
+        logger.warning(f"Invalid device_id {device_id}, using 0")
+        device_id = 0
     try:
         probe_code = """
 import onnxruntime as ort
@@ -2165,6 +2168,9 @@ async def load_model_endpoint(
     gpu_device_id: Optional[int] = Form(None)
 ):
     """Load a model into memory. Optionally specify GPU device index."""
+    if gpu_device_id is not None and (gpu_device_id < 0 or gpu_device_id > 99):
+        raise HTTPException(status_code=400, detail="gpu_device_id must be 0-99")
+
     if model_name not in AVAILABLE_MODELS:
         raise HTTPException(status_code=404, detail=f"Model {model_name} not found")
 
@@ -2494,8 +2500,8 @@ async def update_config(
     if use_gpu is not None:
         state.use_gpu = use_gpu
     if max_concurrent is not None:
-        if max_concurrent < 1:
-            raise HTTPException(status_code=400, detail="max_concurrent must be >= 1 (0 would deadlock)")
+        if max_concurrent < 1 or max_concurrent > 256:
+            raise HTTPException(status_code=400, detail="max_concurrent must be 1-256")
         state.max_concurrent = max_concurrent
         global _upscale_semaphore
         # Replace semaphore — new requests will use the new limit.
@@ -2504,6 +2510,8 @@ async def update_config(
         _upscale_semaphore = asyncio.Semaphore(max_concurrent)
         logger.info(f"max_concurrent changed to {max_concurrent}, new semaphore active (in-flight requests unaffected)")
     if gpu_device_id is not None:
+        if gpu_device_id < 0 or gpu_device_id > 99:
+            raise HTTPException(status_code=400, detail="gpu_device_id must be 0-99")
         state.gpu_device_id = gpu_device_id
         logger.info(f"GPU device ID updated to {gpu_device_id}")
 
@@ -2564,11 +2572,12 @@ async def prometheus_metrics():
 
     # Per-model usage metrics
     for model_name, count in state.model_usage_count.items():
-        safe_name = model_name.replace("-", "_").replace(".", "_")
-        lines.append(f'upscaler_model_usage_total{{model="{model_name}"}} {count}')
+        safe_name = model_name.replace("-", "_").replace(".", "_").replace('"', '_')
+        lines.append(f'upscaler_model_usage_total{{model="{safe_name}"}} {count}')
 
     for model_name, count in state.model_failure_count.items():
-        lines.append(f'upscaler_model_failures_total{{model="{model_name}"}} {count}')
+        safe_name = model_name.replace("-", "_").replace(".", "_").replace('"', '_')
+        lines.append(f'upscaler_model_failures_total{{model="{safe_name}"}} {count}')
 
     return Response(content="\n".join(lines) + "\n", media_type="text/plain; charset=utf-8")
 

@@ -522,7 +522,7 @@
                     <span id="pluginText">No Plugin</span>
                 </div>
                 <div id="versionBadge" class="status-pill accent">
-                    <span id="versionText">v1.5.5.2</span>
+                    <span id="versionText">v1.5.5.3</span>
                 </div>
             </div>
         </header>
@@ -860,30 +860,52 @@
 
         function updateModelsUI(models) {
             var container = document.getElementById('modelList');
-            container.innerHTML = models.map(function(m) {
-                var safeName = escapeHtml(m.name);
-                var safeDesc = escapeHtml(m.description);
-                var safeId = escapeHtml(m.id);
+            container.innerHTML = '';
+            models.forEach(function(m) {
+                var item = document.createElement('div');
+                item.className = 'model-item' + (!m.available ? ' unavailable' : '');
 
-                var statusHtml = '';
-                if (m.loaded) statusHtml = '<span class="badge badge-loaded">Loaded</span>';
-                else if (m.downloaded) statusHtml = '<span class="badge badge-downloaded">Ready</span>';
-                else if (m.available) statusHtml = '<span class="badge badge-pending">Not Downloaded</span>';
-                else statusHtml = '<span class="badge badge-unavailable">Coming Soon</span>';
+                var info = document.createElement('div');
+                info.className = 'model-info';
+                var nameDiv = document.createElement('div');
+                nameDiv.className = 'model-name';
+                nameDiv.textContent = m.name;
+                var descDiv = document.createElement('div');
+                descDiv.className = 'model-desc';
+                descDiv.textContent = m.description;
+                info.appendChild(nameDiv);
+                info.appendChild(descDiv);
 
-                var btnHtml = '';
-                if (!m.downloaded && m.available) btnHtml = '<button class="btn" onclick="downloadModel(\'' + safeId + '\')">Download</button>';
-                else if (m.downloaded && !m.loaded) btnHtml = '<button class="btn btn-primary" onclick="loadModel(\'' + safeId + '\')">Load</button>';
+                var statusDiv = document.createElement('div');
+                statusDiv.className = 'model-status';
+                var badge = document.createElement('span');
+                if (m.loaded) { badge.className = 'badge badge-loaded'; badge.textContent = 'Loaded'; }
+                else if (m.downloaded) { badge.className = 'badge badge-downloaded'; badge.textContent = 'Ready'; }
+                else if (m.available) { badge.className = 'badge badge-pending'; badge.textContent = 'Not Downloaded'; }
+                else { badge.className = 'badge badge-unavailable'; badge.textContent = 'Coming Soon'; }
+                statusDiv.appendChild(badge);
 
-                return '<div class="model-item ' + (!m.available ? 'unavailable' : '') + '">' +
-                    '<div class="model-info">' +
-                        '<div class="model-name">' + safeName + '</div>' +
-                        '<div class="model-desc">' + safeDesc + '</div>' +
-                    '</div>' +
-                    '<div class="model-status">' + statusHtml + '</div>' +
-                    '<div class="btn-group">' + btnHtml + '</div>' +
-                '</div>';
-            }).join('');
+                var btnGroup = document.createElement('div');
+                btnGroup.className = 'btn-group';
+                if (!m.downloaded && m.available) {
+                    var dlBtn = document.createElement('button');
+                    dlBtn.className = 'btn';
+                    dlBtn.textContent = 'Download';
+                    dlBtn.addEventListener('click', (function(id) { return function() { downloadModel(id); }; })(m.id));
+                    btnGroup.appendChild(dlBtn);
+                } else if (m.downloaded && !m.loaded) {
+                    var ldBtn = document.createElement('button');
+                    ldBtn.className = 'btn btn-primary';
+                    ldBtn.textContent = 'Load';
+                    ldBtn.addEventListener('click', (function(id) { return function() { loadModel(id); }; })(m.id));
+                    btnGroup.appendChild(ldBtn);
+                }
+
+                item.appendChild(info);
+                item.appendChild(statusDiv);
+                item.appendChild(btnGroup);
+                container.appendChild(item);
+            });
         }
 
         function updateUpscaleButton() {
