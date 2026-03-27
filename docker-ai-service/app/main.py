@@ -122,16 +122,16 @@ class AppState:
         self.last_job_time_ms: float = 0
         self.service_start_time: float = 0
 
-    # Health monitoring
-    consecutive_failures: int = 0
-    circuit_open: bool = False
-    circuit_half_open: bool = False
-    circuit_open_at: float = 0
-    circuit_breaker_threshold: int = 5
-    circuit_breaker_reset_seconds: int = 60
+        # Health monitoring
+        self.consecutive_failures: int = 0
+        self.circuit_open: bool = False
+        self.circuit_half_open: bool = False
+        self.circuit_open_at: float = 0
+        self.circuit_breaker_threshold: int = 5
+        self.circuit_breaker_reset_seconds: int = 60
 
-    # Model management
-    model_last_used: dict = {}  # model_name -> timestamp
+        # Model management
+        self.model_last_used: dict = {}  # model_name -> timestamp
 
 state = AppState()
 
@@ -159,10 +159,18 @@ _download_locks: dict[str, asyncio.Lock] = {}
 _download_locks_guard = threading.Lock()
 
 # Tile size for ONNX inference (prevents OOM on large images)
-ONNX_TILE_SIZE = int(os.getenv("ONNX_TILE_SIZE", "512"))
-ONNX_TILE_SIZE_MULTIFRAME = int(os.getenv("ONNX_TILE_SIZE_MULTIFRAME", "256"))
+def _safe_int_env(name: str, default: int) -> int:
+    """Parse integer from env var with fallback on invalid values."""
+    try:
+        return int(os.getenv(name, str(default)))
+    except ValueError:
+        logger.warning(f"Invalid {name} env var, using default {default}")
+        return default
 
-MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(50 * 1024 * 1024)))  # 50 MB default
+ONNX_TILE_SIZE = _safe_int_env("ONNX_TILE_SIZE", 512)
+ONNX_TILE_SIZE_MULTIFRAME = _safe_int_env("ONNX_TILE_SIZE_MULTIFRAME", 256)
+MAX_UPLOAD_BYTES = _safe_int_env("MAX_UPLOAD_BYTES", 50 * 1024 * 1024)
+MAX_INPUT_FRAMES = 10  # Safety cap for multi-frame endpoints
 
 # Available models with download URLs from PUBLIC sources
 # Note: Real-ESRGAN ONNX models need to be converted, using pre-converted from community
@@ -2321,7 +2329,7 @@ async def upscale_video_chunk(request: Request):
 
     # Read expected_frames under model lock for consistency with the loaded model
     with _model_lock:
-        expected_frames = state.current_model_input_frames
+        expected_frames = min(state.current_model_input_frames, MAX_INPUT_FRAMES)
 
     # Capture semaphore reference for safe release
     sem = _upscale_semaphore
