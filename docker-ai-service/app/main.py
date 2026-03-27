@@ -143,8 +143,7 @@ class ModelNotReadyError(ValueError):
 
 # Concurrency semaphore — created lazily in lifespan() to avoid
 # asyncio.Semaphore before event loop exists (breaks Python 3.10+)
-import asyncio as _asyncio
-_upscale_semaphore: Optional[_asyncio.Semaphore] = None  # created in lifespan() to avoid event loop issues on Python 3.10+
+_upscale_semaphore: Optional[asyncio.Semaphore] = None
 
 # Threading lock to prevent model-swap data races between load and inference
 _model_lock = threading.Lock()
@@ -876,7 +875,7 @@ async def lifespan(app: FastAPI):
 
     # Re-create semaphore with actual env var value (inside event loop)
     global _upscale_semaphore
-    _upscale_semaphore = _asyncio.Semaphore(state.max_concurrent)
+    _upscale_semaphore = asyncio.Semaphore(state.max_concurrent)
 
     # Track service uptime
     state.service_start_time = time.time()
@@ -1421,12 +1420,11 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
             state.cv_model = None
             state.ncnn_upscaler = None
             state.last_load_error = None
+            # Update providers list inside lock for thread safety
+            state.providers = session.get_providers()
 
-        # Update providers list with actual active providers
-        actual_providers = session.get_providers()
-        state.providers = actual_providers
         state.model_last_used[model_name] = time.time()
-        logger.info(f"ONNX model {model_name} loaded successfully with: {actual_providers}")
+        logger.info(f"ONNX model {model_name} loaded successfully with: {state.providers}")
 
         return True
 
@@ -1478,14 +1476,15 @@ async def download_model(model_name: str) -> bool:
                     return True
                 raise ValueError(f"No download URL for model {model_name}")
 
-            # Validate download URL against allowlist
-            _ALLOWED_DOWNLOAD_PREFIXES = (
-                "https://huggingface.co/",
-                "https://github.com/",
-                "https://raw.githubusercontent.com/",
+            # Validate download URL against allowlist (hostname-based to prevent SSRF bypass)
+            _ALLOWED_DOWNLOAD_HOSTS = (
+                "huggingface.co",
+                "github.com",
+                "raw.githubusercontent.com",
             )
-            if not download_url.startswith(_ALLOWED_DOWNLOAD_PREFIXES):
-                raise ValueError("Download URL not from allowed domain")
+            parsed_url = urllib.parse.urlparse(download_url)
+            if parsed_url.scheme != "https" or parsed_url.hostname not in _ALLOWED_DOWNLOAD_HOSTS:
+                raise ValueError(f"Download URL not from allowed domain: {parsed_url.hostname}")
 
             logger.info(f"Downloading model {model_name} from {download_url}")
 
@@ -2295,7 +2294,8 @@ async def upscale_frame_endpoint(request: Request):
 
         duration_ms = (time.time() - start_time) * 1000
         _record_success(model_name, duration_ms)
-        state.total_frames_processed += 1
+        with _processing_count_lock:
+            state.total_frames_processed += 1
         return Response(content=buffer.tobytes(), media_type="image/jpeg")
 
     except HTTPException:
@@ -2369,7 +2369,8 @@ async def upscale_video_chunk(request: Request):
 
         duration_ms = (time.time() - start_time) * 1000
         _record_success(model_name, duration_ms)
-        state.total_frames_processed += expected_frames
+        with _processing_count_lock:
+            state.total_frames_processed += expected_frames
         return Response(content=buffer.tobytes(), media_type="image/png")
 
     except HTTPException:

@@ -522,7 +522,7 @@
                     <span id="pluginText">No Plugin</span>
                 </div>
                 <div id="versionBadge" class="status-pill accent">
-                    <span id="versionText">v1.5.4</span>
+                    <span id="versionText">v1.5.5.1</span>
                 </div>
             </div>
         </header>
@@ -852,9 +852,19 @@
             }
         }
 
+        function escapeHtml(str) {
+            var div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
         function updateModelsUI(models) {
             var container = document.getElementById('modelList');
             container.innerHTML = models.map(function(m) {
+                var safeName = escapeHtml(m.name);
+                var safeDesc = escapeHtml(m.description);
+                var safeId = escapeHtml(m.id);
+
                 var statusHtml = '';
                 if (m.loaded) statusHtml = '<span class="badge badge-loaded">Loaded</span>';
                 else if (m.downloaded) statusHtml = '<span class="badge badge-downloaded">Ready</span>';
@@ -862,13 +872,13 @@
                 else statusHtml = '<span class="badge badge-unavailable">Coming Soon</span>';
 
                 var btnHtml = '';
-                if (!m.downloaded && m.available) btnHtml = '<button class="btn" onclick="downloadModel(\'' + m.id + '\')">Download</button>';
-                else if (m.downloaded && !m.loaded) btnHtml = '<button class="btn btn-primary" onclick="loadModel(\'' + m.id + '\')">Load</button>';
+                if (!m.downloaded && m.available) btnHtml = '<button class="btn" onclick="downloadModel(\'' + safeId + '\')">Download</button>';
+                else if (m.downloaded && !m.loaded) btnHtml = '<button class="btn btn-primary" onclick="loadModel(\'' + safeId + '\')">Load</button>';
 
                 return '<div class="model-item ' + (!m.available ? 'unavailable' : '') + '">' +
                     '<div class="model-info">' +
-                        '<div class="model-name">' + m.name + '</div>' +
-                        '<div class="model-desc">' + m.description + '</div>' +
+                        '<div class="model-name">' + safeName + '</div>' +
+                        '<div class="model-desc">' + safeDesc + '</div>' +
                     '</div>' +
                     '<div class="model-status">' + statusHtml + '</div>' +
                     '<div class="btn-group">' + btnHtml + '</div>' +
@@ -885,7 +895,9 @@
             var container = document.getElementById('toastContainer');
             var toast = document.createElement('div');
             toast.className = 'toast ' + type;
-            toast.innerHTML = '<span>' + message + '</span>';
+            var span = document.createElement('span');
+            span.textContent = message;
+            toast.appendChild(span);
             container.appendChild(toast);
             setTimeout(function() { toast.remove(); }, 4000);
         }

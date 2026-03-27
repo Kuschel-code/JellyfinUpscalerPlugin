@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   # GPU Version (NVIDIA CUDA) - Default
   # Uses Docker Hub image for easy auto-updates with Watchtower

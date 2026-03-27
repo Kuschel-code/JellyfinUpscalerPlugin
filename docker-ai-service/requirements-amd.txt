@@ -5,7 +5,6 @@
 fastapi>=0.115.0,<1.0
 uvicorn[standard]>=0.32.0,<1.0
 python-multipart>=0.0.7
-aiofiles>=23.2.1,<25.0
 
 # AI/ML - ONNX Runtime (ROCm version installed separately in Dockerfile)
 numpy>=1.24.0,<2.0.0
@@ -14,5 +13,4 @@ numpy>=1.24.0,<2.0.0
 opencv-contrib-python>=4.10.0,<5.0
 
 # Utilities
-pydantic>=2.0.0
 httpx>=0.26.0
