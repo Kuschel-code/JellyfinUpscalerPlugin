@@ -40,6 +40,8 @@ namespace JellyfinUpscalerPlugin.Services
         private int _cacheMisses;
         private readonly object _statsLock = new();
         
+        private const double CacheCleanupTargetRatio = 0.8; // Clean to 80% capacity to avoid frequent cleanups
+
         private PluginConfiguration Config => Plugin.Instance?.Configuration ?? new PluginConfiguration();
         
         public CacheManager(
@@ -192,7 +194,7 @@ namespace JellyfinUpscalerPlugin.Services
                 if (_cacheIndex.TryRemove(key, out var removed))
                 {
                     try { if (File.Exists(removed.FilePath)) File.Delete(removed.FilePath); }
-                    catch { /* best effort cleanup */ }
+                    catch (Exception ex) { _logger.LogDebug(ex, "Failed to delete expired cache file: {Path}", removed.FilePath); }
                 }
             }
 
@@ -215,7 +217,7 @@ namespace JellyfinUpscalerPlugin.Services
         }
 
         /// <summary>
-        /// Generate cache key for content
+        /// Generate deterministic cache key using SHA256 hash of input parameters for collision-free lookups.
         /// </summary>
         private string GenerateCacheKey(string inputPath, string model, int scale, string quality)
         {
@@ -443,7 +445,7 @@ namespace JellyfinUpscalerPlugin.Services
                 
                 foreach (var entry in entriesToRemove)
                 {
-                    if (currentSize <= maxCacheSize * 0.8) // Leave 20% buffer
+                    if (currentSize <= (long)(maxCacheSize * CacheCleanupTargetRatio)) // Leave buffer to avoid frequent cleanups
                     {
                         break;
                     }

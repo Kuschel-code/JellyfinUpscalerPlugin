@@ -130,13 +130,28 @@ namespace JellyfinUpscalerPlugin
                 return true;
             }
 
-            // Remove old versions of our script tag
+            // Remove old versions of our script tag (with regex timeout protection)
             var pattern = @"<script src=""configurationpage\?name=UPSCALERPlayerIntegration[^""]*""></script>";
-            contents = Regex.Replace(contents, pattern, string.Empty, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
+            try
+            {
+                contents = Regex.Replace(contents, pattern, string.Empty, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
+            }
+            catch (RegexMatchTimeoutException ex)
+            {
+                _logger.LogWarning(ex, "AI Upscaler: Regex timeout removing old script tag, proceeding");
+            }
 
             // Inject before </head>
-            var headEndRegex = new Regex(@"</head>", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
-            contents = headEndRegex.Replace(contents, scriptTag + "</head>", 1);
+            try
+            {
+                var headEndRegex = new Regex(@"</head>", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
+                contents = headEndRegex.Replace(contents, scriptTag + "</head>", 1);
+            }
+            catch (RegexMatchTimeoutException ex)
+            {
+                _logger.LogWarning(ex, "AI Upscaler: Regex timeout finding </head>, skipping injection");
+                return false;
+            }
 
             File.WriteAllText(indexPath, contents);
             return true;

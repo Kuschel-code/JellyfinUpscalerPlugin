@@ -139,13 +139,17 @@ if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
             string remoteMount = SanitizeForPowerShell(config?.RemoteMediaMountPoint ?? "");
             string transcodeDir = SanitizeForPowerShell(config?.RemoteTranscodePath ?? "/transcode");
 
+            string sanitizedFFmpegPath = SanitizeForPowerShell(realFFmpegPath);
+            string sanitizedLogPath = SanitizeForPowerShell(logPath);
+            string sanitizedMarkerPath = SanitizeForPowerShell(activeMarkerPath);
+
             // If remote is disabled, fall back to simple local execution with logging
             if (!enableRemote)
             {
                  return $@"
-$RealFFmpeg = ""{realFFmpegPath}""
-$LogFile = ""{logPath}""
-$ActiveMarker = ""{activeMarkerPath}""
+$RealFFmpeg = ""{sanitizedFFmpegPath}""
+$LogFile = ""{sanitizedLogPath}""
+$ActiveMarker = ""{sanitizedMarkerPath}""
 
 if (-not (Test-Path $ActiveMarker)) {{
     & $RealFFmpeg @args
@@ -160,9 +164,9 @@ exit $LASTEXITCODE
 
             // Remote SSH Logic
             return $@"
-$RealFFmpeg = ""{realFFmpegPath}""
-$LogFile = ""{logPath}""
-$ActiveMarker = ""{activeMarkerPath}""
+$RealFFmpeg = ""{sanitizedFFmpegPath}""
+$LogFile = ""{sanitizedLogPath}""
+$ActiveMarker = ""{sanitizedMarkerPath}""
 
 # Configuration
 $RemoteUser = ""{remoteUser}""

@@ -32,6 +32,16 @@ namespace JellyfinUpscalerPlugin.Controllers
     [Route("api/[controller]")]
     public class UpscalerController : ControllerBase
     {
+        // ── Constants ────────────────────────────────────────────────────
+        private const long MaxUploadSizeBytes = 50 * 1024 * 1024; // 50 MB
+        private const int PreviewMaxWidth = 1280;
+        private const int PreviewMaxHeight = 720;
+        private const int MaxDimension = 8192;
+        private const int MinBenchmarkDimension = 64;
+        private const int MaxBenchmarkDimension = 4096;
+        private const int ServiceTimeoutSeconds = 10;
+        private static readonly Regex ValidModelNameRegex = new(@"^[a-zA-Z0-9\-_]+$", RegexOptions.Compiled);
+
         private readonly ILogger<UpscalerController> _logger;
         private readonly ILibraryManager _libraryManager;
         private readonly ISessionManager _sessionManager;
@@ -531,16 +541,27 @@ namespace JellyfinUpscalerPlugin.Controllers
                     return BadRequest(new { success = false, error = "Output path required" });
                 }
 
-                // Security: Validate paths to prevent path traversal attacks
+                // Security: Validate and normalize paths to prevent path traversal
                 var fullInputPath = Path.GetFullPath(request.InputPath);
                 var fullOutputPath = Path.GetFullPath(request.OutputPath);
 
-                // Block writes to system-critical directories
-                var blockedPrefixes = new[] { "/etc", "/usr", "/bin", "/sbin", "/boot", "/proc", "/sys",
-                    @"C:\Windows", @"C:\Program Files", @"C:\Program Files (x86)" };
-                if (blockedPrefixes.Any(p => fullOutputPath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+                // Reject path traversal attempts (normalized path must match original intent)
+                if (fullOutputPath.Contains("..", StringComparison.Ordinal))
                 {
-                    return BadRequest(new { success = false, error = "Output path not allowed - system directory" });
+                    return BadRequest(new { success = false, error = "Path traversal not allowed" });
+                }
+
+                // Whitelist: output must be in same directory as input (sibling file)
+                // or in a subdirectory of the input's parent
+                var inputDir = Path.GetDirectoryName(fullInputPath);
+                var outputDir = Path.GetDirectoryName(fullOutputPath);
+                if (inputDir == null || outputDir == null ||
+                    !outputDir.StartsWith(inputDir, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Also allow output in media library paths by checking the input exists
+                    // (if input is a valid library file, its directory is safe for output)
+                    _logger.LogWarning("Output path {OutputDir} is not under input directory {InputDir}", outputDir, inputDir);
+                    return BadRequest(new { success = false, error = "Output path must be in the same directory as the input file" });
                 }
 
                 var outputDir = Path.GetDirectoryName(fullOutputPath);
@@ -879,21 +900,20 @@ namespace JellyfinUpscalerPlugin.Controllers
                 if (!allowedScales.Contains(scale))
                     return BadRequest(new { error = "Invalid scale. Allowed values: 2, 3, 4, 8" });
 
-                // Security: Validate model name (alphanumeric, hyphens only)
-                if (!Regex.IsMatch(model, @"^[a-zA-Z0-9\-]+$"))
-                    return BadRequest(new { error = "Invalid model name" });
+                // Security: Validate model name (alphanumeric, hyphens, underscores only)
+                if (!ValidModelNameRegex.IsMatch(model))
+                    return BadRequest(new { error = "Invalid model name - only alphanumeric, hyphens, and underscores allowed" });
 
-                // Security: Limit upload size to prevent DOS attacks
-                const long maxSizeBytes = 50 * 1024 * 1024; // 50MB
-                if (Request.ContentLength > maxSizeBytes)
+                // Security: Limit upload size to prevent DoS attacks
+                if (Request.ContentLength > MaxUploadSizeBytes)
                 {
                     return BadRequest(new { error = "Image too large. Maximum size is 50MB." });
                 }
 
                 using var memoryStream = new MemoryStream();
                 await Request.Body.CopyToAsync(memoryStream);
-                
-                if (memoryStream.Length > maxSizeBytes)
+
+                if (memoryStream.Length > MaxUploadSizeBytes)
                 {
                     return BadRequest(new { error = "Image too large. Maximum size is 50MB." });
                 }
@@ -1188,7 +1208,10 @@ namespace JellyfinUpscalerPlugin.Controllers
                         if (json != null && json.ContainsKey("model_name"))
                             modelId = json["model_name"];
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Failed to parse JSON body for model_name, falling back to query/form");
+                    }
                 }
 
                 if (string.IsNullOrEmpty(modelId))

@@ -334,6 +334,7 @@ namespace JellyfinUpscalerPlugin.Services
             if (!_disposed)
             {
                 _fallbackClient?.Dispose();
+                _modelLoadSemaphore?.Dispose();
                 _disposed = true;
             }
             GC.SuppressFinalize(this);

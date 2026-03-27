@@ -51,7 +51,16 @@ namespace JellyfinUpscalerPlugin.Services
         private string _ffprobePath = string.Empty;
         
         private PluginConfiguration Config => Plugin.Instance?.Configuration ?? new PluginConfiguration();
-        
+
+        // Processing constants
+        private const double ProgressStartingPercent = 5.0;
+        private const double ProgressMaxPercent = 95.0;
+        private const double ProgressDefaultPercent = 10.0;
+        private const double EstimatedProcessingSpeedRatio = 0.5;
+        private const double EstimatedTotalFallbackSeconds = 60.0;
+        private const int StatisticsIntervalSeconds = 10;
+        private static readonly TimeSpan SemaphoreTimeout = TimeSpan.FromMinutes(30);
+
         public VideoProcessor(
             ILogger<VideoProcessor> logger,
             IMediaEncoder mediaEncoder,
@@ -79,7 +88,7 @@ namespace JellyfinUpscalerPlugin.Services
             if (Config.EnablePerformanceMetrics)
             {
                 _statisticsTimer = new Timer(UpdateStatistics, null, 
-                    TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+                    TimeSpan.FromSeconds(StatisticsIntervalSeconds), TimeSpan.FromSeconds(StatisticsIntervalSeconds));
             }
             
             _logger.LogInformation("VideoProcessor initialized with FFmpeg integration");
@@ -145,7 +154,11 @@ namespace JellyfinUpscalerPlugin.Services
             var semaphoreAcquired = false;
             try
             {
-                await _processingSemaphore.WaitAsync(cancellationToken);
+                if (!await _processingSemaphore.WaitAsync(SemaphoreTimeout, cancellationToken))
+                {
+                    _logger.LogWarning("Video processing timed out waiting for semaphore: {FileName}", Path.GetFileName(inputPath));
+                    return new VideoProcessingResult { Success = false, Error = "Processing queue timeout - too many concurrent jobs" };
+                }
                 semaphoreAcquired = true;
                 _logger.LogInformation("Starting video processing: {FileName}", Path.GetFileName(inputPath));
 
@@ -342,17 +355,17 @@ namespace JellyfinUpscalerPlugin.Services
             if (job.Status == ProcessingStatus.Cancelled || job.Status == ProcessingStatus.Failed)
                 return 0;
             if (job.Status == ProcessingStatus.Starting || job.Status == ProcessingStatus.Analyzing)
-                return 5.0;
+                return ProgressStartingPercent;
 
             if (job.Status == ProcessingStatus.Processing && job.InputInfo != null && job.InputInfo.Duration.TotalSeconds > 0)
             {
                 var elapsed = (DateTime.UtcNow - job.StartTime).TotalSeconds;
-                var estimatedTotal = job.InputInfo.Duration.TotalSeconds * 0.5; // rough: processing ~2x realtime
-                if (estimatedTotal <= 0) estimatedTotal = 60;
-                return Math.Min(95, (elapsed / estimatedTotal) * 100);
+                var estimatedTotal = job.InputInfo.Duration.TotalSeconds * EstimatedProcessingSpeedRatio; // rough: processing ~2x realtime
+                if (estimatedTotal <= 0) estimatedTotal = EstimatedTotalFallbackSeconds;
+                return Math.Min(ProgressMaxPercent, (elapsed / estimatedTotal) * 100);
             }
 
-            return 10;
+            return ProgressDefaultPercent;
         }
 
         /// <summary>

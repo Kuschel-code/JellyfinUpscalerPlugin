@@ -139,7 +139,7 @@ namespace JellyfinUpscalerPlugin.Services
                 _completedJobs[jobId] = job;
 
                 // Keep completed jobs bounded with hysteresis to avoid O(n log n) sort on every call
-                if (_completedJobs.Count > 150)
+                if (_completedJobs.Count >= 150)
                 {
                     var toRemove = _completedJobs.Values
                         .OrderBy(j => j.CompletedAt)
@@ -209,7 +209,8 @@ namespace JellyfinUpscalerPlugin.Services
             // Wake up any waiting dequeue calls
             lock (_queueLock)
             {
-                for (int i = 0; i < _queue.Count; i++)
+                // Signal once to wake dequeue loop; it will process all available items
+                if (_queue.Count > 0)
                     _signal.Release();
             }
         }
