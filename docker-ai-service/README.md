@@ -11,10 +11,11 @@
 ## 🌟 Features
 
 - **14 AI Models** - Real-ESRGAN, FSRCNN, ESPCN, LapSRN, EDSR
-- **NVIDIA GPU Support** - CUDA 12.2 + TensorRT acceleration
-- **AMD GPU Support** - ROCm 6.0 acceleration (RX 6000/7000, MI series)
-- **Intel GPU Support** - OpenVINO acceleration (Arc, iGPU)
-- **Apple Silicon Support** - Native ARM64 + CoreML (M1/M2/M3/M4)
+- **NVIDIA GPU Support** - CUDA 12.8 + TensorRT acceleration
+- **AMD GPU Support** - ROCm 6.4 acceleration (RX 6000/7000, MI series)
+- **Intel GPU Support** - OpenVINO 2025.4 acceleration (Arc, iGPU)
+- **Apple Silicon Support** - Native ARM64 + CoreML (M1/M2/M3/M4/M5)
+- **Vulkan GPU Support** - ncnn for AMD pre-RDNA2, Intel iGPU, any Vulkan GPU
 - **Web UI Dashboard** - Model management at port 5000
 - **REST API** - Easy integration with `/upscale`, `/models`, `/benchmark`
 - **Multi-scale** - 2x, 3x, 4x, 8x upscaling options
@@ -31,7 +32,7 @@ docker run -d \
   --gpus all \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:latest
+  kuscheltier/jellyfin-ai-upscaler:docker5
 ```
 
 ### 🔴 AMD GPU (ROCm)
@@ -43,7 +44,7 @@ docker run -d \
   --group-add video \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:amd
+  kuscheltier/jellyfin-ai-upscaler:docker5-amd
 ```
 
 ### 🔵 Intel GPU (OpenVINO)
@@ -54,7 +55,7 @@ docker run -d \
   --device=/dev/dri \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:intel
+  kuscheltier/jellyfin-ai-upscaler:docker5-intel
 ```
 
 ### 🍎 Apple Silicon (macOS)
@@ -65,7 +66,7 @@ docker run -d \
   --name jellyfin-ai-upscaler \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:apple
+  kuscheltier/jellyfin-ai-upscaler:docker5-apple
 
 # Native (recommended for best performance with CoreML)
 pip install -r requirements-apple.txt
@@ -80,7 +81,7 @@ docker run -d \
   -p 5000:5000 \
   -v ai-models:/app/models \
   -e USE_GPU=false \
-  kuscheltier/jellyfin-ai-upscaler:cpu
+  kuscheltier/jellyfin-ai-upscaler:docker5-cpu
 ```
 
 **📱 Open:** http://localhost:5000
@@ -130,16 +131,18 @@ docker run -d \
 ## 🐳 Docker Compose
 
 ```yaml
-version: "3.9"
 services:
   ai-upscaler:
-    image: kuscheltier/jellyfin-ai-upscaler:latest
+    image: kuscheltier/jellyfin-ai-upscaler:docker5
     container_name: jellyfin-ai-upscaler
     ports:
       - "5000:5000"
     volumes:
       - ai-models:/app/models
     restart: unless-stopped
+    mem_limit: 8g
+    memswap_limit: 12g
+    cpus: 4.0
     deploy:
       resources:
         reservations:
@@ -160,14 +163,14 @@ volumes:
 
 ```bash
 # Verify GPU access
-docker run --rm --gpus all nvidia/cuda:12.2-base nvidia-smi
+docker run --rm --gpus all nvidia/cuda:12.8.0-base-ubuntu24.04 nvidia-smi
 ```
 
 ---
 
 ## 🔷 Intel GPU Setup (OpenVINO)
 
-**NEW in v1.1.4:** Support for Intel iGPU and Arc discrete GPUs via OpenVINO!
+Support for Intel iGPU and Arc discrete GPUs via OpenVINO 2025.4.
 
 ### Quick Start (Intel GPU)
 

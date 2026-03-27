@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.5.5.0
+# Jellyfin AI Upscaler Plugin v1.5.5.1
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -8,13 +8,13 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker4 / v1.5.5.0):**
-*   `kuscheltier/jellyfin-ai-upscaler:docker4` (NVIDIA CUDA + cuDNN 9)
-*   `kuscheltier/jellyfin-ai-upscaler:docker4-amd` (AMD ROCm)
-*   `kuscheltier/jellyfin-ai-upscaler:docker4-intel` (Intel Arc/iGPU OpenVINO)
-*   `kuscheltier/jellyfin-ai-upscaler:docker4-apple` (macOS Apple Silicon)
-*   `kuscheltier/jellyfin-ai-upscaler:docker4-vulkan` (Vulkan/ncnn — AMD pre-RDNA2, Intel iGPU)
-*   `kuscheltier/jellyfin-ai-upscaler:docker4-cpu` (CPU Only)
+**Docker Images (docker5 / v1.5.5.1):**
+*   `kuscheltier/jellyfin-ai-upscaler:docker5` (NVIDIA CUDA + cuDNN 9)
+*   `kuscheltier/jellyfin-ai-upscaler:docker5-amd` (AMD ROCm)
+*   `kuscheltier/jellyfin-ai-upscaler:docker5-intel` (Intel Arc/iGPU OpenVINO)
+*   `kuscheltier/jellyfin-ai-upscaler:docker5-apple` (macOS Apple Silicon)
+*   `kuscheltier/jellyfin-ai-upscaler:docker5-vulkan` (Vulkan/ncnn — AMD pre-RDNA2, Intel iGPU)
+*   `kuscheltier/jellyfin-ai-upscaler:docker5-cpu` (CPU Only)
 
 **Report bugs:** [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 
@@ -28,7 +28,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.5.5.0      │  │
+│  │  AI Upscaler Plugin v1.5.5.1      │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -107,7 +107,7 @@ docker run -d \
   --gpus all \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:docker4
+  kuscheltier/jellyfin-ai-upscaler:docker5
 ```
 
 **Intel GPU (Arc / Iris):**
@@ -118,7 +118,7 @@ docker run -d \
   --group-add=render \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:docker4-intel
+  kuscheltier/jellyfin-ai-upscaler:docker5-intel
 ```
 
 **AMD GPU (ROCm):**
@@ -128,7 +128,7 @@ docker run -d \
   --device=/dev/kfd --device=/dev/dri \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:docker4-amd
+  kuscheltier/jellyfin-ai-upscaler:docker5-amd
 ```
 
 **Vulkan GPU (AMD RX 5700, Intel iGPU, etc.):**
@@ -139,7 +139,7 @@ docker run -d \
   --group-add=render \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:docker4-vulkan
+  kuscheltier/jellyfin-ai-upscaler:docker5-vulkan
 ```
 
 **CPU Only (any platform):**
@@ -148,7 +148,7 @@ docker run -d \
   --name jellyfin-ai-upscaler \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:docker4-cpu
+  kuscheltier/jellyfin-ai-upscaler:docker5-cpu
 ```
 
 Verify the container is running: `curl http://YOUR_SERVER_IP:5000/health`
@@ -260,16 +260,47 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 | Tag | GPU | Use Case |
 |-----|-----|----------|
-| `:docker4` | NVIDIA CUDA 12.8 + TensorRT | RTX 50/40/30/20, GTX 16/10 |
-| `:docker4-amd` | AMD ROCm | RX 7000, RX 6000 |
-| `:docker4-intel` | Intel OpenVINO | Arc A-Series, Iris Xe |
-| `:docker4-apple` | ARM64 Optimized | Apple M1–M5 (Docker=CPU, native=CoreML) |
-| `:docker4-vulkan` | Vulkan (ncnn) | AMD pre-RDNA2, Intel iGPU, any Vulkan GPU |
-| `:docker4-cpu` | Multi-threaded CPU | Any platform |
+| `:docker5` | NVIDIA CUDA 12.8 + TensorRT | RTX 50/40/30/20, GTX 16/10 |
+| `:docker5-amd` | AMD ROCm | RX 7000, RX 6000 |
+| `:docker5-intel` | Intel OpenVINO | Arc A-Series, Iris Xe |
+| `:docker5-apple` | ARM64 Optimized | Apple M1–M5 (Docker=CPU, native=CoreML) |
+| `:docker5-vulkan` | Vulkan (ncnn) | AMD pre-RDNA2, Intel iGPU, any Vulkan GPU |
+| `:docker5-cpu` | Multi-threaded CPU | Any platform |
 
 ---
 
 ## Changelog
+
+### v1.5.5.1 (Deepscan — Security & Quality Hardening)
+- **Security**: XSS prevention in Docker Web UI (escapeHtml + textContent)
+- **Security**: SSRF fix — model download URL validated by hostname, not prefix
+- **Security**: SSH port 2222 removed from docker-compose default
+- **Security**: Model name regex validation on all 5 controller endpoints
+- **Security**: Webhook SSRF prevention (scheme whitelist)
+- **Security**: Path traversal whitelist (output must be sibling of input)
+- **Security**: PowerShell injection sanitization on all FFmpeg paths
+- **Thread Safety**: `volatile` on `_disposed` flags in HttpUpscalerService, UpscalerCore
+- **Thread Safety**: `SemaphoreSlim` for async model loading (replaces `object` lock)
+- **Thread Safety**: `state.providers` moved inside `_model_lock`
+- **Thread Safety**: `total_frames_processed` protected with `_processing_count_lock`
+- **Thread Safety**: AppState mutable defaults moved to `__init__()` (Python class-level sharing fix)
+- **Fixed**: Variable shadowing (`outputDir` declared twice) in UpscalerController
+- **Fixed**: Bare catch blocks replaced with typed/logged exceptions across all files
+- **Fixed**: ProcessingQueue `Resume()` signal flooding (N releases → single release)
+- **Fixed**: Content-Length header parsing crash on malformed values
+- **Fixed**: Env var parsing with fallbacks (MAX_CONCURRENT_REQUESTS, GPU_DEVICE_ID, ONNX_TILE_SIZE)
+- **Fixed**: Multi-frame endpoint capped to MAX_INPUT_FRAMES=10
+- **Improved**: Exponential backoff on upscale retry (1s, 2s)
+- **Improved**: Configuration — all 16 numeric properties validated with Math.Clamp/Math.Max
+- **Improved**: 20 named default constants in PluginConfiguration
+- **Removed**: Dead code — NativeDependencyLoader.cs, NativeLibraryLoader.cs (pre-Docker legacy)
+- **Removed**: Unused dependencies — pydantic, aiofiles
+- **Removed**: Redundant `import asyncio as _asyncio`
+- **Updated**: Python 3.11 → 3.12 (Dockerfile.cpu, Dockerfile.vulkan)
+- **Updated**: onnxruntime bounds pinned `<2.0.0` across all 6 requirements files
+- **Updated**: onnxruntime-gpu upper bound raised to `<1.25.0`
+- **Docker**: .dockerignore added, resource limits in compose, version key removed
+- **Docker**: All 6 images tagged as docker5
 
 ### v1.5.5.0 (Critical Bug Fixes)
 - **Fixed**: Circuit breaker half-open bypass — probe no longer lets ALL requests through
@@ -519,15 +550,15 @@ docker run --rm --gpus all nvidia/cuda:12.2.2-base-ubuntu22.04 nvidia-smi
 ```
 
 ### GPU not detected
-- **NVIDIA RTX 5000 (Blackwell)**: Requires CUDA 12.8+ — use latest `:docker4` image. Compute capability sm_120 auto-detected.
+- **NVIDIA RTX 5000 (Blackwell)**: Requires CUDA 12.8+ — use latest `:docker5` image. Compute capability sm_120 auto-detected.
 - **NVIDIA RTX 4000/3000/2000**: Install `nvidia-container-toolkit`, use `--gpus all`. TensorRT is skipped by default — set `SKIP_TENSORRT=false` if your GPU supports it.
-- **Intel**: Use `:docker4-intel` tag with `--device=/dev/dri --group-add=render`. Check diagnostics: `curl http://YOUR_SERVER_IP:5000/gpu-verify`
-- **AMD**: Use `:docker4-amd` tag with `--device=/dev/kfd --device=/dev/dri`
+- **Intel**: Use `:docker5-intel` tag with `--device=/dev/dri --group-add=render`. Check diagnostics: `curl http://YOUR_SERVER_IP:5000/gpu-verify`
+- **AMD**: Use `:docker5-amd` tag with `--device=/dev/kfd --device=/dev/dri`
 - **Apple M1–M5**: Docker on macOS runs CPU-only. For GPU acceleration via CoreML/Neural Engine, use the native install:
   ```bash
   cd docker-ai-service && chmod +x install-native-macos.sh && ./install-native-macos.sh
   ```
-- **Windows Docker Desktop**: GPU passthrough not supported — use `:docker4-cpu`
+- **Windows Docker Desktop**: GPU passthrough not supported — use `:docker5-cpu`
 
 ### Proxmox LXC GPU Passthrough
 ```bash
