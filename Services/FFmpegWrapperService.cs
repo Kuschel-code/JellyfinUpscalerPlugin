@@ -241,7 +241,9 @@ try {{
 
     # The command to run inside Docker
     # We explicitly call the internal ffmpeg
-    $RemoteCommand = ""ffmpeg "" + ($CmdArgs -join ' ')
+    # Quote each argument to prevent shell metacharacter injection
+    $QuotedArgs = $CmdArgs | ForEach-Object {{ ""'$($_.Replace(""'"", ""'\''""))'"" }}
+    $RemoteCommand = ""ffmpeg "" + ($QuotedArgs -join ' ')
 
     Add-Content -Path $LogFile -Value ""[$(Get-Date)] Remote Command: $RemoteCommand""
 

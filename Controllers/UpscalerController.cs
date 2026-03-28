@@ -1283,6 +1283,8 @@ namespace JellyfinUpscalerPlugin.Controllers
 
                 if (string.IsNullOrEmpty(modelId))
                     return BadRequest(new { error = "model_name is required" });
+                if (!ValidModelNameRegex.IsMatch(modelId))
+                    return BadRequest(new { error = "Invalid model name — only alphanumeric, hyphens, and underscores allowed" });
 
                 var config = Plugin.Instance?.Configuration;
                 var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
