@@ -13,8 +13,8 @@
         "changelog": "v1.5.5.3: Deep scan round 2 — race conditions, SSRF private IP blocking, path traversal hardening, exception info leak fixes, checksum corrections, docker5 tag update.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.5.3/JellyfinUpscalerPlugin-v1.5.5.3.zip",
-        "checksum": "e086da9d9b326a83b6e2a16dbf5cdaa3",
-        "timestamp": "2026-03-28T10:00:00.000Z"
+        "checksum": "55e441c9888d982ed648965089b82e7f",
+        "timestamp": "2026-03-28T12:00:00.000Z"
       },
       {
         "version": "1.5.5.0",
