@@ -54,3 +54,6 @@ apps-fork/
 
 # Local Netlify folder
 .netlify
+
+# MCP/Agent tool caches
+.claude-flow/
