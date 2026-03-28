@@ -869,7 +869,7 @@ namespace JellyfinUpscalerPlugin.Services
 
                 // Reconstruct video with audio (uses same method as frame-by-frame)
                 _logger.LogInformation("Reconstructing video from {Count} processed frames with audio", totalFrames);
-                await ReconstructVideoAsync(processedDir, inputPath, outputPath, job.OptimizedOptions, effectiveFps, cancellationToken);
+                await ReconstructVideoAsync(processedDir, inputPath, outputPath, job.OptimizedOptions, effectiveFps, cancellationToken, job.InputInfo);
 
                 return new VideoProcessingResult
                 {
@@ -1271,7 +1271,8 @@ namespace JellyfinUpscalerPlugin.Services
             string processedDir,
             VideoProcessingOptions options,
             string processingJobId,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            bool isHDR = false)
         {
             var frameFiles = Directory.GetFiles(framesDir, "*.png").OrderBy(f => f).ToArray();
             int totalFrames = frameFiles.Length;
@@ -1313,7 +1314,15 @@ namespace JellyfinUpscalerPlugin.Services
                         }
                         
                         var frameData = await File.ReadAllBytesAsync(frameFile, cancellationToken);
-                        var upscaledData = await _upscalerCore.UpscaleImageAsync(frameData, options.Model, options.ScaleFactor);
+                        byte[]? upscaledData;
+                        if (isHDR)
+                        {
+                            upscaledData = await UpscaleHDRFrameAsync(frameData, options.ScaleFactor, cancellationToken);
+                        }
+                        else
+                        {
+                            upscaledData = await _upscalerCore.UpscaleImageAsync(frameData, options.Model, options.ScaleFactor);
+                        }
 
                         var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFile));
                         if (upscaledData != null && upscaledData.Length > 0)
@@ -1366,6 +1375,35 @@ namespace JellyfinUpscalerPlugin.Services
         }
 
         /// <summary>
+        /// Upscale a single HDR frame via the /upscale-hdr endpoint on the AI service
+        /// </summary>
+        private async Task<byte[]?> UpscaleHDRFrameAsync(byte[] frameData, int scale, CancellationToken cancellationToken)
+        {
+            var config = Plugin.Instance?.Configuration;
+            var baseUrl = config?.AiServiceUrl ?? "http://localhost:5000";
+            var client = _httpClientFactory.CreateClient("UpscalerHDR");
+            client.Timeout = TimeSpan.FromMinutes(5);
+
+            using var content = new MultipartFormDataContent();
+            using var imageContent = new ByteArrayContent(frameData);
+            imageContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+            content.Add(imageContent, "file", "frame.png");
+            content.Add(new StringContent(scale.ToString()), "scale");
+
+            _logger.LogDebug("Sending HDR frame ({Size} bytes) to AI service for {Scale}x upscaling", frameData.Length, scale);
+
+            var response = await client.PostAsync($"{baseUrl}/upscale-hdr", content, cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadAsByteArrayAsync(cancellationToken);
+            }
+
+            _logger.LogWarning("HDR upscale failed with status {Status}", response.StatusCode);
+            return null;
+        }
+
+        /// <summary>
         /// Reconstruct video from processed frames
         /// </summary>
         private async Task ReconstructVideoAsync(
@@ -1374,11 +1412,13 @@ namespace JellyfinUpscalerPlugin.Services
             string outputPath,
             VideoProcessingOptions options,
             double frameRate,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            VideoInfo? inputInfo = null)
         {
             var tempAudioPath = Path.Combine(Path.GetTempPath(), $"temp_audio_{Guid.NewGuid()}.mka");
             var hasAudio = false;
             var effectiveFps = frameRate > 0 ? frameRate : 30.0;
+            var isHDR = inputInfo?.IsHDR ?? false;
 
             try
             {
@@ -1401,7 +1441,7 @@ namespace JellyfinUpscalerPlugin.Services
                 _logger.LogWarning(ex, "Failed to extract audio, continuing without audio");
                 hasAudio = false;
             }
-            
+
             // Reconstruct video with or without audio
             var outputCodec = Config.OutputCodec ?? "libx264";
             // Allowlist codecs to prevent FFmpeg argument injection
@@ -1411,7 +1451,22 @@ namespace JellyfinUpscalerPlugin.Services
                 _logger.LogWarning("Invalid output codec '{Codec}' in ReconstructVideoAsync, falling back to libx264", outputCodec);
                 outputCodec = "libx264";
             }
-            var codecArgs = outputCodec == "copy" ? "-c:v copy" : $"-c:v {outputCodec} -pix_fmt yuv420p";
+
+            string codecArgs;
+            if (outputCodec == "copy")
+            {
+                codecArgs = "-c:v copy";
+            }
+            else if (isHDR)
+            {
+                // HDR: use 10-bit pixel format and preserve BT.2020/PQ color metadata
+                codecArgs = $"-c:v {outputCodec} -pix_fmt yuv420p10le -colorspace bt2020nc -color_primaries bt2020 -color_trc smpte2084";
+                _logger.LogInformation("Using HDR output settings: 10-bit yuv420p10le with BT.2020/PQ metadata");
+            }
+            else
+            {
+                codecArgs = $"-c:v {outputCodec} -pix_fmt yuv420p";
+            }
 
             string reconstructArgs;
             if (hasAudio && File.Exists(tempAudioPath))
