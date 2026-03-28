@@ -232,7 +232,8 @@ namespace JellyfinUpscalerPlugin.Models
         RealTime,
         FrameByFrame,
         Batch,
-        MultiFrame
+        MultiFrame,
+        RealTimeAI
     }
 
     /// <summary>

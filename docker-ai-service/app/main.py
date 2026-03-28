@@ -2408,7 +2408,8 @@ async def status():
         "scene_change_detection": {
             "enabled": SCENE_CHANGE_THRESHOLD < 1.0,
             "threshold": SCENE_CHANGE_THRESHOLD
-        }
+        },
+        "hdr_supported": True
     }
 
 
@@ -3016,6 +3017,136 @@ def _run_frame_benchmark(width: int, height: int) -> dict:
         "output_width": width * (state.onnx_model_scale if state.current_model_type == "onnx" else (state.ncnn_model_scale if state.current_model_type == "ncnn" else state.cv_model_scale)),
         "output_height": height * (state.onnx_model_scale if state.current_model_type == "onnx" else (state.ncnn_model_scale if state.current_model_type == "ncnn" else state.cv_model_scale))
     }
+
+
+@app.post("/upscale-stream")
+async def upscale_stream(request: Request):
+    """Stream-based upscaling for real-time playback.
+    Accepts raw video frames as a continuous stream, upscales each frame,
+    and returns upscaled frames as a streaming response.
+
+    Headers:
+    - X-Frame-Width: input frame width
+    - X-Frame-Height: input frame height
+    - X-Frame-Format: 'rgb24' or 'bgr24' (default bgr24)
+    - X-Target-FPS: target FPS for rate limiting (default 30)
+
+    Input: raw frame bytes (width * height * 3 per frame)
+    Output: streaming response with upscaled raw frames
+    """
+    _check_circuit_breaker()
+
+    if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
+        raise HTTPException(status_code=400, detail="No model loaded")
+
+    # Parse headers
+    try:
+        frame_width = int(request.headers.get("X-Frame-Width", "0"))
+        frame_height = int(request.headers.get("X-Frame-Height", "0"))
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid X-Frame-Width or X-Frame-Height header")
+
+    if frame_width <= 0 or frame_height <= 0:
+        raise HTTPException(status_code=400, detail="X-Frame-Width and X-Frame-Height must be positive integers")
+
+    if frame_width > 3840 or frame_height > 2160:
+        raise HTTPException(status_code=400, detail="Input resolution too high for real-time streaming (max 3840x2160)")
+
+    frame_format = request.headers.get("X-Frame-Format", "bgr24").lower()
+    if frame_format not in ("rgb24", "bgr24"):
+        raise HTTPException(status_code=400, detail="X-Frame-Format must be 'rgb24' or 'bgr24'")
+
+    try:
+        target_fps = float(request.headers.get("X-Target-FPS", "30"))
+    except (ValueError, TypeError):
+        target_fps = 30.0
+    target_fps = max(1.0, min(target_fps, 120.0))
+
+    frame_size = frame_width * frame_height * 3
+    min_frame_interval = 1.0 / target_fps
+
+    # Capture model state once under lock for the duration of the stream
+    with _model_lock:
+        local_state = {
+            "model_type": state.current_model_type,
+            "cv_model": state.cv_model,
+            "scale": (state.onnx_model_scale if state.current_model_type == "onnx"
+                      else state.ncnn_model_scale if state.current_model_type == "ncnn"
+                      else state.cv_model_scale),
+        }
+        onnx_session = state.onnx_session
+
+    _realtime_stats.reset()
+    model_name = state.current_model or "unknown"
+
+    async def frame_generator():
+        """Read raw frames from request body stream and yield upscaled frames."""
+        buffer = bytearray()
+        frames_ok = 0
+
+        async for chunk in request.stream():
+            buffer.extend(chunk)
+
+            # Process all complete frames in the buffer
+            while len(buffer) >= frame_size:
+                raw_frame = bytes(buffer[:frame_size])
+                del buffer[:frame_size]
+
+                frame_start = time.time()
+
+                try:
+                    # Decode raw bytes to numpy array
+                    frame = np.frombuffer(raw_frame, dtype=np.uint8).reshape((frame_height, frame_width, 3))
+
+                    # Convert RGB to BGR if needed (OpenCV uses BGR internally)
+                    if frame_format == "rgb24":
+                        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+                    # Upscale with real-time optimized path
+                    upscaled = await upscale_frame_realtime(frame, onnx_session, local_state)
+
+                    # Convert back to requested format for output
+                    if frame_format == "rgb24":
+                        upscaled = cv2.cvtColor(upscaled, cv2.COLOR_BGR2RGB)
+
+                    duration = time.time() - frame_start
+                    _realtime_stats.record_frame(duration)
+                    frames_ok += 1
+
+                    # Rate limiting: if we processed faster than target FPS, yield immediately
+                    # (the consumer controls the actual playback rate)
+                    yield upscaled.tobytes()
+
+                    # Adaptive frame dropping: if processing is too slow, skip buffered frames
+                    if duration > min_frame_interval * 2 and len(buffer) >= frame_size:
+                        # Drop one frame to catch up
+                        del buffer[:frame_size]
+                        _realtime_stats.record_drop()
+                        logger.debug("Dropped frame to maintain real-time pace (%.1fms per frame)", duration * 1000)
+
+                except Exception as exc:
+                    logger.error("Real-time frame upscale failed: %s", exc)
+                    _realtime_stats.record_drop()
+                    # Yield empty frame marker (all zeros) so consumer knows a frame was skipped
+                    continue
+
+        # Log final stats
+        stats = _realtime_stats.snapshot()
+        logger.info(
+            "Stream ended: %d frames processed, %d dropped, avg %.1fms/frame, %.1f FPS",
+            stats["frames_processed"], stats["dropped_frames"],
+            stats["avg_frame_ms"], stats["current_fps"]
+        )
+        if frames_ok > 0:
+            _record_success(model_name, stats["total_time_s"] * 1000)
+
+    return StreamingResponse(frame_generator(), media_type="application/octet-stream")
+
+
+@app.get("/realtime-stats")
+async def realtime_stats_endpoint():
+    """Return current real-time upscaling performance stats."""
+    return _realtime_stats.snapshot()
 
 
 @app.get("/benchmark-frame")
