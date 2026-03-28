@@ -2210,11 +2210,93 @@ def upscale_image_array(img: np.ndarray) -> np.ndarray:
         raise ModelNotReadyError("No model loaded")
 
 
+async def upscale_frame_realtime(frame: np.ndarray, session, local_state) -> np.ndarray:
+    """Optimized single-pass upscaling for real-time playback.
+    Uses full-frame inference when possible (small enough for VRAM),
+    falls back to minimal-overlap tiling only if needed.
+    Skips blend weighting for speed."""
+    model_type = local_state["model_type"]
+
+    # OpenCV DNN: already fast, just call directly
+    if model_type == "opencv":
+        cv_model = local_state["cv_model"]
+        if cv_model is None:
+            raise ModelNotReadyError("No OpenCV model loaded")
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, cv_model.upsample, frame)
+
+    # ncnn: delegate to existing function
+    if model_type == "ncnn":
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, upscale_with_ncnn, frame)
+
+    # ONNX: optimized single-pass (no blend weighting)
+    if session is None:
+        raise ModelNotReadyError("No ONNX session loaded")
+
+    input_name = session.get_inputs()[0].name
+    output_name = session.get_outputs()[0].name
+    scale = local_state.get("scale", 4)
+    h, w = frame.shape[:2]
+
+    # Convert BGR -> RGB float32
+    img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+
+    max_pixels = 512 * 512  # Threshold for full-frame inference
+
+    def _infer_full():
+        """Full-frame inference without tiling."""
+        blob = np.transpose(img_rgb, (2, 0, 1))[np.newaxis, ...]
+        result = session.run([output_name], {input_name: blob})[0]
+        result = np.squeeze(result, axis=0)
+        if result.shape[0] == 3:
+            result = np.transpose(result, (1, 2, 0))
+        result = np.clip(result * 255.0, 0, 255).astype(np.uint8)
+        return cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
+
+    def _infer_tiled():
+        """Minimal-overlap tiling without blend weighting for speed."""
+        tile_size = min(ONNX_TILE_SIZE, 512)
+        overlap = 8  # Minimal overlap for speed
+        step = max(tile_size - overlap, 1)
+        out_h, out_w = h * scale, w * scale
+        output = np.zeros((out_h, out_w, 3), dtype=np.float32)
+
+        y_tiles = list(range(0, max(h - tile_size, 0) + 1, step))
+        if not y_tiles or y_tiles[-1] + tile_size < h:
+            y_tiles.append(max(h - tile_size, 0))
+        x_tiles = list(range(0, max(w - tile_size, 0) + 1, step))
+        if not x_tiles or x_tiles[-1] + tile_size < w:
+            x_tiles.append(max(w - tile_size, 0))
+
+        for y in y_tiles:
+            for x in x_tiles:
+                tile = img_rgb[y:y + tile_size, x:x + tile_size]
+                blob = np.transpose(tile, (2, 0, 1))[np.newaxis, ...]
+                res = session.run([output_name], {input_name: blob})[0]
+                res = np.squeeze(res, axis=0)
+                if res.shape[0] == 3:
+                    res = np.transpose(res, (1, 2, 0))
+
+                oy, ox = y * scale, x * scale
+                oh, ow = res.shape[:2]
+                output[oy:oy + oh, ox:ox + ow] = res
+
+        output = np.clip(output * 255.0, 0, 255).astype(np.uint8)
+        return cv2.cvtColor(output, cv2.COLOR_RGB2BGR)
+
+    loop = asyncio.get_running_loop()
+    if h * w <= max_pixels:
+        return await loop.run_in_executor(None, _infer_full)
+    else:
+        return await loop.run_in_executor(None, _infer_tiled)
+
+
 def run_benchmark(test_size: int = 256) -> dict:
     """Run a quick benchmark on the loaded model."""
     if state.current_model is None:
         return {"error": "No model loaded"}
-    
+
     # Adjust test_size for models that require specific input dimensions
     # Real-ESRGAN x4 models effectively work on tiles, but for benchmarking we keep it small and standard.
     # 64x64 input -> 256x256 output (x4)
