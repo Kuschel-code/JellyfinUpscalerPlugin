@@ -271,7 +271,24 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 ## Changelog
 
-### v1.5.5.3 (Deepscan Round 2 — Deep Security Hardening)
+### v1.5.5.3 (Deepscan Round 2+3 — Deep Security Hardening)
+
+**Round 3 — 13 HIGH fixes (C# + Docker):**
+- **SSRF**: Centralized proxy URL validation via `GetValidatedServiceUrl()` — all 13 proxy endpoints secured
+- **SSRF**: Webhook DNS rebinding prevention — block `0.0.0.0`, `169.254.x.x` (link-local), `100.64-127.x.x` (CGNAT)
+- **SSRF**: DNS resolution via `socket.getaddrinfo` in `/connections/register` — resolved IPs checked against private ranges
+- **Path Traversal**: Expanded blocklist (`/root`, `/home`, `/var`, `/tmp`, `/run`, `/opt`, `C:\Users`)
+- **Command Injection**: Unix FFmpeg wrapper path regex validation + `/usr/bin/ffmpeg` fallback
+- **Info Disclosure**: Generic error messages in 20+ catch blocks — no more `ex.Message` in HTTP responses
+- **Auth**: API token (`X-Api-Token` + `hmac.compare_digest`) required on `/models/load`, `/models/download`, `/config`, `/benchmark`, `/benchmark-frame`
+- **DoS**: `asyncio.Lock` on benchmark endpoints — 429 "already in progress" rate limit
+- **DoS**: 2GB disk space check before multi-frame extraction in `ProcessMultiFrameAsync`
+- **XSS**: `innerHTML` replaced with `createElement`/`replaceChildren` in Docker Web UI
+- **Path Safety**: MODELS_DIR prefix validation in TensorRT subprocess probe
+- **Resource Disclosure**: JS resource allowlist in `GetJavaScript` endpoint (4 permitted files)
+- **Race Condition**: `SemaphoreSlim` for cache cleanup/store coordination + size recalculation
+
+**Round 2 — Security hardening:**
 - **Security**: SSH command injection prevention — single-quote each FFmpeg arg before SSH
 - **Security**: Model name regex validation on `/models/load` endpoint
 - **Security**: CRLF injection check on AiServiceUrl at runtime
