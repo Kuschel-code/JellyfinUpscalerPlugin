@@ -24,7 +24,7 @@ import numpy as np
 import cv2
 import httpx
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
-from fastapi.responses import Response, HTMLResponse, JSONResponse
+from fastapi.responses import Response, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 # Try to import ONNX Runtime (optional)
@@ -131,10 +131,79 @@ class AppState:
         self.circuit_breaker_threshold: int = 5
         self.circuit_breaker_reset_seconds: int = 60
 
+        # Interpolation (RIFE) model
+        self.rife_session = None
+        self.rife_model_name: Optional[str] = None
+        self.rife_loaded: bool = False
+
+        # FP16 mixed precision inference
+        self.use_fp16: bool = False
+
         # Model management
         self.model_last_used: dict = {}  # model_name -> timestamp
 
 state = AppState()
+
+
+class RealtimeStats:
+    """Track real-time upscaling performance."""
+
+    def __init__(self):
+        self.frames_processed: int = 0
+        self.total_time: float = 0.0
+        self.current_fps: float = 0.0
+        self.dropped_frames: int = 0
+        self._lock = threading.Lock()
+        self._window_start: float = 0.0
+        self._window_frames: int = 0
+
+    def record_frame(self, duration: float) -> None:
+        """Record a processed frame and update rolling FPS."""
+        with self._lock:
+            self.frames_processed += 1
+            self.total_time += duration
+
+            now = time.time()
+            if self._window_start == 0.0:
+                self._window_start = now
+            self._window_frames += 1
+
+            # Update FPS every second
+            elapsed = now - self._window_start
+            if elapsed >= 1.0:
+                self.current_fps = self._window_frames / elapsed
+                self._window_start = now
+                self._window_frames = 0
+
+    def record_drop(self) -> None:
+        """Record a dropped frame."""
+        with self._lock:
+            self.dropped_frames += 1
+
+    def snapshot(self) -> dict:
+        """Return a copy of current stats."""
+        with self._lock:
+            avg_ms = (self.total_time / self.frames_processed * 1000) if self.frames_processed > 0 else 0.0
+            return {
+                "frames_processed": self.frames_processed,
+                "total_time_s": round(self.total_time, 3),
+                "current_fps": round(self.current_fps, 2),
+                "avg_frame_ms": round(avg_ms, 2),
+                "dropped_frames": self.dropped_frames,
+            }
+
+    def reset(self) -> None:
+        """Reset all counters."""
+        with self._lock:
+            self.frames_processed = 0
+            self.total_time = 0.0
+            self.current_fps = 0.0
+            self.dropped_frames = 0
+            self._window_start = 0.0
+            self._window_frames = 0
+
+
+_realtime_stats = RealtimeStats()
 
 
 class ModelNotReadyError(ValueError):
@@ -196,6 +265,17 @@ ONNX_TILE_SIZE = _safe_int_env("ONNX_TILE_SIZE", 512, min_val=64, max_val=2048)
 ONNX_TILE_SIZE_MULTIFRAME = _safe_int_env("ONNX_TILE_SIZE_MULTIFRAME", 256, min_val=64, max_val=1024)
 MAX_UPLOAD_BYTES = _safe_int_env("MAX_UPLOAD_BYTES", 50 * 1024 * 1024, min_val=1024, max_val=500 * 1024 * 1024)
 MAX_INPUT_FRAMES = 10  # Safety cap for multi-frame endpoints
+
+# FP16 mixed precision for ONNX inference.
+# "auto" = enable on CUDA/TensorRT GPUs with compute capability >= 7.0 (Volta+)
+# "true" = force FP16, "false" = force FP32
+USE_FP16 = os.getenv("USE_FP16", "auto").lower().strip()
+
+# Scene-change detection threshold for multi-frame VSR models.
+# When a scene change is detected within the frame window, the service
+# falls back to single-frame upscaling to avoid ghosting artifacts.
+# Range 0.0 (always detect) to 1.0 (never detect). Default 0.35.
+SCENE_CHANGE_THRESHOLD = max(0.0, min(1.0, float(os.getenv("SCENE_CHANGE_THRESHOLD", "0.35"))))
 
 # Available models with download URLs from PUBLIC sources
 # Note: Real-ESRGAN ONNX models need to be converted, using pre-converted from community
@@ -630,6 +710,69 @@ AVAILABLE_MODELS = {
 }
 
 
+def _resolve_fp16_setting() -> bool:
+    """Determine whether FP16 mixed precision should be enabled.
+
+    Rules:
+      - USE_FP16="true"  -> always on
+      - USE_FP16="false" -> always off
+      - USE_FP16="auto"  -> on for CUDA/TensorRT GPUs with compute capability >= 7.0
+                            (Volta and newer), off for CPU / OpenVINO
+    """
+    if USE_FP16 == "true":
+        logger.info("FP16 mixed precision forced ON via USE_FP16=true")
+        return True
+    if USE_FP16 == "false":
+        logger.info("FP16 mixed precision forced OFF via USE_FP16=false")
+        return False
+
+    # Auto-detect: check for CUDA provider and compute capability >= 7.0
+    if not ONNX_AVAILABLE:
+        logger.info("FP16 auto: ONNX Runtime not available, disabling FP16")
+        return False
+
+    available = ort.get_available_providers()
+    has_cuda = 'CUDAExecutionProvider' in available or 'TensorrtExecutionProvider' in available
+    if not has_cuda:
+        logger.info("FP16 auto: no CUDA/TensorRT provider, disabling FP16")
+        return False
+
+    # Check compute capability from gpu_list (populated by detect_hardware)
+    for gpu in state.gpu_list:
+        cc = gpu.get('compute_capability', '')
+        if cc:
+            try:
+                major = int(cc.split('.')[0])
+                if major >= 7:
+                    logger.info(f"FP16 auto: GPU compute capability {cc} >= 7.0, enabling FP16")
+                    return True
+            except (ValueError, IndexError):
+                pass
+
+    # Fallback: try querying nvidia-smi directly
+    try:
+        result = subprocess.run(
+            ["nvidia-smi", "--query-gpu=compute_cap", "--format=csv,noheader"],
+            capture_output=True, text=True, timeout=10
+        )
+        if result.returncode == 0:
+            for cc_line in result.stdout.strip().split('\n'):
+                cc = cc_line.strip()
+                if cc:
+                    try:
+                        major = int(cc.split('.')[0])
+                        if major >= 7:
+                            logger.info(f"FP16 auto: GPU compute capability {cc} >= 7.0, enabling FP16")
+                            return True
+                    except (ValueError, IndexError):
+                        pass
+    except Exception:
+        pass
+
+    logger.info("FP16 auto: could not confirm compute capability >= 7.0, disabling FP16")
+    return False
+
+
 def detect_hardware():
     """Detect GPU and CPU hardware information."""
     # Detect CPU
@@ -914,7 +1057,12 @@ async def lifespan(app: FastAPI):
     # Track service uptime
     state.service_start_time = time.time()
 
+    # Resolve FP16 mixed precision setting (must run after detect_hardware
+    # so that gpu_list / compute_capability info is available)
+    state.use_fp16 = _resolve_fp16_setting()
+
     logger.info(f"GPU Enabled: {state.use_gpu}")
+    logger.info(f"FP16 Mixed Precision: {state.use_fp16}")
     logger.info(f"ONNX Runtime Available: {ONNX_AVAILABLE}")
     logger.info(f"ncnn-Vulkan Available: {NCNN_AVAILABLE}")
 
@@ -1605,7 +1753,11 @@ def _onnx_infer_tile(img_rgb_float: np.ndarray, session, input_name: str, output
     """Run ONNX inference on a single tile (HWC float32 [0,1] RGB). Returns HWC float32 RGB."""
     img_nchw = np.transpose(img_rgb_float, (2, 0, 1))  # HWC to CHW
     img_batch = np.expand_dims(img_nchw, axis=0)  # Add batch dimension
+    if state.use_fp16:
+        img_batch = img_batch.astype(np.float16)
     result = session.run([output_name], {input_name: img_batch})[0]
+    if state.use_fp16:
+        result = result.astype(np.float32)
     result = np.squeeze(result, axis=0)
     result = np.transpose(result, (1, 2, 0))  # CHW to HWC
     return result
@@ -1616,8 +1768,12 @@ def _onnx_infer_multiframe_tile(tiles: list, session, input_name: str, output_na
     stacked = np.stack(tiles, axis=0)                    # (T, H, W, 3)
     stacked = np.transpose(stacked, (0, 3, 1, 2))       # (T, 3, H, W)
     batch = np.expand_dims(stacked, axis=0).astype(np.float32)  # (1, T, 3, H, W)
+    if state.use_fp16:
+        batch = batch.astype(np.float16)
 
     result = session.run([output_name], {input_name: batch})[0]
+    if state.use_fp16:
+        result = result.astype(np.float32)
 
     # Handle models that output all T frames: (1, T, 3, H*s, W*s)
     if result.ndim == 5:
@@ -1628,34 +1784,20 @@ def _onnx_infer_multiframe_tile(tiles: list, session, input_name: str, output_na
     return result
 
 
-def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
-    """Upscale an image using the loaded ONNX model (Real-ESRGAN).
+def _is_cuda_oom(exc: Exception) -> bool:
+    """Check if an exception is a CUDA out-of-memory error."""
+    msg = str(exc).lower()
+    return "out of memory" in msg or "cuda" in msg and ("oom" in msg or "alloc" in msg)
 
-    Uses tile-based processing for large images to prevent GPU OOM.
-    Tile size controlled by ONNX_TILE_SIZE env var (default 512).
-    Overlap of 32px between tiles prevents seam artifacts.
-    """
-    tile_size = ONNX_TILE_SIZE
-    overlap = 32
-    h, w = img.shape[:2]
 
-    # Convert BGR to RGB and normalize to [0, 1]
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
-
-    # Acquire model lock ONCE to capture consistent session/config snapshot
-    with _model_lock:
-        session = state.onnx_session
-        if session is None:
-            raise ValueError("ONNX session not loaded")
-        input_name = session.get_inputs()[0].name
-        output_name = session.get_outputs()[0].name
-        scale = state.onnx_model_scale or 4
+def _run_onnx_tiled(img_rgb: np.ndarray, tile_size: int, overlap: int,
+                     session, input_name: str, output_name: str, scale: int) -> np.ndarray:
+    """Run tile-based ONNX upscaling with the given tile size. Returns float32 RGB output."""
+    h, w = img_rgb.shape[:2]
 
     # Small image: skip tiling, process directly
     if w <= tile_size and h <= tile_size:
-        result = _onnx_infer_tile(img_rgb, session, input_name, output_name)
-        result = np.clip(result * 255.0, 0, 255).astype(np.uint8)
-        return cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
+        return _onnx_infer_tile(img_rgb, session, input_name, output_name)
 
     # Tile-based processing for large images
     step = tile_size - overlap
@@ -1715,9 +1857,93 @@ def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
     # Normalize by accumulated weight
     weight = np.maximum(weight, 1e-8)
     output = output / weight
+    return output
 
-    result = np.clip(output * 255.0, 0, 255).astype(np.uint8)
-    return cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
+
+def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
+    """Upscale an image using the loaded ONNX model (Real-ESRGAN).
+
+    Uses tile-based processing for large images to prevent GPU OOM.
+    Tile size controlled by ONNX_TILE_SIZE env var (default 512).
+    Overlap of 32px between tiles prevents seam artifacts.
+
+    On CUDA OOM, adaptively halves the tile size and retries (max 3 retries,
+    minimum tile size 64px). Updates the global ONNX_TILE_SIZE on success so
+    subsequent requests use the working size.
+    """
+    global ONNX_TILE_SIZE
+
+    overlap = 32
+    tile_size = ONNX_TILE_SIZE
+    h, w = img.shape[:2]
+    min_tile_size = 64
+    max_retries = 3
+
+    # Convert BGR to RGB and normalize to [0, 1]
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+
+    # Acquire model lock ONCE to capture consistent session/config snapshot
+    with _model_lock:
+        session = state.onnx_session
+        if session is None:
+            raise ValueError("ONNX session not loaded")
+        input_name = session.get_inputs()[0].name
+        output_name = session.get_outputs()[0].name
+        scale = state.onnx_model_scale or 4
+
+    for attempt in range(max_retries + 1):
+        try:
+            result = _run_onnx_tiled(img_rgb, tile_size, overlap, session,
+                                     input_name, output_name, scale)
+            # Success — persist working tile size for future requests
+            if tile_size != ONNX_TILE_SIZE:
+                logger.info(f"Updating global ONNX_TILE_SIZE from {ONNX_TILE_SIZE} to {tile_size} after OOM recovery")
+                ONNX_TILE_SIZE = tile_size
+            result = np.clip(result * 255.0, 0, 255).astype(np.uint8)
+            return cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
+        except Exception as exc:
+            if not _is_cuda_oom(exc):
+                raise
+            new_tile_size = tile_size // 2
+            if new_tile_size < min_tile_size or attempt >= max_retries:
+                logger.error(f"CUDA OOM at tile_size={tile_size} and cannot reduce further (min={min_tile_size}). Giving up.")
+                raise
+            logger.warning(
+                f"CUDA OOM during ONNX inference with tile_size={tile_size} "
+                f"(attempt {attempt + 1}/{max_retries + 1}). "
+                f"Halving tile size to {new_tile_size} and retrying."
+            )
+            tile_size = new_tile_size
+
+
+def detect_scene_change(frame_a: np.ndarray, frame_b: np.ndarray, threshold: float = 0.35) -> bool:
+    """Detect scene change between two frames using histogram comparison.
+
+    Converts both frames to grayscale, computes normalised 256-bin
+    histograms, and compares them with cv2.HISTCMP_CORREL.  Correlation
+    of 1.0 means identical; values below *threshold* indicate a scene
+    change.
+
+    Args:
+        frame_a: BGR uint8 image.
+        frame_b: BGR uint8 image.
+        threshold: Correlation below this value triggers a scene-change
+                   detection.  Range 0.0-1.0, default 0.35.
+
+    Returns:
+        True when a scene change is detected.
+    """
+    gray_a = cv2.cvtColor(frame_a, cv2.COLOR_BGR2GRAY) if frame_a.ndim == 3 else frame_a
+    gray_b = cv2.cvtColor(frame_b, cv2.COLOR_BGR2GRAY) if frame_b.ndim == 3 else frame_b
+
+    hist_a = cv2.calcHist([gray_a], [0], None, [256], [0, 256])
+    hist_b = cv2.calcHist([gray_b], [0], None, [256], [0, 256])
+
+    cv2.normalize(hist_a, hist_a)
+    cv2.normalize(hist_b, hist_b)
+
+    correlation = cv2.compareHist(hist_a, hist_b, cv2.HISTCMP_CORREL)
+    return correlation < threshold
 
 
 def upscale_multiframe(frames: list) -> np.ndarray:
@@ -1943,7 +2169,12 @@ async def status():
         "model_scale": scale,
         "cuda_available": has_cuda,
         "tensorrt_available": has_tensorrt,
-        "input_frames": state.current_model_input_frames
+        "input_frames": state.current_model_input_frames,
+        "use_fp16": state.use_fp16,
+        "scene_change_detection": {
+            "enabled": SCENE_CHANGE_THRESHOLD < 1.0,
+            "threshold": SCENE_CHANGE_THRESHOLD
+        }
     }
 
 
@@ -2460,8 +2691,30 @@ async def upscale_video_chunk(request: Request):
             loop = asyncio.get_running_loop()
             result = await loop.run_in_executor(None, upscale_image_array, center)
         else:
-            loop = asyncio.get_running_loop()
-            result = await loop.run_in_executor(None, upscale_multiframe, frames)
+            # Scene-change detection: check consecutive frame pairs for abrupt
+            # changes.  If any pair crosses the threshold the multi-frame model
+            # would blend frames from different scenes, producing ghosting
+            # artifacts.  Fall back to single-frame upscaling for the center
+            # frame in that case.
+            scene_change_detected = False
+            if SCENE_CHANGE_THRESHOLD < 1.0:
+                for i in range(len(frames) - 1):
+                    if detect_scene_change(frames[i], frames[i + 1], SCENE_CHANGE_THRESHOLD):
+                        scene_change_detected = True
+                        logger.info(
+                            "Scene change detected between frame_%d and frame_%d "
+                            "(threshold=%.2f). Falling back to single-frame upscaling.",
+                            i, i + 1, SCENE_CHANGE_THRESHOLD,
+                        )
+                        break
+
+            if scene_change_detected:
+                center = frames[len(frames) // 2]
+                loop = asyncio.get_running_loop()
+                result = await loop.run_in_executor(None, upscale_image_array, center)
+            else:
+                loop = asyncio.get_running_loop()
+                result = await loop.run_in_executor(None, upscale_multiframe, frames)
 
         # Encode as PNG
         _, buffer = cv2.imencode('.png', result)

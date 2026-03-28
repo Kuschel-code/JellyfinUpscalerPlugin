@@ -13,6 +13,7 @@ using MediaBrowser.Model.Entities;
 using FFMpegCore;
 using FFMpegCore.Enums;
 using FFMpegCore.Pipes;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using CliWrap;
@@ -402,9 +403,10 @@ namespace JellyfinUpscalerPlugin.Services
                 // Enhanced analysis
                 info.EstimatedQuality = EstimateVideoQuality(info);
                 info.IsHDR = IsHDRVideo(videoStream);
+                info.IsInterlaced = await DetectInterlacedAsync(inputPath);
                 info.AspectRatio = info.Height > 0 ? (double)info.Width / info.Height : 0;
-                
-                _logger.LogInformation("Video analysis: {Width}x{Height} @ {Fps}fps, {Codec}, {BitRate}kbps", info.Width, info.Height, info.FrameRate.ToString("F1"), info.Codec, info.BitRate);
+
+                _logger.LogInformation("Video analysis: {Width}x{Height} @ {Fps}fps, {Codec}, {BitRate}kbps, Interlaced: {Interlaced}", info.Width, info.Height, info.FrameRate.ToString("F1"), info.Codec, info.BitRate, info.IsInterlaced);
                 
                 return info;
             }
@@ -631,8 +633,9 @@ namespace JellyfinUpscalerPlugin.Services
                     Directory.CreateDirectory(framesDir);
                     
                     var framesFps = job.InputInfo?.FrameRate ?? 30.0;
-                    await ExtractFramesAsync(inputPath, framesDir, framesFps, cancellationToken);
-                    
+                    var isInterlaced = job.InputInfo?.IsInterlaced ?? false;
+                    await ExtractFramesAsync(inputPath, framesDir, framesFps, cancellationToken, isInterlaced);
+
                     // 2. Process frames with AI
                     var processedDir = Path.Combine(tempDir, "processed");
                     Directory.CreateDirectory(processedDir);
@@ -704,9 +707,20 @@ namespace JellyfinUpscalerPlugin.Services
                 Directory.CreateDirectory(framesDir);
                 Directory.CreateDirectory(processedDir);
 
-                // Extract frames (same as frame-by-frame)
+                // Extract frames (same as frame-by-frame, with deinterlacing if needed)
                 var effectiveFps = job.InputInfo?.FrameRate ?? 24;
-                var extractArgs = $"-i \"{inputPath}\" -vf fps={effectiveFps.ToString(System.Globalization.CultureInfo.InvariantCulture)} \"{framesDir}/frame_%06d.png\"";
+                var multiFrameIsInterlaced = job.InputInfo?.IsInterlaced ?? false;
+
+                var mfVfFilters = new List<string>();
+                if (multiFrameIsInterlaced)
+                {
+                    mfVfFilters.Add("bwdif=mode=send_frame:parity=auto:deint=all");
+                    _logger.LogInformation("Applying bwdif deinterlacing filter for multi-frame extraction of {File}", Path.GetFileName(inputPath));
+                }
+                mfVfFilters.Add($"fps={effectiveFps.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+
+                var mfVfArg = string.Join(",", mfVfFilters);
+                var extractArgs = $"-i \"{inputPath}\" -vf \"{mfVfArg}\" \"{framesDir}/frame_%06d.png\"";
                 _logger.LogInformation("Extracting frames for multi-frame processing: {Args}", extractArgs);
 
                 await Cli.Wrap(_ffmpegPath)
@@ -868,11 +882,26 @@ namespace JellyfinUpscalerPlugin.Services
         /// <summary>
         /// Extract frames from video
         /// </summary>
-        private async Task ExtractFramesAsync(string inputPath, string framesDir, double frameRate, CancellationToken cancellationToken)
+        private async Task ExtractFramesAsync(string inputPath, string framesDir, double frameRate, CancellationToken cancellationToken, bool isInterlaced = false)
         {
             // Use provided frame rate or default to 30 if invalid
             var effectiveFps = frameRate > 0 ? frameRate : 30;
-            var args = $"-i \"{inputPath}\" -vf fps={effectiveFps} \"{framesDir}/frame_%06d.png\"";
+
+            // Build video filter chain: deinterlace first (if needed), then fps extraction
+            var vfFilters = new List<string>();
+            if (isInterlaced)
+            {
+                // bwdif provides better quality than yadif for deinterlacing
+                // send_frame: output one frame per field pair (preserves frame count)
+                // parity=auto: auto-detect field parity
+                // deint=all: deinterlace all frames regardless of flagging
+                vfFilters.Add("bwdif=mode=send_frame:parity=auto:deint=all");
+                _logger.LogInformation("Applying bwdif deinterlacing filter during frame extraction for {File}", Path.GetFileName(inputPath));
+            }
+            vfFilters.Add($"fps={effectiveFps}");
+
+            var vfArg = string.Join(",", vfFilters);
+            var args = $"-i \"{inputPath}\" -vf \"{vfArg}\" \"{framesDir}/frame_%06d.png\"";
             
             var result = await Cli.Wrap(_ffmpegPath)
                 .WithArguments(args)
@@ -1257,6 +1286,67 @@ namespace JellyfinUpscalerPlugin.Services
             return videoStream.PixelFormat?.Contains("bt2020") == true ||
                    videoStream.PixelFormat?.Contains("smpte2084") == true ||
                    videoStream.PixelFormat?.Contains("p010") == true;
+        }
+
+        /// <summary>
+        /// Detect whether the video is interlaced using FFprobe field_order and stream info
+        /// </summary>
+        private async Task<bool> DetectInterlacedAsync(string inputPath)
+        {
+            try
+            {
+                var stdOutBuffer = new StringBuilder();
+                var result = await Cli.Wrap(_ffprobePath)
+                    .WithArguments($"-v quiet -select_streams v:0 -show_entries stream=field_order -of json \"{inputPath}\"")
+                    .WithStandardOutputPipe(PipeTarget.ToStringBuilder(stdOutBuffer))
+                    .WithValidation(CommandResultValidation.None)
+                    .ExecuteAsync();
+
+                if (result.ExitCode == 0)
+                {
+                    var output = stdOutBuffer.ToString();
+
+                    // Check field_order values that indicate interlaced content
+                    // tt = top field first, bb = bottom field first, tb/bt = mixed field order
+                    if (output.Contains("\"tt\"") || output.Contains("\"bb\"") ||
+                        output.Contains("\"tb\"") || output.Contains("\"bt\""))
+                    {
+                        _logger.LogInformation("Interlaced content detected via field_order for {File}", Path.GetFileName(inputPath));
+                        return true;
+                    }
+
+                    // "progressive" or "unknown" means not interlaced
+                    if (output.Contains("\"progressive\""))
+                    {
+                        return false;
+                    }
+                }
+
+                // Fallback: check full stream info for interlaced indicators
+                var stdOutBuffer2 = new StringBuilder();
+                var result2 = await Cli.Wrap(_ffprobePath)
+                    .WithArguments($"-v quiet -select_streams v:0 -show_streams -of json \"{inputPath}\"")
+                    .WithStandardOutputPipe(PipeTarget.ToStringBuilder(stdOutBuffer2))
+                    .WithValidation(CommandResultValidation.None)
+                    .ExecuteAsync();
+
+                if (result2.ExitCode == 0)
+                {
+                    var streamOutput = stdOutBuffer2.ToString().ToLowerInvariant();
+                    if (streamOutput.Contains("interlaced"))
+                    {
+                        _logger.LogInformation("Interlaced content detected via stream info for {File}", Path.GetFileName(inputPath));
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Interlace detection failed for {File}, assuming progressive", Path.GetFileName(inputPath));
+                return false;
+            }
         }
 
         /// <summary>
