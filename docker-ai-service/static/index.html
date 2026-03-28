@@ -781,7 +781,11 @@
                 if (res.ok) {
                     const blob = await res.blob();
                     const url = URL.createObjectURL(blob);
-                    document.getElementById('upscaledPreview').innerHTML = '<img src="' + url + '" alt="Upscaled">';
+                    var upscaledImg = document.createElement('img');
+                    upscaledImg.src = url;
+                    upscaledImg.alt = 'Upscaled';
+                    upscaledImg.style.maxWidth = '100%';
+                    document.getElementById('upscaledPreview').replaceChildren(upscaledImg);
                     showToast('Upscaling complete!', 'success');
                 } else {
                     const err = await res.json();
@@ -949,7 +953,11 @@
 
             var reader = new FileReader();
             reader.onload = function(e) {
-                document.getElementById('originalPreview').innerHTML = '<img src="' + e.target.result + '" alt="Original">';
+                var originalImg = document.createElement('img');
+                originalImg.src = e.target.result;
+                originalImg.alt = 'Original';
+                originalImg.style.maxWidth = '100%';
+                document.getElementById('originalPreview').replaceChildren(originalImg);
                 document.getElementById('upscaledPreview').innerHTML = '<span style="color: var(--text-muted)">Click Upscale</span>';
                 document.getElementById('previewContainer').style.display = 'grid';
             };

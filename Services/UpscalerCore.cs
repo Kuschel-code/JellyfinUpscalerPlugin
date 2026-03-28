@@ -172,13 +172,15 @@ namespace JellyfinUpscalerPlugin.Services
                 return;
             }
 
-            // Block localhost and private IP ranges
+            // Block localhost, zero address, and private IP ranges
             var host = webhookUri.Host;
             if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(host, "[::1]", StringComparison.OrdinalIgnoreCase) ||
-                host == "::1")
+                host == "::1" ||
+                host == "0.0.0.0" ||
+                host.StartsWith("[::ffff:", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogWarning("Webhook URL rejected (localhost): {Url}", webhookUrl);
+                _logger.LogWarning("Webhook URL rejected (localhost/blocked host): {Url}", webhookUrl);
                 return;
             }
 
@@ -186,9 +188,12 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 var bytes = ip.GetAddressBytes();
                 bool isPrivate = ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal ||
-                    (bytes.Length == 4 && bytes[0] == 127) ||                              // 127.x.x.x
-                    (bytes.Length == 4 && bytes[0] == 10) ||                                // 10.x.x.x
-                    (bytes.Length == 4 && bytes[0] == 192 && bytes[1] == 168) ||            // 192.168.x.x
+                    (bytes.Length == 4 && bytes[0] == 0) ||                                    // 0.x.x.x
+                    (bytes.Length == 4 && bytes[0] == 127) ||                                  // 127.x.x.x
+                    (bytes.Length == 4 && bytes[0] == 10) ||                                   // 10.x.x.x
+                    (bytes.Length == 4 && bytes[0] == 169 && bytes[1] == 254) ||               // 169.254.x.x link-local
+                    (bytes.Length == 4 && bytes[0] == 100 && bytes[1] >= 64 && bytes[1] <= 127) || // 100.64-127.x.x CGNAT
+                    (bytes.Length == 4 && bytes[0] == 192 && bytes[1] == 168) ||               // 192.168.x.x
                     (bytes.Length == 4 && bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31); // 172.16-31.x.x
                 if (isPrivate)
                 {

@@ -130,6 +130,13 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
+                // Allowlist of permitted resource names to prevent resource disclosure
+                var allowedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "player-integration.js", "quick-menu.js", "sidebar-upscaler.js", "webgl-upscaler.js"
+                };
+                if (!allowedNames.Contains(name)) return NotFound();
+
                 var assembly = GetType().Assembly;
                 var resourceName = assembly.GetManifestResourceNames()
                     .FirstOrDefault(r => r.EndsWith($".Configuration.{name}", StringComparison.OrdinalIgnoreCase) || 
@@ -198,7 +205,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "AI Upscaler: Error during test");
-                return StatusCode(500, new { success = false, message = "Test failed: " + ex.Message });
+                return StatusCode(500, new { success = false, message = "Test failed due to an internal error" });
             }
         }
 
@@ -257,7 +264,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Hardware benchmark failed");
-                return StatusCode(500, new { success = false, message = "Hardware benchmark failed", error = ex.Message });
+                return StatusCode(500, new { success = false, message = "Hardware benchmark failed", error = "Internal server error" });
             }
         }
 
@@ -282,7 +289,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to get hardware info");
-                return StatusCode(500, new { success = false, error = ex.Message });
+                return StatusCode(500, new { success = false, error = "Internal server error" });
             }
         }
 
@@ -297,7 +304,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to get hardware recommendations");
-                return StatusCode(500, new { success = false, error = ex.Message });
+                return StatusCode(500, new { success = false, error = "Internal server error" });
             }
         }
 
@@ -342,7 +349,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to get model recommendation");
-                return StatusCode(500, new { success = false, error = ex.Message });
+                return StatusCode(500, new { success = false, error = "Internal server error" });
             }
         }
 
@@ -415,7 +422,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to generate comparison data for item {ItemId}", itemId);
-                return StatusCode(500, new { message = "Comparison failed", error = ex.Message });
+                return StatusCode(500, new { message = "Comparison failed", error = "Internal server error" });
             }
         }
 
@@ -507,7 +514,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                         catch (Exception ex)
                         {
                             failCount++;
-                            results.Add(new { type = imageType.ToString(), index = idx, success = false, error = ex.Message });
+                            results.Add(new { type = imageType.ToString(), index = idx, success = false, error = "Image upscaling failed" });
                             _logger.LogWarning(ex, "Failed to upscale {Type} image {Index} for item {ItemId}", imageType, idx, itemId);
                         }
                     }
@@ -529,7 +536,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to upscale images for item {ItemId}", itemId);
-                return StatusCode(500, new { success = false, error = ex.Message });
+                return StatusCode(500, new { success = false, error = "Internal server error" });
             }
         }
 
@@ -602,7 +609,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Video processing failed");
-                return StatusCode(500, new { success = false, error = ex.Message });
+                return StatusCode(500, new { success = false, error = "Internal server error" });
             }
         }
 
@@ -656,7 +663,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to process item {ItemId}", itemId);
-                return StatusCode(500, new { success = false, error = ex.Message });
+                return StatusCode(500, new { success = false, error = "Internal server error" });
             }
         }
 
@@ -672,7 +679,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to retrieve active jobs");
-                return StatusCode(500, new { success = false, error = ex.Message });
+                return StatusCode(500, new { success = false, error = "Internal server error" });
             }
         }
 
@@ -696,7 +703,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to pause job {JobId}", jobId);
-                return StatusCode(500, new { success = false, error = ex.Message });
+                return StatusCode(500, new { success = false, error = "Internal server error" });
             }
         }
 
@@ -720,7 +727,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to resume job {JobId}", jobId);
-                return StatusCode(500, new { success = false, error = ex.Message });
+                return StatusCode(500, new { success = false, error = "Internal server error" });
             }
         }
 
@@ -744,7 +751,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to cancel job {JobId}", jobId);
-                return StatusCode(500, new { success = false, error = ex.Message });
+                return StatusCode(500, new { success = false, error = "Internal server error" });
             }
         }
 
@@ -781,12 +788,33 @@ namespace JellyfinUpscalerPlugin.Controllers
             // Path traversal protection — normalize and block system paths
             inputPath = Path.GetFullPath(inputPath);
             var blockedPrefixes = new[] { "/etc", "/usr", "/bin", "/sbin", "/boot", "/proc", "/sys", "/dev",
-                @"C:\Windows", @"C:\Program Files", @"C:\Program Files (x86)" };
+                "/root", "/home", "/var", "/tmp", "/run", "/opt",
+                @"C:\Users", @"C:\Windows", @"C:\Program Files", @"C:\Program Files (x86)" };
             if (blockedPrefixes.Any(p => inputPath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
                 return BadRequest(new { success = false, error = "Access to system paths is not allowed" });
 
             if (outputPath != null)
+            {
                 outputPath = Path.GetFullPath(outputPath);
+                if (blockedPrefixes.Any(p => outputPath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+                    return BadRequest(new { success = false, error = "Access to system paths is not allowed" });
+
+                // Restrict output to be under the same parent directory as input or under the Jellyfin transcode path
+                var inputParent = Path.GetFullPath(Path.GetDirectoryName(inputPath) ?? string.Empty);
+                var outputParent = Path.GetFullPath(Path.GetDirectoryName(outputPath) ?? string.Empty);
+                var inputParentWithSep = inputParent.EndsWith(Path.DirectorySeparatorChar) ? inputParent : inputParent + Path.DirectorySeparatorChar;
+                var transcodePath = Plugin.Instance?.Configuration?.RemoteTranscodePath ?? "";
+                var validTranscode = !string.IsNullOrEmpty(transcodePath) && Path.IsPathRooted(transcodePath);
+                var transcodeWithSep = validTranscode ? (transcodePath.EndsWith(Path.DirectorySeparatorChar) ? transcodePath : transcodePath + Path.DirectorySeparatorChar) : "";
+
+                if (!outputParent.Equals(inputParent, StringComparison.OrdinalIgnoreCase) &&
+                    !outputParent.StartsWith(inputParentWithSep, StringComparison.OrdinalIgnoreCase) &&
+                    !(validTranscode && (outputParent.Equals(transcodePath, StringComparison.OrdinalIgnoreCase) ||
+                      outputParent.StartsWith(transcodeWithSep, StringComparison.OrdinalIgnoreCase))))
+                {
+                    return BadRequest(new { success = false, error = "Output path must be under the input directory or transcode path" });
+                }
+            }
 
             var effectiveOutput = outputPath ?? Path.Combine(
                 Path.GetDirectoryName(inputPath) ?? "",
@@ -867,7 +895,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to get cache statistics");
-                return StatusCode(500, new { success = false, error = ex.Message });
+                return StatusCode(500, new { success = false, error = "Internal server error" });
             }
         }
 
@@ -884,7 +912,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to clear cache");
-                return StatusCode(500, new { success = false, error = ex.Message });
+                return StatusCode(500, new { success = false, error = "Internal server error" });
             }
         }
 
@@ -899,7 +927,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to get hardware profile");
-                return StatusCode(500, new { success = false, error = ex.Message });
+                return StatusCode(500, new { success = false, error = "Internal server error" });
             }
         }
 
@@ -963,8 +991,9 @@ namespace JellyfinUpscalerPlugin.Controllers
 
                 // Path traversal protection
                 var normalizedPath = Path.GetFullPath(request.InputPath);
-                var blockedPrefixes = new[] { "/etc", "/usr", "/bin", "/sbin", "/boot", "/proc", "/sys",
-                    @"C:\Windows", @"C:\Program Files", @"C:\Program Files (x86)" };
+                var blockedPrefixes = new[] { "/etc", "/usr", "/bin", "/sbin", "/boot", "/proc", "/sys", "/dev",
+                    "/root", "/home", "/var", "/tmp", "/run", "/opt",
+                    @"C:\Users", @"C:\Windows", @"C:\Program Files", @"C:\Program Files (x86)" };
                 if (blockedPrefixes.Any(p => normalizedPath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
                     return BadRequest(new { success = false, error = "Access to system paths is not allowed" });
 
@@ -980,7 +1009,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Pre-processing failed");
-                return StatusCode(500, new { success = false, error = ex.Message });
+                return StatusCode(500, new { success = false, error = "Internal server error" });
             }
         }
 
@@ -1002,7 +1031,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to configure pre-processing cache");
-                return StatusCode(500, new { success = false, error = ex.Message });
+                return StatusCode(500, new { success = false, error = "Internal server error" });
             }
         }
 
@@ -1057,7 +1086,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to export settings");
-                return StatusCode(500, new { success = false, error = ex.Message });
+                return StatusCode(500, new { success = false, error = "Internal server error" });
             }
         }
 
@@ -1151,7 +1180,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to import settings");
-                return StatusCode(500, new { success = false, error = ex.Message });
+                return StatusCode(500, new { success = false, error = "Internal server error" });
             }
         }
 
@@ -1166,7 +1195,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to get fallback status");
-                return StatusCode(500, new { success = false, error = ex.Message });
+                return StatusCode(500, new { success = false, error = "Internal server error" });
             }
         }
 
@@ -1202,7 +1231,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Service health check failed");
-                return Ok(new { success = false, available = false, error = ex.Message });
+                return Ok(new { success = false, available = false, error = "Service health check failed" });
             }
         }
 
@@ -1216,8 +1245,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
-                var config = Plugin.Instance?.Configuration;
-                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                var serviceUrl = GetValidatedServiceUrl();
                 var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/gpus");
                 if (response.IsSuccessStatusCode)
                 {
@@ -1287,7 +1315,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                     return BadRequest(new { error = "Invalid model name — only alphanumeric, hyphens, and underscores allowed" });
 
                 var config = Plugin.Instance?.Configuration;
-                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                var serviceUrl = GetValidatedServiceUrl();
 
                 // Docker AI service expects form-urlencoded POST — forward GPU settings
                 var useGpu = config?.HardwareAcceleration ?? true;
@@ -1305,7 +1333,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to load model via proxy: {Error}", ex.Message);
-                return StatusCode(500, new { error = ex.Message });
+                return StatusCode(500, new { error = "Internal server error" });
             }
         }
 
@@ -1319,8 +1347,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
-                var config = Plugin.Instance?.Configuration;
-                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                var serviceUrl = GetValidatedServiceUrl();
                 var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/benchmark");
                 var content = await response.Content.ReadAsStringAsync();
                 return new ContentResult { Content = content, ContentType = "application/json", StatusCode = (int)response.StatusCode };
@@ -1328,7 +1355,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to run model benchmark");
-                return StatusCode(500, new { error = ex.Message });
+                return StatusCode(500, new { error = "Internal server error" });
             }
         }
 
@@ -1342,8 +1369,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
-                var config = Plugin.Instance?.Configuration;
-                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                var serviceUrl = GetValidatedServiceUrl();
                 var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/metrics");
                 var content = await response.Content.ReadAsStringAsync();
                 return Content(content, "text/plain");
@@ -1365,8 +1391,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
-                var config = Plugin.Instance?.Configuration;
-                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                var serviceUrl = GetValidatedServiceUrl();
                 var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/gpu-verify");
                 var content = await response.Content.ReadAsStringAsync();
                 return Content(content, "application/json");
@@ -1388,8 +1413,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
-                var config = Plugin.Instance?.Configuration;
-                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                var serviceUrl = GetValidatedServiceUrl();
                 var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/health/detailed");
                 var content = await response.Content.ReadAsStringAsync();
                 return Content(content, "application/json");
@@ -1411,8 +1435,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
-                var config = Plugin.Instance?.Configuration;
-                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                var serviceUrl = GetValidatedServiceUrl();
 
                 var formData = new List<KeyValuePair<string, string>>();
                 if (use_gpu.HasValue) formData.Add(new("use_gpu", use_gpu.Value.ToString().ToLower()));
@@ -1441,8 +1464,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
-                var config = Plugin.Instance?.Configuration;
-                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                var serviceUrl = GetValidatedServiceUrl();
                 var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/models/disk-usage");
                 var content = await response.Content.ReadAsStringAsync();
                 return Content(content, "application/json");
@@ -1464,8 +1486,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
-                var config = Plugin.Instance?.Configuration;
-                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                var serviceUrl = GetValidatedServiceUrl();
                 var response = await GetAiServiceClient().PostAsync(
                     $"{serviceUrl}/models/cleanup?max_age_days={max_age_days}&dry_run={dry_run.ToString().ToLower()}",
                     null);
@@ -1489,8 +1510,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
-                var config = Plugin.Instance?.Configuration;
-                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                var serviceUrl = GetValidatedServiceUrl();
 
                 // Read raw body
                 using var ms = new MemoryStream();
@@ -1536,7 +1556,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             var config = Plugin.Instance?.Configuration;
             if (config == null) return StatusCode(500, "Plugin not configured");
 
-            var serviceUrl = config.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+            var serviceUrl = GetValidatedServiceUrl();
 
             try
             {
@@ -1569,7 +1589,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(502, $"AI service error: {ex.Message}");
+                return StatusCode(502, "AI service error");
             }
         }
 
@@ -1583,8 +1603,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
-                var config = Plugin.Instance?.Configuration;
-                var serviceUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+                var serviceUrl = GetValidatedServiceUrl();
 
                 var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/benchmark-frame?width={width}&height={height}");
 
@@ -1599,7 +1618,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Frame benchmark proxy failed");
-                return StatusCode(500, new { error = ex.Message });
+                return StatusCode(500, new { error = "Internal server error" });
             }
         }
 
@@ -1698,7 +1717,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "SSH connection test error");
-                return Ok(new { success = false, message = $"SSH test error: {ex.Message}" });
+                return Ok(new { success = false, message = "SSH test error" });
             }
         }
     }

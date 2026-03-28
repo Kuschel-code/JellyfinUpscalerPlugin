@@ -261,6 +261,13 @@ try {{
 
         private string GenerateUnixScript(string realFFmpegPath, string logPath, string activeMarkerPath)
         {
+            // Sanitize: only allow safe characters in the path to prevent shell injection
+            if (!System.Text.RegularExpressions.Regex.IsMatch(realFFmpegPath, @"^[a-zA-Z0-9/\-_.]+$"))
+            {
+                _logger.LogWarning("FFmpeg path contains unsafe characters ({Path}), using fallback /usr/bin/ffmpeg", realFFmpegPath);
+                realFFmpegPath = "/usr/bin/ffmpeg";
+            }
+
             return $@"#!/bin/bash
 # AI Upscaler Plugin - Unix Wrapper (Placeholder for future SSH update)
 REAL_FFMPEG=""{realFFmpegPath}""

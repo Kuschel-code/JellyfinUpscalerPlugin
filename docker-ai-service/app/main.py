@@ -158,6 +158,22 @@ _processing_count_lock = threading.Lock()
 _download_locks: dict[str, asyncio.Lock] = {}
 _download_locks_guard = threading.Lock()
 
+# Benchmark lock — ensures only one benchmark runs at a time (created in lifespan)
+_benchmark_lock: Optional[asyncio.Lock] = None
+
+
+def _require_api_token(request: Request) -> None:
+    """Check the X-Api-Token header against the API_TOKEN env var.
+    If API_TOKEN is not set, skip the check (backwards compatible).
+    Raises HTTPException(403) on mismatch."""
+    expected_token = os.getenv("API_TOKEN", "")
+    if not expected_token:
+        return  # No token configured — skip check for backwards compatibility
+    provided_token = request.headers.get("x-api-token", "") if request else ""
+    if not hmac.compare_digest(provided_token, expected_token):
+        raise HTTPException(status_code=403, detail="Invalid or missing API token")
+
+
 # Tile size for ONNX inference (prevents OOM on large images)
 def _safe_int_env(name: str, default: int, min_val: Optional[int] = None, max_val: Optional[int] = None) -> int:
     """Parse integer from env var with fallback on invalid values.
@@ -890,8 +906,9 @@ async def lifespan(app: FastAPI):
         state.gpu_device_id = 0
 
     # Re-create semaphore with actual env var value (inside event loop)
-    global _upscale_semaphore
+    global _upscale_semaphore, _benchmark_lock
     _upscale_semaphore = asyncio.Semaphore(state.max_concurrent)
+    _benchmark_lock = asyncio.Lock()
 
     # Track service uptime
     state.service_start_time = time.time()
@@ -1159,6 +1176,8 @@ def upscale_with_ncnn(img: np.ndarray) -> np.ndarray:
 def _probe_tensorrt_subprocess(model_path_str: str, device_id: int) -> bool:
     """Test TensorRT in an isolated subprocess to avoid poisoning the CUDA context.
     Returns True if TensorRT works, False otherwise."""
+    if not model_path_str.startswith(str(MODELS_DIR.resolve())):
+        raise ValueError("Model path outside allowed directory")
     if not isinstance(device_id, int) or device_id < 0 or device_id > 99:
         logger.warning(f"Invalid device_id {device_id}, using 0")
         device_id = 0
@@ -2099,9 +2118,20 @@ async def register_connection(
             if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
                 raise HTTPException(status_code=400, detail="Private/loopback URLs are not allowed.")
         except ValueError:
-            # hostname is a DNS name, not a raw IP — allow it (DNS may resolve to anything,
-            # but blocking raw private IPs covers the most exploitable SSRF vectors)
-            pass
+            # hostname is a DNS name — resolve it and check each IP against private ranges
+            try:
+                addrinfos = socket.getaddrinfo(hostname, None)
+                for family, _type, _proto, _canonname, sockaddr in addrinfos:
+                    resolved_ip = ipaddress.ip_address(sockaddr[0])
+                    if resolved_ip.is_private or resolved_ip.is_loopback or resolved_ip.is_link_local or resolved_ip.is_reserved:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Private/loopback URLs are not allowed (DNS resolves to private IP)."
+                        )
+            except socket.gaierror:
+                raise HTTPException(status_code=400, detail="Could not resolve hostname.")
+            except HTTPException:
+                raise
 
     connection = {
         "plugin_id": plugin_id,
@@ -2142,8 +2172,9 @@ async def list_models():
 
 
 @app.post("/models/download")
-async def download_model_endpoint(model_name: str = Form(...)):
+async def download_model_endpoint(model_name: str = Form(...), request: Request = None):
     """Download a model."""
+    _require_api_token(request)
     if model_name not in AVAILABLE_MODELS:
         raise HTTPException(status_code=404, detail=f"Model {model_name} not found")
     
@@ -2165,9 +2196,11 @@ async def download_model_endpoint(model_name: str = Form(...)):
 async def load_model_endpoint(
     model_name: str = Form(...),
     use_gpu: bool = Form(True),
-    gpu_device_id: Optional[int] = Form(None)
+    gpu_device_id: Optional[int] = Form(None),
+    request: Request = None
 ):
     """Load a model into memory. Optionally specify GPU device index."""
+    _require_api_token(request)
     if gpu_device_id is not None and (gpu_device_id < 0 or gpu_device_id > 99):
         raise HTTPException(status_code=400, detail="gpu_device_id must be 0-99")
 
@@ -2281,14 +2314,22 @@ async def upscale_endpoint(
 
 
 @app.get("/benchmark")
-async def benchmark_endpoint():
+async def benchmark_endpoint(request: Request = None):
     """Run a benchmark on the current model."""
+    _require_api_token(request)
     if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
         raise HTTPException(status_code=400, detail="No model loaded")
 
-    loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(None, run_benchmark, 256)
-    return result
+    try:
+        await asyncio.wait_for(_benchmark_lock.acquire(), timeout=5.0)
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=429, detail="Benchmark already in progress")
+    try:
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, run_benchmark, 256)
+        return result
+    finally:
+        _benchmark_lock.release()
 
 
 @app.post("/upscale-frame")
@@ -2473,8 +2514,9 @@ def _run_frame_benchmark(width: int, height: int) -> dict:
 
 
 @app.get("/benchmark-frame")
-async def benchmark_frame_endpoint(width: int = 480, height: int = 270):
+async def benchmark_frame_endpoint(width: int = 480, height: int = 270, request: Request = None):
     """Benchmark at actual capture resolution for real-time upscaling feasibility."""
+    _require_api_token(request)
     if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
         raise HTTPException(status_code=400, detail="No model loaded")
 
@@ -2485,18 +2527,27 @@ async def benchmark_frame_endpoint(width: int = 480, height: int = 270):
     width = max(64, min(width, 1920))
     height = max(64, min(height, 1080))
 
-    loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(None, _run_frame_benchmark, width, height)
-    return result
+    try:
+        await asyncio.wait_for(_benchmark_lock.acquire(), timeout=5.0)
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=429, detail="Benchmark already in progress")
+    try:
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, _run_frame_benchmark, width, height)
+        return result
+    finally:
+        _benchmark_lock.release()
 
 
 @app.post("/config")
 async def update_config(
     use_gpu: Optional[bool] = Form(None),
     max_concurrent: Optional[int] = Form(None),
-    gpu_device_id: Optional[int] = Form(None)
+    gpu_device_id: Optional[int] = Form(None),
+    request: Request = None
 ):
     """Update service configuration."""
+    _require_api_token(request)
     if use_gpu is not None:
         state.use_gpu = use_gpu
     if max_concurrent is not None:
