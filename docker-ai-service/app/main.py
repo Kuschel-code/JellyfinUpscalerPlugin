@@ -1775,6 +1775,133 @@ def upscale_image(image_bytes: bytes) -> bytes:
     return buffer.tobytes()
 
 
+def tonemap_hdr_to_sdr(frame_16bit: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """PQ (ST.2084) tone-map 16-bit HDR frame to 8-bit SDR for AI processing.
+    Returns (sdr_frame_8bit, luminance_map) where luminance_map preserves HDR info."""
+    # Normalize 16-bit to [0, 1] float
+    frame_float = frame_16bit.astype(np.float64) / 65535.0
+
+    # Compute per-pixel luminance (Rec.2020 weights) for restoration later
+    luminance_map = (0.2627 * frame_float[:, :, 2]
+                     + 0.6780 * frame_float[:, :, 1]
+                     + 0.0593 * frame_float[:, :, 0])  # BGR order
+
+    # PQ EOTF inverse: linearize from PQ domain
+    # ST.2084 constants
+    m1 = 0.1593017578125
+    m2 = 78.84375
+    c1 = 0.8359375
+    c2 = 18.8515625
+    c3 = 18.6875
+
+    # Apply PQ inverse EOTF to get linear light
+    Ym1 = np.power(np.clip(frame_float, 1e-10, 1.0), 1.0 / m2)
+    numerator = np.maximum(Ym1 - c1, 0.0)
+    denominator = c2 - c3 * Ym1
+    denominator = np.maximum(denominator, 1e-10)
+    linear = np.power(numerator / denominator, 1.0 / m1)
+
+    # Simple Reinhard tone-map to SDR range
+    linear_tonemapped = linear / (1.0 + linear)
+
+    # Apply sRGB gamma (~2.2)
+    sdr_float = np.power(np.clip(linear_tonemapped, 0.0, 1.0), 1.0 / 2.2)
+
+    # Convert to 8-bit
+    sdr_8bit = np.clip(sdr_float * 255.0, 0, 255).astype(np.uint8)
+
+    return sdr_8bit, luminance_map.astype(np.float32)
+
+
+def inverse_tonemap_sdr_to_hdr(sdr_upscaled: np.ndarray, luminance_map: np.ndarray,
+                                original_16bit: np.ndarray, scale: int) -> np.ndarray:
+    """Restore HDR range from upscaled SDR frame using preserved luminance map.
+    Upscales the luminance map to match the output resolution, then reapplies HDR range."""
+    # Upscale luminance map to match output resolution using bicubic interpolation
+    out_h, out_w = sdr_upscaled.shape[:2]
+    luminance_upscaled = cv2.resize(luminance_map, (out_w, out_h), interpolation=cv2.INTER_CUBIC)
+    luminance_upscaled = np.clip(luminance_upscaled, 1e-6, None)
+
+    # Convert SDR upscaled back to float [0, 1]
+    sdr_float = sdr_upscaled.astype(np.float64) / 255.0
+
+    # Remove sRGB gamma to get linear SDR
+    sdr_linear = np.power(np.clip(sdr_float, 1e-10, 1.0), 2.2)
+
+    # Inverse Reinhard: L_hdr = L_sdr / (1 - L_sdr)
+    sdr_linear_clamped = np.clip(sdr_linear, 0.0, 0.999)
+    hdr_linear = sdr_linear_clamped / (1.0 - sdr_linear_clamped)
+
+    # Modulate by luminance ratio to restore HDR brightness structure
+    sdr_lum = (0.2627 * sdr_linear[:, :, 2]
+               + 0.6780 * sdr_linear[:, :, 1]
+               + 0.0593 * sdr_linear[:, :, 0])
+    sdr_lum = np.maximum(sdr_lum, 1e-6)
+    lum_ratio = luminance_upscaled / sdr_lum
+    lum_ratio = np.clip(lum_ratio, 0.1, 10.0)  # Clamp to prevent extreme values
+
+    hdr_linear = hdr_linear * lum_ratio[:, :, np.newaxis]
+
+    # Apply PQ OETF (forward) to encode back to PQ domain
+    m1 = 0.1593017578125
+    m2 = 78.84375
+    c1 = 0.8359375
+    c2 = 18.8515625
+    c3 = 18.6875
+
+    Lm1 = np.power(np.clip(hdr_linear, 1e-10, 1.0), m1)
+    pq = np.power((c1 + c2 * Lm1) / (1.0 + c3 * Lm1), m2)
+
+    # Convert to 16-bit
+    hdr_16bit = np.clip(pq * 65535.0, 0, 65535).astype(np.uint16)
+
+    return hdr_16bit
+
+
+def upscale_image_hdr(image_bytes: bytes) -> bytes:
+    """Upscale a 16-bit HDR image: tone-map to SDR, upscale, inverse tone-map back to HDR.
+    Accepts 16-bit PNG bytes, returns 16-bit PNG bytes."""
+    # Decode 16-bit image
+    nparr = np.frombuffer(image_bytes, np.uint8)
+    img_16bit = cv2.imdecode(nparr, cv2.IMREAD_UNCHANGED)
+
+    if img_16bit is None:
+        raise ValueError("Failed to decode 16-bit HDR image")
+
+    if img_16bit.dtype != np.uint16:
+        raise ValueError(f"Expected 16-bit image, got {img_16bit.dtype}")
+
+    MAX_INPUT_PIXELS = 8_294_400  # ~4K
+    h, w = img_16bit.shape[:2]
+    if h * w > MAX_INPUT_PIXELS:
+        raise HTTPException(status_code=413,
+                            detail=f"Image too large: {w}x{h} ({h*w} pixels). Maximum: {MAX_INPUT_PIXELS} pixels")
+
+    # Determine model scale
+    with _model_lock:
+        if state.current_model is None:
+            raise ModelNotReadyError("No model loaded")
+        if state.current_model_type == "onnx":
+            model_scale = state.onnx_model_scale
+        elif state.current_model_type == "ncnn":
+            model_scale = state.ncnn_model_scale
+        else:
+            model_scale = state.cv_model_scale
+
+    # Step 1: Tone-map HDR to SDR for AI processing
+    sdr_8bit, luminance_map = tonemap_hdr_to_sdr(img_16bit)
+
+    # Step 2: Upscale the SDR frame using the standard pipeline
+    sdr_upscaled = upscale_image_array(sdr_8bit)
+
+    # Step 3: Inverse tone-map back to HDR
+    hdr_result = inverse_tonemap_sdr_to_hdr(sdr_upscaled, luminance_map, img_16bit, model_scale)
+
+    # Encode as 16-bit PNG
+    _, buffer = cv2.imencode('.png', hdr_result)
+    return buffer.tobytes()
+
+
 def _onnx_infer_tile(img_rgb_float: np.ndarray, session, input_name: str, output_name: str) -> np.ndarray:
     """Run ONNX inference on a single tile (HWC float32 [0,1] RGB). Returns HWC float32 RGB."""
     img_nchw = np.transpose(img_rgb_float, (2, 0, 1))  # HWC to CHW
@@ -2797,6 +2924,71 @@ async def upscale_endpoint(
             sem.release()
 
 
+@app.post("/upscale-hdr")
+async def upscale_frame_hdr(
+    file: UploadFile = File(...),
+    scale: int = Form(2)
+):
+    """Upscale a 16-bit HDR frame. Accepts 16-bit PNG, returns 16-bit PNG.
+    The pipeline: receive 16-bit -> tone-map to 8-bit SDR -> upscale -> inverse tone-map back to 16-bit."""
+    _check_circuit_breaker()
+
+    if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
+        raise HTTPException(status_code=400, detail="No model loaded. Please load a model first.")
+
+    # Validate scale against loaded model's native scale
+    if state.current_model_type == "onnx":
+        model_scale = state.onnx_model_scale
+    elif state.current_model_type == "ncnn":
+        model_scale = state.ncnn_model_scale
+    else:
+        model_scale = state.cv_model_scale
+    if scale != model_scale:
+        logger.warning(f"HDR upscale: requested scale={scale} differs from model scale={model_scale}. Using model's native scale={model_scale}.")
+
+    # Capture semaphore reference for safe release
+    sem = _upscale_semaphore
+    acquired = False
+    try:
+        await asyncio.wait_for(sem.acquire(), timeout=0)
+        acquired = True
+        with _processing_count_lock:
+            state.processing_count += 1
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=429, detail="Too many concurrent requests")
+
+    start_time = time.time()
+    model_name = state.current_model or "unknown"
+    try:
+        # Read 16-bit HDR image
+        image_bytes = await file.read()
+        if len(image_bytes) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail=f"Image too large ({len(image_bytes)} bytes, max {MAX_UPLOAD_BYTES})")
+
+        # Upscale HDR in thread pool to not block async
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, upscale_image_hdr, image_bytes)
+
+        duration_ms = (time.time() - start_time) * 1000
+        _record_success(model_name, duration_ms)
+        logger.info(f"HDR frame upscaled in {duration_ms:.0f}ms ({len(image_bytes)} -> {len(result)} bytes)")
+        return Response(content=result, media_type="image/png")
+
+    except ModelNotReadyError as e:
+        _record_failure(model_name)
+        logger.warning(f"HDR upscale input error: {e}")
+        raise HTTPException(status_code=400, detail="Invalid input or model not ready")
+    except Exception as e:
+        _record_failure(model_name)
+        logger.error(f"HDR upscale failed: {e}")
+        raise HTTPException(status_code=500, detail="HDR upscaling failed")
+    finally:
+        if acquired:
+            with _processing_count_lock:
+                state.processing_count -= 1
+            sem.release()
+
+
 @app.get("/benchmark")
 async def benchmark_endpoint(request: Request = None):
     """Run a benchmark on the current model."""
@@ -3515,6 +3707,155 @@ async def models_cleanup(max_age_days: int = 30, dry_run: bool = True, request: 
         "kept": kept,
         "freed_mb": round(actually_freed_mb, 1) if not dry_run else sum(m["size_mb"] for m in to_delete),
         "deleted_count": len(to_delete) if not dry_run else 0
+    }
+
+
+# ============================================================
+# === Frame Interpolation (RIFE) ===
+# ============================================================
+
+@app.post("/interpolate-frames")
+async def interpolate_frames(request: Request):
+    """Interpolate a new frame between two input frames using RIFE.
+
+    Accepts multipart form with 'frame1' and 'frame2' as PNG images.
+    Optional 'model' string to select RIFE variant (default 'rife-v4.6').
+    Optional 'timestep' float (0.0-1.0, default 0.5 for midpoint).
+    Returns the interpolated frame as PNG.
+    """
+    _check_circuit_breaker()
+
+    if not ONNX_AVAILABLE:
+        raise HTTPException(status_code=500, detail="ONNX Runtime not available — frame interpolation requires ONNX")
+
+    # Parse multipart form
+    form = await request.form()
+
+    frame1_file = form.get("frame1")
+    frame2_file = form.get("frame2")
+    if frame1_file is None or frame2_file is None:
+        raise HTTPException(status_code=400, detail="Both 'frame1' and 'frame2' files are required")
+
+    timestep_raw = form.get("timestep", "0.5")
+    try:
+        timestep = float(timestep_raw)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="timestep must be a float between 0.0 and 1.0")
+    if not 0.0 <= timestep <= 1.0:
+        raise HTTPException(status_code=400, detail="timestep must be between 0.0 and 1.0")
+
+    model_name = str(form.get("model", "rife-v4.6"))
+    if model_name not in AVAILABLE_MODELS:
+        raise HTTPException(status_code=400, detail=f"Unknown model: {model_name}")
+    if AVAILABLE_MODELS[model_name].get("category") != "interpolation":
+        raise HTTPException(status_code=400, detail=f"Model {model_name} is not an interpolation model")
+
+    # Read frame data
+    frame1_bytes = await frame1_file.read()
+    frame2_bytes = await frame2_file.read()
+    if not frame1_bytes or not frame2_bytes:
+        raise HTTPException(status_code=400, detail="Empty frame data")
+    if len(frame1_bytes) > MAX_UPLOAD_BYTES or len(frame2_bytes) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail=f"Frame too large (max {MAX_UPLOAD_BYTES} bytes)")
+
+    # Decode frames
+    nparr1 = np.frombuffer(frame1_bytes, np.uint8)
+    nparr2 = np.frombuffer(frame2_bytes, np.uint8)
+    img1 = cv2.imdecode(nparr1, cv2.IMREAD_COLOR)
+    img2 = cv2.imdecode(nparr2, cv2.IMREAD_COLOR)
+    if img1 is None or img2 is None:
+        raise HTTPException(status_code=400, detail="Failed to decode one or both frames")
+
+    if img1.shape != img2.shape:
+        raise HTTPException(status_code=400, detail=f"Frame dimensions must match: frame1={img1.shape}, frame2={img2.shape}")
+
+    # Load RIFE model if not already loaded or if a different model is requested
+    with _model_lock:
+        needs_load = state.rife_session is None or state.rife_model_name != model_name
+
+    if needs_load:
+        # Auto-download if not present
+        model_path = get_model_path(model_name)
+        if not model_path.exists():
+            logger.info(f"RIFE model {model_name} not downloaded — auto-downloading...")
+            dl_success = await download_model(model_name)
+            if not dl_success:
+                raise HTTPException(status_code=500, detail=f"Failed to auto-download RIFE model {model_name}")
+
+        loop = asyncio.get_running_loop()
+        loaded = await loop.run_in_executor(None, load_rife_model, model_name)
+        if not loaded:
+            raise HTTPException(status_code=500, detail=f"Failed to load RIFE model {model_name}")
+
+    # Capture session under lock
+    with _model_lock:
+        session = state.rife_session
+    if session is None:
+        raise HTTPException(status_code=500, detail="RIFE model session not available")
+
+    # Run interpolation in executor to avoid blocking the event loop
+    start_time = time.time()
+    model_key = state.rife_model_name or model_name
+    try:
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(
+            None, interpolate_frame_rife, img1, img2, session, timestep
+        )
+
+        # Encode result as PNG
+        success, buffer = cv2.imencode('.png', result)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to encode interpolated frame")
+
+        duration_ms = (time.time() - start_time) * 1000
+        _record_success(model_key, duration_ms)
+        logger.info(f"Frame interpolation completed in {duration_ms:.1f}ms (model={model_key}, timestep={timestep})")
+
+        return Response(content=buffer.tobytes(), media_type="image/png")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        _record_failure(model_key)
+        logger.error(f"Frame interpolation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Frame interpolation failed: {str(e)}")
+
+
+@app.get("/interpolation/status")
+async def interpolation_status():
+    """Show the status of the RIFE frame interpolation model."""
+    with _model_lock:
+        rife_loaded = state.rife_loaded
+        rife_model = state.rife_model_name
+        rife_session = state.rife_session
+
+    # Gather available interpolation models
+    interpolation_models = []
+    for model_id, info in AVAILABLE_MODELS.items():
+        if info.get("category") == "interpolation":
+            model_path = get_model_path(model_id)
+            interpolation_models.append({
+                "id": model_id,
+                "name": info["name"],
+                "description": info["description"],
+                "downloaded": model_path.exists(),
+                "loaded": rife_model == model_id,
+                "available": info.get("available", True)
+            })
+
+    providers = []
+    if rife_session is not None:
+        try:
+            providers = rife_session.get_providers()
+        except Exception:
+            providers = ["unknown"]
+
+    return {
+        "interpolation_available": ONNX_AVAILABLE,
+        "model_loaded": rife_loaded and rife_session is not None,
+        "current_model": rife_model,
+        "providers": providers,
+        "models": interpolation_models
     }
 
 

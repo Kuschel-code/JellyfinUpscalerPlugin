@@ -86,6 +86,9 @@ namespace JellyfinUpscalerPlugin.Models
         public bool IsHDR { get; set; }
         public bool IsInterlaced { get; set; }
         public double AspectRatio { get; set; }
+        public int BitDepth { get; set; } = 8;
+        public string ColorTransfer { get; set; } = "";
+        public string ColorPrimaries { get; set; } = "";
     }
 
     /// <summary>
@@ -179,6 +182,12 @@ namespace JellyfinUpscalerPlugin.Models
         public string RecommendedModel { get; set; } = "";
         public int RecommendedScale { get; set; } = 2;
         public int MaxConcurrentStreams { get; set; } = 1;
+
+        /// <summary>
+        /// Benchmark FPS from the AI service (0 = not yet benchmarked).
+        /// Used to determine if real-time AI upscaling is feasible.
+        /// </summary>
+        public double BenchmarkFps { get; set; } = 0;
     }
 
     /// <summary>

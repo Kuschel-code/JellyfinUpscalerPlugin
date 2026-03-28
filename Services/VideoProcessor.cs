@@ -402,11 +402,15 @@ namespace JellyfinUpscalerPlugin.Services
                 
                 // Enhanced analysis
                 info.EstimatedQuality = EstimateVideoQuality(info);
-                info.IsHDR = IsHDRVideo(videoStream);
+
+                // Detect HDR properties via raw FFprobe for color_transfer/color_primaries/bit_depth
+                await DetectHDRPropertiesAsync(inputPath, info);
+
+                info.IsHDR = IsHDRVideo(videoStream, info);
                 info.IsInterlaced = await DetectInterlacedAsync(inputPath);
                 info.AspectRatio = info.Height > 0 ? (double)info.Width / info.Height : 0;
 
-                _logger.LogInformation("Video analysis: {Width}x{Height} @ {Fps}fps, {Codec}, {BitRate}kbps, Interlaced: {Interlaced}", info.Width, info.Height, info.FrameRate.ToString("F1"), info.Codec, info.BitRate, info.IsInterlaced);
+                _logger.LogInformation("Video analysis: {Width}x{Height} @ {Fps}fps, {Codec}, {BitRate}kbps, HDR: {IsHDR}, BitDepth: {BitDepth}, Interlaced: {Interlaced}", info.Width, info.Height, info.FrameRate.ToString("F1"), info.Codec, info.BitRate, info.IsHDR, info.BitDepth, info.IsInterlaced);
                 
                 return info;
             }
@@ -515,21 +519,78 @@ namespace JellyfinUpscalerPlugin.Services
                 return ProcessingMethod.MultiFrame;
             }
 
+            // Real-time AI upscaling: pipe-based decode -> upscale -> encode
+            // Only use when conditions are favorable for real-time performance
+            if (options.EnableAIUpscaling && IsRealTimeAIFeasible(inputInfo, hardwareProfile, options))
+            {
+                _logger.LogInformation("Real-time AI upscaling selected for {Width}x{Height} @ {Fps}fps with model {Model}",
+                    inputInfo.Width, inputInfo.Height, inputInfo.FrameRate, options.Model);
+                return ProcessingMethod.RealTimeAI;
+            }
+
             // Real-time processing for short videos or live streams
             // BUT: if AI upscaling is explicitly requested, use frame-by-frame instead
             if (!options.EnableAIUpscaling && (inputInfo.Duration.TotalMinutes < 5 || options.EnableRealTimeProcessing))
             {
                 return ProcessingMethod.RealTime;
             }
-            
+
             // Frame-by-frame for high quality
             if (options.QualityLevel == "high" && hardwareProfile.SupportsCUDA)
             {
                 return ProcessingMethod.FrameByFrame;
             }
-            
+
             // Batch processing for efficiency
             return ProcessingMethod.Batch;
+        }
+
+        /// <summary>
+        /// Check if real-time AI upscaling is feasible for the given input.
+        /// Requires: fast model, reasonable input resolution, and sufficient benchmark FPS.
+        /// </summary>
+        private bool IsRealTimeAIFeasible(VideoInfo inputInfo, HardwareProfile hardwareProfile, VideoProcessingOptions options)
+        {
+            // Only enable for explicit real-time request
+            if (!options.EnableRealTimeProcessing)
+            {
+                return false;
+            }
+
+            // Input resolution must be <= 1080p
+            if (inputInfo.Width > 1920 || inputInfo.Height > 1080)
+            {
+                _logger.LogDebug("RealTimeAI skipped: input resolution {Width}x{Height} exceeds 1080p", inputInfo.Width, inputInfo.Height);
+                return false;
+            }
+
+            // Only fast models are suitable for real-time
+            var fastModels = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "span-x2", "span-x4",
+                "clearreality-x4",
+                "fsrcnn-x2", "fsrcnn-x3", "fsrcnn-x4",
+                "espcn-x2", "espcn-x3", "espcn-x4"
+            };
+
+            var modelName = options.Model?.ToLowerInvariant() ?? "";
+            if (!fastModels.Contains(modelName) && !modelName.Contains("fsrcnn") && !modelName.Contains("espcn") && !modelName.Contains("span"))
+            {
+                _logger.LogDebug("RealTimeAI skipped: model '{Model}' is not in the fast model list", options.Model);
+                return false;
+            }
+
+            // Check benchmark FPS if available (must be >= 80% of target FPS)
+            var targetFps = inputInfo.FrameRate > 0 ? inputInfo.FrameRate : 30.0;
+            var benchmarkFps = hardwareProfile.BenchmarkFps;
+            if (benchmarkFps > 0 && benchmarkFps < targetFps * 0.8)
+            {
+                _logger.LogDebug("RealTimeAI skipped: benchmark FPS {BenchFps:F1} < {Threshold:F1} (80% of target {TargetFps:F1})",
+                    benchmarkFps, targetFps * 0.8, targetFps);
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -548,6 +609,7 @@ namespace JellyfinUpscalerPlugin.Services
                 ProcessingMethod.FrameByFrame => await ProcessFrameByFrameAsync(inputPath, outputPath, job, cancellationToken),
                 ProcessingMethod.Batch => await ProcessBatchAsync(inputPath, outputPath, job, cancellationToken),
                 ProcessingMethod.MultiFrame => await ProcessMultiFrameAsync(inputPath, outputPath, job, inputFrames, cancellationToken),
+                ProcessingMethod.RealTimeAI => await ProcessRealTimeAIAsync(inputPath, outputPath, job, cancellationToken),
                 _ => throw new NotSupportedException($"Processing method {job.ProcessingMethod} not supported")
             };
         }
@@ -634,16 +696,17 @@ namespace JellyfinUpscalerPlugin.Services
                     
                     var framesFps = job.InputInfo?.FrameRate ?? 30.0;
                     var isInterlaced = job.InputInfo?.IsInterlaced ?? false;
-                    await ExtractFramesAsync(inputPath, framesDir, framesFps, cancellationToken, isInterlaced);
+                    var isHDR = job.InputInfo?.IsHDR ?? false;
+                    await ExtractFramesAsync(inputPath, framesDir, framesFps, cancellationToken, isInterlaced, isHDR);
 
                     // 2. Process frames with AI
                     var processedDir = Path.Combine(tempDir, "processed");
                     Directory.CreateDirectory(processedDir);
                     
-                    await ProcessFramesAsync(framesDir, processedDir, job.OptimizedOptions, job.Id, cancellationToken);
-                    
+                    await ProcessFramesAsync(framesDir, processedDir, job.OptimizedOptions, job.Id, cancellationToken, isHDR);
+
                     // 3. Reconstruct video
-                    await ReconstructVideoAsync(processedDir, inputPath, outputPath, job.OptimizedOptions, framesFps, cancellationToken);
+                    await ReconstructVideoAsync(processedDir, inputPath, outputPath, job.OptimizedOptions, framesFps, cancellationToken, job.InputInfo);
                     
                     return new VideoProcessingResult
                     {
@@ -880,9 +943,287 @@ namespace JellyfinUpscalerPlugin.Services
         }
 
         /// <summary>
+        /// Real-time AI processing using FFmpeg pipe decode -> AI upscale -> FFmpeg pipe encode.
+        /// Two FFmpeg processes connected through the AI service:
+        /// FFmpeg(decode) -> stdout -> [C# reads frames] -> HTTP POST /upscale-frame -> [C# writes frames] -> stdin -> FFmpeg(encode)
+        /// </summary>
+        private async Task<VideoProcessingResult> ProcessRealTimeAIAsync(
+            string inputPath,
+            string outputPath,
+            ProcessingJob job,
+            CancellationToken cancellationToken)
+        {
+            var effectiveFps = job.InputInfo?.FrameRate > 0 ? job.InputInfo.FrameRate : 30.0;
+            var inputWidth = job.InputInfo?.Width ?? 1920;
+            var inputHeight = job.InputInfo?.Height ?? 1080;
+            var scale = job.OptimizedOptions?.ScaleFactor ?? 2;
+            var outputWidth = inputWidth * scale;
+            var outputHeight = inputHeight * scale;
+            var frameByteSize = inputWidth * inputHeight * 3; // rawvideo rgb24
+            var upscaledFrameByteSize = outputWidth * outputHeight * 3;
+            var serviceUrl = Config.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+
+            _logger.LogInformation(
+                "Starting RealTimeAI processing: {InputW}x{InputH} -> {OutputW}x{OutputH} @ {Fps}fps, model={Model}",
+                inputWidth, inputHeight, outputWidth, outputHeight, effectiveFps, job.OptimizedOptions?.Model);
+
+            Process? decoderProcess = null;
+            Process? encoderProcess = null;
+
+            try
+            {
+                // Audio extraction (same pattern as ReconstructVideoAsync)
+                var tempAudioPath = Path.Combine(Path.GetTempPath(), $"rtai_audio_{Guid.NewGuid()}.mka");
+                var hasAudio = false;
+                try
+                {
+                    var audioArgs = $"-i \"{inputPath}\" -vn -acodec copy -y \"{tempAudioPath}\"";
+                    var audioResult = await Cli.Wrap(_ffmpegPath)
+                        .WithArguments(audioArgs)
+                        .WithValidation(CommandResultValidation.None)
+                        .ExecuteAsync(cancellationToken);
+                    hasAudio = audioResult.ExitCode == 0 && File.Exists(tempAudioPath) && new FileInfo(tempAudioPath).Length > 0;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to extract audio for RealTimeAI, continuing without");
+                }
+
+                // Decoder FFmpeg: input -> raw frames on stdout
+                var decoderArgs = $"-i \"{inputPath}\" -f rawvideo -pix_fmt rgb24 -v quiet -";
+                decoderProcess = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = _ffmpegPath,
+                        Arguments = decoderArgs,
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = false,
+                        CreateNoWindow = true
+                    }
+                };
+
+                // Encoder FFmpeg: raw frames on stdin -> encoded output
+                var outputCodec = Config.OutputCodec ?? "libx264";
+                var allowedCodecs = new HashSet<string> { "libx264", "libx265", "hevc_nvenc", "h264_nvenc", "h264_qsv", "hevc_qsv" };
+                if (!allowedCodecs.Contains(outputCodec))
+                {
+                    outputCodec = "libx264";
+                }
+
+                var encoderInputArgs = hasAudio && File.Exists(tempAudioPath)
+                    ? $"-f rawvideo -pix_fmt rgb24 -s {outputWidth}x{outputHeight} -r {effectiveFps.ToString(System.Globalization.CultureInfo.InvariantCulture)} -i - -i \"{tempAudioPath}\" -c:v {outputCodec} -pix_fmt yuv420p -c:a copy -y \"{outputPath}\""
+                    : $"-f rawvideo -pix_fmt rgb24 -s {outputWidth}x{outputHeight} -r {effectiveFps.ToString(System.Globalization.CultureInfo.InvariantCulture)} -i - -c:v {outputCodec} -pix_fmt yuv420p -y \"{outputPath}\"";
+
+                encoderProcess = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = _ffmpegPath,
+                        Arguments = encoderInputArgs,
+                        UseShellExecute = false,
+                        RedirectStandardInput = true,
+                        RedirectStandardError = false,
+                        CreateNoWindow = true
+                    }
+                };
+
+                decoderProcess.Start();
+                encoderProcess.Start();
+
+                var decoderStream = decoderProcess.StandardOutput.BaseStream;
+                var encoderStream = encoderProcess.StandardInput.BaseStream;
+
+                // Use IHttpClientFactory for AI service calls
+                var httpClient = _httpClientFactory.CreateClient("AiUpscalerLongTimeout");
+
+                var framesProcessed = 0;
+                var framesDropped = 0;
+                var processingStartTime = DateTime.UtcNow;
+                var frameBuffer = new byte[frameByteSize];
+
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    // Check for pause
+                    while (_pausedJobs.GetValueOrDefault(job.Id, false))
+                    {
+                        await Task.Delay(500, cancellationToken);
+                    }
+
+                    // Read one full frame from decoder stdout
+                    var totalRead = 0;
+                    while (totalRead < frameByteSize)
+                    {
+                        var bytesRead = await decoderStream.ReadAsync(
+                            frameBuffer, totalRead, frameByteSize - totalRead, cancellationToken);
+
+                        if (bytesRead == 0)
+                        {
+                            // End of stream
+                            break;
+                        }
+                        totalRead += bytesRead;
+                    }
+
+                    if (totalRead < frameByteSize)
+                    {
+                        // End of video or incomplete frame
+                        break;
+                    }
+
+                    try
+                    {
+                        // Send frame to AI service for upscaling via /upscale-frame (JPEG encode/decode)
+                        using var frameContent = new ByteArrayContent(frameBuffer);
+                        frameContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+
+                        // Use raw frame endpoint: encode as JPEG for transport
+                        var jpegBytes = EncodeRawFrameToJpeg(frameBuffer, inputWidth, inputHeight);
+                        using var jpegContent = new ByteArrayContent(jpegBytes);
+                        jpegContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
+
+                        var response = await httpClient.PostAsync($"{serviceUrl}/upscale-frame", jpegContent, cancellationToken);
+
+                        if (response.IsSuccessStatusCode)
+                        {
+                            var upscaledJpeg = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+                            var upscaledRaw = DecodeJpegToRawFrame(upscaledJpeg, outputWidth, outputHeight);
+
+                            if (upscaledRaw != null && upscaledRaw.Length == upscaledFrameByteSize)
+                            {
+                                await encoderStream.WriteAsync(upscaledRaw, 0, upscaledRaw.Length, cancellationToken);
+                                framesProcessed++;
+                            }
+                            else
+                            {
+                                // Write original frame scaled up as fallback
+                                _logger.LogDebug("Upscaled frame size mismatch, skipping frame {Frame}", framesProcessed);
+                                framesDropped++;
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogWarning("AI service returned {StatusCode} for frame {Frame}", (int)response.StatusCode, framesProcessed);
+                            framesDropped++;
+                        }
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        _logger.LogWarning(ex, "AI service request failed for frame {Frame}", framesProcessed);
+                        framesDropped++;
+                    }
+
+                    // Progress reporting (every 2 seconds or every 60 frames)
+                    if (framesProcessed % 60 == 0 || framesProcessed == 1)
+                    {
+                        var elapsed = (DateTime.UtcNow - processingStartTime).TotalSeconds;
+                        var currentFps = elapsed > 0 ? framesProcessed / elapsed : 0;
+                        var realTimeRatio = effectiveFps > 0 ? currentFps / effectiveFps : 0;
+
+                        await _progressHub.SendFrameProgress(
+                            job.Id,
+                            Path.GetFileName(inputPath),
+                            framesProcessed,
+                            -1,  // Total unknown in streaming mode
+                            currentFps
+                        );
+
+                        _logger.LogInformation(
+                            "RealTimeAI: {Processed} frames ({Dropped} dropped), {Fps:F1} FPS, {Ratio:F2}x real-time",
+                            framesProcessed, framesDropped, currentFps, realTimeRatio);
+                    }
+                }
+
+                // Close encoder stdin to signal end of input
+                encoderStream.Close();
+
+                // Wait for both processes to exit
+                await Task.WhenAll(
+                    Task.Run(() => decoderProcess.WaitForExit(30000), cancellationToken),
+                    Task.Run(() => encoderProcess.WaitForExit(60000), cancellationToken));
+
+                var totalElapsed = DateTime.UtcNow - processingStartTime;
+                var avgFps = totalElapsed.TotalSeconds > 0 ? framesProcessed / totalElapsed.TotalSeconds : 0;
+
+                // Cleanup temp audio
+                try { if (File.Exists(tempAudioPath)) File.Delete(tempAudioPath); }
+                catch (Exception ex) { _logger.LogDebug(ex, "Failed to cleanup temp audio"); }
+
+                var success = encoderProcess.ExitCode == 0 && framesProcessed > 0;
+
+                _logger.LogInformation(
+                    "RealTimeAI completed: {Frames} frames, {Dropped} dropped, {Fps:F1} avg FPS, encoder exit={ExitCode}",
+                    framesProcessed, framesDropped, avgFps, encoderProcess.ExitCode);
+
+                return new VideoProcessingResult
+                {
+                    Success = success,
+                    OutputPath = outputPath,
+                    ProcessingTime = totalElapsed,
+                    Method = ProcessingMethod.RealTimeAI,
+                    Error = success ? string.Empty : $"Encoder exit code: {encoderProcess.ExitCode}, frames: {framesProcessed}"
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "RealTimeAI processing failed");
+                return new VideoProcessingResult
+                {
+                    Success = false,
+                    Error = ex.Message,
+                    Method = ProcessingMethod.RealTimeAI
+                };
+            }
+            finally
+            {
+                try { decoderProcess?.Kill(true); } catch { /* best effort */ }
+                try { encoderProcess?.Kill(true); } catch { /* best effort */ }
+                decoderProcess?.Dispose();
+                encoderProcess?.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Encode a raw RGB24 frame buffer to JPEG bytes for transport to AI service.
+        /// </summary>
+        private static byte[] EncodeRawFrameToJpeg(byte[] rawRgb, int width, int height)
+        {
+            using var image = Image.LoadPixelData<SixLabors.ImageSharp.PixelFormats.Rgb24>(rawRgb, width, height);
+            using var ms = new MemoryStream();
+            image.SaveAsJpeg(ms, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder { Quality = 90 });
+            return ms.ToArray();
+        }
+
+        /// <summary>
+        /// Decode JPEG bytes from AI service back to raw RGB24 frame buffer.
+        /// Returns null if decoding fails or dimensions do not match.
+        /// </summary>
+        private static byte[]? DecodeJpegToRawFrame(byte[] jpegBytes, int expectedWidth, int expectedHeight)
+        {
+            try
+            {
+                using var image = Image.Load<SixLabors.ImageSharp.PixelFormats.Rgb24>(jpegBytes);
+                if (image.Width != expectedWidth || image.Height != expectedHeight)
+                {
+                    // Resize to expected dimensions if they don't match
+                    image.Mutate(x => x.Resize(expectedWidth, expectedHeight));
+                }
+
+                var rawBytes = new byte[expectedWidth * expectedHeight * 3];
+                image.CopyPixelDataTo(rawBytes);
+                return rawBytes;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
         /// Extract frames from video
         /// </summary>
-        private async Task ExtractFramesAsync(string inputPath, string framesDir, double frameRate, CancellationToken cancellationToken, bool isInterlaced = false)
+        private async Task ExtractFramesAsync(string inputPath, string framesDir, double frameRate, CancellationToken cancellationToken, bool isInterlaced = false, bool isHDR = false)
         {
             // Use provided frame rate or default to 30 if invalid
             var effectiveFps = frameRate > 0 ? frameRate : 30;
@@ -901,13 +1242,21 @@ namespace JellyfinUpscalerPlugin.Services
             vfFilters.Add($"fps={effectiveFps}");
 
             var vfArg = string.Join(",", vfFilters);
-            var args = $"-i \"{inputPath}\" -vf \"{vfArg}\" \"{framesDir}/frame_%06d.png\"";
-            
+
+            // For HDR content, extract as 16-bit PNG to preserve dynamic range
+            var pixFmtArg = isHDR ? " -pix_fmt rgb48be" : "";
+            var args = $"-i \"{inputPath}\" -vf \"{vfArg}\"{pixFmtArg} \"{framesDir}/frame_%06d.png\"";
+
+            if (isHDR)
+            {
+                _logger.LogInformation("Extracting frames as 16-bit PNG for HDR content: {File}", Path.GetFileName(inputPath));
+            }
+
             var result = await Cli.Wrap(_ffmpegPath)
                 .WithArguments(args)
                 .WithValidation(CommandResultValidation.None)
                 .ExecuteAsync(cancellationToken);
-            
+
             if (result.ExitCode != 0)
             {
                 throw new InvalidOperationException($"Frame extraction failed with exit code {result.ExitCode}");
@@ -1279,13 +1628,91 @@ namespace JellyfinUpscalerPlugin.Services
         }
 
         /// <summary>
-        /// Check if video is HDR
+        /// Check if video is HDR using pixel format, color transfer, color primaries, and bit depth
         /// </summary>
-        private bool IsHDRVideo(FFMpegCore.VideoStream videoStream)
+        private bool IsHDRVideo(FFMpegCore.VideoStream videoStream, VideoInfo info)
         {
-            return videoStream.PixelFormat?.Contains("bt2020") == true ||
-                   videoStream.PixelFormat?.Contains("smpte2084") == true ||
-                   videoStream.PixelFormat?.Contains("p010") == true;
+            // Check pixel format for HDR indicators
+            bool pixelFormatHDR = videoStream.PixelFormat?.Contains("bt2020") == true ||
+                                  videoStream.PixelFormat?.Contains("smpte2084") == true ||
+                                  videoStream.PixelFormat?.Contains("p010") == true;
+
+            // Check color transfer for PQ (HDR10/HDR10+/Dolby Vision) or HLG
+            bool transferHDR = string.Equals(info.ColorTransfer, "smpte2084", StringComparison.OrdinalIgnoreCase) ||
+                               string.Equals(info.ColorTransfer, "arib-std-b67", StringComparison.OrdinalIgnoreCase);
+
+            // Check color primaries for BT.2020 wide color gamut
+            bool primariesBT2020 = string.Equals(info.ColorPrimaries, "bt2020", StringComparison.OrdinalIgnoreCase);
+
+            // Check bit depth > 8
+            bool highBitDepth = info.BitDepth > 8;
+
+            return pixelFormatHDR || transferHDR || (primariesBT2020 && highBitDepth);
+        }
+
+        /// <summary>
+        /// Detect HDR properties (color_transfer, color_primaries, bit_depth) via raw FFprobe JSON output
+        /// </summary>
+        private async Task DetectHDRPropertiesAsync(string inputPath, VideoInfo info)
+        {
+            try
+            {
+                var stdoutBuffer = new System.Text.StringBuilder();
+                var result = await Cli.Wrap(_ffprobePath)
+                    .WithArguments($"-v quiet -select_streams v:0 -show_streams -print_format json \"{inputPath}\"")
+                    .WithValidation(CommandResultValidation.None)
+                    .WithStandardOutputPipe(PipeTarget.ToStringBuilder(stdoutBuffer))
+                    .ExecuteAsync();
+
+                if (result.ExitCode != 0)
+                {
+                    _logger.LogDebug("FFprobe HDR detection returned non-zero exit code for {File}", Path.GetFileName(inputPath));
+                    return;
+                }
+
+                var json = stdoutBuffer.ToString();
+                using var doc = JsonDocument.Parse(json);
+                var streams = doc.RootElement.GetProperty("streams");
+                if (streams.GetArrayLength() == 0) return;
+
+                var stream = streams[0];
+
+                if (stream.TryGetProperty("color_transfer", out var ct))
+                {
+                    info.ColorTransfer = ct.GetString() ?? "";
+                }
+
+                if (stream.TryGetProperty("color_primaries", out var cp))
+                {
+                    info.ColorPrimaries = cp.GetString() ?? "";
+                }
+
+                if (stream.TryGetProperty("bits_per_raw_sample", out var bprs))
+                {
+                    var bprsStr = bprs.GetString() ?? "";
+                    if (int.TryParse(bprsStr, out var bitDepth) && bitDepth > 0)
+                    {
+                        info.BitDepth = bitDepth;
+                    }
+                }
+
+                // Fallback: infer bit depth from pixel format name
+                if (info.BitDepth == 8 && !string.IsNullOrEmpty(info.PixelFormat))
+                {
+                    var pf = info.PixelFormat.ToLowerInvariant();
+                    if (pf.Contains("p010") || pf.Contains("10le") || pf.Contains("10be"))
+                        info.BitDepth = 10;
+                    else if (pf.Contains("p012") || pf.Contains("12le") || pf.Contains("12be"))
+                        info.BitDepth = 12;
+                }
+
+                _logger.LogDebug("HDR properties: ColorTransfer={Transfer}, ColorPrimaries={Primaries}, BitDepth={BitDepth}",
+                    info.ColorTransfer, info.ColorPrimaries, info.BitDepth);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to detect HDR properties for {File}", Path.GetFileName(inputPath));
+            }
         }
 
         /// <summary>
