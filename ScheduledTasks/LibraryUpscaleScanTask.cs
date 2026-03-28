@@ -309,7 +309,7 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                     if (File.Exists(outputPath))
                     {
                         try { File.Delete(outputPath); }
-                        catch (Exception ex) { _logger.LogWarning(ex, "AI Upscaler: Failed to cleanup partial output: {Path}", outputPath); }
+                        catch (Exception cleanupEx) { _logger.LogWarning(cleanupEx, "AI Upscaler: Failed to cleanup partial output: {Path}", outputPath); }
                     }
                 }
             }
