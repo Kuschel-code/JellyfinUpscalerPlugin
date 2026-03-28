@@ -1135,12 +1135,16 @@ def upscale_with_ncnn(img: np.ndarray) -> np.ndarray:
             wy = np.ones(th, dtype=np.float32)
             wx = np.ones(tw, dtype=np.float32)
             if overlap > 0:
-                ramp = np.linspace(0, 1, min(overlap * scale, th // 2) if th > 1 else 0, dtype=np.float32)
-                wy[:len(ramp)] = ramp
-                wy[-len(ramp):] = ramp[::-1]
-                ramp_x = np.linspace(0, 1, min(overlap * scale, tw // 2) if tw > 1 else 0, dtype=np.float32)
-                wx[:len(ramp_x)] = ramp_x
-                wx[-len(ramp_x):] = ramp_x[::-1]
+                ramp_len = min(overlap * scale, th // 2) if th > 1 else 0
+                if ramp_len > 0:
+                    ramp = np.linspace(0, 1, ramp_len + 1, dtype=np.float32)[1:]
+                    wy[:len(ramp)] = ramp
+                    wy[-len(ramp):] = ramp[::-1]
+                ramp_len_x = min(overlap * scale, tw // 2) if tw > 1 else 0
+                if ramp_len_x > 0:
+                    ramp_x = np.linspace(0, 1, ramp_len_x + 1, dtype=np.float32)[1:]
+                    wx[:len(ramp_x)] = ramp_x
+                    wx[-len(ramp_x):] = ramp_x[::-1]
             return wy[:, None] * wx[None, :]
 
         for y in range(0, h, step):
@@ -1256,7 +1260,7 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
                     state.current_model_input_frames = model_info.get("input_frames", 1)
                     state.onnx_model_name = model_name
                     state.cv_model = None
-                state.providers = session.get_providers()
+                    state.providers = session.get_providers()
                 logger.info(f"ONNX model {model_name} loaded with override providers: {state.providers}")
                 return True
             except Exception as e:
@@ -1315,7 +1319,7 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
                                 state.use_gpu = True
                                 state.gpu_name = f"Apple Neural Engine ({platform.processor() or 'Apple Silicon'})"
                                 state.cv_model = None
-                            state.providers = active
+                                state.providers = active
                             logger.info(f"ONNX model {model_name} loaded with CoreML: {active}")
                             return True
                     except Exception as e:
@@ -1333,6 +1337,7 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
         # Try each chain
         session = None
         last_error = None
+        openvino_cpu_fallback = False
 
         for chain_idx, chain in enumerate(provider_chains):
             providers = chain['providers']
@@ -1400,7 +1405,7 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
                         )
                         actual_providers = session.get_providers()
                         logger.warning("OpenVINO running on CPU (GPU compute runtime not available)")
-                        state.use_gpu = False
+                        openvino_cpu_fallback = True
                         break
                     except Exception as e2:
                         logger.warning(f"OpenVINO CPU also failed: {e2}")
@@ -1449,6 +1454,8 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
                 logger.info("TensorRT probe failed — keeping CUDA (no context poisoning)")
 
         with _model_lock:
+            # Release old ONNX session before replacing to free GPU memory
+            old_session = state.onnx_session
             state.onnx_session = session
             state.onnx_model_name = model_name
             state.onnx_model_scale = scale
@@ -1461,6 +1468,11 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
             state.last_load_error = None
             # Update providers list inside lock for thread safety
             state.providers = session.get_providers()
+            if openvino_cpu_fallback:
+                state.use_gpu = False
+        # Explicitly free old session outside lock to avoid holding it during GC
+        if old_session is not None and old_session is not session:
+            del old_session
 
         state.model_last_used[model_name] = time.time()
         logger.info(f"ONNX model {model_name} loaded successfully with: {state.providers}")
@@ -1661,11 +1673,11 @@ def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
             ramp_y = min(overlap, th // 2) if th > 1 else 0
             ramp_x = min(overlap, tw // 2) if tw > 1 else 0
             if ramp_y > 0:
-                ramp = np.linspace(0, 1, ramp_y, dtype=np.float32)
+                ramp = np.linspace(0, 1, ramp_y + 1, dtype=np.float32)[1:]
                 wy[:ramp_y] = ramp
                 wy[-ramp_y:] = ramp[::-1]
             if ramp_x > 0:
-                ramp = np.linspace(0, 1, ramp_x, dtype=np.float32)
+                ramp = np.linspace(0, 1, ramp_x + 1, dtype=np.float32)[1:]
                 wx[:ramp_x] = ramp
                 wx[-ramp_x:] = ramp[::-1]
         return wy[:, None] * wx[None, :]  # (th, tw)
@@ -1783,11 +1795,11 @@ def upscale_multiframe(frames: list) -> np.ndarray:
                 ramp_y = min(ramp, actual_th // 2) if actual_th > 1 else 0
                 ramp_x = min(ramp, actual_tw // 2) if actual_tw > 1 else 0
                 for i in range(ramp_y):
-                    blend_y[i] = i / ramp
-                    blend_y[actual_th - 1 - i] = i / ramp
+                    blend_y[i] = (i + 1) / (ramp + 1)
+                    blend_y[actual_th - 1 - i] = (i + 1) / (ramp + 1)
                 for i in range(ramp_x):
-                    blend_x[i] = i / ramp
-                    blend_x[actual_tw - 1 - i] = i / ramp
+                    blend_x[i] = (i + 1) / (ramp + 1)
+                    blend_x[actual_tw - 1 - i] = (i + 1) / (ramp + 1)
             blend_w = blend_y[:, None] * blend_x[None, :]
             blend_w3 = blend_w[:, :, None]
 

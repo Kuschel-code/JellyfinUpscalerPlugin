@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Security;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
@@ -152,6 +153,7 @@ namespace JellyfinUpscalerPlugin.Services
             try
             {
                 var xml = File.ReadAllText(xmlPath);
+                var escapedPath = SecurityElement.Escape(wrapperPath);
 
                 // Simple XML replacement (not using XmlDocument to avoid dependencies)
                 if (xml.Contains("<EncoderAppPath>"))
@@ -159,12 +161,12 @@ namespace JellyfinUpscalerPlugin.Services
                     xml = System.Text.RegularExpressions.Regex.Replace(
                         xml,
                         "<EncoderAppPath>.*?</EncoderAppPath>",
-                        $"<EncoderAppPath>{wrapperPath}</EncoderAppPath>"
+                        $"<EncoderAppPath>{escapedPath}</EncoderAppPath>"
                     );
                 }
                 else
                 {
-                    xml = xml.Replace("</EncodingOptions>", $"  <EncoderAppPath>{wrapperPath}</EncoderAppPath>\n</EncodingOptions>");
+                    xml = xml.Replace("</EncodingOptions>", $"  <EncoderAppPath>{escapedPath}</EncoderAppPath>\n</EncodingOptions>");
                 }
 
                 File.WriteAllText(xmlPath, xml);
@@ -183,9 +185,10 @@ namespace JellyfinUpscalerPlugin.Services
         {
             try
             {
+                var escapedPath = SecurityElement.Escape(wrapperPath);
                 var xml = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <EncodingOptions xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xmlns:xsd=""http://www.w3.org/2001/XMLSchema"">
-  <EncoderAppPath>{wrapperPath}</EncoderAppPath>
+  <EncoderAppPath>{escapedPath}</EncoderAppPath>
   <TranscodingTempPath></TranscodingTempPath>
   <FallbackFontPath></FallbackFontPath>
   <EnableHardwareEncoding>true</EnableHardwareEncoding>
