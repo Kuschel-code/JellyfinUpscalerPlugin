@@ -2773,6 +2773,8 @@ async def models_disk_usage():
 async def models_cleanup(max_age_days: int = 30, dry_run: bool = True, request: Request = None):
     """Clean up models not used within max_age_days. Use dry_run=false to actually delete.
     Requires X-Api-Token header matching API_TOKEN env var for destructive operations."""
+    if max_age_days < 0 or max_age_days > 36500:
+        raise HTTPException(status_code=400, detail="max_age_days must be 0-36500")
     # Require API token for non-dry-run (destructive) operations
     if not dry_run:
         expected_token = os.getenv("API_TOKEN", "")
@@ -2786,6 +2788,10 @@ async def models_cleanup(max_age_days: int = 30, dry_run: bool = True, request: 
     cutoff = time.time() - (max_age_days * 86400)
     to_delete = []
     kept = []
+    actually_freed_mb = 0.0
+
+    with _model_lock:
+        current = state.current_model
 
     for f in os.listdir(models_dir):
         fpath = os.path.join(models_dir, f)
@@ -2795,29 +2801,32 @@ async def models_cleanup(max_age_days: int = 30, dry_run: bool = True, request: 
         model_key = f.replace(".onnx", "").replace(".pb", "")
         last_used = state.model_last_used.get(model_key, 0)
 
-        # Don't delete the currently loaded model
-        if state.current_model and model_key == state.current_model:
+        # Don't delete the currently loaded model (read under lock above)
+        if current and model_key == current:
             kept.append({"name": f, "reason": "currently loaded"})
             continue
 
         if last_used < cutoff:
-            size_mb = round(os.path.getsize(fpath) / 1024 / 1024, 1)
+            try:
+                size_mb = round(os.path.getsize(fpath) / 1024 / 1024, 1)
+            except OSError:
+                continue
             to_delete.append({"name": f, "size_mb": size_mb, "last_used_days_ago": int((time.time() - last_used) / 86400) if last_used > 0 else -1})
             if not dry_run:
                 try:
                     os.remove(fpath)
+                    actually_freed_mb += size_mb
                     logger.info(f"Deleted unused model: {f} ({size_mb}MB)")
                 except Exception as e:
                     logger.warning(f"Failed to delete {f}: {e}")
         else:
             kept.append({"name": f, "reason": "recently used"})
 
-    freed_mb = sum(m["size_mb"] for m in to_delete)
     return {
         "dry_run": dry_run,
         "to_delete": to_delete,
         "kept": kept,
-        "freed_mb": freed_mb,
+        "freed_mb": round(actually_freed_mb, 1) if not dry_run else sum(m["size_mb"] for m in to_delete),
         "deleted_count": len(to_delete) if not dry_run else 0
     }
 
