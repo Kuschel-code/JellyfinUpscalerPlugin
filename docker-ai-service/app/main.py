@@ -707,6 +707,32 @@ AVAILABLE_MODELS = {
         "available": NCNN_AVAILABLE
     },
 
+    # ============================================================
+    # === RIFE Models (Frame Interpolation) ===
+    # ============================================================
+    "rife-v4.6": {
+        "name": "RIFE v4.6 (Frame Interpolation)",
+        "url": "https://github.com/nihui/rife-ncnn-vulkan/releases/download/v0.0.0/rife-v4.6.onnx",
+        "scale": 1,
+        "description": "RIFE v4.6 — Real-Time Frame Interpolation (2x FPS). Generates intermediate frames between two input frames.",
+        "type": "onnx",
+        "category": "interpolation",
+        "model_type": "rife",
+        "input_frames": 2,
+        "available": True
+    },
+    "rife-v4.6-lite": {
+        "name": "RIFE v4.6 Lite (Fast Frame Interpolation)",
+        "url": "https://github.com/nihui/rife-ncnn-vulkan/releases/download/v0.0.0/rife-v4.6-lite.onnx",
+        "scale": 1,
+        "description": "RIFE v4.6 Lite — Faster Frame Interpolation with slightly reduced quality. Good for real-time use.",
+        "type": "onnx",
+        "category": "interpolation",
+        "model_type": "rife",
+        "input_frames": 2,
+        "available": True
+    },
+
 }
 
 
@@ -2036,6 +2062,132 @@ def upscale_multiframe(frames: list) -> np.ndarray:
     output = output / weight
     output = np.clip(output * 255.0, 0, 255).astype(np.uint8)
     return cv2.cvtColor(output, cv2.COLOR_RGB2BGR)
+
+
+def load_rife_model(model_name: str = "rife-v4.6") -> bool:
+    """Load a RIFE interpolation model into memory using ONNX Runtime.
+
+    Follows the same provider fallback chain as load_onnx_model but stores
+    the session in state.rife_session so it does not conflict with the
+    upscaling model stored in state.onnx_session.
+    """
+    if not ONNX_AVAILABLE:
+        logger.error("ONNX Runtime not available — cannot load RIFE model")
+        return False
+
+    if model_name not in AVAILABLE_MODELS:
+        logger.error(f"Unknown RIFE model: {model_name}")
+        return False
+
+    model_info = AVAILABLE_MODELS[model_name]
+    if model_info.get("category") != "interpolation":
+        logger.error(f"Model {model_name} is not an interpolation model")
+        return False
+
+    model_path = get_model_path(model_name)
+    if not model_path.exists():
+        logger.error(f"RIFE model file not found: {model_path}")
+        return False
+
+    try:
+        # Build provider list — prefer GPU, fall back to CPU
+        available_providers = ort.get_available_providers()
+        providers = []
+        if 'CUDAExecutionProvider' in available_providers and state.use_gpu:
+            providers.append('CUDAExecutionProvider')
+        if 'OpenVINOExecutionProvider' in available_providers and state.use_gpu:
+            providers.append('OpenVINOExecutionProvider')
+        providers.append('CPUExecutionProvider')
+
+        session = ort.InferenceSession(str(model_path), providers=providers)
+        active_providers = session.get_providers()
+
+        with _model_lock:
+            state.rife_session = session
+            state.rife_model_name = model_name
+            state.rife_loaded = True
+
+        logger.info(f"RIFE model {model_name} loaded successfully (providers: {active_providers})")
+        state.model_last_used[model_name] = time.time()
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to load RIFE model {model_name}: {e}")
+        state.last_load_error = str(e)
+        return False
+
+
+def interpolate_frame_rife(frame1: np.ndarray, frame2: np.ndarray,
+                           session, timestep: float = 0.5) -> np.ndarray:
+    """Run RIFE interpolation between two frames.
+
+    Args:
+        frame1: First frame as BGR numpy array (H, W, 3) uint8.
+        frame2: Second frame as BGR numpy array (H, W, 3) uint8.
+        session: ONNX Runtime InferenceSession for the RIFE model.
+        timestep: Interpolation position between frame1 (0.0) and frame2 (1.0).
+                  Default 0.5 produces the midpoint frame.
+
+    Returns:
+        Interpolated frame as BGR numpy array (H, W, 3) uint8.
+    """
+    # Convert BGR to RGB and normalize to [0, 1] float32
+    f1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+    f2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+
+    h, w, _ = f1.shape
+
+    # Pad to multiple of 32 (RIFE architecture requirement)
+    pad_h = (32 - h % 32) % 32
+    pad_w = (32 - w % 32) % 32
+    if pad_h > 0 or pad_w > 0:
+        f1 = np.pad(f1, ((0, pad_h), (0, pad_w), (0, 0)), mode='reflect')
+        f2 = np.pad(f2, ((0, pad_h), (0, pad_w), (0, 0)), mode='reflect')
+
+    # Transpose to NCHW: (1, 3, H, W)
+    f1_t = np.transpose(f1, (2, 0, 1))[np.newaxis, ...]
+    f2_t = np.transpose(f2, (2, 0, 1))[np.newaxis, ...]
+
+    # Concatenate on channel dimension -> (1, 6, H, W) — two RGB frames
+    combined = np.concatenate([f1_t, f2_t], axis=1)
+
+    # Timestep tensor (1, 1, H, W) filled with the timestep value
+    ts = np.full((1, 1, f1.shape[0], f1.shape[1]), timestep, dtype=np.float32)
+
+    # Determine input names and build feed dict dynamically
+    input_names = [inp.name for inp in session.get_inputs()]
+    output_names = [out.name for out in session.get_outputs()]
+
+    if len(input_names) == 1:
+        # Single input: concatenated frames (1, 6, H, W)
+        feed = {input_names[0]: combined}
+    elif len(input_names) == 2:
+        # Two inputs: frames + timestep
+        feed = {input_names[0]: combined, input_names[1]: ts}
+    elif len(input_names) == 3:
+        # Three inputs: frame1, frame2, timestep
+        feed = {input_names[0]: f1_t, input_names[1]: f2_t, input_names[2]: ts}
+    else:
+        # Fallback: try frames + timestep as first two inputs
+        feed = {input_names[0]: combined, input_names[1]: ts}
+
+    # Run inference
+    results = session.run(output_names, feed)
+    output = results[0]  # (1, 3, H, W)
+
+    # Convert back to HWC BGR uint8
+    output = np.squeeze(output, axis=0)  # (3, H, W)
+    output = np.transpose(output, (1, 2, 0))  # (H, W, 3)
+
+    # Remove padding
+    if pad_h > 0 or pad_w > 0:
+        output = output[:h, :w, :]
+
+    # Denormalize and convert RGB -> BGR
+    output = np.clip(output * 255.0, 0, 255).astype(np.uint8)
+    output = cv2.cvtColor(output, cv2.COLOR_RGB2BGR)
+
+    return output
 
 
 def upscale_image_array(img: np.ndarray) -> np.ndarray:
