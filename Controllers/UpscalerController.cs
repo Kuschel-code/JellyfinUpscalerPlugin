@@ -81,13 +81,41 @@ namespace JellyfinUpscalerPlugin.Controllers
         private HttpClient GetAiServiceClient() => _httpClientFactory.CreateClient("AiUpscaler");
         private HttpClient GetMultiFrameClient() => _httpClientFactory.CreateClient("AiUpscalerLongTimeout");
 
+        /// <summary>
+        /// Get the validated AI service URL. Rejects non-http(s) schemes and control characters.
+        /// </summary>
+        private string GetValidatedServiceUrl()
+        {
+            const string fallback = "http://localhost:5000";
+            var config = Plugin.Instance?.Configuration;
+            var url = config?.AiServiceUrl?.Trim();
+
+            if (string.IsNullOrEmpty(url))
+                return fallback;
+
+            // Reject URLs containing control characters that could enable header injection
+            if (url.IndexOfAny(new[] { '\n', '\r', '\t' }) >= 0)
+            {
+                _logger.LogWarning("AiServiceUrl rejected (contains control characters), using fallback");
+                return fallback;
+            }
+
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+                (uri.Scheme != "http" && uri.Scheme != "https"))
+            {
+                _logger.LogWarning("AiServiceUrl rejected (invalid scheme: {Scheme}), using fallback", uri?.Scheme ?? "null");
+                return fallback;
+            }
+
+            return url.TrimEnd('/');
+        }
+
         [HttpGet("models")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult> GetAvailableModels()
         {
             // Proxy the Docker AI service's /models endpoint to get the full model list (35+ models)
-            var config = Plugin.Instance?.Configuration;
-            var baseUrl = config?.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
+            var baseUrl = GetValidatedServiceUrl();
 
             try
             {

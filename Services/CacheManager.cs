@@ -33,7 +33,10 @@ namespace JellyfinUpscalerPlugin.Services
         // Cache monitoring
         private readonly Timer? _cleanupTimer;
         private readonly Timer? _statsTimer;
-        
+
+        // Synchronization for cache cleanup vs store operations
+        private readonly SemaphoreSlim _cleanupLock = new(1, 1);
+
         // Performance tracking
         private long _totalCacheSize;
         private int _cacheHits;
@@ -321,9 +324,17 @@ namespace JellyfinUpscalerPlugin.Services
                 
                 _cacheIndex[cacheKey] = entry;
 
-                // Update total cache size (thread-safe)
-                Interlocked.Add(ref _totalCacheSize, entry.FileSize);
-                
+                // Update total cache size under cleanup lock to prevent race with cleanup recalculation
+                await _cleanupLock.WaitAsync();
+                try
+                {
+                    Interlocked.Add(ref _totalCacheSize, entry.FileSize);
+                }
+                finally
+                {
+                    _cleanupLock.Release();
+                }
+
                 // Save index
                 await SaveCacheIndexAsync();
                 
@@ -421,58 +432,67 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         private async Task CleanupOldEntriesAsync()
         {
+            await _cleanupLock.WaitAsync();
             try
             {
                 var maxCacheSize = (long)Config.CacheSizeMB * 1024 * 1024;
                 var currentSize = Interlocked.Read(ref _totalCacheSize);
-                
+
                 if (currentSize <= maxCacheSize)
                 {
                     return;
                 }
-                
+
                 _logger.LogInformation("Cleaning up cache ({CurrentSizeMB:F1}MB > {MaxSizeMB:F1}MB)", currentSize / 1024 / 1024, maxCacheSize / 1024 / 1024);
-                
+
                 // Sort by last accessed time and access count
                 var entriesToRemove = _cacheIndex.Values
                     .OrderBy(e => e.LastAccessedAt)
                     .ThenBy(e => e.AccessCount)
                     .ToList();
-                
+
                 var removedCount = 0;
-                var freedSpace = 0L;
-                
+
                 foreach (var entry in entriesToRemove)
                 {
                     if (currentSize <= (long)(maxCacheSize * CacheCleanupTargetRatio)) // Leave buffer to avoid frequent cleanups
                     {
                         break;
                     }
-                    
+
                     // Remove file
                     if (File.Exists(entry.FilePath))
                     {
                         File.Delete(entry.FilePath);
-                        freedSpace += entry.FileSize;
                         currentSize -= entry.FileSize;
                     }
-                    
+
                     // Remove from index
                     _cacheIndex.TryRemove(entry.Key, out _);
                     removedCount++;
                 }
-                
-                Interlocked.Add(ref _totalCacheSize, -freedSpace);
-                
+
+                // Recalculate total cache size from remaining entries instead of incremental tracking
+                long recalculatedSize = 0;
+                foreach (var kvp in _cacheIndex)
+                {
+                    recalculatedSize += kvp.Value.FileSize;
+                }
+                Interlocked.Exchange(ref _totalCacheSize, recalculatedSize);
+
                 if (removedCount > 0)
                 {
                     await SaveCacheIndexAsync();
-                    _logger.LogInformation("Removed {RemovedCount} cache entries, freed {FreedMB:F1}MB", removedCount, freedSpace / 1024 / 1024);
+                    _logger.LogInformation("Removed {RemovedCount} cache entries, cache now {SizeMB:F1}MB", removedCount, recalculatedSize / 1024.0 / 1024.0);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Cache cleanup failed");
+            }
+            finally
+            {
+                _cleanupLock.Release();
             }
         }
 

@@ -689,6 +689,16 @@ namespace JellyfinUpscalerPlugin.Services
 
             try
             {
+                // Disk space check before frame extraction (minimum 2GB required)
+                var driveInfo = new DriveInfo(Path.GetPathRoot(tempDir) ?? "/");
+                const long minFreeSpace = 2L * 1024 * 1024 * 1024; // 2 GB
+                if (driveInfo.AvailableFreeSpace < minFreeSpace)
+                {
+                    _logger.LogWarning("Insufficient disk space for multi-frame processing. Need at least 2GB, have {Have:F1}GB",
+                        driveInfo.AvailableFreeSpace / 1_000_000_000.0);
+                    throw new InvalidOperationException("Insufficient disk space for multi-frame frame extraction (need at least 2GB free)");
+                }
+
                 var framesDir = Path.Combine(tempDir, "frames");
                 var processedDir = Path.Combine(tempDir, "processed");
                 Directory.CreateDirectory(framesDir);
