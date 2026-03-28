@@ -1615,7 +1615,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             {
                 return StatusCode(504, "AI service timeout (multi-frame inference)");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(502, "AI service error");
             }
