@@ -816,8 +816,8 @@ namespace JellyfinUpscalerPlugin.Controllers
             // Path traversal protection — normalize and block system paths
             inputPath = Path.GetFullPath(inputPath);
             var blockedPrefixes = new[] { "/etc", "/usr", "/bin", "/sbin", "/boot", "/proc", "/sys", "/dev",
-                "/root", "/home", "/var", "/tmp", "/run", "/opt",
-                @"C:\Users", @"C:\Windows", @"C:\Program Files", @"C:\Program Files (x86)" };
+                "/root", "/var/run", "/var/log", "/tmp/systemd", "/run",
+                @"C:\Windows", @"C:\Program Files", @"C:\Program Files (x86)" };
             if (blockedPrefixes.Any(p => inputPath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
                 return BadRequest(new { success = false, error = "Access to system paths is not allowed" });
 
@@ -1020,8 +1020,8 @@ namespace JellyfinUpscalerPlugin.Controllers
                 // Path traversal protection
                 var normalizedPath = Path.GetFullPath(request.InputPath);
                 var blockedPrefixes = new[] { "/etc", "/usr", "/bin", "/sbin", "/boot", "/proc", "/sys", "/dev",
-                    "/root", "/home", "/var", "/tmp", "/run", "/opt",
-                    @"C:\Users", @"C:\Windows", @"C:\Program Files", @"C:\Program Files (x86)" };
+                    "/root", "/var/run", "/var/log", "/tmp/systemd", "/run",
+                    @"C:\Windows", @"C:\Program Files", @"C:\Program Files (x86)" };
                 if (blockedPrefixes.Any(p => normalizedPath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
                     return BadRequest(new { success = false, error = "Access to system paths is not allowed" });
 

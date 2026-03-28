@@ -659,6 +659,7 @@
         // State
         let selectedFile = null;
         let currentModelLoaded = null;
+        let lastUpscaledObjectURL = null;
 
         // API calls
         async function fetchStatus() {
@@ -780,7 +781,11 @@
                 const res = await fetch('/upscale', { method: 'POST', body: formData });
                 if (res.ok) {
                     const blob = await res.blob();
+                    if (lastUpscaledObjectURL) {
+                        URL.revokeObjectURL(lastUpscaledObjectURL);
+                    }
                     const url = URL.createObjectURL(blob);
+                    lastUpscaledObjectURL = url;
                     var upscaledImg = document.createElement('img');
                     upscaledImg.src = url;
                     upscaledImg.alt = 'Upscaled';

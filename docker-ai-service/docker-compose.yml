@@ -9,7 +9,7 @@ services:
     #   dockerfile: Dockerfile
     container_name: jellyfin-ai-upscaler
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"
       # SSH access disabled by default for security.
       # Uncomment below if you need SSH into the container for debugging:
       # - "2222:22"

@@ -13,6 +13,7 @@ import platform
 import subprocess
 import threading
 import hmac
+import socket
 import urllib.parse
 import uuid
 from pathlib import Path
@@ -1565,6 +1566,11 @@ def upscale_image(image_bytes: bytes) -> bytes:
 
     if img is None:
         raise ValueError("Failed to decode image")
+
+    MAX_INPUT_PIXELS = 8_294_400  # ~4K (3840x2160)
+    h, w = img.shape[:2]
+    if h * w > MAX_INPUT_PIXELS:
+        raise HTTPException(status_code=413, detail=f"Image too large: {w}x{h} ({h*w} pixels). Maximum: {MAX_INPUT_PIXELS} pixels")
 
     if model_type == "opencv" and cv_model is not None:
         # Upscale using OpenCV DNN Super Resolution

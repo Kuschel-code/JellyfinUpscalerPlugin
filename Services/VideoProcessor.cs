@@ -706,7 +706,7 @@ namespace JellyfinUpscalerPlugin.Services
 
                 // Extract frames (same as frame-by-frame)
                 var effectiveFps = job.InputInfo?.FrameRate ?? 24;
-                var extractArgs = $"-i \"{inputPath}\" -vf fps={effectiveFps} \"{framesDir}/frame_%06d.png\"";
+                var extractArgs = $"-i \"{inputPath}\" -vf fps={effectiveFps.ToString(System.Globalization.CultureInfo.InvariantCulture)} \"{framesDir}/frame_%06d.png\"";
                 _logger.LogInformation("Extracting frames for multi-frame processing: {Args}", extractArgs);
 
                 await Cli.Wrap(_ffmpegPath)

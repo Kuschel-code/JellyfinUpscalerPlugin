@@ -101,8 +101,9 @@ namespace JellyfinUpscalerPlugin.Services
 
                 if (_paused)
                 {
-                    // Re-signal so next WaitAsync picks it up after unpause
-                    _signal.Release();
+                    // Re-signal so next WaitAsync picks it up after unpause, but only if queue has items
+                    if (_queue.Count > 0)
+                        _signal.Release();
                     await Task.Delay(500, ct);
                     continue;
                 }

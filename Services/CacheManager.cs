@@ -338,7 +338,7 @@ namespace JellyfinUpscalerPlugin.Services
                 // Save index
                 await SaveCacheIndexAsync();
                 
-                _logger.LogInformation("Cached: {InputFileName} -> {CacheFileName} ({SizeMB:F1}MB)", Path.GetFileName(inputPath), fileName, entry.FileSize / 1024 / 1024);
+                _logger.LogInformation("Cached: {InputFileName} -> {CacheFileName} ({SizeMB:F1}MB)", Path.GetFileName(inputPath), fileName, entry.FileSize / 1024.0 / 1024.0);
                 
                 return true;
             }
@@ -593,7 +593,7 @@ namespace JellyfinUpscalerPlugin.Services
             try
             {
                 var stats = GetCacheStatistics();
-                _logger.LogInformation("Cache stats: {TotalEntries} entries, {TotalSizeMB:F1}MB ({UsagePercentage:F1}%), {HitRate:F1}% hit rate", stats.TotalEntries, stats.TotalSize / 1024 / 1024, stats.UsagePercentage, stats.HitRate);
+                _logger.LogInformation("Cache stats: {TotalEntries} entries, {TotalSizeMB:F1}MB ({UsagePercentage:F1}%), {HitRate:F1}% hit rate", stats.TotalEntries, stats.TotalSize / 1024.0 / 1024.0, stats.UsagePercentage, stats.HitRate);
             }
             catch (Exception ex)
             {
@@ -620,6 +620,8 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 _logger.LogError(ex, "Failed to save cache index on dispose");
             }
+
+            _cleanupLock?.Dispose();
         }
     }
 }
