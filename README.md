@@ -271,6 +271,32 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 ## Changelog
 
+### v1.5.5.3 (Deepscan Round 2 — Deep Security Hardening)
+- **Security**: SSH command injection prevention — single-quote each FFmpeg arg before SSH
+- **Security**: Model name regex validation on `/models/load` endpoint
+- **Security**: CRLF injection check on AiServiceUrl at runtime
+- **Security**: Import settings validation — RemoteHost, RemoteUser, SSH key path, mount paths
+- **Security**: Symlink rejection for SSH key files (`FileInfo.LinkTarget`)
+- **Security**: Command injection fix in chmod — `ProcessStartInfo.ArgumentList`
+- **Security**: XSS fix — `addEventListener` replaces inline `onclick` in Docker Web UI
+- **Security**: Private IP blocking on `/connections/register` (SSRF prevention)
+- **Security**: Exception message sanitization (no internal details leaked)
+- **Security**: Prometheus metric label injection prevention (`safe_name`)
+- **Input Validation**: `gpu_device_id` bounds (0–99) on `/models/load` and `/config`
+- **Input Validation**: `max_concurrent` bounds (1–256) on `/config`
+- **Input Validation**: `max_age_days` bounds (0–36500) on `/models/cleanup`
+- **Input Validation**: `ScaleFactor` whitelist (2, 3, 4, 8) on settings import
+- **Input Validation**: `AiServiceUrl` scheme validation on import + runtime
+- **Input Validation**: Content-Length pre-check on JSON deserialization
+- **Thread Safety**: `/models/cleanup` reads `current_model` under `_model_lock`
+- **Thread Safety**: Cleanup tracks `actually_freed_mb` only on successful delete
+- **Manifests**: Fixed checksum mismatch for v1.5.5.0 (fixes #51)
+- **Manifests**: Synced checksums across manifest.json, repository-jellyfin.json, repository-simple.json
+- **Manifests**: Normalized 11+ uppercase MD5 checksums to lowercase
+- **Manifests**: Fixed wrong changelog for v1.5.1.0 in repository-simple.json
+- **Manifests**: Aligned `targetAbi` to 10.11.0.0 in publish_plugin/meta.json
+- **Docker**: Updated docker-ai-service README (40+ models, docker5 tags)
+
 ### v1.5.5.1 (Deepscan — Security & Quality Hardening)
 - **Security**: XSS prevention in Docker Web UI (escapeHtml + textContent)
 - **Security**: SSRF fix — model download URL validated by hostname, not prefix
