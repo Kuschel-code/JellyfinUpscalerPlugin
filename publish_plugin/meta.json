@@ -8,5 +8,5 @@
     "framework": "net9.0",
     "owner": "Kuschel-code",
     "category": "Video Enhancement",
-    "changelog": "v1.5.5.4: Deep scan fixes — HDR 10-bit pipeline, real-time AI upscaling, RIFE frame interpolation, FP16 mixed precision, deinterlacing, scene-change detection. 29 security issues fixed (SSRF, API auth, DNS rebinding, path traversal, race conditions)."
+    "changelog": "v1.5.5.4: 5 new configurable features (Quality Metrics PSNR/SSIM, Face Enhancement GFPGAN, Film Grain Management, Custom ONNX Model Upload, OpenAPI Docs) + dashboard UI + deep security hardening."
 }

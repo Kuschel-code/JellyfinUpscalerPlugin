@@ -574,6 +574,7 @@
                                 <div class="form-col inputContainer"><label class="inputLabel" for="MaxUpscaledFileSizeMB">Max Output File Size (MB)</label><input type="number" id="MaxUpscaledFileSizeMB" min="0" /><div class="fieldDescription">0 = unlimited. Skip if output would exceed.</div></div>
                             </div>
                             <div class="checkboxContainer" style="margin-top:0.5rem;"><label><input type="checkbox" id="RestrictToUnwatchedContent" /> Only upscale unwatched content</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="SkipUpscaledOnRescan" /> Skip already upscaled items on rescan</label></div>
                             <div class="selectContainer" style="margin-top:0.5rem;">
                                 <label class="selectLabel" for="OutputCodec">Output Codec</label>
                                 <select id="OutputCodec">
@@ -603,7 +604,8 @@
                         <summary>Webhook Notifications</summary>
                         <div class="details-body">
                             <div class="inputContainer"><label class="inputLabel" for="WebhookUrl">Webhook URL</label><input type="url" id="WebhookUrl" placeholder="https://example.com/webhook" /><div class="fieldDescription">HTTP POST on job complete/failure. Leave empty to disable.</div></div>
-                            <div class="checkboxContainer" style="margin-top:0.5rem;"><label><input type="checkbox" id="WebhookOnComplete" /> Notify on completion</label></div>
+                            <div class="checkboxContainer" style="margin-top:0.5rem;"><label><input type="checkbox" id="EnableProgressNotifications" /> Enable progress notifications</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="WebhookOnComplete" /> Notify on completion</label></div>
                             <div class="checkboxContainer"><label><input type="checkbox" id="WebhookOnFailure" /> Notify on failure</label></div>
                         </div>
                     </details>
@@ -1280,9 +1282,10 @@
                     'EnableAutoModelSelection','EnableProcessingQueue','PauseQueueDuringPlayback',
                     'PersistQueueAcrossRestarts','WebhookOnComplete','WebhookOnFailure',
                     'EnableModelPreloading','EnableModelAutoCleanup','EnableHealthMonitoring',
-                    'EnableGpuFallbackToCpu','RestrictToUnwatchedContent','EnableRealtimeUpscaling',
+                    'EnableGpuFallbackToCpu','RestrictToUnwatchedContent','SkipUpscaledOnRescan',
+                    'EnableRealtimeUpscaling',
                     'EnableQualityMetrics','EnableFaceEnhancement','EnableGrainManagement',
-                    'EnableCustomModelUpload','EnableApiDocs'];
+                    'EnableCustomModelUpload','EnableApiDocs','EnableProgressNotifications'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) {
@@ -1355,9 +1358,10 @@
                     'EnableAutoModelSelection','EnableProcessingQueue','PauseQueueDuringPlayback',
                     'PersistQueueAcrossRestarts','WebhookOnComplete','WebhookOnFailure',
                     'EnableModelPreloading','EnableModelAutoCleanup','EnableHealthMonitoring',
-                    'EnableGpuFallbackToCpu','RestrictToUnwatchedContent','EnableRealtimeUpscaling',
+                    'EnableGpuFallbackToCpu','RestrictToUnwatchedContent','SkipUpscaledOnRescan',
+                    'EnableRealtimeUpscaling',
                     'EnableQualityMetrics','EnableFaceEnhancement','EnableGrainManagement',
-                    'EnableCustomModelUpload','EnableApiDocs'];
+                    'EnableCustomModelUpload','EnableApiDocs','EnableProgressNotifications'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) config[f] = !!el.checked;

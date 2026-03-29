@@ -8,5 +8,5 @@
     "framework": "net9.0",
     "owner": "Kuschel-code",
     "category": "Video Enhancement",
-    "changelog": "v1.5.5.4: Critical bug fixes — circuit breaker, ncnn reshape, audio passthrough, health endpoint, config validation — 20+ functional bug fixes (thread safety, circuit breaker, tile blending, ncnn-Vulkan backend, per-model download locks). All 6 Dockerfiles verified and fixed."
+    "changelog": "v1.5.5.4: 5 new configurable features (Quality Metrics PSNR/SSIM, Face Enhancement GFPGAN, Film Grain Management, Custom ONNX Model Upload, OpenAPI Docs) + dashboard UI + deep security hardening."
 }
