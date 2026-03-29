@@ -353,7 +353,12 @@ namespace JellyfinUpscalerPlugin
         public bool EnableFaceEnhancement { get; set; } = true;
 
         /// <summary>Face enhancement blend strength (0.0 = off, 1.0 = full). Default 0.7.</summary>
-        public double FaceEnhanceStrength { get; set; } = 0.7;
+        public double FaceEnhanceStrength
+        {
+            get => _faceEnhanceStrength;
+            set => _faceEnhanceStrength = Math.Clamp(value, 0.0, 1.0);
+        }
+        private double _faceEnhanceStrength = 0.7;
 
         // ── Film Grain Management ────────────────────────────────────────
 
@@ -369,7 +374,12 @@ namespace JellyfinUpscalerPlugin
         private int _grainDenoiseStrength = 5;
 
         /// <summary>Grain re-addition intensity after upscaling (0 = off, 1-50 = noise σ).</summary>
-        public double GrainReaddIntensity { get; set; } = 0.0;
+        public double GrainReaddIntensity
+        {
+            get => _grainReaddIntensity;
+            set => _grainReaddIntensity = Math.Clamp(value, 0.0, 50.0);
+        }
+        private double _grainReaddIntensity = 0.0;
 
         // ── Custom Model Upload ──────────────────────────────────────────
 

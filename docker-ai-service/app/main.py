@@ -6,12 +6,15 @@ Multi-GPU selection, robust TensorRT/CUDA/OpenVINO fallback
 """
 
 import os
+import re
 import time
 import logging
 import asyncio
 import collections
 import platform
+import shutil
 import subprocess
+import tempfile
 import threading
 import hmac
 import socket
@@ -4062,16 +4065,19 @@ async def process_grain_endpoint(
 
 # Face detection + enhancement state
 _face_cascade = None
+_face_cascade_lock = threading.Lock()
 _face_enhance_session = None
 _face_enhance_lock = threading.Lock()
 
 
 def _get_face_cascade():
-    """Lazy-load OpenCV's Haar cascade for face detection."""
+    """Lazy-load OpenCV's Haar cascade for face detection (thread-safe)."""
     global _face_cascade
     if _face_cascade is None:
-        cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-        _face_cascade = cv2.CascadeClassifier(cascade_path)
+        with _face_cascade_lock:
+            if _face_cascade is None:  # Double-check after lock
+                cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+                _face_cascade = cv2.CascadeClassifier(cascade_path)
     return _face_cascade
 
 
@@ -4231,7 +4237,6 @@ async def upload_face_enhance_model(file: UploadFile = File(...)):
     model_path = model_dir / "face_enhance.onnx"
 
     # Validate ONNX model before saving
-    import tempfile
     with tempfile.NamedTemporaryFile(suffix=".onnx", delete=False) as tmp:
         tmp.write(data)
         tmp_path = tmp.name
@@ -4251,7 +4256,6 @@ async def upload_face_enhance_model(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=f"Invalid ONNX model: {e}")
 
     # Save validated model
-    import shutil
     shutil.move(tmp_path, str(model_path))
 
     # Load into session
@@ -4299,7 +4303,6 @@ async def upload_custom_model(
         raise HTTPException(status_code=503, detail="ONNX Runtime not available")
 
     # Validate model name (alphanumeric + hyphens only)
-    import re
     if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", model_name):
         raise HTTPException(status_code=400, detail="model_name must be alphanumeric with hyphens/underscores, max 64 chars")
 
@@ -4310,7 +4313,6 @@ async def upload_custom_model(
         raise HTTPException(status_code=413, detail=f"Model too large (max {MAX_MODEL_UPLOAD_BYTES // (1024*1024)} MB)")
 
     # Validate ONNX model
-    import tempfile
     with tempfile.NamedTemporaryFile(suffix=".onnx", delete=False) as tmp:
         tmp.write(data)
         tmp_path = tmp.name
@@ -4340,22 +4342,22 @@ async def upload_custom_model(
     model_filename = f"{model_name}.onnx"
     model_path = model_dir / model_filename
 
-    import shutil
     shutil.move(tmp_path, str(model_path))
 
     # Register in AVAILABLE_MODELS (runtime only — not persisted across restarts)
-    AVAILABLE_MODELS[model_name] = {
-        "name": model_name,
-        "description": description or f"Custom uploaded model ({scale}x)",
-        "url": "",  # No download URL for custom models
-        "filename": model_filename,
-        "type": "onnx",
-        "scale": scale,
-        "category": "super-resolution",
-        "input_channels": input_channels,
-        "available": True,
-        "custom": True,
-    }
+    with _model_lock:
+        AVAILABLE_MODELS[model_name] = {
+            "name": model_name,
+            "description": description or f"Custom uploaded model ({scale}x)",
+            "url": "",  # No download URL for custom models
+            "filename": model_filename,
+            "type": "onnx",
+            "scale": scale,
+            "category": "super-resolution",
+            "input_channels": input_channels,
+            "available": True,
+            "custom": True,
+        }
 
     logger.info(f"Custom model registered: {model_name} ({scale}x, {len(data) / (1024*1024):.1f} MB)")
 
@@ -4390,11 +4392,9 @@ async def delete_custom_model(model_name: str):
     if model_path.exists():
         os.unlink(str(model_path))
 
-    # Unregister
-    del AVAILABLE_MODELS[model_name]
-
-    # Unload if currently active
+    # Unregister and unload if active (under lock for thread safety)
     with _model_lock:
+        AVAILABLE_MODELS.pop(model_name, None)
         if state.current_model == model_name:
             state.current_model = None
             state.onnx_session = None

@@ -54,16 +54,31 @@ namespace JellyfinUpscalerPlugin.Models
         public bool EnableFaceEnhancement { get; set; } = false;
 
         /// <summary>Face enhancement blend strength (0.0-1.0).</summary>
-        public double FaceEnhanceStrength { get; set; } = 0.7;
+        public double FaceEnhanceStrength
+        {
+            get => _faceEnhanceStrength;
+            set => _faceEnhanceStrength = Math.Clamp(value, 0.0, 1.0);
+        }
+        private double _faceEnhanceStrength = 0.7;
 
         /// <summary>Enable film grain removal before upscaling.</summary>
         public bool EnableGrainRemoval { get; set; } = false;
 
         /// <summary>Grain denoise strength (1-30).</summary>
-        public int GrainDenoiseStrength { get; set; } = 5;
+        public int GrainDenoiseStrength
+        {
+            get => _grainDenoiseStrength;
+            set => _grainDenoiseStrength = Math.Clamp(value, 1, 30);
+        }
+        private int _grainDenoiseStrength = 5;
 
-        /// <summary>Grain re-addition intensity after upscaling (0 = off).</summary>
-        public double GrainReaddIntensity { get; set; } = 0.0;
+        /// <summary>Grain re-addition intensity after upscaling (0 = off, max 50).</summary>
+        public double GrainReaddIntensity
+        {
+            get => _grainReaddIntensity;
+            set => _grainReaddIntensity = Math.Clamp(value, 0.0, 50.0);
+        }
+        private double _grainReaddIntensity = 0.0;
 
         /// <summary>Compute PSNR/SSIM quality metrics after upscaling.</summary>
         public bool EnableQualityMetrics { get; set; } = false;
