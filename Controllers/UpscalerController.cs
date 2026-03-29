@@ -1186,13 +1186,13 @@ namespace JellyfinUpscalerPlugin.Controllers
                 // Apply each setting if present
                 if (settings.TryGetProperty("EnablePlugin", out var v)) config.EnablePlugin = v.GetBoolean();
                 if (settings.TryGetProperty("Model", out v)) config.Model = v.GetString() ?? "realesrgan-x4";
-                if (settings.TryGetProperty("ScaleFactor", out v))
+                if (settings.TryGetProperty("ScaleFactor", out v)) config.ScaleFactor = v.GetInt32();
+                if (settings.TryGetProperty("QualityLevel", out v))
                 {
-                    var scale = v.GetInt32();
-                    var validScales = new[] { 2, 3, 4, 8 };
-                    config.ScaleFactor = validScales.Contains(scale) ? scale : 4;
+                    var ql = v.GetString() ?? "medium";
+                    var validQL = new[] { "fast", "medium", "high" };
+                    if (validQL.Contains(ql)) config.QualityLevel = ql;
                 }
-                if (settings.TryGetProperty("QualityLevel", out v)) config.QualityLevel = v.GetString() ?? "medium";
                 if (settings.TryGetProperty("HardwareAcceleration", out v)) config.HardwareAcceleration = v.GetBoolean();
                 if (settings.TryGetProperty("MaxConcurrentStreams", out v)) config.MaxConcurrentStreams = v.GetInt32();
                 if (settings.TryGetProperty("MaxVRAMUsage", out v)) config.MaxVRAMUsage = v.GetInt32();
@@ -1241,7 +1241,11 @@ namespace JellyfinUpscalerPlugin.Controllers
                 if (settings.TryGetProperty("PlayerButton", out v)) config.PlayerButton = v.GetBoolean();
                 if (settings.TryGetProperty("Notifications", out v)) config.Notifications = v.GetBoolean();
                 if (settings.TryGetProperty("AutoRetryButton", out v)) config.AutoRetryButton = v.GetBoolean();
-                if (settings.TryGetProperty("ButtonPosition", out v)) config.ButtonPosition = v.GetString() ?? "right";
+                if (settings.TryGetProperty("ButtonPosition", out v))
+                {
+                    var pos = v.GetString() ?? "right";
+                    if (pos == "left" || pos == "right") config.ButtonPosition = pos;
+                }
                 if (settings.TryGetProperty("EnableComparisonView", out v)) config.EnableComparisonView = v.GetBoolean();
                 if (settings.TryGetProperty("EnablePerformanceMetrics", out v)) config.EnablePerformanceMetrics = v.GetBoolean();
                 if (settings.TryGetProperty("EnableAutoBenchmarking", out v)) config.EnableAutoBenchmarking = v.GetBoolean();
