@@ -193,6 +193,11 @@ To batch-upscale your low-resolution content:
 - **Real-Time Upscaling**: Two-tier system — WebGL client-side shader + Server AI frame pipeline with auto-fallback
 - **Pre-Upscaling**: Scheduled task batch-processes low-res videos overnight
 - **Image Upscaling**: Scheduled task for posters, backdrops, thumbnails, logos, banners
+- **Quality Metrics (PSNR/SSIM)**: Compare bicubic vs AI upscale quality with Gaussian-based SSIM (NEW in v1.5.5.4)
+- **Face Enhancement (GFPGAN)**: Haar cascade detection → ONNX inference or bilateral filter fallback, soft elliptical blending (NEW in v1.5.5.4)
+- **Film Grain Management**: NL-means denoising for removal, Gaussian noise for re-grain, configurable "both" mode (NEW in v1.5.5.4)
+- **Custom ONNX Model Upload**: Upload and validate custom ONNX models at runtime with NCHW shape validation (NEW in v1.5.5.4)
+- **OpenAPI/Swagger Docs**: Togglable `/docs` and `/redoc` endpoints for API exploration (NEW in v1.5.5.4)
 - **Model Fallback Chain**: Comma-separated models — tries next on failure (images + videos)
 - **Priority Queue**: Pause/resume, priority 1-10, optional persistence across restarts
 - **Prometheus Metrics**: `/metrics` endpoint with per-model jobs, failures, frames, timing
@@ -248,6 +253,14 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 | **Circuit Breaker Threshold** | Consecutive failures before circuit opens (default: 5) |
 | **Model Disk Quota MB** | Max disk space for cached models (default: 2048) |
 | **Enable Model Auto Cleanup** | LRU cleanup of unused models (default: true) |
+| **Enable Quality Metrics** | Compute PSNR/SSIM scores after upscaling (default: true) |
+| **Enable Face Enhancement** | Detect and enhance faces via GFPGAN ONNX or fallback (default: true) |
+| **Face Enhance Strength** | Blend ratio 0.0–1.0 for face enhancement (default: 0.7) |
+| **Enable Grain Management** | Film grain removal/re-addition pipeline (default: true) |
+| **Grain Denoise Strength** | NL-means filter strength 1–30 (default: 5) |
+| **Grain Re-add Intensity** | Gaussian noise sigma 0–50 for re-grain (default: 0) |
+| **Enable Custom Model Upload** | Allow uploading custom ONNX models at runtime (default: true) |
+| **Enable API Docs** | Toggle /docs and /redoc Swagger endpoints (default: true) |
 | **Player Button** | Show/hide AI button in video player |
 | **Real-Time Upscaling** | Enable/disable real-time enhancement during playback |
 | **Output Codec** | Codec for upscaled videos: H.264, H.265, or copy |
@@ -271,7 +284,25 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 ## Changelog
 
-### v1.5.5.4 (Deepscan Round 2+3 — Deep Security Hardening)
+### v1.5.5.4 (5 New Features + Deep Security Hardening)
+
+**New Features (all configurable via Dashboard):**
+- **Quality Metrics (PSNR/SSIM)**: `/quality-metrics` endpoint — compare bicubic vs AI upscale with Gaussian-based SSIM matching scikit-image
+- **Face Enhancement (GFPGAN)**: `/enhance-faces` endpoint — Haar cascade detection, GFPGAN ONNX inference (512x512) or bilateral filter fallback, soft elliptical mask blending
+- **Film Grain Management**: `/process-grain` endpoint — NL-means denoising for removal, Gaussian noise for re-grain, "both" mode chains: remove → upscale → re-add
+- **Custom ONNX Model Upload**: `/models/upload` + `/models/upload/{name}` endpoints — validate ONNX shape (4D NCHW), register at runtime, path traversal protection
+- **OpenAPI/Swagger Docs**: Togglable `/docs` and `/redoc` via `ENABLE_API_DOCS` env var
+- **Dashboard UI**: New settings sections for all 5 features with full load/save support
+- **Settings Export/Import**: All 30+ new config properties included in export/import with validation
+
+**Security hardening (deep scan rounds 1–4):**
+- Thread safety: `/features` endpoint reads shared state under locks, `enhance_face_region` lock granularity improved
+- Image dimension validation: `MAX_IMAGE_PIXELS` (256 MP) on all new endpoints to prevent OOM
+- Resource leaks: temp file cleanup on `shutil.move` failure in both upload endpoints
+- Path traversal: defense-in-depth `resolve()+startswith()` checks in upload and delete endpoints
+- Error sanitization: ONNX validation errors split into safe `ValueError` vs generic `Exception`
+- Input validation: `MaxUpscaledFileSizeMB` Math.Max(0), `QualityLevel`/`ButtonPosition` allowlists on import
+- Removed unused `scale` parameter from `/quality-metrics`
 
 **Round 3 — 13 HIGH fixes (C# + Docker):**
 - **SSRF**: Centralized proxy URL validation via `GetValidatedServiceUrl()` — all 13 proxy endpoints secured
