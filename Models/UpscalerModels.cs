@@ -49,9 +49,27 @@ namespace JellyfinUpscalerPlugin.Models
         public bool PreserveAudio { get; set; } = true;
         public bool PreserveSubtitles { get; set; } = true;
         public bool EnableAIUpscaling { get; set; } = true;
-        
+
+        /// <summary>Enable face enhancement post-processing.</summary>
+        public bool EnableFaceEnhancement { get; set; } = false;
+
+        /// <summary>Face enhancement blend strength (0.0-1.0).</summary>
+        public double FaceEnhanceStrength { get; set; } = 0.7;
+
+        /// <summary>Enable film grain removal before upscaling.</summary>
+        public bool EnableGrainRemoval { get; set; } = false;
+
+        /// <summary>Grain denoise strength (1-30).</summary>
+        public int GrainDenoiseStrength { get; set; } = 5;
+
+        /// <summary>Grain re-addition intensity after upscaling (0 = off).</summary>
+        public double GrainReaddIntensity { get; set; } = 0.0;
+
+        /// <summary>Compute PSNR/SSIM quality metrics after upscaling.</summary>
+        public bool EnableQualityMetrics { get; set; } = false;
+
         public VideoProcessingOptions() { }
-        
+
         public VideoProcessingOptions(VideoProcessingOptions other)
         {
             Model = other.Model;
@@ -62,6 +80,12 @@ namespace JellyfinUpscalerPlugin.Models
             PreserveAudio = other.PreserveAudio;
             PreserveSubtitles = other.PreserveSubtitles;
             EnableAIUpscaling = other.EnableAIUpscaling;
+            EnableFaceEnhancement = other.EnableFaceEnhancement;
+            FaceEnhanceStrength = other.FaceEnhanceStrength;
+            EnableGrainRemoval = other.EnableGrainRemoval;
+            GrainDenoiseStrength = other.GrainDenoiseStrength;
+            GrainReaddIntensity = other.GrainReaddIntensity;
+            EnableQualityMetrics = other.EnableQualityMetrics;
         }
     }
 

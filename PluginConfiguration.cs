@@ -342,6 +342,45 @@ namespace JellyfinUpscalerPlugin
         /// <summary>Skip items that already have an _upscaled version on rescan.</summary>
         public bool SkipUpscaledOnRescan { get; set; } = true;
 
+        // ── Quality Metrics ───────────────────────────────────────────────
+
+        /// <summary>Enable PSNR/SSIM quality metrics computation after upscaling.</summary>
+        public bool EnableQualityMetrics { get; set; } = true;
+
+        // ── Face Enhancement ─────────────────────────────────────────────
+
+        /// <summary>Enable AI face enhancement (GFPGAN/CodeFormer) post-processing.</summary>
+        public bool EnableFaceEnhancement { get; set; } = true;
+
+        /// <summary>Face enhancement blend strength (0.0 = off, 1.0 = full). Default 0.7.</summary>
+        public double FaceEnhanceStrength { get; set; } = 0.7;
+
+        // ── Film Grain Management ────────────────────────────────────────
+
+        /// <summary>Enable film grain removal before upscaling and optional re-addition after.</summary>
+        public bool EnableGrainManagement { get; set; } = true;
+
+        /// <summary>Denoise strength for grain removal (1-30). Higher = more smoothing.</summary>
+        public int GrainDenoiseStrength
+        {
+            get => _grainDenoiseStrength;
+            set => _grainDenoiseStrength = Math.Clamp(value, 1, 30);
+        }
+        private int _grainDenoiseStrength = 5;
+
+        /// <summary>Grain re-addition intensity after upscaling (0 = off, 1-50 = noise σ).</summary>
+        public double GrainReaddIntensity { get; set; } = 0.0;
+
+        // ── Custom Model Upload ──────────────────────────────────────────
+
+        /// <summary>Allow users to upload custom ONNX models to the AI service.</summary>
+        public bool EnableCustomModelUpload { get; set; } = true;
+
+        // ── API Documentation ────────────────────────────────────────────
+
+        /// <summary>Expose OpenAPI/Swagger docs on the AI service (/docs, /redoc).</summary>
+        public bool EnableApiDocs { get; set; } = true;
+
         // ── Version Tracking ─────────────────────────────────────────────
 
         /// <summary>Current plugin version string for webhook payloads and diagnostics.</summary>

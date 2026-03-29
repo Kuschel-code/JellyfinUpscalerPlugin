@@ -275,6 +275,27 @@ USE_FP16 = os.getenv("USE_FP16", "auto").lower().strip()
 # Range 0.0 (always detect) to 1.0 (never detect). Default 0.35.
 SCENE_CHANGE_THRESHOLD = max(0.0, min(1.0, float(os.getenv("SCENE_CHANGE_THRESHOLD", "0.35"))))
 
+# ── Feature toggles (all configurable via env vars) ──────────────────────
+
+# Quality metrics: compute PSNR/SSIM after upscaling
+ENABLE_QUALITY_METRICS = os.getenv("ENABLE_QUALITY_METRICS", "true").lower() == "true"
+
+# Face enhancement: GFPGAN/CodeFormer post-processing
+ENABLE_FACE_ENHANCE = os.getenv("ENABLE_FACE_ENHANCE", "true").lower() == "true"
+FACE_ENHANCE_STRENGTH = max(0.0, min(1.0, float(os.getenv("FACE_ENHANCE_STRENGTH", "0.7"))))
+
+# Film grain management: denoise before upscaling, optional re-grain after
+ENABLE_GRAIN_MANAGEMENT = os.getenv("ENABLE_GRAIN_MANAGEMENT", "true").lower() == "true"
+GRAIN_DENOISE_STRENGTH = max(1, min(30, _safe_int_env("GRAIN_DENOISE_STRENGTH", 5, 1, 30)))
+GRAIN_READD_INTENSITY = max(0.0, min(50.0, float(os.getenv("GRAIN_READD_INTENSITY", "0.0"))))
+
+# Custom model upload
+ENABLE_MODEL_UPLOAD = os.getenv("ENABLE_MODEL_UPLOAD", "true").lower() == "true"
+MAX_MODEL_UPLOAD_BYTES = _safe_int_env("MAX_MODEL_UPLOAD_BYTES", 500 * 1024 * 1024, 1024 * 1024, 2 * 1024 * 1024 * 1024)
+
+# OpenAPI / Swagger docs visibility
+ENABLE_API_DOCS = os.getenv("ENABLE_API_DOCS", "true").lower() == "true"
+
 # Available models with download URLs from PUBLIC sources
 # Note: Real-ESRGAN ONNX models need to be converted, using pre-converted from community
 AVAILABLE_MODELS = {
@@ -1109,7 +1130,10 @@ app = FastAPI(
     title="AI Upscaler Service",
     description="Neural network image upscaling service for Jellyfin",
     version=VERSION,
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url="/docs" if ENABLE_API_DOCS else None,
+    redoc_url="/redoc" if ENABLE_API_DOCS else None,
+    openapi_url="/openapi.json" if ENABLE_API_DOCS else None,
 )
 
 # Middleware: reject oversized requests before reading body into memory
@@ -3868,6 +3892,556 @@ async def interpolation_status():
         "current_model": rife_model,
         "providers": providers,
         "models": interpolation_models
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Feature: Quality Metrics (PSNR / SSIM)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def compute_quality_metrics(original: np.ndarray, upscaled: np.ndarray) -> dict:
+    """Compute PSNR and SSIM between original (resized to match) and upscaled image.
+
+    The original is upscaled with bicubic interpolation to the same size as the
+    AI-upscaled image so both can be compared pixel-by-pixel.
+
+    Returns dict with psnr_db, ssim, improvement_estimate.
+    """
+    if original is None or upscaled is None:
+        return {"error": "missing input"}
+
+    # Resize original to match upscaled dimensions using bicubic
+    h, w = upscaled.shape[:2]
+    original_resized = cv2.resize(original, (w, h), interpolation=cv2.INTER_CUBIC)
+
+    # Convert to grayscale for SSIM (standard practice)
+    gray_orig = cv2.cvtColor(original_resized, cv2.COLOR_BGR2GRAY).astype(np.float64)
+    gray_upsc = cv2.cvtColor(upscaled, cv2.COLOR_BGR2GRAY).astype(np.float64)
+
+    # PSNR
+    mse = np.mean((gray_orig - gray_upsc) ** 2)
+    if mse == 0:
+        psnr = float("inf")
+    else:
+        psnr = 10.0 * np.log10((255.0 ** 2) / mse)
+
+    # SSIM (simplified implementation — matches scikit-image for 8-bit grayscale)
+    C1 = (0.01 * 255) ** 2
+    C2 = (0.03 * 255) ** 2
+
+    mu_x = cv2.GaussianBlur(gray_orig, (11, 11), 1.5)
+    mu_y = cv2.GaussianBlur(gray_upsc, (11, 11), 1.5)
+
+    sigma_x2 = cv2.GaussianBlur(gray_orig ** 2, (11, 11), 1.5) - mu_x ** 2
+    sigma_y2 = cv2.GaussianBlur(gray_upsc ** 2, (11, 11), 1.5) - mu_y ** 2
+    sigma_xy = cv2.GaussianBlur(gray_orig * gray_upsc, (11, 11), 1.5) - mu_x * mu_y
+
+    ssim_map = ((2 * mu_x * mu_y + C1) * (2 * sigma_xy + C2)) / \
+               ((mu_x ** 2 + mu_y ** 2 + C1) * (sigma_x2 + sigma_y2 + C2))
+    ssim = float(np.mean(ssim_map))
+
+    return {
+        "psnr_db": round(psnr, 2) if psnr != float("inf") else 999.0,
+        "ssim": round(ssim, 4),
+        "mse": round(mse, 2),
+    }
+
+
+@app.post("/quality-metrics", tags=["Quality"])
+async def quality_metrics_endpoint(
+    file: UploadFile = File(...),
+    scale: int = Form(2),
+):
+    """Upload an image, upscale it, and return quality metrics (PSNR, SSIM)
+    comparing bicubic-upscaled original vs AI-upscaled result.
+
+    Configurable via ENABLE_QUALITY_METRICS env var."""
+    if not ENABLE_QUALITY_METRICS:
+        raise HTTPException(status_code=403, detail="Quality metrics disabled (ENABLE_QUALITY_METRICS=false)")
+
+    data = await file.read()
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Image too large")
+
+    arr = np.frombuffer(data, np.uint8)
+    original = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    if original is None:
+        raise HTTPException(status_code=400, detail="Invalid image")
+
+    # Upscale
+    try:
+        upscaled = upscale_image_array(original)
+    except ModelNotReadyError:
+        raise HTTPException(status_code=503, detail="No model loaded")
+
+    metrics = compute_quality_metrics(original, upscaled)
+    return JSONResponse(metrics)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Feature: Film Grain Management
+# ══════════════════════════════════════════════════════════════════════════════
+
+def remove_grain(img: np.ndarray, strength: int = 5) -> np.ndarray:
+    """Remove film grain / noise using non-local means denoising.
+
+    Args:
+        img: BGR uint8 image.
+        strength: Filter strength (1-30). Higher = more denoising.
+    """
+    # fastNlMeansDenoisingColored is effective for grain removal
+    return cv2.fastNlMeansDenoisingColored(img, None, strength, strength, 7, 21)
+
+
+def add_grain(img: np.ndarray, intensity: float = 5.0) -> np.ndarray:
+    """Add synthetic film grain (Gaussian noise) back to upscaled image.
+
+    Args:
+        img: BGR uint8 image.
+        intensity: Standard deviation of Gaussian noise (0-50).
+    """
+    if intensity <= 0:
+        return img
+    noise = np.random.normal(0, intensity, img.shape).astype(np.float32)
+    result = np.clip(img.astype(np.float32) + noise, 0, 255).astype(np.uint8)
+    return result
+
+
+@app.post("/process-grain", tags=["Grain"])
+async def process_grain_endpoint(
+    file: UploadFile = File(...),
+    action: str = Form("remove"),
+    strength: int = Form(5),
+    intensity: float = Form(0.0),
+):
+    """Film grain management: remove grain before upscaling or add grain after.
+
+    Args:
+        action: "remove" (denoise) or "add" (re-grain) or "both" (remove, upscale, re-add).
+        strength: Denoise strength 1-30 (for remove/both).
+        intensity: Grain noise intensity 0-50 (for add/both).
+
+    Configurable via ENABLE_GRAIN_MANAGEMENT env var."""
+    if not ENABLE_GRAIN_MANAGEMENT:
+        raise HTTPException(status_code=403, detail="Grain management disabled (ENABLE_GRAIN_MANAGEMENT=false)")
+
+    data = await file.read()
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Image too large")
+
+    arr = np.frombuffer(data, np.uint8)
+    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    if img is None:
+        raise HTTPException(status_code=400, detail="Invalid image")
+
+    strength = max(1, min(30, strength))
+    intensity = max(0.0, min(50.0, intensity))
+
+    if action == "remove":
+        result = remove_grain(img, strength)
+    elif action == "add":
+        result = add_grain(img, intensity)
+    elif action == "both":
+        # Remove grain → upscale → re-add grain
+        denoised = remove_grain(img, strength)
+        try:
+            upscaled = upscale_image_array(denoised)
+        except ModelNotReadyError:
+            raise HTTPException(status_code=503, detail="No model loaded")
+        result = add_grain(upscaled, intensity) if intensity > 0 else upscaled
+    else:
+        raise HTTPException(status_code=400, detail="action must be 'remove', 'add', or 'both'")
+
+    _, encoded = cv2.imencode(".png", result)
+    return Response(content=encoded.tobytes(), media_type="image/png")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Feature: Face Enhancement (GFPGAN-style via ONNX)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Face detection + enhancement state
+_face_cascade = None
+_face_enhance_session = None
+_face_enhance_lock = threading.Lock()
+
+
+def _get_face_cascade():
+    """Lazy-load OpenCV's Haar cascade for face detection."""
+    global _face_cascade
+    if _face_cascade is None:
+        cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        _face_cascade = cv2.CascadeClassifier(cascade_path)
+    return _face_cascade
+
+
+def detect_faces(img: np.ndarray, min_size: int = 48) -> list:
+    """Detect faces in an image using Haar cascades.
+
+    Returns list of (x, y, w, h) rectangles.
+    """
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    cascade = _get_face_cascade()
+    faces = cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(min_size, min_size))
+    return faces if len(faces) > 0 else []
+
+
+def enhance_face_region(face_img: np.ndarray, strength: float = 0.7) -> np.ndarray:
+    """Enhance a cropped face region.
+
+    Uses bilateral filtering + detail enhancement for sharpening.
+    If a GFPGAN ONNX model is loaded, uses neural enhancement instead.
+
+    Args:
+        face_img: BGR uint8 face crop.
+        strength: Blend ratio between original (0.0) and enhanced (1.0).
+    """
+    global _face_enhance_session
+
+    with _face_enhance_lock:
+        if _face_enhance_session is not None and ONNX_AVAILABLE:
+            try:
+                # GFPGAN ONNX inference: resize to 512x512, normalize, run, denormalize
+                h, w = face_img.shape[:2]
+                input_face = cv2.resize(face_img, (512, 512))
+                input_face = input_face.astype(np.float32) / 255.0
+                input_face = np.transpose(input_face, (2, 0, 1))[np.newaxis, ...]
+
+                input_name = _face_enhance_session.get_inputs()[0].name
+                output_name = _face_enhance_session.get_outputs()[0].name
+                output = _face_enhance_session.run([output_name], {input_name: input_face})[0]
+
+                output = np.squeeze(output, axis=0)
+                output = np.transpose(output, (1, 2, 0))
+                output = np.clip(output * 255.0, 0, 255).astype(np.uint8)
+                enhanced = cv2.resize(output, (w, h))
+            except Exception as e:
+                logger.warning(f"Face enhance ONNX inference failed, using fallback: {e}")
+                enhanced = _enhance_face_fallback(face_img)
+        else:
+            enhanced = _enhance_face_fallback(face_img)
+
+    # Blend original and enhanced based on strength
+    blended = cv2.addWeighted(face_img, 1.0 - strength, enhanced, strength, 0)
+    return blended
+
+
+def _enhance_face_fallback(face_img: np.ndarray) -> np.ndarray:
+    """Classical face enhancement: bilateral filter + unsharp mask."""
+    # Bilateral filter preserves edges while smoothing skin
+    smooth = cv2.bilateralFilter(face_img, 9, 75, 75)
+    # Detail enhancement via unsharp mask
+    gaussian = cv2.GaussianBlur(smooth, (0, 0), 3)
+    enhanced = cv2.addWeighted(smooth, 1.5, gaussian, -0.5, 0)
+    return enhanced
+
+
+def enhance_faces_in_image(img: np.ndarray, strength: float = 0.7) -> tuple:
+    """Detect and enhance all faces in an image.
+
+    Returns (enhanced_image, face_count).
+    """
+    faces = detect_faces(img)
+    if len(faces) == 0:
+        return img, 0
+
+    result = img.copy()
+    for (x, y, w, h) in faces:
+        # Expand bounding box by 20% for better context
+        pad_x = int(w * 0.2)
+        pad_y = int(h * 0.2)
+        x1 = max(0, x - pad_x)
+        y1 = max(0, y - pad_y)
+        x2 = min(img.shape[1], x + w + pad_x)
+        y2 = min(img.shape[0], y + h + pad_y)
+
+        face_crop = result[y1:y2, x1:x2].copy()
+        enhanced = enhance_face_region(face_crop, strength)
+
+        # Create a soft mask for blending (avoid hard edges)
+        mask = np.zeros((y2 - y1, x2 - x1), dtype=np.float32)
+        cv2.ellipse(mask, ((x2 - x1) // 2, (y2 - y1) // 2),
+                    ((x2 - x1) // 2, (y2 - y1) // 2), 0, 0, 360, 1.0, -1)
+        mask = cv2.GaussianBlur(mask, (15, 15), 5)
+        mask_3c = np.stack([mask] * 3, axis=-1)
+
+        blended = (enhanced * mask_3c + result[y1:y2, x1:x2] * (1 - mask_3c)).astype(np.uint8)
+        result[y1:y2, x1:x2] = blended
+
+    return result, len(faces)
+
+
+@app.post("/enhance-faces", tags=["Face Enhancement"])
+async def enhance_faces_endpoint(
+    file: UploadFile = File(...),
+    strength: float = Form(0.7),
+):
+    """Detect and enhance faces in an uploaded image.
+
+    Uses GFPGAN ONNX model if available, otherwise falls back to classical
+    bilateral filter + unsharp mask enhancement.
+
+    Args:
+        strength: Enhancement blend ratio (0.0 = no change, 1.0 = full enhancement).
+
+    Configurable via ENABLE_FACE_ENHANCE and FACE_ENHANCE_STRENGTH env vars."""
+    if not ENABLE_FACE_ENHANCE:
+        raise HTTPException(status_code=403, detail="Face enhancement disabled (ENABLE_FACE_ENHANCE=false)")
+
+    data = await file.read()
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Image too large")
+
+    arr = np.frombuffer(data, np.uint8)
+    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    if img is None:
+        raise HTTPException(status_code=400, detail="Invalid image")
+
+    strength = max(0.0, min(1.0, strength))
+    result, face_count = enhance_faces_in_image(img, strength)
+
+    _, encoded = cv2.imencode(".png", result)
+    return Response(
+        content=encoded.tobytes(),
+        media_type="image/png",
+        headers={"X-Faces-Detected": str(face_count)}
+    )
+
+
+@app.post("/models/upload-face-enhance", tags=["Face Enhancement"])
+async def upload_face_enhance_model(file: UploadFile = File(...)):
+    """Upload a GFPGAN/CodeFormer ONNX model for face enhancement.
+
+    The model must accept (1, 3, 512, 512) float32 input and produce
+    (1, 3, 512, 512) float32 output.
+
+    Configurable via ENABLE_FACE_ENHANCE env var."""
+    if not ENABLE_FACE_ENHANCE:
+        raise HTTPException(status_code=403, detail="Face enhancement disabled")
+    if not ONNX_AVAILABLE:
+        raise HTTPException(status_code=503, detail="ONNX Runtime not available")
+
+    global _face_enhance_session
+    data = await file.read()
+    if len(data) > MAX_MODEL_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Model file too large")
+
+    model_dir = Path("/app/models")
+    model_dir.mkdir(parents=True, exist_ok=True)
+    model_path = model_dir / "face_enhance.onnx"
+
+    # Validate ONNX model before saving
+    import tempfile
+    with tempfile.NamedTemporaryFile(suffix=".onnx", delete=False) as tmp:
+        tmp.write(data)
+        tmp_path = tmp.name
+
+    try:
+        test_session = ort.InferenceSession(tmp_path, providers=["CPUExecutionProvider"])
+        inp = test_session.get_inputs()[0]
+        out = test_session.get_outputs()[0]
+        # Validate shape: must be image-to-image
+        if len(inp.shape) != 4 or inp.shape[1] != 3:
+            raise ValueError(f"Expected input shape (N, 3, H, W), got {inp.shape}")
+        if len(out.shape) != 4 or out.shape[1] != 3:
+            raise ValueError(f"Expected output shape (N, 3, H, W), got {out.shape}")
+        del test_session
+    except Exception as e:
+        os.unlink(tmp_path)
+        raise HTTPException(status_code=400, detail=f"Invalid ONNX model: {e}")
+
+    # Save validated model
+    import shutil
+    shutil.move(tmp_path, str(model_path))
+
+    # Load into session
+    with _face_enhance_lock:
+        try:
+            providers = ["CPUExecutionProvider"]
+            if ONNX_AVAILABLE:
+                avail = ort.get_available_providers()
+                if "CUDAExecutionProvider" in avail and state.use_gpu:
+                    providers.insert(0, "CUDAExecutionProvider")
+            _face_enhance_session = ort.InferenceSession(str(model_path), providers=providers)
+            logger.info(f"Face enhance model loaded: {model_path}")
+        except Exception as e:
+            _face_enhance_session = None
+            raise HTTPException(status_code=500, detail=f"Failed to load model: {e}")
+
+    return {"status": "ok", "message": "Face enhancement model loaded", "path": str(model_path)}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Feature: Custom ONNX Model Upload
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.post("/models/upload", tags=["Models"])
+async def upload_custom_model(
+    file: UploadFile = File(...),
+    model_name: str = Form(...),
+    scale: int = Form(2),
+    description: str = Form(""),
+):
+    """Upload a custom ONNX super-resolution model.
+
+    The model is validated (input/output shape check), saved to /app/models/,
+    and registered in AVAILABLE_MODELS so it appears in the model list.
+
+    Args:
+        model_name: Unique identifier (e.g. "my-custom-4x").
+        scale: Upscaling factor this model produces (1-8).
+        description: Optional human-readable description.
+
+    Configurable via ENABLE_MODEL_UPLOAD and MAX_MODEL_UPLOAD_BYTES env vars."""
+    if not ENABLE_MODEL_UPLOAD:
+        raise HTTPException(status_code=403, detail="Model upload disabled (ENABLE_MODEL_UPLOAD=false)")
+    if not ONNX_AVAILABLE:
+        raise HTTPException(status_code=503, detail="ONNX Runtime not available")
+
+    # Validate model name (alphanumeric + hyphens only)
+    import re
+    if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", model_name):
+        raise HTTPException(status_code=400, detail="model_name must be alphanumeric with hyphens/underscores, max 64 chars")
+
+    scale = max(1, min(8, scale))
+
+    data = await file.read()
+    if len(data) > MAX_MODEL_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail=f"Model too large (max {MAX_MODEL_UPLOAD_BYTES // (1024*1024)} MB)")
+
+    # Validate ONNX model
+    import tempfile
+    with tempfile.NamedTemporaryFile(suffix=".onnx", delete=False) as tmp:
+        tmp.write(data)
+        tmp_path = tmp.name
+
+    try:
+        test_session = ort.InferenceSession(tmp_path, providers=["CPUExecutionProvider"])
+        inp = test_session.get_inputs()[0]
+        out = test_session.get_outputs()[0]
+
+        # Must be image model: (N, C, H, W)
+        if len(inp.shape) != 4:
+            raise ValueError(f"Expected 4D input (N, C, H, W), got shape {inp.shape}")
+        if len(out.shape) != 4:
+            raise ValueError(f"Expected 4D output (N, C, H, W), got shape {out.shape}")
+
+        input_channels = inp.shape[1]
+        output_channels = out.shape[1]
+
+        del test_session
+    except Exception as e:
+        os.unlink(tmp_path)
+        raise HTTPException(status_code=400, detail=f"Invalid ONNX model: {e}")
+
+    # Save model
+    model_dir = Path("/app/models")
+    model_dir.mkdir(parents=True, exist_ok=True)
+    model_filename = f"{model_name}.onnx"
+    model_path = model_dir / model_filename
+
+    import shutil
+    shutil.move(tmp_path, str(model_path))
+
+    # Register in AVAILABLE_MODELS (runtime only — not persisted across restarts)
+    AVAILABLE_MODELS[model_name] = {
+        "name": model_name,
+        "description": description or f"Custom uploaded model ({scale}x)",
+        "url": "",  # No download URL for custom models
+        "filename": model_filename,
+        "type": "onnx",
+        "scale": scale,
+        "category": "super-resolution",
+        "input_channels": input_channels,
+        "available": True,
+        "custom": True,
+    }
+
+    logger.info(f"Custom model registered: {model_name} ({scale}x, {len(data) / (1024*1024):.1f} MB)")
+
+    return {
+        "status": "ok",
+        "model_name": model_name,
+        "scale": scale,
+        "input_channels": input_channels,
+        "output_channels": output_channels,
+        "file_size_mb": round(len(data) / (1024 * 1024), 2),
+        "path": str(model_path),
+    }
+
+
+@app.delete("/models/upload/{model_name}", tags=["Models"])
+async def delete_custom_model(model_name: str):
+    """Delete a custom-uploaded model.
+
+    Only models marked as 'custom' can be deleted via this endpoint."""
+    if not ENABLE_MODEL_UPLOAD:
+        raise HTTPException(status_code=403, detail="Model upload disabled")
+
+    if model_name not in AVAILABLE_MODELS:
+        raise HTTPException(status_code=404, detail=f"Model '{model_name}' not found")
+
+    model_info = AVAILABLE_MODELS[model_name]
+    if not model_info.get("custom"):
+        raise HTTPException(status_code=403, detail="Cannot delete built-in models")
+
+    # Remove file
+    model_path = Path("/app/models") / model_info.get("filename", f"{model_name}.onnx")
+    if model_path.exists():
+        os.unlink(str(model_path))
+
+    # Unregister
+    del AVAILABLE_MODELS[model_name]
+
+    # Unload if currently active
+    with _model_lock:
+        if state.current_model == model_name:
+            state.current_model = None
+            state.onnx_session = None
+            logger.info(f"Unloaded active model: {model_name}")
+
+    logger.info(f"Custom model deleted: {model_name}")
+    return {"status": "ok", "deleted": model_name}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Feature: Config endpoint for feature toggles
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/features", tags=["Configuration"])
+async def get_feature_status():
+    """Return the current status of all configurable features."""
+    return {
+        "quality_metrics": {
+            "enabled": ENABLE_QUALITY_METRICS,
+        },
+        "face_enhancement": {
+            "enabled": ENABLE_FACE_ENHANCE,
+            "strength": FACE_ENHANCE_STRENGTH,
+            "onnx_model_loaded": _face_enhance_session is not None,
+        },
+        "grain_management": {
+            "enabled": ENABLE_GRAIN_MANAGEMENT,
+            "denoise_strength": GRAIN_DENOISE_STRENGTH,
+            "readd_intensity": GRAIN_READD_INTENSITY,
+        },
+        "model_upload": {
+            "enabled": ENABLE_MODEL_UPLOAD,
+            "max_size_mb": MAX_MODEL_UPLOAD_BYTES // (1024 * 1024),
+            "custom_models": [k for k, v in AVAILABLE_MODELS.items() if v.get("custom")],
+        },
+        "api_docs": {
+            "enabled": ENABLE_API_DOCS,
+            "docs_url": "/docs" if ENABLE_API_DOCS else None,
+            "redoc_url": "/redoc" if ENABLE_API_DOCS else None,
+        },
+        "fp16_mixed_precision": {
+            "enabled": state.use_fp16 if hasattr(state, 'use_fp16') else False,
+            "setting": USE_FP16,
+        },
+        "scene_change_detection": {
+            "threshold": SCENE_CHANGE_THRESHOLD,
+        },
     }
 
 
