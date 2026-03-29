@@ -1107,7 +1107,56 @@ namespace JellyfinUpscalerPlugin.Controllers
                         config.EnablePreProcessingCache,
                         config.MaxCacheAgeDays,
                         config.CacheSizeMB,
-                        config.GpuDeviceIndex
+                        config.GpuDeviceIndex,
+                        // Quality Metrics & Face Enhancement
+                        config.EnableQualityMetrics,
+                        config.EnableFaceEnhancement,
+                        config.FaceEnhanceStrength,
+                        // Grain Management
+                        config.EnableGrainManagement,
+                        config.GrainDenoiseStrength,
+                        config.GrainReaddIntensity,
+                        // Model Management
+                        config.EnableCustomModelUpload,
+                        config.EnableAutoModelSelection,
+                        config.ModelFallbackChain,
+                        config.PreferredAnimeModel,
+                        config.PreferredLiveActionModel,
+                        config.EnableModelPreloading,
+                        config.ModelDiskQuotaMB,
+                        config.EnableModelAutoCleanup,
+                        config.ModelCleanupDays,
+                        // Output & Processing
+                        config.OutputCodec,
+                        config.MaxUpscaledFileSizeMB,
+                        config.EnableProcessingQueue,
+                        config.MaxQueueSize,
+                        config.PauseQueueDuringPlayback,
+                        config.PersistQueueAcrossRestarts,
+                        // Real-Time Upscaling
+                        config.EnableRealtimeUpscaling,
+                        config.RealtimeMode,
+                        config.RealtimeTargetFps,
+                        config.RealtimeCaptureWidth,
+                        // Notifications & Webhooks
+                        config.EnableProgressNotifications,
+                        WebhookUrl = "[REDACTED]",
+                        config.WebhookOnComplete,
+                        config.WebhookOnFailure,
+                        // Health & Monitoring
+                        config.EnableHealthMonitoring,
+                        config.HealthCheckIntervalSeconds,
+                        config.EnableGpuFallbackToCpu,
+                        config.CircuitBreakerThreshold,
+                        config.CircuitBreakerResetSeconds,
+                        // Scan Filtering
+                        config.MinResolutionWidth,
+                        config.MinResolutionHeight,
+                        config.MaxItemsPerScan,
+                        config.RestrictToUnwatchedContent,
+                        config.SkipUpscaledOnRescan,
+                        // API
+                        config.EnableApiDocs
                     }
                 });
             }
@@ -1200,6 +1249,70 @@ namespace JellyfinUpscalerPlugin.Controllers
                 if (settings.TryGetProperty("MaxCacheAgeDays", out v)) config.MaxCacheAgeDays = v.GetInt32();
                 if (settings.TryGetProperty("CacheSizeMB", out v)) config.CacheSizeMB = v.GetInt32();
                 if (settings.TryGetProperty("GpuDeviceIndex", out v)) config.GpuDeviceIndex = Math.Max(0, v.GetInt32());
+                // Quality Metrics & Face Enhancement
+                if (settings.TryGetProperty("EnableQualityMetrics", out v)) config.EnableQualityMetrics = v.GetBoolean();
+                if (settings.TryGetProperty("EnableFaceEnhancement", out v)) config.EnableFaceEnhancement = v.GetBoolean();
+                if (settings.TryGetProperty("FaceEnhanceStrength", out v)) config.FaceEnhanceStrength = v.GetDouble();
+                // Grain Management
+                if (settings.TryGetProperty("EnableGrainManagement", out v)) config.EnableGrainManagement = v.GetBoolean();
+                if (settings.TryGetProperty("GrainDenoiseStrength", out v)) config.GrainDenoiseStrength = v.GetInt32();
+                if (settings.TryGetProperty("GrainReaddIntensity", out v)) config.GrainReaddIntensity = v.GetDouble();
+                // Model Management
+                if (settings.TryGetProperty("EnableCustomModelUpload", out v)) config.EnableCustomModelUpload = v.GetBoolean();
+                if (settings.TryGetProperty("EnableAutoModelSelection", out v)) config.EnableAutoModelSelection = v.GetBoolean();
+                if (settings.TryGetProperty("ModelFallbackChain", out v)) config.ModelFallbackChain = v.GetString() ?? "";
+                if (settings.TryGetProperty("PreferredAnimeModel", out v)) config.PreferredAnimeModel = v.GetString() ?? "";
+                if (settings.TryGetProperty("PreferredLiveActionModel", out v)) config.PreferredLiveActionModel = v.GetString() ?? "";
+                if (settings.TryGetProperty("EnableModelPreloading", out v)) config.EnableModelPreloading = v.GetBoolean();
+                if (settings.TryGetProperty("ModelDiskQuotaMB", out v)) config.ModelDiskQuotaMB = v.GetInt32();
+                if (settings.TryGetProperty("EnableModelAutoCleanup", out v)) config.EnableModelAutoCleanup = v.GetBoolean();
+                if (settings.TryGetProperty("ModelCleanupDays", out v)) config.ModelCleanupDays = v.GetInt32();
+                // Output & Processing
+                if (settings.TryGetProperty("OutputCodec", out v))
+                {
+                    var codec = v.GetString() ?? "libx264";
+                    var validCodecs = new[] { "libx264", "libx265", "copy" };
+                    if (validCodecs.Contains(codec)) config.OutputCodec = codec;
+                }
+                if (settings.TryGetProperty("MaxUpscaledFileSizeMB", out v)) config.MaxUpscaledFileSizeMB = Math.Max(0, v.GetInt64());
+                if (settings.TryGetProperty("EnableProcessingQueue", out v)) config.EnableProcessingQueue = v.GetBoolean();
+                if (settings.TryGetProperty("MaxQueueSize", out v)) config.MaxQueueSize = v.GetInt32();
+                if (settings.TryGetProperty("PauseQueueDuringPlayback", out v)) config.PauseQueueDuringPlayback = v.GetBoolean();
+                if (settings.TryGetProperty("PersistQueueAcrossRestarts", out v)) config.PersistQueueAcrossRestarts = v.GetBoolean();
+                // Real-Time Upscaling
+                if (settings.TryGetProperty("EnableRealtimeUpscaling", out v)) config.EnableRealtimeUpscaling = v.GetBoolean();
+                if (settings.TryGetProperty("RealtimeMode", out v))
+                {
+                    var mode = v.GetString() ?? "auto";
+                    var validModes = new[] { "auto", "webgl", "server" };
+                    if (validModes.Contains(mode)) config.RealtimeMode = mode;
+                }
+                if (settings.TryGetProperty("RealtimeTargetFps", out v)) config.RealtimeTargetFps = v.GetInt32();
+                if (settings.TryGetProperty("RealtimeCaptureWidth", out v)) config.RealtimeCaptureWidth = v.GetInt32();
+                // Notifications & Webhooks
+                if (settings.TryGetProperty("EnableProgressNotifications", out v)) config.EnableProgressNotifications = v.GetBoolean();
+                if (settings.TryGetProperty("WebhookUrl", out v))
+                {
+                    var url = v.GetString() ?? "";
+                    if (string.IsNullOrEmpty(url) || (Uri.TryCreate(url, UriKind.Absolute, out var wUri) && (wUri.Scheme == "http" || wUri.Scheme == "https")))
+                        config.WebhookUrl = url;
+                }
+                if (settings.TryGetProperty("WebhookOnComplete", out v)) config.WebhookOnComplete = v.GetBoolean();
+                if (settings.TryGetProperty("WebhookOnFailure", out v)) config.WebhookOnFailure = v.GetBoolean();
+                // Health & Monitoring
+                if (settings.TryGetProperty("EnableHealthMonitoring", out v)) config.EnableHealthMonitoring = v.GetBoolean();
+                if (settings.TryGetProperty("HealthCheckIntervalSeconds", out v)) config.HealthCheckIntervalSeconds = v.GetInt32();
+                if (settings.TryGetProperty("EnableGpuFallbackToCpu", out v)) config.EnableGpuFallbackToCpu = v.GetBoolean();
+                if (settings.TryGetProperty("CircuitBreakerThreshold", out v)) config.CircuitBreakerThreshold = v.GetInt32();
+                if (settings.TryGetProperty("CircuitBreakerResetSeconds", out v)) config.CircuitBreakerResetSeconds = v.GetInt32();
+                // Scan Filtering
+                if (settings.TryGetProperty("MinResolutionWidth", out v)) config.MinResolutionWidth = v.GetInt32();
+                if (settings.TryGetProperty("MinResolutionHeight", out v)) config.MinResolutionHeight = v.GetInt32();
+                if (settings.TryGetProperty("MaxItemsPerScan", out v)) config.MaxItemsPerScan = v.GetInt32();
+                if (settings.TryGetProperty("RestrictToUnwatchedContent", out v)) config.RestrictToUnwatchedContent = v.GetBoolean();
+                if (settings.TryGetProperty("SkipUpscaledOnRescan", out v)) config.SkipUpscaledOnRescan = v.GetBoolean();
+                // API
+                if (settings.TryGetProperty("EnableApiDocs", out v)) config.EnableApiDocs = v.GetBoolean();
 
                 Plugin.Instance?.SaveConfiguration();
                 _logger.LogInformation("Settings imported successfully");

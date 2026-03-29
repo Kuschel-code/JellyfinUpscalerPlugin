@@ -249,7 +249,12 @@ namespace JellyfinUpscalerPlugin
         public string OutputCodec { get; set; } = "libx264";
 
         /// <summary>Maximum upscaled file size in MB (0 = unlimited, skip larger videos).</summary>
-        public long MaxUpscaledFileSizeMB { get; set; } = 0;
+        public long MaxUpscaledFileSizeMB
+        {
+            get => _maxUpscaledFileSizeMB;
+            set => _maxUpscaledFileSizeMB = Math.Max(value, 0);
+        }
+        private long _maxUpscaledFileSizeMB;
 
         // ── Processing Queue ─────────────────────────────────────────────
 
