@@ -9,6 +9,7 @@ import os
 import time
 import logging
 import asyncio
+import collections
 import platform
 import subprocess
 import threading
@@ -148,32 +149,30 @@ state = AppState()
 class RealtimeStats:
     """Track real-time upscaling performance."""
 
+    _FPS_WINDOW_SIZE = 60  # Rolling window of last 60 frame timestamps
+
     def __init__(self):
         self.frames_processed: int = 0
         self.total_time: float = 0.0
         self.current_fps: float = 0.0
         self.dropped_frames: int = 0
         self._lock = threading.Lock()
-        self._window_start: float = 0.0
-        self._window_frames: int = 0
+        self._timestamps: collections.deque = collections.deque(maxlen=RealtimeStats._FPS_WINDOW_SIZE)
 
     def record_frame(self, duration: float) -> None:
-        """Record a processed frame and update rolling FPS."""
+        """Record a processed frame and update rolling FPS via sliding window."""
         with self._lock:
             self.frames_processed += 1
             self.total_time += duration
 
             now = time.time()
-            if self._window_start == 0.0:
-                self._window_start = now
-            self._window_frames += 1
+            self._timestamps.append(now)
 
-            # Update FPS every second
-            elapsed = now - self._window_start
-            if elapsed >= 1.0:
-                self.current_fps = self._window_frames / elapsed
-                self._window_start = now
-                self._window_frames = 0
+            # Compute FPS from the sliding window
+            if len(self._timestamps) >= 2:
+                window_elapsed = self._timestamps[-1] - self._timestamps[0]
+                if window_elapsed > 0:
+                    self.current_fps = (len(self._timestamps) - 1) / window_elapsed
 
     def record_drop(self) -> None:
         """Record a dropped frame."""
@@ -199,8 +198,7 @@ class RealtimeStats:
             self.total_time = 0.0
             self.current_fps = 0.0
             self.dropped_frames = 0
-            self._window_start = 0.0
-            self._window_frames = 0
+            self._timestamps.clear()
 
 
 _realtime_stats = RealtimeStats()

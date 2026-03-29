@@ -1827,11 +1827,21 @@ namespace JellyfinUpscalerPlugin.Services
 
                 if (result2.ExitCode == 0)
                 {
-                    var streamOutput = stdOutBuffer2.ToString().ToLowerInvariant();
-                    if (streamOutput.Contains("interlaced"))
+                    var streamJson = stdOutBuffer2.ToString();
+                    using var doc = JsonDocument.Parse(streamJson);
+                    if (doc.RootElement.TryGetProperty("streams", out var streams) && streams.GetArrayLength() > 0)
                     {
-                        _logger.LogInformation("Interlaced content detected via stream info for {File}", Path.GetFileName(inputPath));
-                        return true;
+                        var stream = streams[0];
+                        // Check field_order value specifically (not substring match on entire JSON)
+                        if (stream.TryGetProperty("field_order", out var fieldOrder))
+                        {
+                            var fo = fieldOrder.GetString()?.ToLowerInvariant() ?? "";
+                            if (fo is "tt" or "bb" or "tb" or "bt")
+                            {
+                                _logger.LogInformation("Interlaced content detected via stream field_order for {File}", Path.GetFileName(inputPath));
+                                return true;
+                            }
+                        }
                     }
                 }
 

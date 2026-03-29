@@ -51,8 +51,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Install ncnn-vulkan — try pre-built wheel first, then build from source
 # Note: "ncnn-vulkan" is not a real PyPI package; the correct package is "ncnn"
-RUN pip install --no-cache-dir realsr-ncnn-vulkan-python 2>/dev/null || \
-    pip install --no-cache-dir ncnn 2>/dev/null || \
+RUN pip install --no-cache-dir "realsr-ncnn-vulkan-python>=2.0.0,<3.0" 2>/dev/null || \
+    pip install --no-cache-dir "ncnn>=1.0.20250503,<2.0" 2>/dev/null || \
     (echo "Building ncnn from source with Vulkan support..." && \
      pip install --no-cache-dir pybind11 && \
      git clone --depth 1 --branch 20250503 --single-branch https://github.com/Tencent/ncnn.git /tmp/ncnn && \
