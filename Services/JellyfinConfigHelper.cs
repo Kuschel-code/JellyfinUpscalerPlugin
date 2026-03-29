@@ -108,6 +108,12 @@ namespace JellyfinUpscalerPlugin.Services
                 }
 
                 var wrapperDir = Path.Combine(configDir, "upscaler-wrapper");
+                var fullWrapperDir = Path.GetFullPath(wrapperDir);
+                if (!fullWrapperDir.StartsWith(Path.GetFullPath(configDir), StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogError("Invalid wrapper directory path (path traversal): {Path}", wrapperDir);
+                    return null;
+                }
                 Directory.CreateDirectory(wrapperDir);
 
                 var isWindows = Environment.OSVersion.Platform == PlatformID.Win32NT;

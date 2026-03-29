@@ -1177,8 +1177,10 @@ namespace JellyfinUpscalerPlugin.Services
             }
             finally
             {
-                try { decoderProcess?.Kill(true); } catch { /* best effort */ }
-                try { encoderProcess?.Kill(true); } catch { /* best effort */ }
+                try { decoderProcess?.StandardOutput?.BaseStream?.Dispose(); } catch { }
+                try { encoderProcess?.StandardInput?.BaseStream?.Dispose(); } catch { }
+                try { decoderProcess?.Kill(true); } catch { }
+                try { encoderProcess?.Kill(true); } catch { }
                 decoderProcess?.Dispose();
                 encoderProcess?.Dispose();
             }
@@ -1214,8 +1216,9 @@ namespace JellyfinUpscalerPlugin.Services
                 image.CopyPixelDataTo(rawBytes);
                 return rawBytes;
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"DecodeJpegToRawFrame failed: {ex.Message}");
                 return null;
             }
         }
@@ -1379,6 +1382,12 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         private async Task<byte[]?> UpscaleHDRFrameAsync(byte[] frameData, int scale, CancellationToken cancellationToken)
         {
+            if (scale < 1 || scale > 8)
+            {
+                _logger.LogWarning("Invalid scale factor {Scale} for HDR upscaling, using default 2", scale);
+                scale = 2;
+            }
+
             var config = Plugin.Instance?.Configuration;
             var baseUrl = config?.AiServiceUrl ?? "http://localhost:5000";
             var client = _httpClientFactory.CreateClient("UpscalerHDR");
@@ -1685,8 +1694,10 @@ namespace JellyfinUpscalerPlugin.Services
         /// <summary>
         /// Check if video is HDR using pixel format, color transfer, color primaries, and bit depth
         /// </summary>
-        private bool IsHDRVideo(FFMpegCore.VideoStream videoStream, VideoInfo info)
+        private bool IsHDRVideo(FFMpegCore.VideoStream? videoStream, VideoInfo info)
         {
+            if (videoStream == null) return false;
+
             // Check pixel format for HDR indicators
             bool pixelFormatHDR = videoStream.PixelFormat?.Contains("bt2020") == true ||
                                   videoStream.PixelFormat?.Contains("smpte2084") == true ||
@@ -1726,8 +1737,10 @@ namespace JellyfinUpscalerPlugin.Services
                 }
 
                 var json = stdoutBuffer.ToString();
+                if (string.IsNullOrWhiteSpace(json)) return;
+
                 using var doc = JsonDocument.Parse(json);
-                var streams = doc.RootElement.GetProperty("streams");
+                if (!doc.RootElement.TryGetProperty("streams", out var streams)) return;
                 if (streams.GetArrayLength() == 0) return;
 
                 var stream = streams[0];
