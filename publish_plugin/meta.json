@@ -8,5 +8,5 @@
     "framework": "net9.0",
     "owner": "Kuschel-code",
     "category": "Video Enhancement",
-    "changelog": "v1.5.0.9: Fixed 'selectedModelId is undefined' error prevent models from loading (PR #41). Fixes Issue #42."
+    "changelog": "v1.5.5.3: Deep scan fixes — HDR 10-bit pipeline, real-time AI upscaling, RIFE frame interpolation, FP16 mixed precision, deinterlacing, scene-change detection. 29 security issues fixed (SSRF, API auth, DNS rebinding, path traversal, race conditions)."
 }
