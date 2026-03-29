@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.5.5.3
+# Jellyfin AI Upscaler Plugin v1.5.5.4
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -8,7 +8,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker5 / v1.5.5.3):**
+**Docker Images (docker5 / v1.5.5.4):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker5` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker5-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker5-intel` (Intel Arc/iGPU OpenVINO)
@@ -28,7 +28,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.5.5.3      │  │
+│  │  AI Upscaler Plugin v1.5.5.4      │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -271,7 +271,7 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 ## Changelog
 
-### v1.5.5.3 (Deepscan Round 2+3 — Deep Security Hardening)
+### v1.5.5.4 (Deepscan Round 2+3 — Deep Security Hardening)
 
 **Round 3 — 13 HIGH fixes (C# + Docker):**
 - **SSRF**: Centralized proxy URL validation via `GetValidatedServiceUrl()` — all 13 proxy endpoints secured

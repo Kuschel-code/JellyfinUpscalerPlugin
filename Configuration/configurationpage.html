@@ -1,6 +1,6 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
 <style>
-    /* ===== AI Upscaler v1.5.5.3 — Jellyfin-compatible dark theme ===== */
+    /* ===== AI Upscaler v1.5.5.4 — Jellyfin-compatible dark theme ===== */
     #UpscalerConfigurationPage {
         --accent: #00d4ff;
         --accent-bg: rgba(0, 212, 255, 0.12);
@@ -360,7 +360,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.5.5.3 &middot; Docker Microservice Architecture</div>
+                <div class="upscaler-header-meta">v1.5.5.4 &middot; Docker Microservice Architecture</div>
             </div>
 
             <!-- Tab bar -->
@@ -658,6 +658,52 @@
                             <div class="checkboxContainer"><label><input type="checkbox" id="EnableComparisonView" /> Comparison View</label></div>
                             <div class="checkboxContainer"><label><input type="checkbox" id="EnablePerformanceMetrics" /> Performance Metrics</label></div>
                             <div class="checkboxContainer"><label><input type="checkbox" id="EnableAutoBenchmarking" /> Auto-Benchmarking</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableCustomModelUpload" /> Allow Custom ONNX Model Upload</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableApiDocs" /> Enable API Documentation (/docs, /redoc)</label></div>
+                        </div>
+                    </details>
+
+                    <!-- Quality Metrics -->
+                    <details>
+                        <summary>Quality Metrics (PSNR / SSIM)</summary>
+                        <div class="details-body">
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableQualityMetrics" /> Enable Quality Metrics</label></div>
+                            <div class="fieldDescription">Compute PSNR and SSIM scores after upscaling to measure quality improvement. Results are included in job metrics.</div>
+                        </div>
+                    </details>
+
+                    <!-- Face Enhancement -->
+                    <details>
+                        <summary>Face Enhancement (GFPGAN)</summary>
+                        <div class="details-body">
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableFaceEnhancement" /> Enable Face Enhancement</label></div>
+                            <div class="fieldDescription" style="margin-bottom:0.5rem;">Detect and enhance faces using GFPGAN ONNX model (if uploaded) or classical bilateral filter fallback. Applied as post-processing after upscaling.</div>
+                            <div class="inputContainer">
+                                <label class="inputLabel" for="FaceEnhanceStrength">Enhancement Strength</label>
+                                <input type="number" id="FaceEnhanceStrength" min="0" max="1" step="0.05" />
+                                <div class="fieldDescription">Blend ratio: 0.0 = no change, 1.0 = full enhancement (default: 0.7)</div>
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- Film Grain Management -->
+                    <details>
+                        <summary>Film Grain Management</summary>
+                        <div class="details-body">
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableGrainManagement" /> Enable Grain Management</label></div>
+                            <div class="fieldDescription" style="margin-bottom:0.5rem;">Remove film grain before upscaling and optionally re-add it after for a natural look. Uses NL-means denoising.</div>
+                            <div class="form-row" style="margin-top:0.5rem;">
+                                <div class="form-col inputContainer">
+                                    <label class="inputLabel" for="GrainDenoiseStrength">Denoise Strength</label>
+                                    <input type="number" id="GrainDenoiseStrength" min="1" max="30" />
+                                    <div class="fieldDescription">1-30, higher = more smoothing (default: 5)</div>
+                                </div>
+                                <div class="form-col inputContainer">
+                                    <label class="inputLabel" for="GrainReaddIntensity">Re-add Intensity</label>
+                                    <input type="number" id="GrainReaddIntensity" min="0" max="50" step="0.5" />
+                                    <div class="fieldDescription">0 = off, 1-50 = noise sigma (default: 0)</div>
+                                </div>
+                            </div>
                         </div>
                     </details>
 
@@ -1221,7 +1267,8 @@
                     'MinResolutionWidth','MinResolutionHeight','MaxItemsPerScan','MaxUpscaledFileSizeMB',
                     'MaxQueueSize','ModelDiskQuotaMB','ModelCleanupDays',
                     'HealthCheckIntervalSeconds','CircuitBreakerThreshold','CircuitBreakerResetSeconds',
-                    'RealtimeTargetFps','RealtimeCaptureWidth'];
+                    'RealtimeTargetFps','RealtimeCaptureWidth',
+                    'FaceEnhanceStrength','GrainDenoiseStrength','GrainReaddIntensity'];
                 fields.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el && config[f] !== undefined) el.value = config[f];
@@ -1233,7 +1280,9 @@
                     'EnableAutoModelSelection','EnableProcessingQueue','PauseQueueDuringPlayback',
                     'PersistQueueAcrossRestarts','WebhookOnComplete','WebhookOnFailure',
                     'EnableModelPreloading','EnableModelAutoCleanup','EnableHealthMonitoring',
-                    'EnableGpuFallbackToCpu','RestrictToUnwatchedContent','EnableRealtimeUpscaling'];
+                    'EnableGpuFallbackToCpu','RestrictToUnwatchedContent','EnableRealtimeUpscaling',
+                    'EnableQualityMetrics','EnableFaceEnhancement','EnableGrainManagement',
+                    'EnableCustomModelUpload','EnableApiDocs'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) {
@@ -1282,7 +1331,7 @@
                     'MinResolutionWidth','MinResolutionHeight','MaxItemsPerScan','MaxQueueSize',
                     'ModelDiskQuotaMB','ModelCleanupDays','HealthCheckIntervalSeconds',
                     'CircuitBreakerThreshold','CircuitBreakerResetSeconds',
-                    'RealtimeTargetFps','RealtimeCaptureWidth'];
+                    'RealtimeTargetFps','RealtimeCaptureWidth','GrainDenoiseStrength'];
                 nums.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) { var parsed = parseInt(el.value, 10); if (!isNaN(parsed)) config[f] = parsed; }
@@ -1294,13 +1343,21 @@
                     if (el) { var parsed = parseInt(el.value, 10); if (!isNaN(parsed)) config[f] = parsed; }
                 });
 
+                var floats = ['FaceEnhanceStrength','GrainReaddIntensity'];
+                floats.forEach(function(f) {
+                    var el = page.querySelector('#' + f);
+                    if (el) { var parsed = parseFloat(el.value); if (!isNaN(parsed)) config[f] = parsed; }
+                });
+
                 var checks = ['EnablePlugin','PlayerButton','HardwareAcceleration','Notifications','AutoRetryButton',
                     'EnableComparisonView','EnablePerformanceMetrics','EnableAutoBenchmarking',
                     'EnablePreProcessingCache','EnableRemoteTranscoding',
                     'EnableAutoModelSelection','EnableProcessingQueue','PauseQueueDuringPlayback',
                     'PersistQueueAcrossRestarts','WebhookOnComplete','WebhookOnFailure',
                     'EnableModelPreloading','EnableModelAutoCleanup','EnableHealthMonitoring',
-                    'EnableGpuFallbackToCpu','RestrictToUnwatchedContent','EnableRealtimeUpscaling'];
+                    'EnableGpuFallbackToCpu','RestrictToUnwatchedContent','EnableRealtimeUpscaling',
+                    'EnableQualityMetrics','EnableFaceEnhancement','EnableGrainManagement',
+                    'EnableCustomModelUpload','EnableApiDocs'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) config[f] = !!el.checked;
@@ -1312,7 +1369,7 @@
                 config.OutputCodec = page.querySelector('#OutputCodec').value;
                 config.RealtimeMode = page.querySelector('#RealtimeMode').value;
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
-                config.PluginVersion = '1.5.5.3';
+                config.PluginVersion = '1.5.5.4';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
