@@ -265,6 +265,7 @@ def _safe_int_env(name: str, default: int, min_val: Optional[int] = None, max_va
 ONNX_TILE_SIZE = _safe_int_env("ONNX_TILE_SIZE", 512, min_val=64, max_val=2048)
 ONNX_TILE_SIZE_MULTIFRAME = _safe_int_env("ONNX_TILE_SIZE_MULTIFRAME", 256, min_val=64, max_val=1024)
 MAX_UPLOAD_BYTES = _safe_int_env("MAX_UPLOAD_BYTES", 50 * 1024 * 1024, min_val=1024, max_val=500 * 1024 * 1024)
+MAX_IMAGE_PIXELS = 16000 * 16000  # ~256 MP — prevent OOM from decompression bombs
 MAX_INPUT_FRAMES = 10  # Safety cap for multi-frame endpoints
 
 # FP16 mixed precision for ONNX inference.
@@ -3953,7 +3954,6 @@ def compute_quality_metrics(original: np.ndarray, upscaled: np.ndarray) -> dict:
 @app.post("/quality-metrics", tags=["Quality"])
 async def quality_metrics_endpoint(
     file: UploadFile = File(...),
-    scale: int = Form(2),
 ):
     """Upload an image, upscale it, and return quality metrics (PSNR, SSIM)
     comparing bicubic-upscaled original vs AI-upscaled result.
@@ -3970,6 +3970,8 @@ async def quality_metrics_endpoint(
     original = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     if original is None:
         raise HTTPException(status_code=400, detail="Invalid image")
+    if original.shape[0] * original.shape[1] > MAX_IMAGE_PIXELS:
+        raise HTTPException(status_code=400, detail="Image dimensions too large")
 
     # Upscale
     try:
@@ -4036,6 +4038,8 @@ async def process_grain_endpoint(
     img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     if img is None:
         raise HTTPException(status_code=400, detail="Invalid image")
+    if img.shape[0] * img.shape[1] > MAX_IMAGE_PIXELS:
+        raise HTTPException(status_code=400, detail="Image dimensions too large")
 
     strength = max(1, min(30, strength))
     intensity = max(0.0, min(50.0, intensity))
@@ -4202,6 +4206,8 @@ async def enhance_faces_endpoint(
     img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     if img is None:
         raise HTTPException(status_code=400, detail="Invalid image")
+    if img.shape[0] * img.shape[1] > MAX_IMAGE_PIXELS:
+        raise HTTPException(status_code=400, detail="Image dimensions too large")
 
     strength = max(0.0, min(1.0, strength))
     result, face_count = enhance_faces_in_image(img, strength)
@@ -4256,7 +4262,12 @@ async def upload_face_enhance_model(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=f"Invalid ONNX model: {e}")
 
     # Save validated model
-    shutil.move(tmp_path, str(model_path))
+    try:
+        shutil.move(tmp_path, str(model_path))
+    except Exception as e:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        raise HTTPException(status_code=500, detail="Failed to save model file")
 
     # Load into session
     with _face_enhance_lock:
@@ -4270,9 +4281,12 @@ async def upload_face_enhance_model(file: UploadFile = File(...)):
             logger.info(f"Face enhance model loaded: {model_path}")
         except Exception as e:
             _face_enhance_session = None
-            raise HTTPException(status_code=500, detail=f"Failed to load model: {e}")
+            if model_path.exists():
+                os.unlink(str(model_path))
+            logger.error(f"Failed to load face enhance model: {e}")
+            raise HTTPException(status_code=500, detail="Failed to load model")
 
-    return {"status": "ok", "message": "Face enhancement model loaded", "path": str(model_path)}
+    return {"status": "ok", "message": "Face enhancement model loaded"}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -4380,20 +4394,26 @@ async def delete_custom_model(model_name: str):
     if not ENABLE_MODEL_UPLOAD:
         raise HTTPException(status_code=403, detail="Model upload disabled")
 
-    if model_name not in AVAILABLE_MODELS:
-        raise HTTPException(status_code=404, detail=f"Model '{model_name}' not found")
-
-    model_info = AVAILABLE_MODELS[model_name]
-    if not model_info.get("custom"):
-        raise HTTPException(status_code=403, detail="Cannot delete built-in models")
-
-    # Remove file
-    model_path = Path("/app/models") / model_info.get("filename", f"{model_name}.onnx")
-    if model_path.exists():
-        os.unlink(str(model_path))
-
-    # Unregister and unload if active (under lock for thread safety)
+    # All checks and mutations under lock to prevent TOCTOU races
     with _model_lock:
+        if model_name not in AVAILABLE_MODELS:
+            raise HTTPException(status_code=404, detail="Model not found")
+
+        model_info = AVAILABLE_MODELS[model_name]
+        if not model_info.get("custom"):
+            raise HTTPException(status_code=403, detail="Cannot delete built-in models")
+
+        # Path traversal protection: resolve and verify within models dir
+        models_dir = Path("/app/models").resolve()
+        model_path = (models_dir / model_info.get("filename", f"{model_name}.onnx")).resolve()
+        if not str(model_path).startswith(str(models_dir)):
+            raise HTTPException(status_code=403, detail="Invalid model path")
+
+        # Remove file
+        if model_path.exists() and model_path.is_file():
+            os.unlink(str(model_path))
+
+        # Unregister and unload if active
         AVAILABLE_MODELS.pop(model_name, None)
         if state.current_model == model_name:
             state.current_model = None
@@ -4411,6 +4431,11 @@ async def delete_custom_model(model_name: str):
 @app.get("/features", tags=["Configuration"])
 async def get_feature_status():
     """Return the current status of all configurable features."""
+    # Read shared mutable state under locks to avoid races
+    with _face_enhance_lock:
+        face_model_loaded = _face_enhance_session is not None
+    with _model_lock:
+        custom_models = [k for k, v in AVAILABLE_MODELS.items() if v.get("custom")]
     return {
         "quality_metrics": {
             "enabled": ENABLE_QUALITY_METRICS,
@@ -4418,7 +4443,7 @@ async def get_feature_status():
         "face_enhancement": {
             "enabled": ENABLE_FACE_ENHANCE,
             "strength": FACE_ENHANCE_STRENGTH,
-            "onnx_model_loaded": _face_enhance_session is not None,
+            "onnx_model_loaded": face_model_loaded,
         },
         "grain_management": {
             "enabled": ENABLE_GRAIN_MANAGEMENT,
@@ -4428,7 +4453,7 @@ async def get_feature_status():
         "model_upload": {
             "enabled": ENABLE_MODEL_UPLOAD,
             "max_size_mb": MAX_MODEL_UPLOAD_BYTES // (1024 * 1024),
-            "custom_models": [k for k, v in AVAILABLE_MODELS.items() if v.get("custom")],
+            "custom_models": custom_models,
         },
         "api_docs": {
             "enabled": ENABLE_API_DOCS,
