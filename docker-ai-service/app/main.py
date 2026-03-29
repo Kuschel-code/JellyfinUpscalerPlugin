@@ -1838,7 +1838,7 @@ def inverse_tonemap_sdr_to_hdr(sdr_upscaled: np.ndarray, luminance_map: np.ndarr
                + 0.0593 * sdr_linear[:, :, 0])
     sdr_lum = np.maximum(sdr_lum, 1e-6)
     lum_ratio = luminance_upscaled / sdr_lum
-    lum_ratio = np.clip(lum_ratio, 0.1, 10.0)  # Clamp to prevent extreme values
+    lum_ratio = np.clip(lum_ratio, 0.01, 100.0)  # Clamp to prevent extreme values while preserving HDR peaks
 
     hdr_linear = hdr_linear * lum_ratio[:, :, np.newaxis]
 
@@ -1870,6 +1870,8 @@ def upscale_image_hdr(image_bytes: bytes) -> bytes:
 
     if img_16bit.dtype != np.uint16:
         raise ValueError(f"Expected 16-bit image, got {img_16bit.dtype}")
+    if img_16bit.ndim != 3 or img_16bit.shape[2] != 3:
+        raise ValueError(f"HDR images must be 3-channel BGR, got shape {img_16bit.shape}")
 
     MAX_INPUT_PIXELS = 8_294_400  # ~4K
     h, w = img_16bit.shape[:2]
@@ -2050,8 +2052,9 @@ def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
                                      input_name, output_name, scale)
             # Success — persist working tile size for future requests
             if tile_size != ONNX_TILE_SIZE:
-                logger.info(f"Updating global ONNX_TILE_SIZE from {ONNX_TILE_SIZE} to {tile_size} after OOM recovery")
-                ONNX_TILE_SIZE = tile_size
+                with _model_lock:
+                    logger.info(f"Updating global ONNX_TILE_SIZE from {ONNX_TILE_SIZE} to {tile_size} after OOM recovery")
+                    ONNX_TILE_SIZE = tile_size
             result = np.clip(result * 255.0, 0, 255).astype(np.uint8)
             return cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
         except Exception as exc:
@@ -2374,9 +2377,14 @@ async def upscale_frame_realtime(frame: np.ndarray, session, local_state) -> np.
     def _infer_full():
         """Full-frame inference without tiling."""
         blob = np.transpose(img_rgb, (2, 0, 1))[np.newaxis, ...]
+        if state.use_fp16:
+            blob = blob.astype(np.float16)
         result = session.run([output_name], {input_name: blob})[0]
-        result = np.squeeze(result, axis=0)
-        if result.shape[0] == 3:
+        if state.use_fp16:
+            result = result.astype(np.float32)
+        if result.ndim == 4:
+            result = result[0]
+        if result.ndim == 3 and result.shape[0] in (1, 3):
             result = np.transpose(result, (1, 2, 0))
         result = np.clip(result * 255.0, 0, 255).astype(np.uint8)
         return cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
@@ -2400,7 +2408,11 @@ async def upscale_frame_realtime(frame: np.ndarray, session, local_state) -> np.
             for x in x_tiles:
                 tile = img_rgb[y:y + tile_size, x:x + tile_size]
                 blob = np.transpose(tile, (2, 0, 1))[np.newaxis, ...]
+                if state.use_fp16:
+                    blob = blob.astype(np.float16)
                 res = session.run([output_name], {input_name: blob})[0]
+                if state.use_fp16:
+                    res = res.astype(np.float32)
                 res = np.squeeze(res, axis=0)
                 if res.shape[0] == 3:
                     res = np.transpose(res, (1, 2, 0))
@@ -3311,9 +3323,10 @@ async def upscale_stream(request: Request):
 
                     # Adaptive frame dropping: if processing is too slow, skip buffered frames
                     if duration > min_frame_interval * 2 and len(buffer) >= frame_size:
-                        # Drop one frame to catch up
+                        # Drop one frame to catch up — yield last good frame to keep consumer aligned
                         del buffer[:frame_size]
                         _realtime_stats.record_drop()
+                        yield upscaled.tobytes()  # Duplicate last frame to maintain alignment
                         logger.debug("Dropped frame to maintain real-time pace (%.1fms per frame)", duration * 1000)
 
                 except Exception as exc:
@@ -3818,7 +3831,7 @@ async def interpolate_frames(request: Request):
     except Exception as e:
         _record_failure(model_key)
         logger.error(f"Frame interpolation failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Frame interpolation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Frame interpolation failed")
 
 
 @app.get("/interpolation/status")
