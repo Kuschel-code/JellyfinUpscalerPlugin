@@ -4106,30 +4106,31 @@ def enhance_face_region(face_img: np.ndarray, strength: float = 0.7) -> np.ndarr
         face_img: BGR uint8 face crop.
         strength: Blend ratio between original (0.0) and enhanced (1.0).
     """
-    global _face_enhance_session
-
+    # Copy session reference under lock; run inference outside to allow concurrency
     with _face_enhance_lock:
-        if _face_enhance_session is not None and ONNX_AVAILABLE:
-            try:
-                # GFPGAN ONNX inference: resize to 512x512, normalize, run, denormalize
-                h, w = face_img.shape[:2]
-                input_face = cv2.resize(face_img, (512, 512))
-                input_face = input_face.astype(np.float32) / 255.0
-                input_face = np.transpose(input_face, (2, 0, 1))[np.newaxis, ...]
+        session = _face_enhance_session
 
-                input_name = _face_enhance_session.get_inputs()[0].name
-                output_name = _face_enhance_session.get_outputs()[0].name
-                output = _face_enhance_session.run([output_name], {input_name: input_face})[0]
+    if session is not None and ONNX_AVAILABLE:
+        try:
+            # GFPGAN ONNX inference: resize to 512x512, normalize, run, denormalize
+            h, w = face_img.shape[:2]
+            input_face = cv2.resize(face_img, (512, 512))
+            input_face = input_face.astype(np.float32) / 255.0
+            input_face = np.transpose(input_face, (2, 0, 1))[np.newaxis, ...]
 
-                output = np.squeeze(output, axis=0)
-                output = np.transpose(output, (1, 2, 0))
-                output = np.clip(output * 255.0, 0, 255).astype(np.uint8)
-                enhanced = cv2.resize(output, (w, h))
-            except Exception as e:
-                logger.warning(f"Face enhance ONNX inference failed, using fallback: {e}")
-                enhanced = _enhance_face_fallback(face_img)
-        else:
+            input_name = session.get_inputs()[0].name
+            output_name = session.get_outputs()[0].name
+            output = session.run([output_name], {input_name: input_face})[0]
+
+            output = np.squeeze(output, axis=0)
+            output = np.transpose(output, (1, 2, 0))
+            output = np.clip(output * 255.0, 0, 255).astype(np.uint8)
+            enhanced = cv2.resize(output, (w, h))
+        except Exception as e:
+            logger.warning(f"Face enhance ONNX inference failed, using fallback: {e}")
             enhanced = _enhance_face_fallback(face_img)
+    else:
+        enhanced = _enhance_face_fallback(face_img)
 
     # Blend original and enhanced based on strength
     blended = cv2.addWeighted(face_img, 1.0 - strength, enhanced, strength, 0)
@@ -4257,9 +4258,13 @@ async def upload_face_enhance_model(file: UploadFile = File(...)):
         if len(out.shape) != 4 or out.shape[1] != 3:
             raise ValueError(f"Expected output shape (N, 3, H, W), got {out.shape}")
         del test_session
-    except Exception as e:
+    except ValueError as e:
         os.unlink(tmp_path)
-        raise HTTPException(status_code=400, detail=f"Invalid ONNX model: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid ONNX model shape: {e}")
+    except Exception:
+        os.unlink(tmp_path)
+        logger.warning("Face enhance ONNX validation failed", exc_info=True)
+        raise HTTPException(status_code=400, detail="Invalid or corrupt ONNX model file")
 
     # Save validated model
     try:
@@ -4346,17 +4351,29 @@ async def upload_custom_model(
         output_channels = out.shape[1]
 
         del test_session
-    except Exception as e:
+    except ValueError as e:
         os.unlink(tmp_path)
-        raise HTTPException(status_code=400, detail=f"Invalid ONNX model: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid ONNX model shape: {e}")
+    except Exception:
+        os.unlink(tmp_path)
+        logger.warning("Custom model ONNX validation failed", exc_info=True)
+        raise HTTPException(status_code=400, detail="Invalid or corrupt ONNX model file")
 
-    # Save model
+    # Save model (defense-in-depth path check, matches delete endpoint)
     model_dir = Path("/app/models")
     model_dir.mkdir(parents=True, exist_ok=True)
     model_filename = f"{model_name}.onnx"
-    model_path = model_dir / model_filename
+    model_path = (model_dir / model_filename).resolve()
+    if not str(model_path).startswith(str(model_dir.resolve())):
+        os.unlink(tmp_path)
+        raise HTTPException(status_code=400, detail="Invalid model name")
 
-    shutil.move(tmp_path, str(model_path))
+    try:
+        shutil.move(tmp_path, str(model_path))
+    except Exception:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        raise HTTPException(status_code=500, detail="Failed to save model file")
 
     # Register in AVAILABLE_MODELS (runtime only — not persisted across restarts)
     with _model_lock:
