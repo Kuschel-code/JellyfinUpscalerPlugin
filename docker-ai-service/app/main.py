@@ -790,8 +790,8 @@ def _resolve_fp16_setting() -> bool:
                             return True
                     except (ValueError, IndexError):
                         pass
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"FP16 detection check failed: {e}")
 
     logger.info("FP16 auto: could not confirm compute capability >= 7.0, disabling FP16")
     return False
@@ -3858,7 +3858,8 @@ async def interpolation_status():
     if rife_session is not None:
         try:
             providers = rife_session.get_providers()
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get RIFE session providers: {e}")
             providers = ["unknown"]
 
     return {

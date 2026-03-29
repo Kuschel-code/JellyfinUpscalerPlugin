@@ -838,7 +838,7 @@ namespace JellyfinUpscalerPlugin.Services
                             content.Add(byteContent, $"frame_{k}", $"frame_{k}.png");
                         }
 
-                        var response = await multiFrameClient.PostAsync($"{serviceUrl}/upscale-video-chunk", content, cancellationToken);
+                        using var response = await multiFrameClient.PostAsync($"{serviceUrl}/upscale-video-chunk", content, cancellationToken);
 
                         if (response.IsSuccessStatusCode)
                         {
@@ -1083,7 +1083,7 @@ namespace JellyfinUpscalerPlugin.Services
                         using var jpegContent = new ByteArrayContent(jpegBytes);
                         jpegContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
 
-                        var response = await httpClient.PostAsync($"{serviceUrl}/upscale-frame", jpegContent, cancellationToken);
+                        using var response = await httpClient.PostAsync($"{serviceUrl}/upscale-frame", jpegContent, cancellationToken);
 
                         if (response.IsSuccessStatusCode)
                         {
@@ -1177,10 +1177,10 @@ namespace JellyfinUpscalerPlugin.Services
             }
             finally
             {
-                try { decoderProcess?.StandardOutput?.BaseStream?.Dispose(); } catch { }
-                try { encoderProcess?.StandardInput?.BaseStream?.Dispose(); } catch { }
-                try { decoderProcess?.Kill(true); } catch { }
-                try { encoderProcess?.Kill(true); } catch { }
+                try { decoderProcess?.StandardOutput?.BaseStream?.Dispose(); } catch (Exception ex) { _logger.LogDebug(ex, "Failed to dispose decoder stream"); }
+                try { encoderProcess?.StandardInput?.BaseStream?.Dispose(); } catch (Exception ex) { _logger.LogDebug(ex, "Failed to dispose encoder stream"); }
+                try { decoderProcess?.Kill(true); } catch (Exception ex) { _logger.LogDebug(ex, "Failed to kill decoder process"); }
+                try { encoderProcess?.Kill(true); } catch (Exception ex) { _logger.LogDebug(ex, "Failed to kill encoder process"); }
                 decoderProcess?.Dispose();
                 encoderProcess?.Dispose();
             }
@@ -1401,7 +1401,7 @@ namespace JellyfinUpscalerPlugin.Services
 
             _logger.LogDebug("Sending HDR frame ({Size} bytes) to AI service for {Scale}x upscaling", frameData.Length, scale);
 
-            var response = await client.PostAsync($"{baseUrl}/upscale-hdr", content, cancellationToken);
+            using var response = await client.PostAsync($"{baseUrl}/upscale-hdr", content, cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {

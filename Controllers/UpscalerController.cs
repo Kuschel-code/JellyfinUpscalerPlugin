@@ -120,7 +120,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             try
             {
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                var response = await GetAiServiceClient().GetAsync($"{baseUrl}/models", cts.Token);
+                using var response = await GetAiServiceClient().GetAsync($"{baseUrl}/models", cts.Token);
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadAsStringAsync();
@@ -1274,7 +1274,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             try
             {
                 var serviceUrl = GetValidatedServiceUrl();
-                var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/gpus");
+                using var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/gpus");
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
@@ -1354,7 +1354,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                     new KeyValuePair<string, string>("use_gpu", useGpu.ToString().ToLower()),
                     new KeyValuePair<string, string>("gpu_device_id", gpuDeviceId.ToString())
                 });
-                var response = await GetAiServiceClient().PostAsync($"{serviceUrl}/models/load", formContent);
+                using var response = await GetAiServiceClient().PostAsync($"{serviceUrl}/models/load", formContent);
                 var content = await response.Content.ReadAsStringAsync();
                 return new ContentResult { Content = content, ContentType = "application/json", StatusCode = (int)response.StatusCode };
             }
@@ -1376,7 +1376,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             try
             {
                 var serviceUrl = GetValidatedServiceUrl();
-                var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/benchmark");
+                using var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/benchmark");
                 var content = await response.Content.ReadAsStringAsync();
                 return new ContentResult { Content = content, ContentType = "application/json", StatusCode = (int)response.StatusCode };
             }
@@ -1398,7 +1398,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             try
             {
                 var serviceUrl = GetValidatedServiceUrl();
-                var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/metrics");
+                using var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/metrics");
                 var content = await response.Content.ReadAsStringAsync();
                 return Content(content, "text/plain");
             }
@@ -1420,7 +1420,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             try
             {
                 var serviceUrl = GetValidatedServiceUrl();
-                var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/gpu-verify");
+                using var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/gpu-verify");
                 var content = await response.Content.ReadAsStringAsync();
                 return Content(content, "application/json");
             }
@@ -1442,7 +1442,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             try
             {
                 var serviceUrl = GetValidatedServiceUrl();
-                var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/health/detailed");
+                using var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/health/detailed");
                 var content = await response.Content.ReadAsStringAsync();
                 return Content(content, "application/json");
             }
@@ -1471,7 +1471,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 if (gpu_device_id.HasValue) formData.Add(new("gpu_device_id", gpu_device_id.Value.ToString()));
 
                 using var content = new FormUrlEncodedContent(formData);
-                var response = await GetAiServiceClient().PostAsync($"{serviceUrl}/config", content);
+                using var response = await GetAiServiceClient().PostAsync($"{serviceUrl}/config", content);
                 var result = await response.Content.ReadAsStringAsync();
                 return Content(result, "application/json");
             }
@@ -1493,7 +1493,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             try
             {
                 var serviceUrl = GetValidatedServiceUrl();
-                var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/models/disk-usage");
+                using var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/models/disk-usage");
                 var content = await response.Content.ReadAsStringAsync();
                 return Content(content, "application/json");
             }
@@ -1515,7 +1515,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             try
             {
                 var serviceUrl = GetValidatedServiceUrl();
-                var response = await GetAiServiceClient().PostAsync(
+                using var response = await GetAiServiceClient().PostAsync(
                     $"{serviceUrl}/models/cleanup?max_age_days={max_age_days}&dry_run={dry_run.ToString().ToLower()}",
                     null);
                 var content = await response.Content.ReadAsStringAsync();
@@ -1551,7 +1551,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 using var content = new ByteArrayContent(body);
                 content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
 
-                var response = await GetAiServiceClient().PostAsync($"{serviceUrl}/upscale-frame", content);
+                using var response = await GetAiServiceClient().PostAsync($"{serviceUrl}/upscale-frame", content);
 
                 if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
                     return StatusCode(503, "AI service busy");
@@ -1601,7 +1601,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                     content.Add(byteContent, file.Name, file.FileName ?? file.Name);
                 }
 
-                var response = await GetMultiFrameClient().PostAsync($"{serviceUrl}/upscale-video-chunk", content);
+                using var response = await GetMultiFrameClient().PostAsync($"{serviceUrl}/upscale-video-chunk", content);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -1615,8 +1615,9 @@ namespace JellyfinUpscalerPlugin.Controllers
             {
                 return StatusCode(504, "AI service timeout (multi-frame inference)");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Multi-frame inference proxy error");
                 return StatusCode(502, "AI service error");
             }
         }
@@ -1629,11 +1630,16 @@ namespace JellyfinUpscalerPlugin.Controllers
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> BenchmarkFrame([FromQuery] int width = 480, [FromQuery] int height = 270)
         {
+            if (width < 64 || width > 7680 || height < 64 || height > 4320)
+            {
+                return BadRequest(new { error = "Resolution out of bounds (64-7680 x 64-4320)" });
+            }
+
             try
             {
                 var serviceUrl = GetValidatedServiceUrl();
 
-                var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/benchmark-frame?width={width}&height={height}");
+                using var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/benchmark-frame?width={width}&height={height}");
 
                 if (response.IsSuccessStatusCode)
                 {
