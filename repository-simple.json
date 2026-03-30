@@ -12,7 +12,7 @@
         "changelog": "v1.5.5.4: 5 new configurable features (Quality Metrics PSNR/SSIM, Face Enhancement GFPGAN, Film Grain Management, Custom ONNX Model Upload, OpenAPI Docs) + dashboard UI + deep security hardening.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.5.4/JellyfinUpscalerPlugin-v1.5.5.4.zip",
-        "checksum": "9025ee0e1a940f625e257a2ced15927d",
+        "checksum": "2e3c7ec9337c08c523e31e66f5e376bc",
         "timestamp": "2026-03-28T12:00:00.000Z"
       },
       {
