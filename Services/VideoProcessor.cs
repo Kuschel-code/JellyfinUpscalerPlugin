@@ -25,7 +25,7 @@ using Image = SixLabors.ImageSharp.Image;
 namespace JellyfinUpscalerPlugin.Services
 {
     /// <summary>
-    /// Video processing engine with FFmpeg integration - Phase 2 Implementation
+    /// Video processing engine with FFmpeg integration
     /// </summary>
     public class VideoProcessor : IDisposable
     {

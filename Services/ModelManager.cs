@@ -10,7 +10,7 @@ using MediaBrowser.Common.Configuration;
 namespace JellyfinUpscalerPlugin.Services
 {
     /// <summary>
-    /// Model Manager - v1.5.2 Docker-based implementation
+    /// Model Manager - v1.5.5.4 Docker-based implementation
     /// Delegates model management to the external Docker AI service.
     /// </summary>
     public class ModelManager : IDisposable
@@ -124,7 +124,7 @@ namespace JellyfinUpscalerPlugin.Services
             _logger = logger;
             _appPaths = appPaths;
             
-            _logger.LogInformation("ModelManager v1.5.2 initialized - Docker-based model management");
+            _logger.LogInformation("ModelManager v1.5.5.4 initialized - Docker-based model management");
         }
 
         /// <summary>

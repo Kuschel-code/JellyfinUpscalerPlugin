@@ -15,7 +15,7 @@ using SixLabors.ImageSharp.Processing;
 namespace JellyfinUpscalerPlugin.Services
 {
     /// <summary>
-    /// Hardware Benchmarking Service v1.4.9.5 - Docker-based Hardware Detection
+    /// Hardware Benchmarking Service v1.5.5.4 - Docker-based Hardware Detection
     /// </summary>
     public class HardwareBenchmarkService : IHostedService, IDisposable
     {
@@ -39,7 +39,7 @@ namespace JellyfinUpscalerPlugin.Services
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("AI Upscaler Hardware Benchmark Service v1.4.9.5 (Docker) starting...");
+            _logger.LogInformation("AI Upscaler Hardware Benchmark Service v1.5.5.4 (Docker) starting...");
             
             if (Config.EnableAutoBenchmarking)
             {

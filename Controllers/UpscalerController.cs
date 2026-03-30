@@ -34,12 +34,7 @@ namespace JellyfinUpscalerPlugin.Controllers
     {
         // ── Constants ────────────────────────────────────────────────────
         private const long MaxUploadSizeBytes = 50 * 1024 * 1024; // 50 MB
-        private const int PreviewMaxWidth = 1280;
-        private const int PreviewMaxHeight = 720;
-        private const int MaxDimension = 8192;
-        private const int MinBenchmarkDimension = 64;
-        private const int MaxBenchmarkDimension = 4096;
-        private const int ServiceTimeoutSeconds = 10;
+
         private static readonly Regex ValidModelNameRegex = new(@"^[a-zA-Z0-9\-_]+$", RegexOptions.Compiled);
 
         private readonly ILogger<UpscalerController> _logger;
@@ -1858,7 +1853,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 else
                 {
                     _logger.LogWarning("SSH connection test failed: {Error}", error);
-                    return Ok(new { success = false, message = $"SSH connection failed: {error}" });
+                    return Ok(new { success = false, message = "SSH connection failed" });
                 }
             }
             catch (OperationCanceledException)

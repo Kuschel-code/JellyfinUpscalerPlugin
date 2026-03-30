@@ -272,7 +272,7 @@ namespace JellyfinUpscalerPlugin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Failed to persist queue (non-critical)");
+                _logger.LogWarning(ex, "Failed to persist queue (non-critical)");
             }
         }
 

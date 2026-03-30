@@ -17,7 +17,7 @@ using JellyfinUpscalerPlugin.Models;
 namespace JellyfinUpscalerPlugin.Services
 {
     /// <summary>
-    /// Cache management system for upscaled content - Phase 3 Implementation
+    /// Cache management system for upscaled content
     /// </summary>
     public class CacheManager : IDisposable
     {
@@ -354,6 +354,7 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         private bool CheckCacheSizeLimit()
         {
+            if (Config.CacheSizeMB == 0) return true; // 0 = unlimited
             var maxCacheSize = (long)Config.CacheSizeMB * 1024 * 1024;
             return Interlocked.Read(ref _totalCacheSize) < maxCacheSize;
         }
@@ -514,7 +515,7 @@ namespace JellyfinUpscalerPlugin.Services
                     HitRate = hitRate,
                     TotalHits = _cacheHits,
                     TotalMisses = _cacheMisses,
-                    UsagePercentage = ((double)_totalCacheSize / ((long)Config.CacheSizeMB * 1024 * 1024)) * 100
+                    UsagePercentage = (long)Config.CacheSizeMB * 1024 * 1024 > 0 ? ((double)_totalCacheSize / ((long)Config.CacheSizeMB * 1024 * 1024)) * 100 : 0
                 };
             }
         }

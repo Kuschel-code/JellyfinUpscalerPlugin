@@ -119,7 +119,7 @@ namespace JellyfinUpscalerPlugin.Services
                     }
                 }
 
-                _logger.LogWarning("All models in chain failed, using fallback resize");
+                _logger.LogError("All models in chain failed, using fallback resize");
                 return await FallbackResizeAsync(imageData, scale);
             }
             catch (Exception ex)
@@ -224,7 +224,7 @@ namespace JellyfinUpscalerPlugin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Webhook delivery failed (non-critical)");
+                _logger.LogWarning("Webhook delivery failed: {Error}", ex.Message);
             }
         }
 
@@ -349,7 +349,8 @@ namespace JellyfinUpscalerPlugin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Fallback resize also failed");
+                // Known silent fallback: returning original bytes unmodified when all resize paths fail
+                _logger.LogError(ex, "Fallback resize also failed, returning original image unmodified");
                 return imageData; // Return original as last resort
             }
         }

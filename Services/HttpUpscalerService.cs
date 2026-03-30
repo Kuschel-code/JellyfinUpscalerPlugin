@@ -12,7 +12,7 @@ namespace JellyfinUpscalerPlugin.Services
 {
     /// <summary>
     /// HTTP-based upscaler service that communicates with the AI Upscaler Docker container.
-    /// v1.5.2.9 - Health caching, retry logic, multi-GPU support.
+    /// v1.5.5.4 - Health caching, retry logic, multi-GPU support.
     /// </summary>
     public class HttpUpscalerService : IDisposable
     {
@@ -56,7 +56,7 @@ namespace JellyfinUpscalerPlugin.Services
                 Timeout = TimeSpan.FromMinutes(5)
             };
 
-            _logger.LogInformation("HttpUpscalerService v1.5.2.9 initialized");
+            _logger.LogInformation("HttpUpscalerService v1.5.5.4 initialized");
         }
 
         private HttpClient GetClient()
@@ -160,7 +160,7 @@ namespace JellyfinUpscalerPlugin.Services
         public async Task<bool> EnsureModelLoadedAsync(string modelName, CancellationToken cancellationToken = default)
         {
             // Quick volatile read: skip if already loaded (no lock needed)
-            if (_currentlyLoadedModel == modelName)
+            if (string.Equals(_currentlyLoadedModel, modelName, StringComparison.Ordinal))
             {
                 return true;
             }
@@ -170,7 +170,7 @@ namespace JellyfinUpscalerPlugin.Services
             try
             {
                 // Double-check after acquiring semaphore
-                if (_currentlyLoadedModel == modelName)
+                if (string.Equals(_currentlyLoadedModel, modelName, StringComparison.Ordinal))
                 {
                     return true;
                 }

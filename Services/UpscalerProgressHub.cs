@@ -6,7 +6,7 @@ using MediaBrowser.Controller.Session;
 namespace JellyfinUpscalerPlugin.Services
 {
     /// <summary>
-    /// SignalR-compatible progress hub for real-time upscaling status updates
+    /// Progress notification service using Jellyfin SessionManager
     /// Broadcasts progress to Jellyfin Dashboard via SessionManager
     /// </summary>
     public class UpscalerProgressHub
@@ -46,7 +46,7 @@ namespace JellyfinUpscalerPlugin.Services
                     }
                 };
 
-                // Broadcast to all active sessions using GeneralCommand
+                // Broadcast to all active admin sessions using SessionMessageType.UserDataChanged
                 await _sessionManager.SendMessageToAdminSessions(
                     MediaBrowser.Model.Session.SessionMessageType.UserDataChanged,
                     messageData,
