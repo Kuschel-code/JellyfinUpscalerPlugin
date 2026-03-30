@@ -276,8 +276,11 @@ USE_FP16 = os.getenv("USE_FP16", "auto").lower().strip()
 # Scene-change detection threshold for multi-frame VSR models.
 # When a scene change is detected within the frame window, the service
 # falls back to single-frame upscaling to avoid ghosting artifacts.
-# Range 0.0 (always detect) to 1.0 (never detect). Default 0.35.
-SCENE_CHANGE_THRESHOLD = max(0.0, min(1.0, float(os.getenv("SCENE_CHANGE_THRESHOLD", "0.35"))))
+# Range 0.0 (never detect) to 1.0 (always detect). Default 0.35.
+try:
+    SCENE_CHANGE_THRESHOLD = max(0.0, min(1.0, float(os.getenv("SCENE_CHANGE_THRESHOLD", "0.35"))))
+except (ValueError, TypeError):
+    SCENE_CHANGE_THRESHOLD = 0.35
 
 # ── Feature toggles (all configurable via env vars) ──────────────────────
 
@@ -286,12 +289,18 @@ ENABLE_QUALITY_METRICS = os.getenv("ENABLE_QUALITY_METRICS", "true").lower() == 
 
 # Face enhancement: GFPGAN/CodeFormer post-processing
 ENABLE_FACE_ENHANCE = os.getenv("ENABLE_FACE_ENHANCE", "true").lower() == "true"
-FACE_ENHANCE_STRENGTH = max(0.0, min(1.0, float(os.getenv("FACE_ENHANCE_STRENGTH", "0.7"))))
+try:
+    FACE_ENHANCE_STRENGTH = max(0.0, min(1.0, float(os.getenv("FACE_ENHANCE_STRENGTH", "0.7"))))
+except (ValueError, TypeError):
+    FACE_ENHANCE_STRENGTH = 0.7
 
 # Film grain management: denoise before upscaling, optional re-grain after
 ENABLE_GRAIN_MANAGEMENT = os.getenv("ENABLE_GRAIN_MANAGEMENT", "true").lower() == "true"
 GRAIN_DENOISE_STRENGTH = max(1, min(30, _safe_int_env("GRAIN_DENOISE_STRENGTH", 5, 1, 30)))
-GRAIN_READD_INTENSITY = max(0.0, min(50.0, float(os.getenv("GRAIN_READD_INTENSITY", "0.0"))))
+try:
+    GRAIN_READD_INTENSITY = max(0.0, min(50.0, float(os.getenv("GRAIN_READD_INTENSITY", "0.0"))))
+except (ValueError, TypeError):
+    GRAIN_READD_INTENSITY = 0.0
 
 # Custom model upload
 ENABLE_MODEL_UPLOAD = os.getenv("ENABLE_MODEL_UPLOAD", "true").lower() == "true"
@@ -1576,6 +1585,7 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
                         logger.info(f"GPU inference verification passed ({gpu_providers[0]}) input_shape={input_shape}")
                     except Exception as verify_err:
                         logger.warning(f"GPU inference verification failed: {verify_err}")
+                        del session
                         session = None
                         continue
 
@@ -1779,10 +1789,9 @@ def upscale_image(image_bytes: bytes) -> bytes:
     if img is None:
         raise ValueError("Failed to decode image")
 
-    MAX_INPUT_PIXELS = 8_294_400  # ~4K (3840x2160)
     h, w = img.shape[:2]
-    if h * w > MAX_INPUT_PIXELS:
-        raise HTTPException(status_code=413, detail=f"Image too large: {w}x{h} ({h*w} pixels). Maximum: {MAX_INPUT_PIXELS} pixels")
+    if h * w > MAX_IMAGE_PIXELS:
+        raise ValueError(f"Image too large: {w}x{h} ({h*w} pixels). Maximum: {MAX_IMAGE_PIXELS} pixels")
 
     if model_type == "opencv" and cv_model is not None:
         # Upscale using OpenCV DNN Super Resolution
@@ -1899,11 +1908,9 @@ def upscale_image_hdr(image_bytes: bytes) -> bytes:
     if img_16bit.ndim != 3 or img_16bit.shape[2] != 3:
         raise ValueError(f"HDR images must be 3-channel BGR, got shape {img_16bit.shape}")
 
-    MAX_INPUT_PIXELS = 8_294_400  # ~4K
     h, w = img_16bit.shape[:2]
-    if h * w > MAX_INPUT_PIXELS:
-        raise HTTPException(status_code=413,
-                            detail=f"Image too large: {w}x{h} ({h*w} pixels). Maximum: {MAX_INPUT_PIXELS} pixels")
+    if h * w > MAX_IMAGE_PIXELS:
+        raise ValueError(f"Image too large: {w}x{h} ({h*w} pixels). Maximum: {MAX_IMAGE_PIXELS} pixels")
 
     # Determine model scale
     with _model_lock:
@@ -2052,8 +2059,6 @@ def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
     minimum tile size 64px). Updates the global ONNX_TILE_SIZE on success so
     subsequent requests use the working size.
     """
-    global ONNX_TILE_SIZE
-
     overlap = 32
     tile_size = ONNX_TILE_SIZE
     h, w = img.shape[:2]
@@ -2078,6 +2083,7 @@ def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
                                      input_name, output_name, scale)
             # Success — persist working tile size for future requests
             if tile_size != ONNX_TILE_SIZE:
+                global ONNX_TILE_SIZE
                 with _model_lock:
                     logger.info(f"Updating global ONNX_TILE_SIZE from {ONNX_TILE_SIZE} to {tile_size} after OOM recovery")
                     ONNX_TILE_SIZE = tile_size
@@ -2745,10 +2751,12 @@ async def plugin_connections():
 
 @app.post("/connections/register")
 async def register_connection(
+    request: Request,
     plugin_id: str = Form(...),
     jellyfin_url: str = Form(...)
 ):
     """Register a plugin connection."""
+    _require_api_token(request)
     # Validate jellyfin_url scheme
     parsed = urllib.parse.urlparse(jellyfin_url)
     if parsed.scheme not in ("http", "https"):
@@ -2795,6 +2803,8 @@ async def register_connection(
             state.plugin_connections[i] = connection
             return {"status": "updated", "connection": connection}
     
+    if len(state.plugin_connections) >= 100:
+        state.plugin_connections.pop(0)
     state.plugin_connections.append(connection)
     return {"status": "registered", "connection": connection}
 
@@ -2951,6 +2961,10 @@ async def upscale_endpoint(
         _record_failure(model_name)
         logger.warning(f"Upscale input error: {e}")
         raise HTTPException(status_code=400, detail="Invalid input or model not ready")
+    except ValueError as e:
+        _record_failure(model_name)
+        logger.warning(f"Upscale validation error: {e}")
+        raise HTTPException(status_code=413, detail=str(e))
     except Exception as e:
         _record_failure(model_name)
         logger.error(f"Upscale failed: {e}")
@@ -3016,6 +3030,10 @@ async def upscale_frame_hdr(
         _record_failure(model_name)
         logger.warning(f"HDR upscale input error: {e}")
         raise HTTPException(status_code=400, detail="Invalid input or model not ready")
+    except ValueError as e:
+        _record_failure(model_name)
+        logger.warning(f"HDR upscale validation error: {e}")
+        raise HTTPException(status_code=413, detail=str(e))
     except Exception as e:
         _record_failure(model_name)
         logger.error(f"HDR upscale failed: {e}")
@@ -3080,6 +3098,10 @@ async def upscale_frame_endpoint(request: Request):
         if img is None:
             raise HTTPException(status_code=400, detail="Failed to decode image")
 
+        h, w = img.shape[:2]
+        if h * w > MAX_IMAGE_PIXELS:
+            raise HTTPException(status_code=413, detail=f"Image too large: {w}x{h}")
+
         # Upscale using array helper (no double encode/decode)
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, upscale_image_array, img)
@@ -3131,6 +3153,7 @@ async def upscale_video_chunk(request: Request):
 
     start_time = time.time()
     model_name = state.current_model or "unknown"
+    form = None
     try:
         # Parse multipart form
         form = await request.form()
@@ -3148,6 +3171,9 @@ async def upscale_video_chunk(request: Request):
             img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
             if img is None:
                 raise HTTPException(status_code=400, detail="Invalid image data")
+            h, w = img.shape[:2]
+            if h * w > MAX_IMAGE_PIXELS:
+                raise HTTPException(status_code=413, detail=f"Image too large: {w}x{h}")
             frames.append(img)
 
         # If single-frame model loaded, transparent fallback: upscale center frame only
@@ -3197,6 +3223,8 @@ async def upscale_video_chunk(request: Request):
         logger.error(f"Multi-frame upscale error: {e}")
         raise HTTPException(status_code=500, detail="Multi-frame upscaling failed")
     finally:
+        if form is not None:
+            await form.close()
         if acquired:
             with _processing_count_lock:
                 state.processing_count -= 1
@@ -3805,6 +3833,13 @@ async def interpolate_frames(request: Request):
     if img1 is None or img2 is None:
         raise HTTPException(status_code=400, detail="Failed to decode one or both frames")
 
+    h1, w1 = img1.shape[:2]
+    if h1 * w1 > MAX_IMAGE_PIXELS:
+        raise HTTPException(status_code=413, detail=f"Image too large: {w1}x{h1}")
+    h2, w2 = img2.shape[:2]
+    if h2 * w2 > MAX_IMAGE_PIXELS:
+        raise HTTPException(status_code=413, detail=f"Image too large: {w2}x{h2}")
+
     if img1.shape != img2.shape:
         raise HTTPException(status_code=400, detail=f"Frame dimensions must match: frame1={img1.shape}, frame2={img2.shape}")
 
@@ -4222,13 +4257,14 @@ async def enhance_faces_endpoint(
 
 
 @app.post("/models/upload-face-enhance", tags=["Face Enhancement"])
-async def upload_face_enhance_model(file: UploadFile = File(...)):
+async def upload_face_enhance_model(request: Request, file: UploadFile = File(...)):
     """Upload a GFPGAN/CodeFormer ONNX model for face enhancement.
 
     The model must accept (1, 3, 512, 512) float32 input and produce
     (1, 3, 512, 512) float32 output.
 
     Configurable via ENABLE_FACE_ENHANCE env var."""
+    _require_api_token(request)
     if not ENABLE_FACE_ENHANCE:
         raise HTTPException(status_code=403, detail="Face enhancement disabled")
     if not ONNX_AVAILABLE:
@@ -4300,6 +4336,7 @@ async def upload_face_enhance_model(file: UploadFile = File(...)):
 
 @app.post("/models/upload", tags=["Models"])
 async def upload_custom_model(
+    request: Request,
     file: UploadFile = File(...),
     model_name: str = Form(...),
     scale: int = Form(2),
@@ -4316,6 +4353,7 @@ async def upload_custom_model(
         description: Optional human-readable description.
 
     Configurable via ENABLE_MODEL_UPLOAD and MAX_MODEL_UPLOAD_BYTES env vars."""
+    _require_api_token(request)
     if not ENABLE_MODEL_UPLOAD:
         raise HTTPException(status_code=403, detail="Model upload disabled (ENABLE_MODEL_UPLOAD=false)")
     if not ONNX_AVAILABLE:
@@ -4404,10 +4442,11 @@ async def upload_custom_model(
 
 
 @app.delete("/models/upload/{model_name}", tags=["Models"])
-async def delete_custom_model(model_name: str):
+async def delete_custom_model(request: Request, model_name: str):
     """Delete a custom-uploaded model.
 
     Only models marked as 'custom' can be deleted via this endpoint."""
+    _require_api_token(request)
     if not ENABLE_MODEL_UPLOAD:
         raise HTTPException(status_code=403, detail="Model upload disabled")
 
