@@ -59,7 +59,7 @@ namespace JellyfinUpscalerPlugin.Services
                 {
                     _logger.LogInformation("Scanning library: {LibraryName}", targetFolder.Name);
                     
-                    // Trigger a targeted scan of the directory
+                    // Trigger a full library scan
                     await _libraryManager.ValidateMediaLibrary(
                         new Progress<double>(), 
                         CancellationToken.None
