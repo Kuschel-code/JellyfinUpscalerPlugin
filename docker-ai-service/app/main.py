@@ -61,10 +61,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Paths
-MODELS_DIR = Path("/app/models")
-CACHE_DIR = Path("/app/cache")
-STATIC_DIR = Path("/app/static")
+# Paths — env-var overrides allow running outside Docker (e.g. CI unit tests)
+MODELS_DIR = Path(os.getenv("MODELS_DIR", "/app/models"))
+CACHE_DIR = Path(os.getenv("CACHE_DIR", "/app/cache"))
+STATIC_DIR = Path(os.getenv("STATIC_DIR", "/app/static"))
 
 # Version
 VERSION = "1.5.5.7"
@@ -246,8 +246,10 @@ _processing_count_lock = threading.Lock()
 _download_locks: dict[str, asyncio.Lock] = {}
 _download_locks_guard = threading.Lock()
 
-# Lock for AVAILABLE_MODELS dict mutations (upload, delete, list custom)
-_models_registry_lock = threading.Lock()
+# AVAILABLE_MODELS mutations (upload, delete) are serialised by _model_lock.
+# The /models list endpoint takes a snapshot under _model_lock to prevent
+# "RuntimeError: dictionary changed size during iteration" if a custom model
+# is uploaded or deleted concurrently.
 
 # Benchmark lock — ensures only one benchmark runs at a time (created in lifespan)
 _benchmark_lock: Optional[asyncio.Lock] = None
@@ -2872,8 +2874,12 @@ async def list_models():
     if _models_cache is not None and now < _models_cache_expiry:
         return _models_cache
 
+    # Snapshot AVAILABLE_MODELS under lock to prevent concurrent mutation
+    # (upload/delete) from causing "dictionary changed size during iteration".
+    with _model_lock:
+        items_snapshot = list(AVAILABLE_MODELS.items())
     models = []
-    for model_id, info in AVAILABLE_MODELS.items():
+    for model_id, info in items_snapshot:
         model_path = get_model_path(model_id)
         is_available = info.get("available", True)
         models.append({

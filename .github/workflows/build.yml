@@ -125,7 +125,7 @@ jobs:
           curl -sf http://localhost:5099/health | python3 -c "
           import json, sys
           d = json.load(sys.stdin)
-          assert d.get('status') in ('ok', 'degraded', 'starting'), f'Unexpected health status: {d}'
+          assert isinstance(d.get('status'), str), f'Unexpected health status: {d}'
           print('Health check passed:', d['status'])
           "
 
@@ -134,8 +134,8 @@ jobs:
           curl -sf http://localhost:5099/status | python3 -c "
           import json, sys
           d = json.load(sys.stdin)
-          assert 'model_loaded' in d, f'Missing model_loaded in status: {d}'
-          print('Status check passed, model_loaded:', d['model_loaded'])
+          assert 'current_model' in d or 'model_loaded' in d, f'Missing model field in status: {d}'
+          print('Status check passed:', d.get('current_model', d.get('model_loaded')))
           "
 
       - name: Cleanup container

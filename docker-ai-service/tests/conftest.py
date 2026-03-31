@@ -1,6 +1,8 @@
 """Shared pytest fixtures for AI service tests."""
 import io
+import os
 import sys
+import tempfile
 import pytest
 import numpy as np
 from PIL import Image
@@ -43,22 +45,37 @@ def client():
         if mod in ("app.main", "app"):
             del sys.modules[mod]
 
-    with patch.dict("sys.modules", {
-        "cv2": mock_cv2,
-        "onnxruntime": mock_onnx,
-        "ncnn": mock_ncnn,
-        "torch": mock_torch,
-        "torchvision": MagicMock(),
-    }):
-        from starlette.testclient import TestClient
-        from app import main as app_module
-        # Ensure service starts cleanly with no model loaded
-        app_module.state.onnx_session = None
-        app_module.state.cv_model = None
-        app_module.state.ncnn_upscaler = None
-        app_module.state.current_model = None
-        # Use context-manager form so the FastAPI lifespan runs, which
-        # initialises _upscale_semaphore and _benchmark_lock.  Without this
-        # those module-level values remain None and semaphore tests fail.
-        with TestClient(app_module.app) as client:
-            yield client
+    # Point MODELS_DIR/CACHE_DIR/STATIC_DIR at temp dirs so the lifespan
+    # mkdir() call works outside Docker (CI, local dev).
+    with tempfile.TemporaryDirectory() as tmp:
+        models_dir = os.path.join(tmp, "models")
+        cache_dir = os.path.join(tmp, "cache")
+        static_dir = os.path.join(tmp, "static")
+        os.makedirs(models_dir)
+        os.makedirs(cache_dir)
+        os.makedirs(static_dir)
+        env_overrides = {
+            "MODELS_DIR": models_dir,
+            "CACHE_DIR": cache_dir,
+            "STATIC_DIR": static_dir,
+        }
+        with patch.dict(os.environ, env_overrides):
+            with patch.dict("sys.modules", {
+                "cv2": mock_cv2,
+                "onnxruntime": mock_onnx,
+                "ncnn": mock_ncnn,
+                "torch": mock_torch,
+                "torchvision": MagicMock(),
+            }):
+                from starlette.testclient import TestClient
+                from app import main as app_module
+                # Ensure service starts cleanly with no model loaded
+                app_module.state.onnx_session = None
+                app_module.state.cv_model = None
+                app_module.state.ncnn_upscaler = None
+                app_module.state.current_model = None
+                # Use context-manager form so the FastAPI lifespan runs, which
+                # initialises _upscale_semaphore and _benchmark_lock.  Without this
+                # those module-level values remain None and semaphore tests fail.
+                with TestClient(app_module.app) as client:
+                    yield client
