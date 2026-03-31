@@ -57,4 +57,8 @@ def client():
         app_module.state.cv_model = None
         app_module.state.ncnn_upscaler = None
         app_module.state.current_model = None
-        yield TestClient(app_module.app)
+        # Use context-manager form so the FastAPI lifespan runs, which
+        # initialises _upscale_semaphore and _benchmark_lock.  Without this
+        # those module-level values remain None and semaphore tests fail.
+        with TestClient(app_module.app) as client:
+            yield client

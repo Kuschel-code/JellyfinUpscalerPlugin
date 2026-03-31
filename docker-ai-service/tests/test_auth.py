@@ -25,7 +25,7 @@ def test_wrong_token_returns_403_on_models_download(client):
     with patch.dict(os.environ, {"API_TOKEN": "correct_token"}):
         resp = client.post(
             "/models/download",
-            data={"model": "realesrgan-x4"},
+            data={"model_name": "realesrgan-x4"},
             headers={"x-api-token": "wrong_token"},
         )
         assert resp.status_code == 403, f"expected 403, got {resp.status_code}: {resp.text}"
@@ -34,7 +34,7 @@ def test_wrong_token_returns_403_on_models_download(client):
 def test_missing_token_returns_403_when_env_set(client):
     """No token header when API_TOKEN is configured must return 403."""
     with patch.dict(os.environ, {"API_TOKEN": "secret123"}):
-        resp = client.post("/models/download", data={"model": "realesrgan-x4"})
+        resp = client.post("/models/download", data={"model_name": "realesrgan-x4"})
         assert resp.status_code == 403
 
 
@@ -43,7 +43,7 @@ def test_correct_token_passes_auth(client):
     with patch.dict(os.environ, {"API_TOKEN": "secret123"}):
         resp = client.post(
             "/models/download",
-            data={"model": "realesrgan-x4"},
+            data={"model_name": "realesrgan-x4"},
             headers={"x-api-token": "secret123"},
         )
         assert resp.status_code != 403, f"correct token should not 403, got {resp.status_code}"
@@ -53,7 +53,7 @@ def test_no_token_env_skips_auth_check(client):
     """When API_TOKEN env var absent, all endpoints skip auth (backward compat)."""
     env = {k: v for k, v in os.environ.items() if k != "API_TOKEN"}
     with patch.dict(os.environ, env, clear=True):
-        resp = client.post("/models/download", data={"model": "realesrgan-x4"})
+        resp = client.post("/models/download", data={"model_name": "realesrgan-x4"})
         # Should not be 403; may be 400/422 for other reasons but not auth
         assert resp.status_code != 403
 

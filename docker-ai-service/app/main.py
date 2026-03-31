@@ -1096,7 +1096,7 @@ async def lifespan(app: FastAPI):
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     
     # Detect hardware (run in executor to avoid blocking event loop with subprocess calls)
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     await loop.run_in_executor(None, detect_hardware)
     logger.info(f"CPU: {state.cpu_name} ({state.cpu_cores} cores)")
     logger.info(f"GPU: {state.gpu_name} ({state.gpu_memory})")
@@ -3089,7 +3089,7 @@ async def benchmark_endpoint(request: Request = None):
         raise HTTPException(status_code=429, detail="Benchmark already in progress")
     try:
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, run_benchmark, 256)
+        result = await loop.run_in_executor(_cpu_executor, run_benchmark, 256)
         return result
     finally:
         _benchmark_lock.release()
@@ -3462,7 +3462,7 @@ async def benchmark_frame_endpoint(width: int = 480, height: int = 270, request:
         raise HTTPException(status_code=429, detail="Benchmark already in progress")
     try:
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, _run_frame_benchmark, width, height)
+        result = await loop.run_in_executor(_cpu_executor, _run_frame_benchmark, width, height)
         return result
     finally:
         _benchmark_lock.release()
@@ -4508,9 +4508,13 @@ async def delete_custom_model(request: Request, model_name: str):
         if model_path.exists() and model_path.is_file():
             os.unlink(str(model_path))
 
-        # Unregister and unload if active
-        with _models_registry_lock:
-            AVAILABLE_MODELS.pop(model_name, None)
+        # Unregister and unload if active.
+        # _model_lock is already held here — acquiring _models_registry_lock
+        # inside it would create a nested-lock (ABBA deadlock) risk if any other
+        # code path takes them in the opposite order.  Since _model_lock already
+        # serialises all model state mutations, the dict pop is safe without the
+        # registry lock.
+        AVAILABLE_MODELS.pop(model_name, None)
         if state.current_model == model_name:
             state.current_model = None
             state.onnx_session = None
