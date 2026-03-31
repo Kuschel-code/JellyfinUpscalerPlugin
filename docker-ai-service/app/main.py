@@ -229,6 +229,9 @@ _processing_count_lock = threading.Lock()
 _download_locks: dict[str, asyncio.Lock] = {}
 _download_locks_guard = threading.Lock()
 
+# Lock for AVAILABLE_MODELS dict mutations (upload, delete, list custom)
+_models_registry_lock = threading.Lock()
+
 # Benchmark lock — ensures only one benchmark runs at a time (created in lifespan)
 _benchmark_lock: Optional[asyncio.Lock] = None
 
@@ -2910,10 +2913,12 @@ async def load_model_endpoint(
 
 @app.post("/upscale")
 async def upscale_endpoint(
+    request: Request,
     file: UploadFile = File(...),
     scale: int = Form(2)
 ):
     """Upscale an image. Scale is determined by the loaded model; the scale parameter is validated for consistency."""
+    _require_api_token(request)
     _check_circuit_breaker()
 
     if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
@@ -2982,11 +2987,13 @@ async def upscale_endpoint(
 
 @app.post("/upscale-hdr")
 async def upscale_frame_hdr(
+    request: Request,
     file: UploadFile = File(...),
     scale: int = Form(2)
 ):
     """Upscale a 16-bit HDR frame. Accepts 16-bit PNG, returns 16-bit PNG.
     The pipeline: receive 16-bit -> tone-map to 8-bit SDR -> upscale -> inverse tone-map back to 16-bit."""
+    _require_api_token(request)
     _check_circuit_breaker()
 
     if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
@@ -3071,6 +3078,7 @@ async def benchmark_endpoint(request: Request = None):
 @app.post("/upscale-frame")
 async def upscale_frame_endpoint(request: Request):
     """Fast frame upscaling for real-time playback. Raw JPEG in, JPEG out. Returns 503 when busy."""
+    _require_api_token(request)
     _check_circuit_breaker()
 
     if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
@@ -3135,6 +3143,7 @@ async def upscale_frame_endpoint(request: Request):
 @app.post("/upscale-video-chunk")
 async def upscale_video_chunk(request: Request):
     """Multi-frame upscaling: receives N PNG frames, returns upscaled center frame."""
+    _require_api_token(request)
     _check_circuit_breaker()
 
     if state.current_model is None:
@@ -3296,6 +3305,7 @@ async def upscale_stream(request: Request):
     Input: raw frame bytes (width * height * 3 per frame)
     Output: streaming response with upscaled raw frames
     """
+    _require_api_token(request)
     _check_circuit_breaker()
 
     if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
@@ -3794,6 +3804,7 @@ async def interpolate_frames(request: Request):
     Optional 'timestep' float (0.0-1.0, default 0.5 for midpoint).
     Returns the interpolated frame as PNG.
     """
+    _require_api_token(request)
     _check_circuit_breaker()
 
     if not ONNX_AVAILABLE:
@@ -3992,12 +4003,14 @@ def compute_quality_metrics(original: np.ndarray, upscaled: np.ndarray) -> dict:
 
 @app.post("/quality-metrics", tags=["Quality"])
 async def quality_metrics_endpoint(
+    request: Request,
     file: UploadFile = File(...),
 ):
     """Upload an image, upscale it, and return quality metrics (PSNR, SSIM)
     comparing bicubic-upscaled original vs AI-upscaled result.
 
     Configurable via ENABLE_QUALITY_METRICS env var."""
+    _require_api_token(request)
     if not ENABLE_QUALITY_METRICS:
         raise HTTPException(status_code=403, detail="Quality metrics disabled (ENABLE_QUALITY_METRICS=false)")
 
@@ -4053,6 +4066,7 @@ def add_grain(img: np.ndarray, intensity: float = 5.0) -> np.ndarray:
 
 @app.post("/process-grain", tags=["Grain"])
 async def process_grain_endpoint(
+    request: Request,
     file: UploadFile = File(...),
     action: str = Form("remove"),
     strength: int = Form(5),
@@ -4066,6 +4080,7 @@ async def process_grain_endpoint(
         intensity: Grain noise intensity 0-50 (for add/both).
 
     Configurable via ENABLE_GRAIN_MANAGEMENT env var."""
+    _require_api_token(request)
     if not ENABLE_GRAIN_MANAGEMENT:
         raise HTTPException(status_code=403, detail="Grain management disabled (ENABLE_GRAIN_MANAGEMENT=false)")
 
@@ -4474,7 +4489,8 @@ async def delete_custom_model(request: Request, model_name: str):
             os.unlink(str(model_path))
 
         # Unregister and unload if active
-        AVAILABLE_MODELS.pop(model_name, None)
+        with _models_registry_lock:
+            AVAILABLE_MODELS.pop(model_name, None)
         if state.current_model == model_name:
             state.current_model = None
             state.onnx_session = None
