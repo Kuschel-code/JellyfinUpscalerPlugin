@@ -67,3 +67,79 @@ jobs:
           See [CHANGELOG](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/meta.json) for details.
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  python-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: pip install -r docker-ai-service/requirements-test.txt
+
+      - name: Run unit tests
+        run: pytest docker-ai-service/tests/ -v --tb=short
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Audit Python dependencies (CPU)
+        run: pip-audit -r docker-ai-service/requirements-cpu.txt --ignore-vuln PYSEC-2024-48 || true
+
+  docker-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build CPU Docker image
+        run: |
+          docker build -f docker-ai-service/Dockerfile.cpu \
+            -t jellyfin-upscaler-cpu:smoke-test \
+            docker-ai-service/
+
+      - name: Start container
+        run: |
+          docker run -d --name upscaler-smoke \
+            -p 5099:5000 \
+            jellyfin-upscaler-cpu:smoke-test
+          echo "Waiting for service startup..."
+          for i in $(seq 1 45); do
+            if curl -sf http://localhost:5099/health > /dev/null 2>&1; then
+              echo "Service ready after $((i*2))s"
+              break
+            fi
+            if [ "$i" -eq 45 ]; then
+              echo "ERROR: service did not start within 90s"
+              docker logs upscaler-smoke
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Verify health endpoint
+        run: |
+          curl -sf http://localhost:5099/health | python3 -c "
+          import json, sys
+          d = json.load(sys.stdin)
+          assert isinstance(d.get('status'), str), f'Unexpected health status: {d}'
+          print('Health check passed:', d['status'])
+          "
+
+      - name: Verify status endpoint
+        run: |
+          curl -sf http://localhost:5099/status | python3 -c "
+          import json, sys
+          d = json.load(sys.stdin)
+          assert 'current_model' in d or 'model_loaded' in d, f'Missing model field in status: {d}'
+          print('Status check passed:', d.get('current_model', d.get('model_loaded')))
+          "
+
+      - name: Cleanup container
+        if: always()
+        run: |
+          docker stop upscaler-smoke 2>/dev/null || true
+          docker rm upscaler-smoke 2>/dev/null || true

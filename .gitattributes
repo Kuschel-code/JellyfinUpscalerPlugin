@@ -1,0 +1,6 @@
+# Shell scripts and Python files must always use LF (not CRLF) on all platforms.
+# Windows CRLF in shell scripts causes "no such file or directory" in Docker containers.
+*.sh text eol=lf
+*.py text eol=lf
+Dockerfile* text eol=lf
+entrypoint* text eol=lf

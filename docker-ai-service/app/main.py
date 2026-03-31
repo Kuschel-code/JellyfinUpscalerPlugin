@@ -1,6 +1,6 @@
 """
 AI Upscaler Service - FastAPI Application
-Jellyfin AI Upscaler Plugin - Microservice Component v1.5.5.4
+Jellyfin AI Upscaler Plugin - Microservice Component v1.5.5.7
 Supports OpenCV DNN (.pb) and ONNX Runtime models with GPU detection
 Multi-GPU selection, robust TensorRT/CUDA/OpenVINO fallback
 """
@@ -20,6 +20,7 @@ import hmac
 import socket
 import urllib.parse
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional, Any
 from contextlib import asynccontextmanager
@@ -60,13 +61,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Paths
-MODELS_DIR = Path("/app/models")
-CACHE_DIR = Path("/app/cache")
-STATIC_DIR = Path("/app/static")
+# Paths — env-var overrides allow running outside Docker (e.g. CI unit tests)
+MODELS_DIR = Path(os.getenv("MODELS_DIR", "/app/models"))
+CACHE_DIR = Path(os.getenv("CACHE_DIR", "/app/cache"))
+STATIC_DIR = Path(os.getenv("STATIC_DIR", "/app/static"))
 
 # Version
-VERSION = "1.5.5.4"
+VERSION = "1.5.5.7"
 
 # Global state
 class AppState:
@@ -150,23 +151,37 @@ state = AppState()
 
 
 class RealtimeStats:
-    """Track real-time upscaling performance."""
+    """Track real-time upscaling performance.
 
-    _FPS_WINDOW_SIZE = 60  # Rolling window of last 60 frame timestamps
+    All accumulators use bounded rolling windows to prevent unbounded memory
+    growth in long-running deployments.  frames_processed / total_time are
+    capped at _ACCUM_WINDOW_SIZE frames — avg_ms reflects the most recent
+    window rather than a lifetime average, which is more useful in practice.
+    """
+
+    _FPS_WINDOW_SIZE = 60    # Rolling window for FPS calculation
+    _ACCUM_WINDOW_SIZE = 500  # Max frames kept for avg_ms — prevents OOM
 
     def __init__(self):
-        self.frames_processed: int = 0
-        self.total_time: float = 0.0
         self.current_fps: float = 0.0
         self.dropped_frames: int = 0
         self._lock = threading.Lock()
         self._timestamps: collections.deque = collections.deque(maxlen=RealtimeStats._FPS_WINDOW_SIZE)
+        # Bounded deque for avg latency — oldest entries dropped automatically
+        self._durations: collections.deque = collections.deque(maxlen=RealtimeStats._ACCUM_WINDOW_SIZE)
+
+    @property
+    def frames_processed(self) -> int:
+        return len(self._durations)
+
+    @property
+    def total_time(self) -> float:
+        return sum(self._durations)
 
     def record_frame(self, duration: float) -> None:
         """Record a processed frame and update rolling FPS via sliding window."""
         with self._lock:
-            self.frames_processed += 1
-            self.total_time += duration
+            self._durations.append(duration)
 
             now = time.time()
             self._timestamps.append(now)
@@ -185,10 +200,13 @@ class RealtimeStats:
     def snapshot(self) -> dict:
         """Return a copy of current stats."""
         with self._lock:
-            avg_ms = (self.total_time / self.frames_processed * 1000) if self.frames_processed > 0 else 0.0
+            durations = list(self._durations)
+            total = sum(durations)
+            count = len(durations)
+            avg_ms = (total / count * 1000) if count > 0 else 0.0
             return {
-                "frames_processed": self.frames_processed,
-                "total_time_s": round(self.total_time, 3),
+                "frames_processed": count,
+                "total_time_s": round(total, 3),
                 "current_fps": round(self.current_fps, 2),
                 "avg_frame_ms": round(avg_ms, 2),
                 "dropped_frames": self.dropped_frames,
@@ -197,11 +215,10 @@ class RealtimeStats:
     def reset(self) -> None:
         """Reset all counters."""
         with self._lock:
-            self.frames_processed = 0
-            self.total_time = 0.0
             self.current_fps = 0.0
             self.dropped_frames = 0
             self._timestamps.clear()
+            self._durations.clear()
 
 
 _realtime_stats = RealtimeStats()
@@ -229,8 +246,34 @@ _processing_count_lock = threading.Lock()
 _download_locks: dict[str, asyncio.Lock] = {}
 _download_locks_guard = threading.Lock()
 
+# AVAILABLE_MODELS mutations (upload, delete) are serialised by _model_lock.
+# The /models list endpoint takes a snapshot under _model_lock to prevent
+# "RuntimeError: dictionary changed size during iteration" if a custom model
+# is uploaded or deleted concurrently.
+
 # Benchmark lock — ensures only one benchmark runs at a time (created in lifespan)
 _benchmark_lock: Optional[asyncio.Lock] = None
+
+# /models list cache — avoids 40 Path.exists() filesystem checks on every call
+_models_cache: Optional[dict] = None
+_models_cache_expiry: float = 0.0
+_MODELS_CACHE_TTL: float = 30.0  # seconds
+
+
+def _invalidate_models_cache() -> None:
+    """Expire the /models list cache immediately after any model mutation."""
+    global _models_cache_expiry
+    _models_cache_expiry = 0.0
+
+# Bounded thread pool for CPU-bound upscaling work.
+# Using None in run_in_executor relies on the default pool which Python sizes to
+# min(32, cpu_count+4) — fine but uncontrolled. An explicit executor lets us cap
+# workers at MAX_CPU_WORKERS (default: cpu_count) so we don't over-subscribe the
+# CPU when multiple concurrent requests arrive simultaneously.
+_cpu_executor = ThreadPoolExecutor(
+    max_workers=int(os.getenv("MAX_CPU_WORKERS", str(os.cpu_count() or 4))),
+    thread_name_prefix="upscaler"
+)
 
 
 def _require_api_token(request: Request) -> None:
@@ -1082,7 +1125,7 @@ async def lifespan(app: FastAPI):
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     
     # Detect hardware (run in executor to avoid blocking event loop with subprocess calls)
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     await loop.run_in_executor(None, detect_hardware)
     logger.info(f"CPU: {state.cpu_name} ({state.cpu_cores} cores)")
     logger.info(f"GPU: {state.gpu_name} ({state.gpu_memory})")
@@ -1135,8 +1178,9 @@ async def lifespan(app: FastAPI):
         await load_model(default_model)
     
     yield
-    
+
     logger.info("Shutting down AI Upscaler Service...")
+    _cpu_executor.shutdown(wait=False)
 
 
 app = FastAPI(
@@ -1188,16 +1232,24 @@ async def load_opencv_model(model_name: str, model_info: dict, model_path: Path)
         sr.readModel(str(model_path))
         sr.setModel(model_type, scale)
         
-        # Set GPU if available and enabled
-        if state.use_gpu:
-            try:
-                sr.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
-                sr.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
-                logger.info("Using CUDA backend for OpenCV DNN")
-            except Exception as e:
-                logger.warning(f"CUDA not available for OpenCV DNN: {e}")
-                sr.setPreferableBackend(cv2.dnn.DNN_BACKEND_DEFAULT)
-                sr.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
+        # Set GPU backend only when CUDA is actually present at runtime.
+        # setPreferableBackend(CUDA) does NOT throw on non-CUDA machines;
+        # the assertion error surfaces only at inference time. Check the
+        # device count to guard against this.
+        cuda_device_count = 0
+        try:
+            cuda_device_count = cv2.cuda.getCudaEnabledDeviceCount()
+        except Exception:
+            pass
+        if state.use_gpu and cuda_device_count > 0:
+            sr.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
+            sr.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
+            logger.info("Using CUDA backend for OpenCV DNN")
+        else:
+            sr.setPreferableBackend(cv2.dnn.DNN_BACKEND_DEFAULT)
+            sr.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
+            if state.use_gpu and cuda_device_count == 0:
+                logger.info("No CUDA device available — using CPU backend for OpenCV DNN")
         
         with _model_lock:
             state.cv_model = sr
@@ -2059,6 +2111,7 @@ def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
     minimum tile size 64px). Updates the global ONNX_TILE_SIZE on success so
     subsequent requests use the working size.
     """
+    global ONNX_TILE_SIZE
     overlap = 32
     tile_size = ONNX_TILE_SIZE
     h, w = img.shape[:2]
@@ -2083,7 +2136,6 @@ def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
                                      input_name, output_name, scale)
             # Success — persist working tile size for future requests
             if tile_size != ONNX_TILE_SIZE:
-                global ONNX_TILE_SIZE
                 with _model_lock:
                     logger.info(f"Updating global ONNX_TILE_SIZE from {ONNX_TILE_SIZE} to {tile_size} after OOM recovery")
                     ONNX_TILE_SIZE = tile_size
@@ -2385,12 +2437,12 @@ async def upscale_frame_realtime(frame: np.ndarray, session, local_state) -> np.
         if cv_model is None:
             raise ModelNotReadyError("No OpenCV model loaded")
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, cv_model.upsample, frame)
+        return await loop.run_in_executor(_cpu_executor, cv_model.upsample, frame)
 
     # ncnn: delegate to existing function
     if model_type == "ncnn":
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, upscale_with_ncnn, frame)
+        return await loop.run_in_executor(_cpu_executor, upscale_with_ncnn, frame)
 
     # ONNX: optimized single-pass (no blend weighting)
     if session is None:
@@ -2458,9 +2510,9 @@ async def upscale_frame_realtime(frame: np.ndarray, session, local_state) -> np.
 
     loop = asyncio.get_running_loop()
     if h * w <= max_pixels:
-        return await loop.run_in_executor(None, _infer_full)
+        return await loop.run_in_executor(_cpu_executor, _infer_full)
     else:
-        return await loop.run_in_executor(None, _infer_tiled)
+        return await loop.run_in_executor(_cpu_executor, _infer_tiled)
 
 
 def run_benchmark(test_size: int = 256) -> dict:
@@ -2811,9 +2863,23 @@ async def register_connection(
 
 @app.get("/models")
 async def list_models():
-    """List available models."""
+    """List available models.
+
+    Filesystem existence checks are cached for _MODELS_CACHE_TTL seconds to
+    avoid 40+ Path.exists() calls on every request.  The cache is invalidated
+    whenever a model is loaded, downloaded, or deleted.
+    """
+    global _models_cache, _models_cache_expiry
+    now = time.time()
+    if _models_cache is not None and now < _models_cache_expiry:
+        return _models_cache
+
+    # Snapshot AVAILABLE_MODELS under lock to prevent concurrent mutation
+    # (upload/delete) from causing "dictionary changed size during iteration".
+    with _model_lock:
+        items_snapshot = list(AVAILABLE_MODELS.items())
     models = []
-    for model_id, info in AVAILABLE_MODELS.items():
+    for model_id, info in items_snapshot:
         model_path = get_model_path(model_id)
         is_available = info.get("available", True)
         models.append({
@@ -2827,7 +2893,10 @@ async def list_models():
             "loaded": state.current_model == model_id,
             "available": is_available
         })
-    return {"models": models, "total": len(models)}
+    result = {"models": models, "total": len(models)}
+    _models_cache = result
+    _models_cache_expiry = now + _MODELS_CACHE_TTL
+    return result
 
 
 @app.post("/models/download")
@@ -2848,6 +2917,7 @@ async def download_model_endpoint(model_name: str = Form(...), request: Request 
     model_path = get_model_path(model_name)
     size_mb = model_path.stat().st_size / 1024 / 1024 if model_path.exists() else 0
     
+    _invalidate_models_cache()
     return {"status": "success", "model": model_name, "size_mb": round(size_mb, 2)}
 
 
@@ -2898,6 +2968,7 @@ async def load_model_endpoint(
         logger.error(f"Model load failed: {state.last_load_error}")
         raise HTTPException(status_code=500, detail="Failed to load model. Check server logs for details.")
 
+    _invalidate_models_cache()
     return {
         "status": "success",
         "model": model_name,
@@ -2910,10 +2981,12 @@ async def load_model_endpoint(
 
 @app.post("/upscale")
 async def upscale_endpoint(
+    request: Request,
     file: UploadFile = File(...),
     scale: int = Form(2)
 ):
     """Upscale an image. Scale is determined by the loaded model; the scale parameter is validated for consistency."""
+    _require_api_token(request)
     _check_circuit_breaker()
 
     if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
@@ -2933,13 +3006,17 @@ async def upscale_endpoint(
     # (protects against /config recreating the semaphore mid-request)
     sem = _upscale_semaphore
     acquired = False
-    try:
-        await asyncio.wait_for(sem.acquire(), timeout=0)
-        acquired = True
-        with _processing_count_lock:
-            state.processing_count += 1
-    except asyncio.TimeoutError:
+    # Python 3.12 broke asyncio.wait_for(coro, timeout=0): the coroutine is
+    # wrapped in a Task, cancellation is scheduled immediately, and the Task
+    # never gets to run before being cancelled — causing permanent 429.
+    # Fix: check _value directly (safe in asyncio; no await between check and
+    # acquire, so no other coroutine can interleave).
+    if sem is None or sem._value <= 0:
         raise HTTPException(status_code=429, detail="Too many concurrent requests")
+    await sem.acquire()
+    acquired = True
+    with _processing_count_lock:
+        state.processing_count += 1
 
     start_time = time.time()
     model_name = state.current_model or "unknown"
@@ -2951,7 +3028,7 @@ async def upscale_endpoint(
 
         # Upscale in thread pool to not block async
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, upscale_image, image_bytes)
+        result = await loop.run_in_executor(_cpu_executor, upscale_image, image_bytes)
 
         duration_ms = (time.time() - start_time) * 1000
         _record_success(model_name, duration_ms)
@@ -2978,11 +3055,13 @@ async def upscale_endpoint(
 
 @app.post("/upscale-hdr")
 async def upscale_frame_hdr(
+    request: Request,
     file: UploadFile = File(...),
     scale: int = Form(2)
 ):
     """Upscale a 16-bit HDR frame. Accepts 16-bit PNG, returns 16-bit PNG.
     The pipeline: receive 16-bit -> tone-map to 8-bit SDR -> upscale -> inverse tone-map back to 16-bit."""
+    _require_api_token(request)
     _check_circuit_breaker()
 
     if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
@@ -3001,13 +3080,13 @@ async def upscale_frame_hdr(
     # Capture semaphore reference for safe release
     sem = _upscale_semaphore
     acquired = False
-    try:
-        await asyncio.wait_for(sem.acquire(), timeout=0)
-        acquired = True
-        with _processing_count_lock:
-            state.processing_count += 1
-    except asyncio.TimeoutError:
+    # See /upscale for explanation of why we avoid asyncio.wait_for(timeout=0)
+    if sem is None or sem._value <= 0:
         raise HTTPException(status_code=429, detail="Too many concurrent requests")
+    await sem.acquire()
+    acquired = True
+    with _processing_count_lock:
+        state.processing_count += 1
 
     start_time = time.time()
     model_name = state.current_model or "unknown"
@@ -3019,7 +3098,7 @@ async def upscale_frame_hdr(
 
         # Upscale HDR in thread pool to not block async
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, upscale_image_hdr, image_bytes)
+        result = await loop.run_in_executor(_cpu_executor, upscale_image_hdr, image_bytes)
 
         duration_ms = (time.time() - start_time) * 1000
         _record_success(model_name, duration_ms)
@@ -3058,7 +3137,7 @@ async def benchmark_endpoint(request: Request = None):
         raise HTTPException(status_code=429, detail="Benchmark already in progress")
     try:
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, run_benchmark, 256)
+        result = await loop.run_in_executor(_cpu_executor, run_benchmark, 256)
         return result
     finally:
         _benchmark_lock.release()
@@ -3067,6 +3146,7 @@ async def benchmark_endpoint(request: Request = None):
 @app.post("/upscale-frame")
 async def upscale_frame_endpoint(request: Request):
     """Fast frame upscaling for real-time playback. Raw JPEG in, JPEG out. Returns 503 when busy."""
+    _require_api_token(request)
     _check_circuit_breaker()
 
     if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
@@ -3075,13 +3155,13 @@ async def upscale_frame_endpoint(request: Request):
     # Capture semaphore reference for safe release
     sem = _upscale_semaphore
     acquired = False
-    try:
-        await asyncio.wait_for(sem.acquire(), timeout=0)
-        acquired = True
-        with _processing_count_lock:
-            state.processing_count += 1
-    except asyncio.TimeoutError:
+    # See /upscale for explanation of why we avoid asyncio.wait_for(timeout=0)
+    if sem is None or sem._value <= 0:
         raise HTTPException(status_code=503, detail="Busy")
+    await sem.acquire()
+    acquired = True
+    with _processing_count_lock:
+        state.processing_count += 1
 
     start_time = time.time()
     model_name = state.current_model or "unknown"
@@ -3104,7 +3184,7 @@ async def upscale_frame_endpoint(request: Request):
 
         # Upscale using array helper (no double encode/decode)
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, upscale_image_array, img)
+        result = await loop.run_in_executor(_cpu_executor, upscale_image_array, img)
 
         # Encode as JPEG quality 85 (much faster than PNG)
         _, buffer = cv2.imencode('.jpg', result, [cv2.IMWRITE_JPEG_QUALITY, 85])
@@ -3131,6 +3211,7 @@ async def upscale_frame_endpoint(request: Request):
 @app.post("/upscale-video-chunk")
 async def upscale_video_chunk(request: Request):
     """Multi-frame upscaling: receives N PNG frames, returns upscaled center frame."""
+    _require_api_token(request)
     _check_circuit_breaker()
 
     if state.current_model is None:
@@ -3143,13 +3224,13 @@ async def upscale_video_chunk(request: Request):
     # Capture semaphore reference for safe release
     sem = _upscale_semaphore
     acquired = False
-    try:
-        await asyncio.wait_for(sem.acquire(), timeout=0)
-        acquired = True
-        with _processing_count_lock:
-            state.processing_count += 1
-    except asyncio.TimeoutError:
+    # See /upscale for explanation of why we avoid asyncio.wait_for(timeout=0)
+    if sem is None or sem._value <= 0:
         raise HTTPException(status_code=503, detail="Busy")
+    await sem.acquire()
+    acquired = True
+    with _processing_count_lock:
+        state.processing_count += 1
 
     start_time = time.time()
     model_name = state.current_model or "unknown"
@@ -3180,7 +3261,7 @@ async def upscale_video_chunk(request: Request):
         if expected_frames == 1:
             center = frames[len(frames) // 2]
             loop = asyncio.get_running_loop()
-            result = await loop.run_in_executor(None, upscale_image_array, center)
+            result = await loop.run_in_executor(_cpu_executor, upscale_image_array, center)
         else:
             # Scene-change detection: check consecutive frame pairs for abrupt
             # changes.  If any pair crosses the threshold the multi-frame model
@@ -3202,10 +3283,10 @@ async def upscale_video_chunk(request: Request):
             if scene_change_detected:
                 center = frames[len(frames) // 2]
                 loop = asyncio.get_running_loop()
-                result = await loop.run_in_executor(None, upscale_image_array, center)
+                result = await loop.run_in_executor(_cpu_executor, upscale_image_array, center)
             else:
                 loop = asyncio.get_running_loop()
-                result = await loop.run_in_executor(None, upscale_multiframe, frames)
+                result = await loop.run_in_executor(_cpu_executor, upscale_multiframe, frames)
 
         # Encode as PNG
         _, buffer = cv2.imencode('.png', result)
@@ -3292,6 +3373,7 @@ async def upscale_stream(request: Request):
     Input: raw frame bytes (width * height * 3 per frame)
     Output: streaming response with upscaled raw frames
     """
+    _require_api_token(request)
     _check_circuit_breaker()
 
     if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
@@ -3428,7 +3510,7 @@ async def benchmark_frame_endpoint(width: int = 480, height: int = 270, request:
         raise HTTPException(status_code=429, detail="Benchmark already in progress")
     try:
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, _run_frame_benchmark, width, height)
+        result = await loop.run_in_executor(_cpu_executor, _run_frame_benchmark, width, height)
         return result
     finally:
         _benchmark_lock.release()
@@ -3790,6 +3872,7 @@ async def interpolate_frames(request: Request):
     Optional 'timestep' float (0.0-1.0, default 0.5 for midpoint).
     Returns the interpolated frame as PNG.
     """
+    _require_api_token(request)
     _check_circuit_breaker()
 
     if not ONNX_AVAILABLE:
@@ -3873,7 +3956,7 @@ async def interpolate_frames(request: Request):
     try:
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(
-            None, interpolate_frame_rife, img1, img2, session, timestep
+            _cpu_executor, interpolate_frame_rife, img1, img2, session, timestep
         )
 
         # Encode result as PNG
@@ -3988,12 +4071,14 @@ def compute_quality_metrics(original: np.ndarray, upscaled: np.ndarray) -> dict:
 
 @app.post("/quality-metrics", tags=["Quality"])
 async def quality_metrics_endpoint(
+    request: Request,
     file: UploadFile = File(...),
 ):
     """Upload an image, upscale it, and return quality metrics (PSNR, SSIM)
     comparing bicubic-upscaled original vs AI-upscaled result.
 
     Configurable via ENABLE_QUALITY_METRICS env var."""
+    _require_api_token(request)
     if not ENABLE_QUALITY_METRICS:
         raise HTTPException(status_code=403, detail="Quality metrics disabled (ENABLE_QUALITY_METRICS=false)")
 
@@ -4049,6 +4134,7 @@ def add_grain(img: np.ndarray, intensity: float = 5.0) -> np.ndarray:
 
 @app.post("/process-grain", tags=["Grain"])
 async def process_grain_endpoint(
+    request: Request,
     file: UploadFile = File(...),
     action: str = Form("remove"),
     strength: int = Form(5),
@@ -4062,6 +4148,7 @@ async def process_grain_endpoint(
         intensity: Grain noise intensity 0-50 (for add/both).
 
     Configurable via ENABLE_GRAIN_MANAGEMENT env var."""
+    _require_api_token(request)
     if not ENABLE_GRAIN_MANAGEMENT:
         raise HTTPException(status_code=403, detail="Grain management disabled (ENABLE_GRAIN_MANAGEMENT=false)")
 
@@ -4275,7 +4362,7 @@ async def upload_face_enhance_model(request: Request, file: UploadFile = File(..
     if len(data) > MAX_MODEL_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="Model file too large")
 
-    model_dir = Path("/app/models")
+    model_dir = MODELS_DIR
     model_dir.mkdir(parents=True, exist_ok=True)
     model_path = model_dir / "face_enhance.onnx"
 
@@ -4344,7 +4431,8 @@ async def upload_custom_model(
 ):
     """Upload a custom ONNX super-resolution model.
 
-    The model is validated (input/output shape check), saved to /app/models/,
+    The model is validated (input/output shape check), saved to MODELS_DIR
+    (default /app/models, overridable via MODELS_DIR env var),
     and registered in AVAILABLE_MODELS so it appears in the model list.
 
     Args:
@@ -4398,7 +4486,7 @@ async def upload_custom_model(
         raise HTTPException(status_code=400, detail="Invalid or corrupt ONNX model file")
 
     # Save model (defense-in-depth path check, matches delete endpoint)
-    model_dir = Path("/app/models")
+    model_dir = MODELS_DIR
     model_dir.mkdir(parents=True, exist_ok=True)
     model_filename = f"{model_name}.onnx"
     model_path = (model_dir / model_filename).resolve()
@@ -4427,6 +4515,7 @@ async def upload_custom_model(
             "available": True,
             "custom": True,
         }
+    _invalidate_models_cache()
 
     logger.info(f"Custom model registered: {model_name} ({scale}x, {len(data) / (1024*1024):.1f} MB)")
 
@@ -4460,7 +4549,7 @@ async def delete_custom_model(request: Request, model_name: str):
             raise HTTPException(status_code=403, detail="Cannot delete built-in models")
 
         # Path traversal protection: resolve and verify within models dir
-        models_dir = Path("/app/models").resolve()
+        models_dir = MODELS_DIR.resolve()
         model_path = (models_dir / model_info.get("filename", f"{model_name}.onnx")).resolve()
         if not str(model_path).startswith(str(models_dir)):
             raise HTTPException(status_code=403, detail="Invalid model path")
@@ -4469,13 +4558,19 @@ async def delete_custom_model(request: Request, model_name: str):
         if model_path.exists() and model_path.is_file():
             os.unlink(str(model_path))
 
-        # Unregister and unload if active
+        # Unregister and unload if active.
+        # _model_lock is already held here — acquiring _models_registry_lock
+        # inside it would create a nested-lock (ABBA deadlock) risk if any other
+        # code path takes them in the opposite order.  Since _model_lock already
+        # serialises all model state mutations, the dict pop is safe without the
+        # registry lock.
         AVAILABLE_MODELS.pop(model_name, None)
         if state.current_model == model_name:
             state.current_model = None
             state.onnx_session = None
             logger.info(f"Unloaded active model: {model_name}")
 
+    _invalidate_models_cache()
     logger.info(f"Custom model deleted: {model_name}")
     return {"status": "ok", "deleted": model_name}
 

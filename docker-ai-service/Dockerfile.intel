@@ -77,7 +77,12 @@ RUN chmod +x /entrypoint.sh
 RUN mkdir -p /app/models /app/cache && \
     chown -R openvino:openvino /app /entrypoint.sh
 
-# Run as non-root openvino user for security
+# Run as non-root openvino user for security.
+# NOTE: We intentionally keep the 'openvino' user (not 'appuser' like Dockerfile.cpu)
+# because the openvino/ubuntu22_runtime base image pre-configures this user with
+# the correct Intel GPU group memberships (render/video) needed for OpenCL/Level-Zero
+# hardware access. Changing to a different user would require re-granting all GPU
+# device permissions and risks breaking GPU passthrough on Arc/iGPU hardware.
 USER openvino
 
 # Expose API port

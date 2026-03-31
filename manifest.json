@@ -9,6 +9,30 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.5.5.7",
+        "changelog": "v1.5.5.7: RealtimeStats bounded rolling window (no OOM), /models 30s cache, VideoProcessor.cs split into 5 focused classes (1930->5x<400 lines), C# unit test project (22 tests).",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.5.7/JellyfinUpscalerPlugin-v1.5.5.7.zip",
+        "checksum": "",
+        "timestamp": "2026-03-31T22:00:00.000Z"
+      },
+      {
+        "version": "1.5.5.6",
+        "changelog": "v1.5.5.6: Bounded thread pool for CPU upscaling (ThreadPoolExecutor, MAX_CPU_WORKERS env var), retry logic for model download/load in C# (1 retry with 2s back-off), CI unit test job (pytest on Python 3.12) + pip-audit dependency scan, Intel Dockerfile user documentation.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.5.6/JellyfinUpscalerPlugin-v1.5.5.6.zip",
+        "checksum": "",
+        "timestamp": "2026-03-31T20:00:00.000Z"
+      },
+      {
+        "version": "1.5.5.5",
+        "changelog": "v1.5.5.5: Security hardening \u00e2\u20ac\u201d API token auth on all 8 processing endpoints (/upscale, /upscale-hdr, /upscale-frame, /upscale-video-chunk, /upscale-stream, /interpolate-frames, /quality-metrics, /process-grain), AVAILABLE_MODELS thread lock. Python 3.12 429 semaphore bug fix (all upscale endpoints). Unit test suite (30 tests covering health, auth, validation, semaphore). Docker CI smoke test. TreatWarningsAsErrors in Release builds.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.5.5/JellyfinUpscalerPlugin-v1.5.5.5.zip",
+        "checksum": "",
+        "timestamp": "2026-03-31T12:00:00.000Z"
+      },
+      {
         "version": "1.5.5.4",
         "changelog": "v1.5.5.4: 5 new configurable features (Quality Metrics PSNR/SSIM, Face Enhancement GFPGAN, Film Grain Management, Custom ONNX Model Upload, OpenAPI Docs) + dashboard UI + deep security hardening (thread safety, image dimension limits, resource leak fixes, path traversal protection, error sanitization, settings export/import).",
         "targetAbi": "10.11.0.0",
@@ -18,7 +42,7 @@
       },
       {
         "version": "1.5.5.0",
-        "changelog": "v1.5.5.0: Critical bug fixes — circuit breaker half-open bypass, ncnn CHW/HWC reshape, audio passthrough (-c:a copy), max_concurrent=0 deadlock, health endpoint accuracy. All 6 Docker images rebuilt.",
+        "changelog": "v1.5.5.0: Critical bug fixes \u00e2\u20ac\u201d circuit breaker half-open bypass, ncnn CHW/HWC reshape, audio passthrough (-c:a copy), max_concurrent=0 deadlock, health endpoint accuracy. All 6 Docker images rebuilt.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.5.0/JellyfinUpscalerPlugin-v1.5.5.0.zip",
         "checksum": "41a31b4ee193f2eca03e1247807a6b9c",
@@ -26,7 +50,7 @@
       },
       {
         "version": "1.5.4.4",
-        "changelog": "v1.5.4.4: Docker deep scan — 20+ functional bug fixes (thread safety, circuit breaker, tile blending, ncnn-Vulkan backend, per-model download locks, semaphore capture). All 6 Dockerfiles verified and fixed.",
+        "changelog": "v1.5.4.4: Docker deep scan \u00e2\u20ac\u201d 20+ functional bug fixes (thread safety, circuit breaker, tile blending, ncnn-Vulkan backend, per-model download locks, semaphore capture). All 6 Dockerfiles verified and fixed.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.4.4/JellyfinUpscalerPlugin-v1.5.4.4.zip",
         "checksum": "953e6f80eddafbf5dc14a099a7bf9d13",
@@ -34,7 +58,7 @@
       },
       {
         "version": "1.5.4.3",
-        "changelog": "v1.5.4.3: Fix bench buttons — auto-download models on load, forward Docker error codes, consistent API response format. Better download/benchmark UX.",
+        "changelog": "v1.5.4.3: Fix bench buttons \u00e2\u20ac\u201d auto-download models on load, forward Docker error codes, consistent API response format. Better download/benchmark UX.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.4.3/JellyfinUpscalerPlugin-v1.5.4.3.zip",
         "checksum": "b03fe049316dcf5ab67a8fff9b37ed21",
@@ -42,7 +66,7 @@
       },
       {
         "version": "1.5.4.2",
-        "changelog": "v1.5.4.2: Fix CORS errors in model catalog and performance monitor. Add live video benchmark — test all 35 models against your library content. 3 new proxy endpoints.",
+        "changelog": "v1.5.4.2: Fix CORS errors in model catalog and performance monitor. Add live video benchmark \u00e2\u20ac\u201d test all 35 models against your library content. 3 new proxy endpoints.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.4.2/JellyfinUpscalerPlugin-v1.5.4.2.zip",
         "checksum": "7ebe7a601ce8bc82329686d2f815794a",
@@ -66,7 +90,7 @@
       },
       {
         "version": "1.5.3.6",
-        "changelog": "v1.5.3.6: 12 new community models — video-optimized (ClearReality, UltraSharp V2, DAT2, HAT, APISR, Compact). Now 30 models total.",
+        "changelog": "v1.5.3.6: 12 new community models \u00e2\u20ac\u201d video-optimized (ClearReality, UltraSharp V2, DAT2, HAT, APISR, Compact). Now 30 models total.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.3.6/ai-upscaler-plugin-v1.5.3.6.zip",
         "checksum": "96c5a6b8442596ad33a0fc3eaff0c525",
@@ -90,7 +114,7 @@
       },
       {
         "version": "1.5.3.3",
-        "changelog": "v1.5.3.3: Real-time upscaling during playback — two-tier system (WebGL client-side + Server AI). Benchmark-driven tier selection, FPS overlay, auto-fallback.",
+        "changelog": "v1.5.3.3: Real-time upscaling during playback \u00e2\u20ac\u201d two-tier system (WebGL client-side + Server AI). Benchmark-driven tier selection, FPS overlay, auto-fallback.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.3.3/ai-upscaler-plugin-v1.5.3.3.zip",
         "checksum": "ba37453e37b2678f9f9f8d3aed59c32e",
@@ -98,7 +122,7 @@
       },
       {
         "version": "1.5.3.2",
-        "changelog": "v1.5.3.2: Fix model selection — correct model is now auto-downloaded, loaded, and used for upscaling. EnsureModelLoaded before every upscale call.",
+        "changelog": "v1.5.3.2: Fix model selection \u00e2\u20ac\u201d correct model is now auto-downloaded, loaded, and used for upscaling. EnsureModelLoaded before every upscale call.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.3.2/ai-upscaler-plugin-v1.5.3.2.zip",
         "checksum": "3db79695e0af2f873abd1cea1e27eb9e",
@@ -170,7 +194,7 @@
       },
       {
         "version": "1.5.2.3",
-        "changelog": "v1.5.2.3: Fixed NotSupported plugin status — lowered targetAbi to 10.11.0.0 for broad Jellyfin 10.11.x compatibility.",
+        "changelog": "v1.5.2.3: Fixed NotSupported plugin status \u00e2\u20ac\u201d lowered targetAbi to 10.11.0.0 for broad Jellyfin 10.11.x compatibility.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.2.3/JellyfinUpscalerPlugin-v1.5.2.3.zip",
         "checksum": "266e66dd1b8031dd72676ec3050fe038",
@@ -178,7 +202,7 @@
       },
       {
         "version": "1.5.2.2",
-        "changelog": "v1.5.2.2: Fixed player button not showing (Issue #45) — global script injection via index.html like Intro Skipper. Updated player-integration.js for Jellyfin 10.11+ SPA navigation with viewshow events and correct OSD selectors.",
+        "changelog": "v1.5.2.2: Fixed player button not showing (Issue #45) \u00e2\u20ac\u201d global script injection via index.html like Intro Skipper. Updated player-integration.js for Jellyfin 10.11+ SPA navigation with viewshow events and correct OSD selectors.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.2.2/JellyfinUpscalerPlugin_v1.5.2.2.zip",
         "checksum": "cfe28329a7f035e8d6d4903b25a87d01",
