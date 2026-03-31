@@ -2933,13 +2933,17 @@ async def upscale_endpoint(
     # (protects against /config recreating the semaphore mid-request)
     sem = _upscale_semaphore
     acquired = False
-    try:
-        await asyncio.wait_for(sem.acquire(), timeout=0)
-        acquired = True
-        with _processing_count_lock:
-            state.processing_count += 1
-    except asyncio.TimeoutError:
+    # Python 3.12 broke asyncio.wait_for(coro, timeout=0): the coroutine is
+    # wrapped in a Task, cancellation is scheduled immediately, and the Task
+    # never gets to run before being cancelled — causing permanent 429.
+    # Fix: check _value directly (safe in asyncio; no await between check and
+    # acquire, so no other coroutine can interleave).
+    if sem is None or sem._value <= 0:
         raise HTTPException(status_code=429, detail="Too many concurrent requests")
+    await sem.acquire()
+    acquired = True
+    with _processing_count_lock:
+        state.processing_count += 1
 
     start_time = time.time()
     model_name = state.current_model or "unknown"
@@ -3001,13 +3005,13 @@ async def upscale_frame_hdr(
     # Capture semaphore reference for safe release
     sem = _upscale_semaphore
     acquired = False
-    try:
-        await asyncio.wait_for(sem.acquire(), timeout=0)
-        acquired = True
-        with _processing_count_lock:
-            state.processing_count += 1
-    except asyncio.TimeoutError:
+    # See /upscale for explanation of why we avoid asyncio.wait_for(timeout=0)
+    if sem is None or sem._value <= 0:
         raise HTTPException(status_code=429, detail="Too many concurrent requests")
+    await sem.acquire()
+    acquired = True
+    with _processing_count_lock:
+        state.processing_count += 1
 
     start_time = time.time()
     model_name = state.current_model or "unknown"
@@ -3075,13 +3079,13 @@ async def upscale_frame_endpoint(request: Request):
     # Capture semaphore reference for safe release
     sem = _upscale_semaphore
     acquired = False
-    try:
-        await asyncio.wait_for(sem.acquire(), timeout=0)
-        acquired = True
-        with _processing_count_lock:
-            state.processing_count += 1
-    except asyncio.TimeoutError:
+    # See /upscale for explanation of why we avoid asyncio.wait_for(timeout=0)
+    if sem is None or sem._value <= 0:
         raise HTTPException(status_code=503, detail="Busy")
+    await sem.acquire()
+    acquired = True
+    with _processing_count_lock:
+        state.processing_count += 1
 
     start_time = time.time()
     model_name = state.current_model or "unknown"
@@ -3143,13 +3147,13 @@ async def upscale_video_chunk(request: Request):
     # Capture semaphore reference for safe release
     sem = _upscale_semaphore
     acquired = False
-    try:
-        await asyncio.wait_for(sem.acquire(), timeout=0)
-        acquired = True
-        with _processing_count_lock:
-            state.processing_count += 1
-    except asyncio.TimeoutError:
+    # See /upscale for explanation of why we avoid asyncio.wait_for(timeout=0)
+    if sem is None or sem._value <= 0:
         raise HTTPException(status_code=503, detail="Busy")
+    await sem.acquire()
+    acquired = True
+    with _processing_count_lock:
+        state.processing_count += 1
 
     start_time = time.time()
     model_name = state.current_model or "unknown"
