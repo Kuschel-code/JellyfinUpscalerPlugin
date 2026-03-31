@@ -12,7 +12,7 @@ namespace JellyfinUpscalerPlugin.Services
 {
     /// <summary>
     /// HTTP-based upscaler service that communicates with the AI Upscaler Docker container.
-    /// v1.5.5.4 - Health caching, retry logic, multi-GPU support.
+    /// v1.5.5.6 - Health caching, retry logic for all endpoints, multi-GPU support.
     /// </summary>
     public class HttpUpscalerService : IDisposable
     {
@@ -56,7 +56,7 @@ namespace JellyfinUpscalerPlugin.Services
                 Timeout = TimeSpan.FromMinutes(5)
             };
 
-            _logger.LogInformation("HttpUpscalerService v1.5.5.4 initialized");
+            _logger.LogInformation("HttpUpscalerService v1.5.5.6 initialized");
         }
 
         private HttpClient GetClient()
@@ -300,44 +300,85 @@ namespace JellyfinUpscalerPlugin.Services
 
         /// <summary>
         /// Request the AI service to download a model.
+        /// Retries once on transient network errors with a 2-second back-off.
         /// </summary>
         public async Task<bool> DownloadModelAsync(string modelName, CancellationToken cancellationToken = default)
         {
             var baseUrl = GetServiceUrl();
-            try
+            const int maxRetries = 1;
+            for (int attempt = 0; attempt <= maxRetries; attempt++)
             {
-                using var content = new MultipartFormDataContent();
-                content.Add(new StringContent(modelName), "model_name");
-                var response = await GetClient().PostAsync($"{baseUrl}/models/download", content, cancellationToken);
-                return response.IsSuccessStatusCode;
+                try
+                {
+                    using var content = new MultipartFormDataContent();
+                    content.Add(new StringContent(modelName), "model_name");
+                    var response = await GetClient().PostAsync($"{baseUrl}/models/download", content, cancellationToken);
+                    if (response.IsSuccessStatusCode) return true;
+                    // Don't retry on 4xx client errors
+                    if ((int)response.StatusCode < 500) return false;
+                }
+                catch (TaskCanceledException)
+                {
+                    break;
+                }
+                catch (HttpRequestException ex)
+                {
+                    _logger.LogWarning(ex, "Transient error downloading model {Model} (attempt {Attempt})", modelName, attempt + 1);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to download model {Model}", modelName);
+                    return false;
+                }
+
+                if (attempt < maxRetries)
+                    await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to download model {Model}", modelName);
-                return false;
-            }
+
+            _logger.LogError("All attempts to download model {Model} failed", modelName);
+            return false;
         }
 
         /// <summary>
         /// Request the AI service to load a model.
+        /// Retries once on transient network errors with a 2-second back-off.
         /// </summary>
         public async Task<bool> LoadModelAsync(string modelName, bool useGpu = true, int gpuDeviceId = 0, CancellationToken cancellationToken = default)
         {
             var baseUrl = GetServiceUrl();
-            try
+            const int maxRetries = 1;
+            for (int attempt = 0; attempt <= maxRetries; attempt++)
             {
-                using var content = new MultipartFormDataContent();
-                content.Add(new StringContent(modelName), "model_name");
-                content.Add(new StringContent(useGpu.ToString().ToLower()), "use_gpu");
-                content.Add(new StringContent(gpuDeviceId.ToString()), "gpu_device_id");
-                var response = await GetClient().PostAsync($"{baseUrl}/models/load", content, cancellationToken);
-                return response.IsSuccessStatusCode;
+                try
+                {
+                    using var content = new MultipartFormDataContent();
+                    content.Add(new StringContent(modelName), "model_name");
+                    content.Add(new StringContent(useGpu.ToString().ToLower()), "use_gpu");
+                    content.Add(new StringContent(gpuDeviceId.ToString()), "gpu_device_id");
+                    var response = await GetClient().PostAsync($"{baseUrl}/models/load", content, cancellationToken);
+                    if (response.IsSuccessStatusCode) return true;
+                    if ((int)response.StatusCode < 500) return false;
+                }
+                catch (TaskCanceledException)
+                {
+                    break;
+                }
+                catch (HttpRequestException ex)
+                {
+                    _logger.LogWarning(ex, "Transient error loading model {Model} (attempt {Attempt})", modelName, attempt + 1);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to load model {Model}", modelName);
+                    return false;
+                }
+
+                if (attempt < maxRetries)
+                    await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to load model {Model}", modelName);
-                return false;
-            }
+
+            _logger.LogError("All attempts to load model {Model} failed", modelName);
+            return false;
         }
 
         public void Dispose()

@@ -68,6 +68,28 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  python-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: pip install -r docker-ai-service/requirements-test.txt
+
+      - name: Run unit tests
+        run: pytest docker-ai-service/tests/ -v --tb=short
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Audit Python dependencies (CPU)
+        run: pip-audit -r docker-ai-service/requirements-cpu.txt --ignore-vuln PYSEC-2024-48 || true
+
   docker-smoke-test:
     runs-on: ubuntu-latest
     steps:

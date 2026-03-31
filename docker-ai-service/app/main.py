@@ -1,6 +1,6 @@
 """
 AI Upscaler Service - FastAPI Application
-Jellyfin AI Upscaler Plugin - Microservice Component v1.5.5.5
+Jellyfin AI Upscaler Plugin - Microservice Component v1.5.5.6
 Supports OpenCV DNN (.pb) and ONNX Runtime models with GPU detection
 Multi-GPU selection, robust TensorRT/CUDA/OpenVINO fallback
 """
@@ -20,6 +20,7 @@ import hmac
 import socket
 import urllib.parse
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional, Any
 from contextlib import asynccontextmanager
@@ -66,7 +67,7 @@ CACHE_DIR = Path("/app/cache")
 STATIC_DIR = Path("/app/static")
 
 # Version
-VERSION = "1.5.5.5"
+VERSION = "1.5.5.6"
 
 # Global state
 class AppState:
@@ -234,6 +235,16 @@ _models_registry_lock = threading.Lock()
 
 # Benchmark lock — ensures only one benchmark runs at a time (created in lifespan)
 _benchmark_lock: Optional[asyncio.Lock] = None
+
+# Bounded thread pool for CPU-bound upscaling work.
+# Using None in run_in_executor relies on the default pool which Python sizes to
+# min(32, cpu_count+4) — fine but uncontrolled. An explicit executor lets us cap
+# workers at MAX_CPU_WORKERS (default: cpu_count) so we don't over-subscribe the
+# CPU when multiple concurrent requests arrive simultaneously.
+_cpu_executor = ThreadPoolExecutor(
+    max_workers=int(os.getenv("MAX_CPU_WORKERS", str(os.cpu_count() or 4))),
+    thread_name_prefix="upscaler"
+)
 
 
 def _require_api_token(request: Request) -> None:
@@ -1138,8 +1149,9 @@ async def lifespan(app: FastAPI):
         await load_model(default_model)
     
     yield
-    
+
     logger.info("Shutting down AI Upscaler Service...")
+    _cpu_executor.shutdown(wait=False)
 
 
 app = FastAPI(
@@ -2396,12 +2408,12 @@ async def upscale_frame_realtime(frame: np.ndarray, session, local_state) -> np.
         if cv_model is None:
             raise ModelNotReadyError("No OpenCV model loaded")
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, cv_model.upsample, frame)
+        return await loop.run_in_executor(_cpu_executor, cv_model.upsample, frame)
 
     # ncnn: delegate to existing function
     if model_type == "ncnn":
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, upscale_with_ncnn, frame)
+        return await loop.run_in_executor(_cpu_executor, upscale_with_ncnn, frame)
 
     # ONNX: optimized single-pass (no blend weighting)
     if session is None:
@@ -2469,9 +2481,9 @@ async def upscale_frame_realtime(frame: np.ndarray, session, local_state) -> np.
 
     loop = asyncio.get_running_loop()
     if h * w <= max_pixels:
-        return await loop.run_in_executor(None, _infer_full)
+        return await loop.run_in_executor(_cpu_executor, _infer_full)
     else:
-        return await loop.run_in_executor(None, _infer_tiled)
+        return await loop.run_in_executor(_cpu_executor, _infer_tiled)
 
 
 def run_benchmark(test_size: int = 256) -> dict:
@@ -2968,7 +2980,7 @@ async def upscale_endpoint(
 
         # Upscale in thread pool to not block async
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, upscale_image, image_bytes)
+        result = await loop.run_in_executor(_cpu_executor, upscale_image, image_bytes)
 
         duration_ms = (time.time() - start_time) * 1000
         _record_success(model_name, duration_ms)
@@ -3038,7 +3050,7 @@ async def upscale_frame_hdr(
 
         # Upscale HDR in thread pool to not block async
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, upscale_image_hdr, image_bytes)
+        result = await loop.run_in_executor(_cpu_executor, upscale_image_hdr, image_bytes)
 
         duration_ms = (time.time() - start_time) * 1000
         _record_success(model_name, duration_ms)
@@ -3124,7 +3136,7 @@ async def upscale_frame_endpoint(request: Request):
 
         # Upscale using array helper (no double encode/decode)
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, upscale_image_array, img)
+        result = await loop.run_in_executor(_cpu_executor, upscale_image_array, img)
 
         # Encode as JPEG quality 85 (much faster than PNG)
         _, buffer = cv2.imencode('.jpg', result, [cv2.IMWRITE_JPEG_QUALITY, 85])
@@ -3201,7 +3213,7 @@ async def upscale_video_chunk(request: Request):
         if expected_frames == 1:
             center = frames[len(frames) // 2]
             loop = asyncio.get_running_loop()
-            result = await loop.run_in_executor(None, upscale_image_array, center)
+            result = await loop.run_in_executor(_cpu_executor, upscale_image_array, center)
         else:
             # Scene-change detection: check consecutive frame pairs for abrupt
             # changes.  If any pair crosses the threshold the multi-frame model
@@ -3223,10 +3235,10 @@ async def upscale_video_chunk(request: Request):
             if scene_change_detected:
                 center = frames[len(frames) // 2]
                 loop = asyncio.get_running_loop()
-                result = await loop.run_in_executor(None, upscale_image_array, center)
+                result = await loop.run_in_executor(_cpu_executor, upscale_image_array, center)
             else:
                 loop = asyncio.get_running_loop()
-                result = await loop.run_in_executor(None, upscale_multiframe, frames)
+                result = await loop.run_in_executor(_cpu_executor, upscale_multiframe, frames)
 
         # Encode as PNG
         _, buffer = cv2.imencode('.png', result)
@@ -3896,7 +3908,7 @@ async def interpolate_frames(request: Request):
     try:
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(
-            None, interpolate_frame_rife, img1, img2, session, timestep
+            _cpu_executor, interpolate_frame_rife, img1, img2, session, timestep
         )
 
         # Encode result as PNG
