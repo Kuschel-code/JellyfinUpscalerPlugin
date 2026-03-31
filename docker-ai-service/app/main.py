@@ -4431,7 +4431,8 @@ async def upload_custom_model(
 ):
     """Upload a custom ONNX super-resolution model.
 
-    The model is validated (input/output shape check), saved to /app/models/,
+    The model is validated (input/output shape check), saved to MODELS_DIR
+    (default /app/models, overridable via MODELS_DIR env var),
     and registered in AVAILABLE_MODELS so it appears in the model list.
 
     Args:
