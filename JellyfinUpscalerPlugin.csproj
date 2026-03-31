@@ -7,9 +7,9 @@
     <TreatWarningsAsErrors Condition="'$(Configuration)'=='Release'">true</TreatWarningsAsErrors>
     <TreatWarningsAsErrors Condition="'$(Configuration)'!='Release'">false</TreatWarningsAsErrors>
     <AssemblyTitle>AI Upscaler Plugin</AssemblyTitle>
-    <Version>1.5.5.6</Version>
-    <AssemblyVersion>1.5.5.6</AssemblyVersion>
-    <FileVersion>1.5.5.6</FileVersion>
+    <Version>1.5.5.7</Version>
+    <AssemblyVersion>1.5.5.7</AssemblyVersion>
+    <FileVersion>1.5.5.7</FileVersion>
     <NoWarn>CS8632</NoWarn>
     <Nullable>enable</Nullable>
     <!-- AI processing now handled by external Docker service - minimal dependencies -->
@@ -53,6 +53,7 @@
     <Compile Remove="wiki\**" />
     <Compile Remove="assets\**" />
     <Compile Remove="docker-ai-service\**" />
+    <Compile Remove="JellyfinUpscalerPlugin.Tests\**" />
   </ItemGroup>
 
 </Project>

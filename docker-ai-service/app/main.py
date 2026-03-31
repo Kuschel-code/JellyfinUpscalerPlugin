@@ -1,6 +1,6 @@
 """
 AI Upscaler Service - FastAPI Application
-Jellyfin AI Upscaler Plugin - Microservice Component v1.5.5.6
+Jellyfin AI Upscaler Plugin - Microservice Component v1.5.5.7
 Supports OpenCV DNN (.pb) and ONNX Runtime models with GPU detection
 Multi-GPU selection, robust TensorRT/CUDA/OpenVINO fallback
 """
@@ -67,7 +67,7 @@ CACHE_DIR = Path("/app/cache")
 STATIC_DIR = Path("/app/static")
 
 # Version
-VERSION = "1.5.5.6"
+VERSION = "1.5.5.7"
 
 # Global state
 class AppState:
@@ -151,23 +151,37 @@ state = AppState()
 
 
 class RealtimeStats:
-    """Track real-time upscaling performance."""
+    """Track real-time upscaling performance.
 
-    _FPS_WINDOW_SIZE = 60  # Rolling window of last 60 frame timestamps
+    All accumulators use bounded rolling windows to prevent unbounded memory
+    growth in long-running deployments.  frames_processed / total_time are
+    capped at _ACCUM_WINDOW_SIZE frames — avg_ms reflects the most recent
+    window rather than a lifetime average, which is more useful in practice.
+    """
+
+    _FPS_WINDOW_SIZE = 60    # Rolling window for FPS calculation
+    _ACCUM_WINDOW_SIZE = 500  # Max frames kept for avg_ms — prevents OOM
 
     def __init__(self):
-        self.frames_processed: int = 0
-        self.total_time: float = 0.0
         self.current_fps: float = 0.0
         self.dropped_frames: int = 0
         self._lock = threading.Lock()
         self._timestamps: collections.deque = collections.deque(maxlen=RealtimeStats._FPS_WINDOW_SIZE)
+        # Bounded deque for avg latency — oldest entries dropped automatically
+        self._durations: collections.deque = collections.deque(maxlen=RealtimeStats._ACCUM_WINDOW_SIZE)
+
+    @property
+    def frames_processed(self) -> int:
+        return len(self._durations)
+
+    @property
+    def total_time(self) -> float:
+        return sum(self._durations)
 
     def record_frame(self, duration: float) -> None:
         """Record a processed frame and update rolling FPS via sliding window."""
         with self._lock:
-            self.frames_processed += 1
-            self.total_time += duration
+            self._durations.append(duration)
 
             now = time.time()
             self._timestamps.append(now)
@@ -186,10 +200,13 @@ class RealtimeStats:
     def snapshot(self) -> dict:
         """Return a copy of current stats."""
         with self._lock:
-            avg_ms = (self.total_time / self.frames_processed * 1000) if self.frames_processed > 0 else 0.0
+            durations = list(self._durations)
+            total = sum(durations)
+            count = len(durations)
+            avg_ms = (total / count * 1000) if count > 0 else 0.0
             return {
-                "frames_processed": self.frames_processed,
-                "total_time_s": round(self.total_time, 3),
+                "frames_processed": count,
+                "total_time_s": round(total, 3),
                 "current_fps": round(self.current_fps, 2),
                 "avg_frame_ms": round(avg_ms, 2),
                 "dropped_frames": self.dropped_frames,
@@ -198,11 +215,10 @@ class RealtimeStats:
     def reset(self) -> None:
         """Reset all counters."""
         with self._lock:
-            self.frames_processed = 0
-            self.total_time = 0.0
             self.current_fps = 0.0
             self.dropped_frames = 0
             self._timestamps.clear()
+            self._durations.clear()
 
 
 _realtime_stats = RealtimeStats()
@@ -235,6 +251,17 @@ _models_registry_lock = threading.Lock()
 
 # Benchmark lock — ensures only one benchmark runs at a time (created in lifespan)
 _benchmark_lock: Optional[asyncio.Lock] = None
+
+# /models list cache — avoids 40 Path.exists() filesystem checks on every call
+_models_cache: Optional[dict] = None
+_models_cache_expiry: float = 0.0
+_MODELS_CACHE_TTL: float = 30.0  # seconds
+
+
+def _invalidate_models_cache() -> None:
+    """Expire the /models list cache immediately after any model mutation."""
+    global _models_cache_expiry
+    _models_cache_expiry = 0.0
 
 # Bounded thread pool for CPU-bound upscaling work.
 # Using None in run_in_executor relies on the default pool which Python sizes to
@@ -2834,7 +2861,17 @@ async def register_connection(
 
 @app.get("/models")
 async def list_models():
-    """List available models."""
+    """List available models.
+
+    Filesystem existence checks are cached for _MODELS_CACHE_TTL seconds to
+    avoid 40+ Path.exists() calls on every request.  The cache is invalidated
+    whenever a model is loaded, downloaded, or deleted.
+    """
+    global _models_cache, _models_cache_expiry
+    now = time.time()
+    if _models_cache is not None and now < _models_cache_expiry:
+        return _models_cache
+
     models = []
     for model_id, info in AVAILABLE_MODELS.items():
         model_path = get_model_path(model_id)
@@ -2850,7 +2887,10 @@ async def list_models():
             "loaded": state.current_model == model_id,
             "available": is_available
         })
-    return {"models": models, "total": len(models)}
+    result = {"models": models, "total": len(models)}
+    _models_cache = result
+    _models_cache_expiry = now + _MODELS_CACHE_TTL
+    return result
 
 
 @app.post("/models/download")
@@ -2871,6 +2911,7 @@ async def download_model_endpoint(model_name: str = Form(...), request: Request 
     model_path = get_model_path(model_name)
     size_mb = model_path.stat().st_size / 1024 / 1024 if model_path.exists() else 0
     
+    _invalidate_models_cache()
     return {"status": "success", "model": model_name, "size_mb": round(size_mb, 2)}
 
 
@@ -2921,6 +2962,7 @@ async def load_model_endpoint(
         logger.error(f"Model load failed: {state.last_load_error}")
         raise HTTPException(status_code=500, detail="Failed to load model. Check server logs for details.")
 
+    _invalidate_models_cache()
     return {
         "status": "success",
         "model": model_name,
@@ -4520,6 +4562,7 @@ async def delete_custom_model(request: Request, model_name: str):
             state.onnx_session = None
             logger.info(f"Unloaded active model: {model_name}")
 
+    _invalidate_models_cache()
     logger.info(f"Custom model deleted: {model_name}")
     return {"status": "ok", "deleted": model_name}
 

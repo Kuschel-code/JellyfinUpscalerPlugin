@@ -11,8 +11,8 @@ using Microsoft.Extensions.Logging;
 namespace JellyfinUpscalerPlugin
 {
     /// <summary>
-    /// AI Upscaler Plugin for Jellyfin v1.5.5.6
-    /// v1.5.5.6 - Multi-Frame Video Super-Resolution (EDVR-M x4)
+    /// AI Upscaler Plugin for Jellyfin v1.5.5.7
+    /// v1.5.5.7 - Multi-Frame Video Super-Resolution (EDVR-M x4)
     /// </summary>
     public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     {
