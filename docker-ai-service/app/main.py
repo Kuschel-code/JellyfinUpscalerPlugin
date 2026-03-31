@@ -4362,7 +4362,7 @@ async def upload_face_enhance_model(request: Request, file: UploadFile = File(..
     if len(data) > MAX_MODEL_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="Model file too large")
 
-    model_dir = Path("/app/models")
+    model_dir = MODELS_DIR
     model_dir.mkdir(parents=True, exist_ok=True)
     model_path = model_dir / "face_enhance.onnx"
 
@@ -4485,7 +4485,7 @@ async def upload_custom_model(
         raise HTTPException(status_code=400, detail="Invalid or corrupt ONNX model file")
 
     # Save model (defense-in-depth path check, matches delete endpoint)
-    model_dir = Path("/app/models")
+    model_dir = MODELS_DIR
     model_dir.mkdir(parents=True, exist_ok=True)
     model_filename = f"{model_name}.onnx"
     model_path = (model_dir / model_filename).resolve()
@@ -4514,6 +4514,7 @@ async def upload_custom_model(
             "available": True,
             "custom": True,
         }
+    _invalidate_models_cache()
 
     logger.info(f"Custom model registered: {model_name} ({scale}x, {len(data) / (1024*1024):.1f} MB)")
 
@@ -4547,7 +4548,7 @@ async def delete_custom_model(request: Request, model_name: str):
             raise HTTPException(status_code=403, detail="Cannot delete built-in models")
 
         # Path traversal protection: resolve and verify within models dir
-        models_dir = Path("/app/models").resolve()
+        models_dir = MODELS_DIR.resolve()
         model_path = (models_dir / model_info.get("filename", f"{model_name}.onnx")).resolve()
         if not str(model_path).startswith(str(models_dir)):
             raise HTTPException(status_code=403, detail="Invalid model path")
