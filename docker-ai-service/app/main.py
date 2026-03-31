@@ -1191,16 +1191,24 @@ async def load_opencv_model(model_name: str, model_info: dict, model_path: Path)
         sr.readModel(str(model_path))
         sr.setModel(model_type, scale)
         
-        # Set GPU if available and enabled
-        if state.use_gpu:
-            try:
-                sr.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
-                sr.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
-                logger.info("Using CUDA backend for OpenCV DNN")
-            except Exception as e:
-                logger.warning(f"CUDA not available for OpenCV DNN: {e}")
-                sr.setPreferableBackend(cv2.dnn.DNN_BACKEND_DEFAULT)
-                sr.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
+        # Set GPU backend only when CUDA is actually present at runtime.
+        # setPreferableBackend(CUDA) does NOT throw on non-CUDA machines;
+        # the assertion error surfaces only at inference time. Check the
+        # device count to guard against this.
+        cuda_device_count = 0
+        try:
+            cuda_device_count = cv2.cuda.getCudaEnabledDeviceCount()
+        except Exception:
+            pass
+        if state.use_gpu and cuda_device_count > 0:
+            sr.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
+            sr.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
+            logger.info("Using CUDA backend for OpenCV DNN")
+        else:
+            sr.setPreferableBackend(cv2.dnn.DNN_BACKEND_DEFAULT)
+            sr.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
+            if state.use_gpu and cuda_device_count == 0:
+                logger.info("No CUDA device available — using CPU backend for OpenCV DNN")
         
         with _model_lock:
             state.cv_model = sr
