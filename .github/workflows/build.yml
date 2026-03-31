@@ -67,3 +67,57 @@ jobs:
           See [CHANGELOG](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/meta.json) for details.
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docker-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build CPU Docker image
+        run: |
+          docker build -f docker-ai-service/Dockerfile.cpu \
+            -t jellyfin-upscaler-cpu:smoke-test \
+            docker-ai-service/
+
+      - name: Start container
+        run: |
+          docker run -d --name upscaler-smoke \
+            -p 5099:5000 \
+            jellyfin-upscaler-cpu:smoke-test
+          echo "Waiting for service startup..."
+          for i in $(seq 1 45); do
+            if curl -sf http://localhost:5099/health > /dev/null 2>&1; then
+              echo "Service ready after $((i*2))s"
+              break
+            fi
+            if [ "$i" -eq 45 ]; then
+              echo "ERROR: service did not start within 90s"
+              docker logs upscaler-smoke
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Verify health endpoint
+        run: |
+          curl -sf http://localhost:5099/health | python3 -c "
+          import json, sys
+          d = json.load(sys.stdin)
+          assert d.get('status') in ('ok', 'degraded', 'starting'), f'Unexpected health status: {d}'
+          print('Health check passed:', d['status'])
+          "
+
+      - name: Verify status endpoint
+        run: |
+          curl -sf http://localhost:5099/status | python3 -c "
+          import json, sys
+          d = json.load(sys.stdin)
+          assert 'model_loaded' in d, f'Missing model_loaded in status: {d}'
+          print('Status check passed, model_loaded:', d['model_loaded'])
+          "
+
+      - name: Cleanup container
+        if: always()
+        run: |
+          docker stop upscaler-smoke 2>/dev/null || true
+          docker rm upscaler-smoke 2>/dev/null || true
