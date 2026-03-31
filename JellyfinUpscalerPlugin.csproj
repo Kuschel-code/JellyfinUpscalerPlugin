@@ -4,7 +4,8 @@
     <TargetFramework>net9.0</TargetFramework>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <TreatWarningsAsErrors Condition="'$(Configuration)'=='Release'">true</TreatWarningsAsErrors>
+    <TreatWarningsAsErrors Condition="'$(Configuration)'!='Release'">false</TreatWarningsAsErrors>
     <AssemblyTitle>AI Upscaler Plugin</AssemblyTitle>
     <Version>1.5.5.4</Version>
     <AssemblyVersion>1.5.5.4</AssemblyVersion>

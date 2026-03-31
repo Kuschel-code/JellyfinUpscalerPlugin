@@ -46,3 +46,8 @@ tools/
 
 # Backup files
 backup_*/
+
+# Environment and logs
+.env*
+*.log
+.pytest_cache/
