@@ -2062,6 +2062,7 @@ def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
     minimum tile size 64px). Updates the global ONNX_TILE_SIZE on success so
     subsequent requests use the working size.
     """
+    global ONNX_TILE_SIZE
     overlap = 32
     tile_size = ONNX_TILE_SIZE
     h, w = img.shape[:2]
@@ -2086,7 +2087,6 @@ def upscale_with_onnx(img: np.ndarray) -> np.ndarray:
                                      input_name, output_name, scale)
             # Success — persist working tile size for future requests
             if tile_size != ONNX_TILE_SIZE:
-                global ONNX_TILE_SIZE
                 with _model_lock:
                     logger.info(f"Updating global ONNX_TILE_SIZE from {ONNX_TILE_SIZE} to {tile_size} after OOM recovery")
                     ONNX_TILE_SIZE = tile_size
