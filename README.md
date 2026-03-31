@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.5.5.4
+# Jellyfin AI Upscaler Plugin v1.5.5.7
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -8,7 +8,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker5 / v1.5.5.4):**
+**Docker Images (docker5 / v1.5.5.7):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker5` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker5-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker5-intel` (Intel Arc/iGPU OpenVINO)
@@ -28,7 +28,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.5.5.4      │  │
+│  │  AI Upscaler Plugin v1.5.5.7      │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -283,6 +283,30 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 ---
 
 ## Changelog
+
+### v1.5.5.7 (Code Quality, OOM Fix, VideoProcessor Refactor, CI Tests)
+
+**Bug Fixes & Stability:**
+- **OOM Fix**: `RealtimeStats` replaced unbounded `int`/`float` accumulators with `deque(maxlen=500)` — prevents memory growth in long-running deployments
+- **Deadlock Fix**: Removed ABBA lock pattern in `delete_custom_model` — `_models_registry_lock` nested inside `_model_lock` eliminated
+- **Python 3.12**: `asyncio.get_event_loop()` → `asyncio.get_running_loop()` (deprecated in 3.10+)
+- **Python 3.12**: `asyncio.wait_for(timeout=0)` bug workaround — semaphore non-blocking check uses `sem._value` instead
+- **Thread Pool**: Bounded `ThreadPoolExecutor(max_workers=cpu_count)` replaces unbounded default pool
+- **Cache Invalidation**: `upload_custom_model` now calls `_invalidate_models_cache()` — `GET /models` reflects uploads immediately
+- **Env Vars**: `MODELS_DIR`/`CACHE_DIR`/`STATIC_DIR` read from env vars — no more hardcoded `/app/models` in upload/delete endpoints
+
+**Performance:**
+- **`/models` Cache**: 30s response cache with mutex-protected snapshot — 40x reduction in `Path.exists()` calls
+
+**Code Quality:**
+- **VideoProcessor.cs**: 1930-line god class refactored into 5 focused classes: `VideoAnalyzer`, `ProcessingStrategySelector`, `VideoFrameProcessor`, `ProcessingMethodExecutor`, `VideoJobManager`
+- **Retry Logic**: `DownloadModelAsync` and `LoadModelAsync` in `HttpUpscalerService` retry once with 2s back-off (no retry on 4xx)
+
+**Testing & CI:**
+- **C# Unit Tests**: New `JellyfinUpscalerPlugin.Tests` project — 22 tests (xUnit + Moq + FluentAssertions)
+- **Python Test Suite**: 25 pytest tests covering health, auth, validation, semaphore behavior
+- **CI**: `python-tests` job (pytest + pip-audit), `docker-smoke-test` job (live container health check)
+- **pytest-asyncio**: `asyncio_mode = "auto"` in `pyproject.toml` for Python 3.12 compatibility
 
 ### v1.5.5.4 (5 New Features + Deep Security Hardening)
 
