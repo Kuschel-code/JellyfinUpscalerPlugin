@@ -242,6 +242,9 @@ _circuit_lock = threading.Lock()
 # Threading lock for processing_count (+=/-= is not atomic in CPython)
 _processing_count_lock = threading.Lock()
 
+# Threading lock for plugin_connections list mutations
+_connections_lock = threading.Lock()
+
 # Per-model download lock — prevents concurrent downloads of the same model
 _download_locks: dict[str, asyncio.Lock] = {}
 _download_locks_guard = threading.Lock()
@@ -1540,7 +1543,7 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
             if 'CUDAExecutionProvider' in available_providers:
                 provider_chains.append({
                     'providers': ['CUDAExecutionProvider', 'CPUExecutionProvider'],
-                    'options': [{'device_id': str(device_id)}, {}],
+                    'options': [{'device_id': int(device_id)}, {}],
                     'name': 'CUDA'
                 })
 
@@ -1699,7 +1702,7 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
                         providers=['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider'],
                         provider_options=[
                             {'device_id': int(device_id), 'trt_max_workspace_size': 2147483648},
-                            {'device_id': str(device_id)},
+                            {'device_id': int(device_id)},
                             {}
                         ]
                     )
@@ -2849,15 +2852,16 @@ async def register_connection(
         "last_ping": time.strftime("%Y-%m-%d %H:%M:%S")
     }
     
-    # Update or add connection
-    for i, conn in enumerate(state.plugin_connections):
-        if conn["plugin_id"] == plugin_id:
-            state.plugin_connections[i] = connection
-            return {"status": "updated", "connection": connection}
-    
-    if len(state.plugin_connections) >= 100:
-        state.plugin_connections.pop(0)
-    state.plugin_connections.append(connection)
+    # Update or add connection (guarded by lock to prevent race conditions)
+    with _connections_lock:
+        for i, conn in enumerate(state.plugin_connections):
+            if conn["plugin_id"] == plugin_id:
+                state.plugin_connections[i] = connection
+                return {"status": "updated", "connection": connection}
+
+        if len(state.plugin_connections) >= 100:
+            state.plugin_connections.pop(0)
+        state.plugin_connections.append(connection)
     return {"status": "registered", "connection": connection}
 
 
@@ -3379,6 +3383,14 @@ async def upscale_stream(request: Request):
     if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
         raise HTTPException(status_code=400, detail="No model loaded")
 
+    # Acquire concurrency semaphore (same pattern as /upscale) to prevent GPU OOM
+    sem = _upscale_semaphore
+    if sem is None or sem._value <= 0:
+        raise HTTPException(status_code=429, detail="Too many concurrent requests")
+    await sem.acquire()
+    with _processing_count_lock:
+        state.processing_count += 1
+
     # Parse headers
     try:
         frame_width = int(request.headers.get("X-Frame-Width", "0"))
@@ -3471,15 +3483,20 @@ async def upscale_stream(request: Request):
                     # Yield empty frame marker (all zeros) so consumer knows a frame was skipped
                     continue
 
-        # Log final stats
-        stats = _realtime_stats.snapshot()
-        logger.info(
-            "Stream ended: %d frames processed, %d dropped, avg %.1fms/frame, %.1f FPS",
-            stats["frames_processed"], stats["dropped_frames"],
-            stats["avg_frame_ms"], stats["current_fps"]
-        )
-        if frames_ok > 0:
-            _record_success(model_name, stats["total_time_s"] * 1000)
+        # Log final stats and release semaphore
+        try:
+            stats = _realtime_stats.snapshot()
+            logger.info(
+                "Stream ended: %d frames processed, %d dropped, avg %.1fms/frame, %.1f FPS",
+                stats["frames_processed"], stats["dropped_frames"],
+                stats["avg_frame_ms"], stats["current_fps"]
+            )
+            if frames_ok > 0:
+                _record_success(model_name, stats["total_time_s"] * 1000)
+        finally:
+            with _processing_count_lock:
+                state.processing_count -= 1
+            sem.release()
 
     return StreamingResponse(frame_generator(), media_type="application/octet-stream")
 

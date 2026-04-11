@@ -57,26 +57,34 @@ namespace JellyfinUpscalerPlugin.Services
 
                 if (targetFolder != null)
                 {
-                    _logger.LogInformation("Scanning library: {LibraryName}", targetFolder.Name);
-                    
-                    // Trigger a full library scan
-                    await _libraryManager.ValidateMediaLibrary(
-                        new Progress<double>(), 
-                        CancellationToken.None
-                    );
-
-                    _logger.LogInformation("Library scan completed for {LibraryName}", targetFolder.Name);
+                    _logger.LogInformation("Refreshing library item for: {LibraryName}", targetFolder.Name);
                 }
                 else
                 {
                     _logger.LogWarning("No library folder found containing: {Directory}", directory);
-                    
-                    // Fallback: Scan all libraries
-                    _logger.LogInformation("Performing full library scan...");
-                    await _libraryManager.ValidateMediaLibrary(
-                        new Progress<double>(), 
-                        CancellationToken.None
-                    );
+                }
+
+                // Targeted refresh: only refresh the specific upscaled file instead of full library scan
+                // (ValidateMediaLibrary scans ALL libraries — catastrophic on large libraries)
+                var item = _libraryManager.FindByPath(upscaledPath, false);
+                if (item != null)
+                {
+                    await item.RefreshMetadata(CancellationToken.None);
+                    _logger.LogInformation("Metadata refreshed for existing item: {ItemName}", item.Name);
+                }
+                else
+                {
+                    // File is new — try refreshing the parent folder item so Jellyfin discovers it
+                    var parentItem = _libraryManager.FindByPath(directory, true);
+                    if (parentItem != null)
+                    {
+                        await parentItem.RefreshMetadata(CancellationToken.None);
+                        _logger.LogInformation("Parent folder refreshed to discover new file");
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Could not find parent folder in library for targeted refresh");
+                    }
                 }
 
                 return true;

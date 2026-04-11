@@ -413,9 +413,11 @@ namespace JellyfinUpscalerPlugin.Services
                 var hasAudio = false;
                 try
                 {
-                    var audioArgs = $"-i \"{inputPath}\" -vn -acodec copy -y \"{tempAudioPath}\"";
                     var audioResult = await Cli.Wrap(_ffmpegPath)
-                        .WithArguments(audioArgs)
+                        .WithArguments(args => args
+                            .Add("-i").Add(inputPath)
+                            .Add("-vn").Add("-acodec").Add("copy")
+                            .Add("-y").Add(tempAudioPath))
                         .WithValidation(CommandResultValidation.None)
                         .ExecuteAsync(cancellationToken);
                     hasAudio = audioResult.ExitCode == 0 && File.Exists(tempAudioPath) && new FileInfo(tempAudioPath).Length > 0;
@@ -425,19 +427,27 @@ namespace JellyfinUpscalerPlugin.Services
                     _logger.LogWarning(ex, "Failed to extract audio for RealTimeAI, continuing without");
                 }
 
-                var decoderArgs = $"-i \"{inputPath}\" -f rawvideo -pix_fmt rgb24 -v quiet -";
                 decoderProcess = new Process
                 {
                     StartInfo = new ProcessStartInfo
                     {
                         FileName = _ffmpegPath,
-                        Arguments = decoderArgs,
                         UseShellExecute = false,
                         RedirectStandardOutput = true,
                         RedirectStandardError = false,
                         CreateNoWindow = true
                     }
                 };
+                // Use ArgumentList to prevent path injection (no shell interpolation)
+                decoderProcess.StartInfo.ArgumentList.Add("-i");
+                decoderProcess.StartInfo.ArgumentList.Add(inputPath);
+                decoderProcess.StartInfo.ArgumentList.Add("-f");
+                decoderProcess.StartInfo.ArgumentList.Add("rawvideo");
+                decoderProcess.StartInfo.ArgumentList.Add("-pix_fmt");
+                decoderProcess.StartInfo.ArgumentList.Add("rgb24");
+                decoderProcess.StartInfo.ArgumentList.Add("-v");
+                decoderProcess.StartInfo.ArgumentList.Add("quiet");
+                decoderProcess.StartInfo.ArgumentList.Add("-");
 
                 var outputCodec = Config.OutputCodec ?? "libx264";
                 var allowedCodecs = new HashSet<string> { "libx264", "libx265", "hevc_nvenc", "h264_nvenc", "h264_qsv", "hevc_qsv" };
@@ -446,22 +456,42 @@ namespace JellyfinUpscalerPlugin.Services
                     outputCodec = "libx264";
                 }
 
-                var encoderInputArgs = hasAudio && File.Exists(tempAudioPath)
-                    ? $"-f rawvideo -pix_fmt rgb24 -s {outputWidth}x{outputHeight} -r {effectiveFps.ToString(System.Globalization.CultureInfo.InvariantCulture)} -i - -i \"{tempAudioPath}\" -c:v {outputCodec} -pix_fmt yuv420p -c:a copy -y \"{outputPath}\""
-                    : $"-f rawvideo -pix_fmt rgb24 -s {outputWidth}x{outputHeight} -r {effectiveFps.ToString(System.Globalization.CultureInfo.InvariantCulture)} -i - -c:v {outputCodec} -pix_fmt yuv420p -y \"{outputPath}\"";
-
                 encoderProcess = new Process
                 {
                     StartInfo = new ProcessStartInfo
                     {
                         FileName = _ffmpegPath,
-                        Arguments = encoderInputArgs,
                         UseShellExecute = false,
                         RedirectStandardInput = true,
                         RedirectStandardError = false,
                         CreateNoWindow = true
                     }
                 };
+                // Use ArgumentList to prevent path injection (no shell interpolation)
+                var fpsStr = effectiveFps.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                encoderProcess.StartInfo.ArgumentList.Add("-f");
+                encoderProcess.StartInfo.ArgumentList.Add("rawvideo");
+                encoderProcess.StartInfo.ArgumentList.Add("-pix_fmt");
+                encoderProcess.StartInfo.ArgumentList.Add("rgb24");
+                encoderProcess.StartInfo.ArgumentList.Add("-s");
+                encoderProcess.StartInfo.ArgumentList.Add($"{outputWidth}x{outputHeight}");
+                encoderProcess.StartInfo.ArgumentList.Add("-r");
+                encoderProcess.StartInfo.ArgumentList.Add(fpsStr);
+                encoderProcess.StartInfo.ArgumentList.Add("-i");
+                encoderProcess.StartInfo.ArgumentList.Add("-");
+                if (hasAudio && File.Exists(tempAudioPath))
+                {
+                    encoderProcess.StartInfo.ArgumentList.Add("-i");
+                    encoderProcess.StartInfo.ArgumentList.Add(tempAudioPath);
+                    encoderProcess.StartInfo.ArgumentList.Add("-c:a");
+                    encoderProcess.StartInfo.ArgumentList.Add("copy");
+                }
+                encoderProcess.StartInfo.ArgumentList.Add("-c:v");
+                encoderProcess.StartInfo.ArgumentList.Add(outputCodec);
+                encoderProcess.StartInfo.ArgumentList.Add("-pix_fmt");
+                encoderProcess.StartInfo.ArgumentList.Add("yuv420p");
+                encoderProcess.StartInfo.ArgumentList.Add("-y");
+                encoderProcess.StartInfo.ArgumentList.Add(outputPath);
 
                 decoderProcess.Start();
                 encoderProcess.Start();

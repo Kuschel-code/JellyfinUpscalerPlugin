@@ -284,6 +284,23 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 ## Changelog
 
+### v1.5.5.8 (Deep Scan Fixes — Security, Performance, Concurrency)
+
+**Critical Fixes:**
+- **Library scan performance** — replaced full `ValidateMediaLibrary()` with targeted `RefreshMetadata()` per file (no more scanning entire library after every upscale)
+- **FFmpeg argument injection** — `ProcessRealTimeAIAsync` now uses `Process.ArgumentList` instead of raw string interpolation
+- **HDR upscaling timeout** — registered `"UpscalerHDR"` named HttpClient with 5-minute timeout (was falling back to 100s default)
+
+**Security Hardening:**
+- Path traversal protection upgraded from blocklist to library folder allowlist
+- Settings import now catches JSON type mismatches gracefully (no more 500 errors)
+
+**Docker AI Service:**
+- `/connections/register` — added `_connections_lock` to prevent concurrent list corruption
+- `/upscale-stream` — now acquires concurrency semaphore to prevent GPU OOM under load
+- CUDA `device_id` consistently passed as `int` (was `str` in CUDA chain and TRT reload)
+- Added `Pillow>=10.0.0` to NVIDIA, CPU, AMD, and Intel requirements (was only in Vulkan)
+
 ### v1.5.5.7 (Code Quality, OOM Fix, VideoProcessor Refactor, CI Tests)
 
 **Bug Fixes & Stability:**

@@ -29,6 +29,7 @@ namespace JellyfinUpscalerPlugin
             // Named HttpClients for controller proxy calls (DNS refresh + connection pooling)
             serviceCollection.AddHttpClient("AiUpscaler", c => c.Timeout = TimeSpan.FromSeconds(120));
             serviceCollection.AddHttpClient("AiUpscalerLongTimeout", c => c.Timeout = TimeSpan.FromSeconds(300));
+            serviceCollection.AddHttpClient("UpscalerHDR", c => c.Timeout = TimeSpan.FromMinutes(5));
 
             // Background / Hosted Services
             serviceCollection.AddSingleton<HardwareBenchmarkService>();

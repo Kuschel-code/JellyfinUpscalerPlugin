@@ -210,7 +210,6 @@ namespace JellyfinUpscalerPlugin.Services
             var config = Plugin.Instance?.Configuration;
             var baseUrl = config?.AiServiceUrl ?? "http://localhost:5000";
             var client = _httpClientFactory.CreateClient("UpscalerHDR");
-            client.Timeout = TimeSpan.FromMinutes(5);
 
             using var content = new MultipartFormDataContent();
             using var imageContent = new ByteArrayContent(frameData);
