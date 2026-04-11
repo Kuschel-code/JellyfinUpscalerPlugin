@@ -3,10 +3,10 @@
     "name": "AI Upscaler Plugin",
     "overview": "AI-Powered Video Upscaling Plugin with Docker Microservice Architecture",
     "description": "Revolutionary AI upscaling plugin with Docker-based AI processing. Eliminates native DLL conflicts. Features automated hardware benchmarking, intelligent fallback system, pre-processing cache, and sidebar integration.",
-    "version": "1.5.5.7",
+    "version": "1.5.5.8",
     "targetAbi": "10.11.0.0",
     "framework": "net9.0",
     "owner": "Kuschel-code",
     "category": "Video Enhancement",
-    "changelog": "v1.5.5.7: RealtimeStats bounded rolling window (no OOM), /models 30s cache (40x Path.exists reduction), VideoProcessor.cs split into 5 classes (1930->5x<400 lines), C# unit test project (22 tests: HttpUpscalerService, CacheManager)."
+    "changelog": "v1.5.5.8: Deep scan fixes — targeted library refresh (no more full scan), FFmpeg argument injection fix (ArgumentList), HDR HttpClient timeout fix, settings import type safety, path traversal allowlist, plugin_connections thread safety, CUDA device_id type fix, /upscale-stream concurrency semaphore, Pillow dependency added to all Docker variants."
 }

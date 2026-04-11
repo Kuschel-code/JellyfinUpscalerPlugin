@@ -808,19 +808,21 @@ namespace JellyfinUpscalerPlugin.Controllers
             if (model != null && model != "auto" && !ValidModelNameRegex.IsMatch(model))
                 return BadRequest(new { success = false, error = "Invalid model name" });
 
-            // Path traversal protection — normalize and block system paths
+            // Path traversal protection — normalize and validate against library paths (allowlist)
             inputPath = Path.GetFullPath(inputPath);
-            var blockedPrefixes = new[] { "/etc", "/usr", "/bin", "/sbin", "/boot", "/proc", "/sys", "/dev",
-                "/root", "/var/run", "/var/log", "/tmp/systemd", "/run",
-                @"C:\Windows", @"C:\Program Files", @"C:\Program Files (x86)" };
-            if (blockedPrefixes.Any(p => inputPath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
-                return BadRequest(new { success = false, error = "Access to system paths is not allowed" });
+            if (!System.IO.File.Exists(inputPath))
+                return BadRequest(new { success = false, error = "Input file does not exist" });
+
+            var libraryFolders = _libraryManager.GetVirtualFolders();
+            var isInLibrary = libraryFolders.Any(folder =>
+                folder.Locations.Any(loc =>
+                    inputPath.StartsWith(Path.GetFullPath(loc), StringComparison.OrdinalIgnoreCase)));
+            if (!isInLibrary)
+                return BadRequest(new { success = false, error = "Input path must be within a Jellyfin media library" });
 
             if (outputPath != null)
             {
                 outputPath = Path.GetFullPath(outputPath);
-                if (blockedPrefixes.Any(p => outputPath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
-                    return BadRequest(new { success = false, error = "Access to system paths is not allowed" });
 
                 // Restrict output to be under the same parent directory as input or under the Jellyfin transcode path
                 var inputParent = Path.GetFullPath(Path.GetDirectoryName(inputPath) ?? string.Empty);
@@ -1178,142 +1180,145 @@ namespace JellyfinUpscalerPlugin.Controllers
                     return BadRequest(new { success = false, error = "Missing 'settings' property" });
                 }
 
-                // Apply each setting if present
-                if (settings.TryGetProperty("EnablePlugin", out var v)) config.EnablePlugin = v.GetBoolean();
-                if (settings.TryGetProperty("Model", out v)) config.Model = v.GetString() ?? "realesrgan-x4";
-                if (settings.TryGetProperty("ScaleFactor", out v)) config.ScaleFactor = v.GetInt32();
-                if (settings.TryGetProperty("QualityLevel", out v))
+                // Apply each setting if present — wrap typed getters to handle type mismatches gracefully
+                var skipped = new System.Collections.Generic.List<string>();
+                void TryApply(string key, Action<System.Text.Json.JsonElement> apply)
                 {
-                    var ql = v.GetString() ?? "medium";
+                    if (settings.TryGetProperty(key, out var val))
+                    {
+                        try { apply(val); }
+                        catch (InvalidOperationException)
+                        {
+                            skipped.Add(key);
+                            _logger.LogWarning("Settings import: skipping '{Key}' — wrong JSON type", key);
+                        }
+                    }
+                }
+
+                TryApply("EnablePlugin", val => config.EnablePlugin = val.GetBoolean());
+                TryApply("Model", val => config.Model = val.GetString() ?? "realesrgan-x4");
+                TryApply("ScaleFactor", val => config.ScaleFactor = val.GetInt32());
+                TryApply("QualityLevel", val =>
+                {
+                    var ql = val.GetString() ?? "medium";
                     var validQL = new[] { "fast", "medium", "high" };
                     if (validQL.Contains(ql)) config.QualityLevel = ql;
-                }
-                if (settings.TryGetProperty("HardwareAcceleration", out v)) config.HardwareAcceleration = v.GetBoolean();
-                if (settings.TryGetProperty("MaxConcurrentStreams", out v)) config.MaxConcurrentStreams = v.GetInt32();
-                if (settings.TryGetProperty("MaxVRAMUsage", out v)) config.MaxVRAMUsage = v.GetInt32();
-                if (settings.TryGetProperty("CpuThreads", out v)) config.CpuThreads = v.GetInt32();
-                if (settings.TryGetProperty("AiServiceUrl", out v))
+                });
+                TryApply("HardwareAcceleration", val => config.HardwareAcceleration = val.GetBoolean());
+                TryApply("MaxConcurrentStreams", val => config.MaxConcurrentStreams = val.GetInt32());
+                TryApply("MaxVRAMUsage", val => config.MaxVRAMUsage = val.GetInt32());
+                TryApply("CpuThreads", val => config.CpuThreads = val.GetInt32());
+                TryApply("AiServiceUrl", val =>
                 {
-                    var url = v.GetString() ?? "http://localhost:5000";
+                    var url = val.GetString() ?? "http://localhost:5000";
                     if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && (uri.Scheme == "http" || uri.Scheme == "https"))
                         config.AiServiceUrl = url;
-                }
-                if (settings.TryGetProperty("EnableRemoteTranscoding", out v)) config.EnableRemoteTranscoding = v.GetBoolean();
-                if (settings.TryGetProperty("RemoteHost", out v))
+                });
+                TryApply("EnableRemoteTranscoding", val => config.EnableRemoteTranscoding = val.GetBoolean());
+                TryApply("RemoteHost", val =>
                 {
-                    var host = v.GetString() ?? "";
+                    var host = val.GetString() ?? "";
                     if (System.Text.RegularExpressions.Regex.IsMatch(host, @"^[a-zA-Z0-9.\-:]+$"))
                         config.RemoteHost = host;
-                }
-                if (settings.TryGetProperty("RemoteSshPort", out v)) config.RemoteSshPort = v.GetInt32();
-                if (settings.TryGetProperty("RemoteUser", out v))
+                });
+                TryApply("RemoteSshPort", val => config.RemoteSshPort = val.GetInt32());
+                TryApply("RemoteUser", val =>
                 {
-                    var user = v.GetString() ?? "";
+                    var user = val.GetString() ?? "";
                     if (System.Text.RegularExpressions.Regex.IsMatch(user, @"^[a-zA-Z0-9._\-]+$"))
                         config.RemoteUser = user;
-                }
-                if (settings.TryGetProperty("RemoteSshKeyFile", out v))
+                });
+                TryApply("RemoteSshKeyFile", val =>
                 {
-                    var keyFile = v.GetString() ?? "";
+                    var keyFile = val.GetString() ?? "";
                     if (!string.IsNullOrEmpty(keyFile) && !keyFile.Contains("..") && Path.IsPathRooted(keyFile))
                         config.RemoteSshKeyFile = keyFile;
-                }
-                if (settings.TryGetProperty("LocalMediaMountPoint", out v))
-                {
-                    var path = v.GetString() ?? "";
-                    if (!path.Contains("..")) config.LocalMediaMountPoint = path;
-                }
-                if (settings.TryGetProperty("RemoteMediaMountPoint", out v))
-                {
-                    var path = v.GetString() ?? "";
-                    if (!path.Contains("..")) config.RemoteMediaMountPoint = path;
-                }
-                if (settings.TryGetProperty("RemoteTranscodePath", out v))
-                {
-                    var path = v.GetString() ?? "";
-                    if (!path.Contains("..")) config.RemoteTranscodePath = path;
-                }
-                if (settings.TryGetProperty("PlayerButton", out v)) config.PlayerButton = v.GetBoolean();
-                if (settings.TryGetProperty("Notifications", out v)) config.Notifications = v.GetBoolean();
-                if (settings.TryGetProperty("AutoRetryButton", out v)) config.AutoRetryButton = v.GetBoolean();
-                if (settings.TryGetProperty("ButtonPosition", out v))
-                {
-                    var pos = v.GetString() ?? "right";
-                    if (pos == "left" || pos == "right") config.ButtonPosition = pos;
-                }
-                if (settings.TryGetProperty("EnableComparisonView", out v)) config.EnableComparisonView = v.GetBoolean();
-                if (settings.TryGetProperty("EnablePerformanceMetrics", out v)) config.EnablePerformanceMetrics = v.GetBoolean();
-                if (settings.TryGetProperty("EnableAutoBenchmarking", out v)) config.EnableAutoBenchmarking = v.GetBoolean();
-                if (settings.TryGetProperty("EnablePreProcessingCache", out v)) config.EnablePreProcessingCache = v.GetBoolean();
-                if (settings.TryGetProperty("MaxCacheAgeDays", out v)) config.MaxCacheAgeDays = v.GetInt32();
-                if (settings.TryGetProperty("CacheSizeMB", out v)) config.CacheSizeMB = v.GetInt32();
-                if (settings.TryGetProperty("GpuDeviceIndex", out v)) config.GpuDeviceIndex = Math.Max(0, v.GetInt32());
+                });
+                TryApply("LocalMediaMountPoint", val => { var path = val.GetString() ?? ""; if (!path.Contains("..")) config.LocalMediaMountPoint = path; });
+                TryApply("RemoteMediaMountPoint", val => { var path = val.GetString() ?? ""; if (!path.Contains("..")) config.RemoteMediaMountPoint = path; });
+                TryApply("RemoteTranscodePath", val => { var path = val.GetString() ?? ""; if (!path.Contains("..")) config.RemoteTranscodePath = path; });
+                TryApply("PlayerButton", val => config.PlayerButton = val.GetBoolean());
+                TryApply("Notifications", val => config.Notifications = val.GetBoolean());
+                TryApply("AutoRetryButton", val => config.AutoRetryButton = val.GetBoolean());
+                TryApply("ButtonPosition", val => { var pos = val.GetString() ?? "right"; if (pos == "left" || pos == "right") config.ButtonPosition = pos; });
+                TryApply("EnableComparisonView", val => config.EnableComparisonView = val.GetBoolean());
+                TryApply("EnablePerformanceMetrics", val => config.EnablePerformanceMetrics = val.GetBoolean());
+                TryApply("EnableAutoBenchmarking", val => config.EnableAutoBenchmarking = val.GetBoolean());
+                TryApply("EnablePreProcessingCache", val => config.EnablePreProcessingCache = val.GetBoolean());
+                TryApply("MaxCacheAgeDays", val => config.MaxCacheAgeDays = val.GetInt32());
+                TryApply("CacheSizeMB", val => config.CacheSizeMB = val.GetInt32());
+                TryApply("GpuDeviceIndex", val => config.GpuDeviceIndex = Math.Max(0, val.GetInt32()));
                 // Quality Metrics & Face Enhancement
-                if (settings.TryGetProperty("EnableQualityMetrics", out v)) config.EnableQualityMetrics = v.GetBoolean();
-                if (settings.TryGetProperty("EnableFaceEnhancement", out v)) config.EnableFaceEnhancement = v.GetBoolean();
-                if (settings.TryGetProperty("FaceEnhanceStrength", out v)) config.FaceEnhanceStrength = v.GetDouble();
+                TryApply("EnableQualityMetrics", val => config.EnableQualityMetrics = val.GetBoolean());
+                TryApply("EnableFaceEnhancement", val => config.EnableFaceEnhancement = val.GetBoolean());
+                TryApply("FaceEnhanceStrength", val => config.FaceEnhanceStrength = val.GetDouble());
                 // Grain Management
-                if (settings.TryGetProperty("EnableGrainManagement", out v)) config.EnableGrainManagement = v.GetBoolean();
-                if (settings.TryGetProperty("GrainDenoiseStrength", out v)) config.GrainDenoiseStrength = v.GetInt32();
-                if (settings.TryGetProperty("GrainReaddIntensity", out v)) config.GrainReaddIntensity = v.GetDouble();
+                TryApply("EnableGrainManagement", val => config.EnableGrainManagement = val.GetBoolean());
+                TryApply("GrainDenoiseStrength", val => config.GrainDenoiseStrength = val.GetInt32());
+                TryApply("GrainReaddIntensity", val => config.GrainReaddIntensity = val.GetDouble());
                 // Model Management
-                if (settings.TryGetProperty("EnableCustomModelUpload", out v)) config.EnableCustomModelUpload = v.GetBoolean();
-                if (settings.TryGetProperty("EnableAutoModelSelection", out v)) config.EnableAutoModelSelection = v.GetBoolean();
-                if (settings.TryGetProperty("ModelFallbackChain", out v)) config.ModelFallbackChain = v.GetString() ?? "";
-                if (settings.TryGetProperty("PreferredAnimeModel", out v)) config.PreferredAnimeModel = v.GetString() ?? "";
-                if (settings.TryGetProperty("PreferredLiveActionModel", out v)) config.PreferredLiveActionModel = v.GetString() ?? "";
-                if (settings.TryGetProperty("EnableModelPreloading", out v)) config.EnableModelPreloading = v.GetBoolean();
-                if (settings.TryGetProperty("ModelDiskQuotaMB", out v)) config.ModelDiskQuotaMB = v.GetInt32();
-                if (settings.TryGetProperty("EnableModelAutoCleanup", out v)) config.EnableModelAutoCleanup = v.GetBoolean();
-                if (settings.TryGetProperty("ModelCleanupDays", out v)) config.ModelCleanupDays = v.GetInt32();
+                TryApply("EnableCustomModelUpload", val => config.EnableCustomModelUpload = val.GetBoolean());
+                TryApply("EnableAutoModelSelection", val => config.EnableAutoModelSelection = val.GetBoolean());
+                TryApply("ModelFallbackChain", val => config.ModelFallbackChain = val.GetString() ?? "");
+                TryApply("PreferredAnimeModel", val => config.PreferredAnimeModel = val.GetString() ?? "");
+                TryApply("PreferredLiveActionModel", val => config.PreferredLiveActionModel = val.GetString() ?? "");
+                TryApply("EnableModelPreloading", val => config.EnableModelPreloading = val.GetBoolean());
+                TryApply("ModelDiskQuotaMB", val => config.ModelDiskQuotaMB = val.GetInt32());
+                TryApply("EnableModelAutoCleanup", val => config.EnableModelAutoCleanup = val.GetBoolean());
+                TryApply("ModelCleanupDays", val => config.ModelCleanupDays = val.GetInt32());
                 // Output & Processing
-                if (settings.TryGetProperty("OutputCodec", out v))
+                TryApply("OutputCodec", val =>
                 {
-                    var codec = v.GetString() ?? "libx264";
+                    var codec = val.GetString() ?? "libx264";
                     var validCodecs = new[] { "libx264", "libx265", "copy" };
                     if (validCodecs.Contains(codec)) config.OutputCodec = codec;
-                }
-                if (settings.TryGetProperty("MaxUpscaledFileSizeMB", out v)) config.MaxUpscaledFileSizeMB = Math.Max(0, v.GetInt64());
-                if (settings.TryGetProperty("EnableProcessingQueue", out v)) config.EnableProcessingQueue = v.GetBoolean();
-                if (settings.TryGetProperty("MaxQueueSize", out v)) config.MaxQueueSize = v.GetInt32();
-                if (settings.TryGetProperty("PauseQueueDuringPlayback", out v)) config.PauseQueueDuringPlayback = v.GetBoolean();
-                if (settings.TryGetProperty("PersistQueueAcrossRestarts", out v)) config.PersistQueueAcrossRestarts = v.GetBoolean();
+                });
+                TryApply("MaxUpscaledFileSizeMB", val => config.MaxUpscaledFileSizeMB = Math.Max(0, val.GetInt64()));
+                TryApply("EnableProcessingQueue", val => config.EnableProcessingQueue = val.GetBoolean());
+                TryApply("MaxQueueSize", val => config.MaxQueueSize = val.GetInt32());
+                TryApply("PauseQueueDuringPlayback", val => config.PauseQueueDuringPlayback = val.GetBoolean());
+                TryApply("PersistQueueAcrossRestarts", val => config.PersistQueueAcrossRestarts = val.GetBoolean());
                 // Real-Time Upscaling
-                if (settings.TryGetProperty("EnableRealtimeUpscaling", out v)) config.EnableRealtimeUpscaling = v.GetBoolean();
-                if (settings.TryGetProperty("RealtimeMode", out v))
+                TryApply("EnableRealtimeUpscaling", val => config.EnableRealtimeUpscaling = val.GetBoolean());
+                TryApply("RealtimeMode", val =>
                 {
-                    var mode = v.GetString() ?? "auto";
+                    var mode = val.GetString() ?? "auto";
                     var validModes = new[] { "auto", "webgl", "server" };
                     if (validModes.Contains(mode)) config.RealtimeMode = mode;
-                }
-                if (settings.TryGetProperty("RealtimeTargetFps", out v)) config.RealtimeTargetFps = v.GetInt32();
-                if (settings.TryGetProperty("RealtimeCaptureWidth", out v)) config.RealtimeCaptureWidth = v.GetInt32();
+                });
+                TryApply("RealtimeTargetFps", val => config.RealtimeTargetFps = val.GetInt32());
+                TryApply("RealtimeCaptureWidth", val => config.RealtimeCaptureWidth = val.GetInt32());
                 // Notifications & Webhooks
-                if (settings.TryGetProperty("EnableProgressNotifications", out v)) config.EnableProgressNotifications = v.GetBoolean();
-                if (settings.TryGetProperty("WebhookUrl", out v))
+                TryApply("EnableProgressNotifications", val => config.EnableProgressNotifications = val.GetBoolean());
+                TryApply("WebhookUrl", val =>
                 {
-                    var url = v.GetString() ?? "";
+                    var url = val.GetString() ?? "";
                     if (string.IsNullOrEmpty(url) || (Uri.TryCreate(url, UriKind.Absolute, out var wUri) && (wUri.Scheme == "http" || wUri.Scheme == "https")))
                         config.WebhookUrl = url;
-                }
-                if (settings.TryGetProperty("WebhookOnComplete", out v)) config.WebhookOnComplete = v.GetBoolean();
-                if (settings.TryGetProperty("WebhookOnFailure", out v)) config.WebhookOnFailure = v.GetBoolean();
+                });
+                TryApply("WebhookOnComplete", val => config.WebhookOnComplete = val.GetBoolean());
+                TryApply("WebhookOnFailure", val => config.WebhookOnFailure = val.GetBoolean());
                 // Health & Monitoring
-                if (settings.TryGetProperty("EnableHealthMonitoring", out v)) config.EnableHealthMonitoring = v.GetBoolean();
-                if (settings.TryGetProperty("HealthCheckIntervalSeconds", out v)) config.HealthCheckIntervalSeconds = v.GetInt32();
-                if (settings.TryGetProperty("EnableGpuFallbackToCpu", out v)) config.EnableGpuFallbackToCpu = v.GetBoolean();
-                if (settings.TryGetProperty("CircuitBreakerThreshold", out v)) config.CircuitBreakerThreshold = v.GetInt32();
-                if (settings.TryGetProperty("CircuitBreakerResetSeconds", out v)) config.CircuitBreakerResetSeconds = v.GetInt32();
+                TryApply("EnableHealthMonitoring", val => config.EnableHealthMonitoring = val.GetBoolean());
+                TryApply("HealthCheckIntervalSeconds", val => config.HealthCheckIntervalSeconds = val.GetInt32());
+                TryApply("EnableGpuFallbackToCpu", val => config.EnableGpuFallbackToCpu = val.GetBoolean());
+                TryApply("CircuitBreakerThreshold", val => config.CircuitBreakerThreshold = val.GetInt32());
+                TryApply("CircuitBreakerResetSeconds", val => config.CircuitBreakerResetSeconds = val.GetInt32());
                 // Scan Filtering
-                if (settings.TryGetProperty("MinResolutionWidth", out v)) config.MinResolutionWidth = v.GetInt32();
-                if (settings.TryGetProperty("MinResolutionHeight", out v)) config.MinResolutionHeight = v.GetInt32();
-                if (settings.TryGetProperty("MaxItemsPerScan", out v)) config.MaxItemsPerScan = v.GetInt32();
-                if (settings.TryGetProperty("RestrictToUnwatchedContent", out v)) config.RestrictToUnwatchedContent = v.GetBoolean();
-                if (settings.TryGetProperty("SkipUpscaledOnRescan", out v)) config.SkipUpscaledOnRescan = v.GetBoolean();
+                TryApply("MinResolutionWidth", val => config.MinResolutionWidth = val.GetInt32());
+                TryApply("MinResolutionHeight", val => config.MinResolutionHeight = val.GetInt32());
+                TryApply("MaxItemsPerScan", val => config.MaxItemsPerScan = val.GetInt32());
+                TryApply("RestrictToUnwatchedContent", val => config.RestrictToUnwatchedContent = val.GetBoolean());
+                TryApply("SkipUpscaledOnRescan", val => config.SkipUpscaledOnRescan = val.GetBoolean());
                 // API
-                if (settings.TryGetProperty("EnableApiDocs", out v)) config.EnableApiDocs = v.GetBoolean();
+                TryApply("EnableApiDocs", val => config.EnableApiDocs = val.GetBoolean());
 
                 Plugin.Instance?.SaveConfiguration();
+                if (skipped.Count > 0)
+                {
+                    _logger.LogWarning("Settings imported with {Count} skipped properties: {Skipped}", skipped.Count, string.Join(", ", skipped));
+                    return Ok(new { success = true, message = $"Settings imported ({skipped.Count} properties skipped due to type mismatch)", skippedProperties = skipped });
+                }
                 _logger.LogInformation("Settings imported successfully");
                 return Ok(new { success = true, message = "Settings imported successfully" });
             }
