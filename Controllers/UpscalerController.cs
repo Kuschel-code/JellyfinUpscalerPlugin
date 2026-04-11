@@ -1014,13 +1014,14 @@ namespace JellyfinUpscalerPlugin.Controllers
                 if (string.IsNullOrEmpty(request.InputPath))
                     return BadRequest(new { success = false, error = "InputPath required" });
 
-                // Path traversal protection
+                // Path traversal protection — allowlist (must be in a Jellyfin library)
                 var normalizedPath = Path.GetFullPath(request.InputPath);
-                var blockedPrefixes = new[] { "/etc", "/usr", "/bin", "/sbin", "/boot", "/proc", "/sys", "/dev",
-                    "/root", "/var/run", "/var/log", "/tmp/systemd", "/run",
-                    @"C:\Windows", @"C:\Program Files", @"C:\Program Files (x86)" };
-                if (blockedPrefixes.Any(p => normalizedPath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
-                    return BadRequest(new { success = false, error = "Access to system paths is not allowed" });
+                var libFolders = _libraryManager.GetVirtualFolders();
+                var pathInLibrary = libFolders.Any(folder =>
+                    folder.Locations.Any(loc =>
+                        normalizedPath.StartsWith(Path.GetFullPath(loc), StringComparison.OrdinalIgnoreCase)));
+                if (!pathInLibrary)
+                    return BadRequest(new { success = false, error = "Input path must be within a Jellyfin media library" });
 
                 var success = await _cacheManager.PreProcessContentAsync(
                     normalizedPath,
@@ -1714,7 +1715,8 @@ namespace JellyfinUpscalerPlugin.Controllers
                     using var ms = new MemoryStream();
                     await file.CopyToAsync(ms);
                     var byteContent = new ByteArrayContent(ms.ToArray());
-                    byteContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType ?? "image/png");
+                    // Hardcode Content-Type to prevent header injection from user-controlled values
+                    byteContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
                     content.Add(byteContent, file.Name, file.FileName ?? file.Name);
                 }
 

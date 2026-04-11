@@ -406,10 +406,10 @@ namespace JellyfinUpscalerPlugin.Services
 
             Process? decoderProcess = null;
             Process? encoderProcess = null;
+            var tempAudioPath = Path.Combine(Path.GetTempPath(), $"rtai_audio_{Guid.NewGuid()}.mka");
 
             try
             {
-                var tempAudioPath = Path.Combine(Path.GetTempPath(), $"rtai_audio_{Guid.NewGuid()}.mka");
                 var hasAudio = false;
                 try
                 {
@@ -633,6 +633,8 @@ namespace JellyfinUpscalerPlugin.Services
                 try { encoderProcess?.Kill(true); } catch (Exception ex) { _logger.LogDebug(ex, "Failed to kill encoder process"); }
                 decoderProcess?.Dispose();
                 encoderProcess?.Dispose();
+                // Clean up temp audio file to prevent leaks on cancellation/failure
+                try { if (File.Exists(tempAudioPath)) File.Delete(tempAudioPath); } catch (Exception ex) { _logger.LogDebug(ex, "Failed to delete temp audio file"); }
             }
         }
 
