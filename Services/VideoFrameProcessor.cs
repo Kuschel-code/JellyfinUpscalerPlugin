@@ -99,6 +99,7 @@ namespace JellyfinUpscalerPlugin.Services
         {
             var frameFiles = Directory.GetFiles(framesDir, "*.png").OrderBy(f => f).ToArray();
             int totalFrames = frameFiles.Length;
+            int failedFrames = 0;
 
             int maxConcurrency = 1;
             try
@@ -182,9 +183,16 @@ namespace JellyfinUpscalerPlugin.Services
                     }
                     catch (Exception ex)
                     {
+                        Interlocked.Increment(ref failedFrames);
                         _logger.LogWarning(ex, "Failed to upscale frame {Frame}, using original", frameFile);
                         var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFile));
                         File.Copy(frameFile, outputFile, true);
+                        // Fail the entire job if >50% of frames fail (service likely down)
+                        if (failedFrames > totalFrames / 2)
+                        {
+                            _logger.LogError("More than 50% of frames failed ({Failed}/{Total}), aborting job", failedFrames, totalFrames);
+                            throw new InvalidOperationException($"Too many frame failures: {failedFrames}/{totalFrames}");
+                        }
                     }
                     finally
                     {

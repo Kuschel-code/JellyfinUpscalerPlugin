@@ -3383,15 +3383,7 @@ async def upscale_stream(request: Request):
     if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
         raise HTTPException(status_code=400, detail="No model loaded")
 
-    # Acquire concurrency semaphore (same pattern as /upscale) to prevent GPU OOM
-    sem = _upscale_semaphore
-    if sem is None or sem._value <= 0:
-        raise HTTPException(status_code=429, detail="Too many concurrent requests")
-    await sem.acquire()
-    with _processing_count_lock:
-        state.processing_count += 1
-
-    # Parse headers
+    # Validate headers BEFORE acquiring semaphore to prevent leaks on bad input
     try:
         frame_width = int(request.headers.get("X-Frame-Width", "0"))
         frame_height = int(request.headers.get("X-Frame-Height", "0"))
@@ -3414,6 +3406,14 @@ async def upscale_stream(request: Request):
         target_fps = 30.0
     target_fps = max(1.0, min(target_fps, 120.0))
 
+    # Acquire concurrency semaphore AFTER validation (prevents leak on bad headers)
+    sem = _upscale_semaphore
+    if sem is None or sem._value <= 0:
+        raise HTTPException(status_code=429, detail="Too many concurrent requests")
+    await sem.acquire()
+    with _processing_count_lock:
+        state.processing_count += 1
+
     frame_size = frame_width * frame_height * 3
     min_frame_interval = 1.0 / target_fps
 
@@ -3431,6 +3431,8 @@ async def upscale_stream(request: Request):
     _realtime_stats.reset()
     model_name = state.current_model or "unknown"
 
+    max_buffer_bytes = frame_size * 10  # Cap: at most 10 buffered frames to prevent OOM
+
     async def frame_generator():
         """Read raw frames from request body stream and yield upscaled frames."""
         buffer = bytearray()
@@ -3438,6 +3440,11 @@ async def upscale_stream(request: Request):
 
         async for chunk in request.stream():
             buffer.extend(chunk)
+
+            # OOM protection: drop oldest frames if buffer grows too large
+            while len(buffer) > max_buffer_bytes + frame_size:
+                del buffer[:frame_size]
+                _realtime_stats.record_drop()
 
             # Process all complete frames in the buffer
             while len(buffer) >= frame_size:
@@ -3820,12 +3827,15 @@ async def models_cleanup(max_age_days: int = 30, dry_run: bool = True, request: 
     Requires X-Api-Token header matching API_TOKEN env var for destructive operations."""
     if max_age_days < 0 or max_age_days > 36500:
         raise HTTPException(status_code=400, detail="max_age_days must be 0-36500")
-    # Require API token for non-dry-run (destructive) operations
+    # Require API token for all cleanup operations (info disclosure + destructive)
+    _require_api_token(request)
     if not dry_run:
+        # Double-check token is actually set for destructive operations
         expected_token = os.getenv("API_TOKEN", "")
-        provided_token = request.headers.get("x-api-token", "") if request else ""
-        if not expected_token or not hmac.compare_digest(provided_token, expected_token):
-            return JSONResponse(status_code=403, content={"error": "API token required for destructive cleanup operations"})
+        if expected_token:
+            provided_token = request.headers.get("x-api-token", "") if request else ""
+            if not hmac.compare_digest(provided_token, expected_token):
+                return JSONResponse(status_code=403, content={"error": "API token required for destructive cleanup operations"})
     models_dir = str(MODELS_DIR)
     if not os.path.isdir(models_dir):
         return {"cleaned": 0, "message": "Models directory not found"}
@@ -4323,6 +4333,7 @@ def enhance_faces_in_image(img: np.ndarray, strength: float = 0.7) -> tuple:
 
 @app.post("/enhance-faces", tags=["Face Enhancement"])
 async def enhance_faces_endpoint(
+    request: Request,
     file: UploadFile = File(...),
     strength: float = Form(0.7),
 ):
@@ -4335,6 +4346,7 @@ async def enhance_faces_endpoint(
         strength: Enhancement blend ratio (0.0 = no change, 1.0 = full enhancement).
 
     Configurable via ENABLE_FACE_ENHANCE and FACE_ENHANCE_STRENGTH env vars."""
+    _require_api_token(request)
     if not ENABLE_FACE_ENHANCE:
         raise HTTPException(status_code=403, detail="Face enhancement disabled (ENABLE_FACE_ENHANCE=false)")
 

@@ -153,7 +153,7 @@ namespace JellyfinUpscalerPlugin.Services
                     _logger.LogError(ex, "Queue worker error processing job {JobId}", job?.JobId ?? "unknown");
                     if (job != null)
                     {
-                        _queue.Complete(job.JobId, false, ex.Message);
+                        _queue.Complete(job.JobId, false, "Processing failed — check server logs for details");
                     }
                     // Brief delay before retrying to avoid tight error loops
                     await Task.Delay(2000, ct);

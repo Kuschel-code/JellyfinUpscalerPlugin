@@ -290,14 +290,21 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 - **Library scan performance** — replaced full `ValidateMediaLibrary()` with targeted `RefreshMetadata()` per file (no more scanning entire library after every upscale)
 - **FFmpeg argument injection** — `ProcessRealTimeAIAsync` now uses `Process.ArgumentList` instead of raw string interpolation
 - **HDR upscaling timeout** — registered `"UpscalerHDR"` named HttpClient with 5-minute timeout (was falling back to 100s default)
+- **Temp audio file leak** — `tempAudioPath` now cleaned up in `finally` block on cancellation/failure
+- **Content-Type injection** — hardcoded `image/png` in video chunk proxy (was forwarding user-controlled header)
 
 **Security Hardening:**
-- Path traversal protection upgraded from blocklist to library folder allowlist
+- Path traversal protection upgraded from blocklist to library folder allowlist (all endpoints)
 - Settings import now catches JSON type mismatches gracefully (no more 500 errors)
+- Queue error messages sanitized (no more raw `ex.Message` in API responses)
+- Frame failure threshold: job aborts if >50% frames fail (prevents false-success output)
 
 **Docker AI Service:**
 - `/connections/register` — added `_connections_lock` to prevent concurrent list corruption
-- `/upscale-stream` — now acquires concurrency semaphore to prevent GPU OOM under load
+- `/upscale-stream` — concurrency semaphore + header validation before acquire (prevents semaphore leak)
+- `/upscale-stream` — buffer cap (10 frames max) to prevent OOM on slow GPU
+- `/enhance-faces` — added missing API token enforcement
+- `/models/cleanup` — fixed inverted auth logic (was blocking when no token set)
 - CUDA `device_id` consistently passed as `int` (was `str` in CUDA chain and TRT reload)
 - Added `Pillow>=10.0.0` to NVIDIA, CPU, AMD, and Intel requirements (was only in Vulkan)
 
