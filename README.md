@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.5.6.0
+# Jellyfin AI Upscaler Plugin v1.6.1.0
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -28,7 +28,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.5.6.0      │  │
+│  │  AI Upscaler Plugin v1.6.1.0      │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -196,8 +196,9 @@ To batch-upscale your low-resolution content:
 - **Quality Metrics (PSNR/SSIM)**: Compare bicubic vs AI upscale quality with Gaussian-based SSIM (NEW in v1.5.5.4)
 - **Face Enhancement (GFPGAN)**: Haar cascade detection → ONNX inference or bilateral filter fallback, soft elliptical blending (NEW in v1.5.5.4)
 - **Film Grain Management**: NL-means denoising for removal, Gaussian noise for re-grain, configurable "both" mode (NEW in v1.5.5.4)
-- **Custom ONNX Model Upload**: Upload and validate custom ONNX models at runtime with NCHW shape validation (NEW in v1.5.5.4)
-- **OpenAPI/Swagger Docs**: Togglable `/docs` and `/redoc` endpoints for API exploration (NEW in v1.5.5.4)
+- **Camera-Style Video Filters**: 7 presets (Cinematic, Vintage, Vivid, Noir, Warm, Cool, HDR Pop) + full custom mode with brightness, contrast, saturation, gamma, sharpness, color temperature, vignette, film grain, denoise, and LUT color grading (NEW in v1.6.1)
+- **Custom ONNX Model Upload**: Upload and validate custom ONNX models at runtime with NCHW shape validation
+- **OpenAPI/Swagger Docs**: Togglable `/docs` and `/redoc` endpoints for API exploration
 - **Model Fallback Chain**: Comma-separated models — tries next on failure (images + videos)
 - **Priority Queue**: Pause/resume, priority 1-10, optional persistence across restarts
 - **Prometheus Metrics**: `/metrics` endpoint with per-model jobs, failures, frames, timing
@@ -283,6 +284,17 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 ---
 
 ## Changelog
+
+### v1.6.1.0 (Camera-Style Video Filters)
+
+**Video Filters (Camera-Style):**
+- **7 built-in presets**: Cinematic, Vintage, Vivid, Noir, Warm, Cool, HDR Pop — one-click color grading
+- **Custom mode**: Full manual control over brightness, contrast, saturation, gamma, sharpness, color temperature, vignette, film grain, denoise
+- **LUT color grading**: Support for .cube LUT files for professional color grading
+- **New Filters tab** in plugin settings with interactive sliders and live FFmpeg filter chain preview
+- **Filter-preview API endpoint** (`POST /api/upscaler/filter-preview`) — returns FFmpeg filter chain for any preset
+- **VideoFilterService**: New service that builds FFmpeg `-vf` filter chains, integrated into both `ProcessingMethodExecutor` (full video) and `VideoFrameProcessor` (frame extraction)
+- Filters applied as post-processing after upscaling for optimal quality
 
 ### v1.5.6.0 (Authorization, Rate Limiting, Lanczos Shader, Security Review Fixes)
 

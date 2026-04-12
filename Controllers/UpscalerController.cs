@@ -1924,6 +1924,38 @@ namespace JellyfinUpscalerPlugin.Controllers
                 return Ok(new { success = false, message = "SSH test error" });
             }
         }
+
+        /// <summary>
+        /// Preview video filter effect on a sample frame (admin only).
+        /// Accepts a preset name or uses current config. Returns the FFmpeg filter chain
+        /// and optionally applies it to a provided image via FFmpeg.
+        /// </summary>
+        [HttpPost("filter-preview")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> FilterPreview([FromQuery] string? preset)
+        {
+            var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
+            var filterService = new VideoFilterService();
+
+            string? filterChain;
+            if (!string.IsNullOrEmpty(preset))
+            {
+                filterChain = filterService.GetPresetFilters(preset);
+            }
+            else
+            {
+                filterChain = filterService.BuildFilterChain(config);
+            }
+
+            return Ok(new
+            {
+                enabled = config.EnableVideoFilters,
+                preset = preset ?? config.ActiveFilterPreset,
+                filterChain = filterChain ?? "(no filters active)",
+                availablePresets = new[] { "none", "cinematic", "vintage", "vivid", "noir", "warm", "cool", "hdr-pop", "custom" }
+            });
+        }
     }
 
     /// <summary>

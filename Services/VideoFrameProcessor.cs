@@ -65,6 +65,13 @@ namespace JellyfinUpscalerPlugin.Services
             }
             vfFilters.Add($"fps={effectiveFps}");
 
+            // Camera-style video filters (applied during frame extraction)
+            var videoFilterChain = new VideoFilterService().BuildFilterChain(Config);
+            if (videoFilterChain != null)
+            {
+                vfFilters.Add(videoFilterChain);
+            }
+
             var vfArg = string.Join(",", vfFilters);
 
             if (isHDR)

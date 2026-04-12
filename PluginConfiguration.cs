@@ -396,9 +396,92 @@ namespace JellyfinUpscalerPlugin
         /// <summary>Expose OpenAPI/Swagger docs on the AI service (/docs, /redoc).</summary>
         public bool EnableApiDocs { get; set; } = true;
 
+        // ── Video Filters (Camera-Style) ────────────────────────────────
+
+        /// <summary>Master switch to enable camera-style video filters.</summary>
+        public bool EnableVideoFilters { get; set; } = false;
+
+        /// <summary>Active filter preset: "none","cinematic","vintage","vivid","noir","warm","cool","hdr-pop","custom".</summary>
+        public string ActiveFilterPreset { get; set; } = "none";
+
+        /// <summary>Brightness adjustment (-1.0 dark to 1.0 bright). Only used when preset is "custom".</summary>
+        public double FilterBrightness
+        {
+            get => _filterBrightness;
+            set => _filterBrightness = Math.Clamp(value, -1.0, 1.0);
+        }
+        private double _filterBrightness = 0.0;
+
+        /// <summary>Contrast multiplier (0.0 flat to 3.0 extreme). Only used when preset is "custom".</summary>
+        public double FilterContrast
+        {
+            get => _filterContrast;
+            set => _filterContrast = Math.Clamp(value, 0.0, 3.0);
+        }
+        private double _filterContrast = 1.0;
+
+        /// <summary>Saturation multiplier (0.0 grayscale to 3.0 vivid). Only used when preset is "custom".</summary>
+        public double FilterSaturation
+        {
+            get => _filterSaturation;
+            set => _filterSaturation = Math.Clamp(value, 0.0, 3.0);
+        }
+        private double _filterSaturation = 1.0;
+
+        /// <summary>Gamma correction (0.1 dark to 10.0 bright). Only used when preset is "custom".</summary>
+        public double FilterGamma
+        {
+            get => _filterGamma;
+            set => _filterGamma = Math.Clamp(value, 0.1, 10.0);
+        }
+        private double _filterGamma = 1.0;
+
+        /// <summary>Sharpness amount for unsharp mask (0.0 off to 5.0 extreme). Only used when preset is "custom".</summary>
+        public double FilterSharpness
+        {
+            get => _filterSharpness;
+            set => _filterSharpness = Math.Clamp(value, 0.0, 5.0);
+        }
+        private double _filterSharpness = 0.0;
+
+        /// <summary>Color temperature in Kelvin (1000 warm to 15000 cool). Only used when preset is "custom".</summary>
+        public int FilterColorTemperature
+        {
+            get => _filterColorTemperature;
+            set => _filterColorTemperature = Math.Clamp(value, 1000, 15000);
+        }
+        private int _filterColorTemperature = 6500;
+
+        /// <summary>Vignette strength (0.0 off to 5.0 heavy). Only used when preset is "custom".</summary>
+        public double FilterVignette
+        {
+            get => _filterVignette;
+            set => _filterVignette = Math.Clamp(value, 0.0, 5.0);
+        }
+        private double _filterVignette = 0.0;
+
+        /// <summary>Film grain noise amount (0 off to 100 heavy). Only used when preset is "custom".</summary>
+        public int FilterFilmGrain
+        {
+            get => _filterFilmGrain;
+            set => _filterFilmGrain = Math.Clamp(value, 0, 100);
+        }
+        private int _filterFilmGrain = 0;
+
+        /// <summary>Denoise strength via hqdn3d (0.0 off to 25.0 heavy). Only used when preset is "custom".</summary>
+        public double FilterDenoise
+        {
+            get => _filterDenoise;
+            set => _filterDenoise = Math.Clamp(value, 0.0, 25.0);
+        }
+        private double _filterDenoise = 0.0;
+
+        /// <summary>Path to a .cube LUT file for color grading (empty = disabled). Only used when preset is "custom".</summary>
+        public string FilterLutPath { get; set; } = "";
+
         // ── Version Tracking ─────────────────────────────────────────────
 
         /// <summary>Current plugin version string for webhook payloads and diagnostics.</summary>
-        public string PluginVersion { get; set; } = "1.5.5.9";
+        public string PluginVersion { get; set; } = "1.6.1.0";
     }
 }

@@ -43,6 +43,9 @@ namespace JellyfinUpscalerPlugin
             serviceCollection.AddSingleton<IScheduledTask, LibraryUpscaleScanTask>();
             serviceCollection.AddSingleton<IScheduledTask, ImageUpscaleScanTask>();
 
+            // Video Filters (Camera-Style)
+            serviceCollection.AddSingleton<VideoFilterService>();
+
             // Platform & Interop
             serviceCollection.AddSingleton<IPlatformDetectionService, PlatformDetectionService>();
             serviceCollection.AddSingleton<IFFmpegWrapperService, FFmpegWrapperService>();

@@ -751,6 +751,13 @@ namespace JellyfinUpscalerPlugin.Services
                 }
             }
 
+            // Camera-style video filters (post-processing)
+            var videoFilterChain = new VideoFilterService().BuildFilterChain(Config);
+            if (videoFilterChain != null)
+            {
+                filters.Add(videoFilterChain);
+            }
+
             if (filters.Count > 0)
             {
                 args.Add($"-vf \"{string.Join(",", filters)}\"");

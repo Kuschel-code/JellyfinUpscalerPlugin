@@ -370,6 +370,7 @@
                 <div class="upscaler-tab" data-tab="jobs">Jobs</div>
                 <div class="upscaler-tab" data-tab="cache">Cache</div>
                 <div class="upscaler-tab" data-tab="system">System</div>
+                <div class="upscaler-tab" data-tab="filters">Filters</div>
             </div>
 
             <!-- ==================== TAB: DASHBOARD ==================== -->
@@ -902,6 +903,91 @@
                 </div>
             </div>
 
+            <!-- ==================== TAB: FILTERS ==================== -->
+            <div id="tab-filters" class="tab-content" style="display:none;">
+
+                <div class="upscaler-card">
+                    <h3>Camera-Style Video Filters</h3>
+                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.8rem;">
+                        Apply camera-like color grading, sharpening, and effects to your videos during processing.
+                        Choose a preset for one-click looks, or go custom for full control.
+                    </div>
+
+                    <div class="checkboxContainer" style="margin-bottom:1rem;">
+                        <label><input type="checkbox" id="EnableVideoFilters" /> Enable Video Filters</label>
+                    </div>
+
+                    <div id="filter-options" style="opacity:0.5;pointer-events:none;">
+                        <div class="field" style="margin-bottom:1rem;">
+                            <label style="font-size:0.82rem;font-weight:600;">Filter Preset</label>
+                            <select id="ActiveFilterPreset" style="width:100%;padding:0.4rem;background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;margin-top:0.3rem;">
+                                <option value="none">None (disabled)</option>
+                                <option value="cinematic">Cinematic — Warm film look</option>
+                                <option value="vintage">Vintage — Retro/faded</option>
+                                <option value="vivid">Vivid — Punchy colors</option>
+                                <option value="noir">Noir — B&W film</option>
+                                <option value="warm">Warm — Warm tones</option>
+                                <option value="cool">Cool — Cool tones</option>
+                                <option value="hdr-pop">HDR Pop — Pseudo-HDR</option>
+                                <option value="custom">Custom — Full control</option>
+                            </select>
+                        </div>
+
+                        <div id="preset-description" style="padding:0.5rem 0.7rem;background:var(--bg-secondary);border-radius:6px;font-size:0.8rem;margin-bottom:1rem;display:none;"></div>
+
+                        <div id="custom-filters" style="display:none;">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;">
+                                <div class="field">
+                                    <label style="font-size:0.8rem;">Brightness <span id="val-brightness" style="color:var(--accent);">0.00</span></label>
+                                    <input type="range" id="FilterBrightness" min="-1" max="1" step="0.05" value="0" style="width:100%;" />
+                                </div>
+                                <div class="field">
+                                    <label style="font-size:0.8rem;">Contrast <span id="val-contrast" style="color:var(--accent);">1.00</span></label>
+                                    <input type="range" id="FilterContrast" min="0" max="3" step="0.05" value="1" style="width:100%;" />
+                                </div>
+                                <div class="field">
+                                    <label style="font-size:0.8rem;">Saturation <span id="val-saturation" style="color:var(--accent);">1.00</span></label>
+                                    <input type="range" id="FilterSaturation" min="0" max="3" step="0.05" value="1" style="width:100%;" />
+                                </div>
+                                <div class="field">
+                                    <label style="font-size:0.8rem;">Gamma <span id="val-gamma" style="color:var(--accent);">1.00</span></label>
+                                    <input type="range" id="FilterGamma" min="0.1" max="10" step="0.1" value="1" style="width:100%;" />
+                                </div>
+                                <div class="field">
+                                    <label style="font-size:0.8rem;">Sharpness <span id="val-sharpness" style="color:var(--accent);">0.0</span></label>
+                                    <input type="range" id="FilterSharpness" min="0" max="5" step="0.1" value="0" style="width:100%;" />
+                                </div>
+                                <div class="field">
+                                    <label style="font-size:0.8rem;">Color Temp <span id="val-colortemp" style="color:var(--accent);">6500</span>K</label>
+                                    <input type="range" id="FilterColorTemperature" min="1000" max="15000" step="100" value="6500" style="width:100%;" />
+                                </div>
+                                <div class="field">
+                                    <label style="font-size:0.8rem;">Vignette <span id="val-vignette" style="color:var(--accent);">0.0</span></label>
+                                    <input type="range" id="FilterVignette" min="0" max="5" step="0.1" value="0" style="width:100%;" />
+                                </div>
+                                <div class="field">
+                                    <label style="font-size:0.8rem;">Film Grain <span id="val-filmgrain" style="color:var(--accent);">0</span></label>
+                                    <input type="range" id="FilterFilmGrain" min="0" max="100" step="1" value="0" style="width:100%;" />
+                                </div>
+                                <div class="field">
+                                    <label style="font-size:0.8rem;">Denoise <span id="val-denoise" style="color:var(--accent);">0.0</span></label>
+                                    <input type="range" id="FilterDenoise" min="0" max="25" step="0.5" value="0" style="width:100%;" />
+                                </div>
+                                <div class="field">
+                                    <label style="font-size:0.8rem;">LUT File Path</label>
+                                    <input type="text" id="FilterLutPath" placeholder="/path/to/lut.cube" style="width:100%;padding:0.35rem;background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;font-size:0.8rem;" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="filter-chain-preview" style="margin-top:1rem;padding:0.5rem 0.7rem;background:var(--bg-secondary);border-radius:6px;font-size:0.75rem;font-family:monospace;word-break:break-all;display:none;">
+                            <strong>FFmpeg filter chain:</strong> <span id="filter-chain-text"></span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
         </div>
     </div>
 
@@ -1271,7 +1357,10 @@
                     'MaxQueueSize','ModelDiskQuotaMB','ModelCleanupDays',
                     'HealthCheckIntervalSeconds','CircuitBreakerThreshold','CircuitBreakerResetSeconds',
                     'RealtimeTargetFps','RealtimeCaptureWidth',
-                    'FaceEnhanceStrength','GrainDenoiseStrength','GrainReaddIntensity'];
+                    'FaceEnhanceStrength','GrainDenoiseStrength','GrainReaddIntensity',
+                    'FilterBrightness','FilterContrast','FilterSaturation','FilterGamma',
+                    'FilterSharpness','FilterColorTemperature','FilterVignette','FilterFilmGrain',
+                    'FilterDenoise','FilterLutPath'];
                 fields.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el && config[f] !== undefined) el.value = config[f];
@@ -1286,7 +1375,8 @@
                     'EnableGpuFallbackToCpu','RestrictToUnwatchedContent','SkipUpscaledOnRescan',
                     'EnableRealtimeUpscaling',
                     'EnableQualityMetrics','EnableFaceEnhancement','EnableGrainManagement',
-                    'EnableCustomModelUpload','EnableApiDocs','EnableProgressNotifications'];
+                    'EnableCustomModelUpload','EnableApiDocs','EnableProgressNotifications',
+                    'EnableVideoFilters'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) {
@@ -1296,7 +1386,7 @@
                     }
                 });
 
-                var selects = ['Model','QualityLevel','ButtonPosition','OutputCodec','RealtimeMode'];
+                var selects = ['Model','QualityLevel','ButtonPosition','OutputCodec','RealtimeMode','ActiveFilterPreset'];
                 selects.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el && config[f]) el.value = config[f];
@@ -1310,6 +1400,31 @@
                 if (config.GpuDeviceIndex !== undefined) {
                     var gpuSel = page.querySelector('#GpuDeviceIndex');
                     if (gpuSel) gpuSel.value = config.GpuDeviceIndex;
+                }
+
+                // Update filter slider value displays after loading
+                var sliderMap = {
+                    FilterBrightness: 'val-brightness', FilterContrast: 'val-contrast',
+                    FilterSaturation: 'val-saturation', FilterGamma: 'val-gamma',
+                    FilterSharpness: 'val-sharpness', FilterColorTemperature: 'val-colortemp',
+                    FilterVignette: 'val-vignette', FilterFilmGrain: 'val-filmgrain',
+                    FilterDenoise: 'val-denoise'
+                };
+                Object.keys(sliderMap).forEach(function(k) {
+                    var slider = page.querySelector('#' + k);
+                    var display = page.querySelector('#' + sliderMap[k]);
+                    if (slider && display) display.textContent = slider.value;
+                });
+                // Re-init filter UI state
+                var enableCb = page.querySelector('#EnableVideoFilters');
+                var filterOpts = page.querySelector('#filter-options');
+                var presetSel = page.querySelector('#ActiveFilterPreset');
+                if (enableCb && enableCb.checked) {
+                    filterOpts.style.opacity = '1';
+                    filterOpts.style.pointerEvents = '';
+                }
+                if (presetSel && presetSel.value === 'custom') {
+                    page.querySelector('#custom-filters').style.display = '';
                 }
             }).catch(function(err) {
                 console.error('Failed to load plugin config:', err);
@@ -1335,7 +1450,8 @@
                     'MinResolutionWidth','MinResolutionHeight','MaxItemsPerScan','MaxQueueSize',
                     'ModelDiskQuotaMB','ModelCleanupDays','HealthCheckIntervalSeconds',
                     'CircuitBreakerThreshold','CircuitBreakerResetSeconds',
-                    'RealtimeTargetFps','RealtimeCaptureWidth','GrainDenoiseStrength'];
+                    'RealtimeTargetFps','RealtimeCaptureWidth','GrainDenoiseStrength',
+                    'FilterColorTemperature','FilterFilmGrain'];
                 nums.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) { var parsed = parseInt(el.value, 10); if (!isNaN(parsed)) config[f] = parsed; }
@@ -1347,7 +1463,9 @@
                     if (el) { var parsed = parseInt(el.value, 10); if (!isNaN(parsed)) config[f] = parsed; }
                 });
 
-                var floats = ['FaceEnhanceStrength','GrainReaddIntensity'];
+                var floats = ['FaceEnhanceStrength','GrainReaddIntensity',
+                    'FilterBrightness','FilterContrast','FilterSaturation','FilterGamma',
+                    'FilterSharpness','FilterVignette','FilterDenoise'];
                 floats.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) { var parsed = parseFloat(el.value); if (!isNaN(parsed)) config[f] = parsed; }
@@ -1362,10 +1480,17 @@
                     'EnableGpuFallbackToCpu','RestrictToUnwatchedContent','SkipUpscaledOnRescan',
                     'EnableRealtimeUpscaling',
                     'EnableQualityMetrics','EnableFaceEnhancement','EnableGrainManagement',
-                    'EnableCustomModelUpload','EnableApiDocs','EnableProgressNotifications'];
+                    'EnableCustomModelUpload','EnableApiDocs','EnableProgressNotifications',
+                    'EnableVideoFilters'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) config[f] = !!el.checked;
+                });
+
+                var strings = ['FilterLutPath'];
+                strings.forEach(function(f) {
+                    var el = page.querySelector('#' + f);
+                    if (el) config[f] = el.value;
                 });
 
                 config.Model = page.querySelector('#Model').value;
@@ -1373,8 +1498,9 @@
                 config.ButtonPosition = page.querySelector('#ButtonPosition').value;
                 config.OutputCodec = page.querySelector('#OutputCodec').value;
                 config.RealtimeMode = page.querySelector('#RealtimeMode').value;
+                config.ActiveFilterPreset = page.querySelector('#ActiveFilterPreset').value;
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
-                config.PluginVersion = '1.5.6.0';
+                config.PluginVersion = '1.6.1.0';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -1649,6 +1775,98 @@
             rows.forEach(function(r) { tbody.appendChild(r); });
         }
 
+        // ===== FILTER TAB LOGIC =====
+        var presetDescriptions = {
+            none: '',
+            cinematic: 'Warm film look with slightly reduced saturation, gentle warmth, and vignette. Great for dramas and narrative content.',
+            vintage: 'Retro faded look with low saturation, film grain, and vintage color curves. Perfect for nostalgic aesthetics.',
+            vivid: 'Punchy, saturated colors with high contrast. Ideal for nature, travel, and vibrant content.',
+            noir: 'Classic black-and-white film with high contrast, dark curves, vignette, and film grain.',
+            warm: 'Subtle warm tone shift with slightly boosted saturation. Cozy and inviting look.',
+            cool: 'Cool blue-ish tone with slightly reduced saturation. Clean, modern feel.',
+            'hdr-pop': 'Pseudo-HDR effect with boosted contrast, saturation, and sharpening for a punchy look.'
+        };
+
+        function initFilterTab(page) {
+            var enableCb = page.querySelector('#EnableVideoFilters');
+            var filterOpts = page.querySelector('#filter-options');
+            var presetSel = page.querySelector('#ActiveFilterPreset');
+            var customDiv = page.querySelector('#custom-filters');
+            var descDiv = page.querySelector('#preset-description');
+            var chainDiv = page.querySelector('#filter-chain-preview');
+
+            function updateFilterUI() {
+                if (enableCb.checked) {
+                    filterOpts.style.opacity = '1';
+                    filterOpts.style.pointerEvents = '';
+                } else {
+                    filterOpts.style.opacity = '0.5';
+                    filterOpts.style.pointerEvents = 'none';
+                }
+                var preset = presetSel.value;
+                customDiv.style.display = preset === 'custom' ? '' : 'none';
+                if (preset !== 'none' && presetDescriptions[preset]) {
+                    descDiv.textContent = presetDescriptions[preset];
+                    descDiv.style.display = '';
+                } else {
+                    descDiv.style.display = 'none';
+                }
+                updateFilterChainPreview(page);
+            }
+
+            enableCb.addEventListener('change', updateFilterUI);
+            presetSel.addEventListener('change', updateFilterUI);
+
+            // Slider value displays
+            var sliders = [
+                { id: 'FilterBrightness', display: 'val-brightness', decimals: 2 },
+                { id: 'FilterContrast', display: 'val-contrast', decimals: 2 },
+                { id: 'FilterSaturation', display: 'val-saturation', decimals: 2 },
+                { id: 'FilterGamma', display: 'val-gamma', decimals: 2 },
+                { id: 'FilterSharpness', display: 'val-sharpness', decimals: 1 },
+                { id: 'FilterColorTemperature', display: 'val-colortemp', decimals: 0 },
+                { id: 'FilterVignette', display: 'val-vignette', decimals: 1 },
+                { id: 'FilterFilmGrain', display: 'val-filmgrain', decimals: 0 },
+                { id: 'FilterDenoise', display: 'val-denoise', decimals: 1 }
+            ];
+            sliders.forEach(function(s) {
+                var slider = page.querySelector('#' + s.id);
+                var display = page.querySelector('#' + s.display);
+                if (slider && display) {
+                    slider.addEventListener('input', function() {
+                        display.textContent = parseFloat(slider.value).toFixed(s.decimals);
+                        updateFilterChainPreview(page);
+                    });
+                }
+            });
+
+            // Initial state
+            updateFilterUI();
+        }
+
+        function updateFilterChainPreview(page) {
+            var chainDiv = page.querySelector('#filter-chain-preview');
+            var chainText = page.querySelector('#filter-chain-text');
+            var preset = page.querySelector('#ActiveFilterPreset').value;
+            var enabled = page.querySelector('#EnableVideoFilters').checked;
+
+            if (!enabled || preset === 'none') {
+                chainDiv.style.display = 'none';
+                return;
+            }
+
+            ApiClient.ajax({
+                type: 'POST',
+                url: ApiClient.getUrl('Upscaler/filter-preview') + '?preset=' + encodeURIComponent(preset),
+                dataType: 'json'
+            }).then(function(data) {
+                chainText.textContent = data.filterChain || '(none)';
+                chainDiv.style.display = '';
+            }).catch(function() {
+                chainDiv.style.display = 'none';
+            });
+        }
+
         // ===== EVENT HANDLERS =====
         function attachEvents(page) {
             page.querySelector('#btn-save').addEventListener('click', function() { saveConfig(page); });
@@ -1889,6 +2107,7 @@
             if (!_initialized) {
                 initNav(page);
                 attachEvents(page);
+                initFilterTab(page);
                 _initialized = true;
             }
 
