@@ -13,7 +13,7 @@
         "changelog": "v1.5.6.0: RequiresElevation on 8 admin endpoints, per-user rate limiting (10 req/min), Lanczos2 WebGL shader, Test Upscale button, Docker healthcheck, IPv4-mapped IPv6 SSRF fix, semaphore deadlock fix, multipart filename sanitization.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.6.0/JellyfinUpscalerPlugin-v1.5.6.0.zip",
-        "checksum": "2d7263d06cc046afd5916b1162b72c8b",
+        "checksum": "8ed32ebedc60f3fb0f2f2bebb5d4fc48",
         "timestamp": "2026-04-12T22:30:00.000Z"
       },
       {
