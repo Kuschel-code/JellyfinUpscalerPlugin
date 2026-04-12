@@ -1,4 +1,4 @@
-"""Tests for API token enforcement — backward-compatible when API_TOKEN not set."""
+"""Tests for API token enforcement — secure-by-default when API_TOKEN not set."""
 import io
 import os
 import numpy as np
@@ -49,19 +49,25 @@ def test_correct_token_passes_auth(client):
         assert resp.status_code != 403, f"correct token should not 403, got {resp.status_code}"
 
 
-def test_no_token_env_skips_auth_check(client):
-    """When API_TOKEN env var absent, all endpoints skip auth (backward compat)."""
+def test_no_token_env_rejects_requests(client):
+    """When API_TOKEN env var absent, requests are rejected (secure-by-default)."""
     env = {k: v for k, v in os.environ.items() if k != "API_TOKEN"}
     with patch.dict(os.environ, env, clear=True):
+        resp = client.post("/models/download", data={"model_name": "realesrgan-x4"})
+        assert resp.status_code == 403
+
+
+def test_disable_token_skips_auth(client):
+    """API_TOKEN=disable explicitly opts out of auth."""
+    with patch.dict(os.environ, {"API_TOKEN": "disable"}):
         resp = client.post("/models/download", data={"model_name": "realesrgan-x4"})
         # Should not be 403; may be 400/422 for other reasons but not auth
         assert resp.status_code != 403
 
 
 def test_upscale_without_model_returns_400_not_403(client):
-    """/upscale without loaded model returns 400, not 403 (when no API_TOKEN set)."""
-    env = {k: v for k, v in os.environ.items() if k != "API_TOKEN"}
-    with patch.dict(os.environ, env, clear=True):
+    """/upscale without loaded model returns 400, not 403 (with auth disabled)."""
+    with patch.dict(os.environ, {"API_TOKEN": "disable"}):
         png = _make_png()
         resp = client.post(
             "/upscale",
