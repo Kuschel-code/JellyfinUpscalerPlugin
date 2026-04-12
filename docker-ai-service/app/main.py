@@ -281,11 +281,15 @@ _cpu_executor = ThreadPoolExecutor(
 
 def _require_api_token(request: Request) -> None:
     """Check the X-Api-Token header against the API_TOKEN env var.
-    If API_TOKEN is not set, skip the check (backwards compatible).
-    Raises HTTPException(403) on mismatch."""
+    If API_TOKEN is not set, log a warning and reject the request (secure by default).
+    Raises HTTPException(403) on mismatch or missing token."""
     expected_token = os.getenv("API_TOKEN", "")
     if not expected_token:
-        return  # No token configured — skip check for backwards compatibility
+        logger.warning("API_TOKEN env var is not set — rejecting request. "
+                       "Set API_TOKEN to enable authenticated access, or set API_TOKEN=disable to explicitly allow unauthenticated access.")
+        raise HTTPException(status_code=403, detail="API_TOKEN not configured. Set API_TOKEN env var to secure this service.")
+    if expected_token == "disable":
+        return  # Explicitly opted out of auth
     provided_token = request.headers.get("x-api-token", "") if request else ""
     if not hmac.compare_digest(provided_token, expected_token):
         raise HTTPException(status_code=403, detail="Invalid or missing API token")

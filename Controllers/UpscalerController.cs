@@ -19,6 +19,7 @@ using JellyfinUpscalerPlugin.Services;
 using JellyfinUpscalerPlugin.Models;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Controller.Entities;
+using System.Collections.Concurrent;
 using Image = SixLabors.ImageSharp.Image;
 using IOFile = System.IO.File;
 
@@ -34,8 +35,11 @@ namespace JellyfinUpscalerPlugin.Controllers
     {
         // ── Constants ────────────────────────────────────────────────────
         private const long MaxUploadSizeBytes = 50 * 1024 * 1024; // 50 MB
+        private const int RateLimitMaxRequests = 10;
+        private static readonly TimeSpan RateLimitWindow = TimeSpan.FromMinutes(1);
 
         private static readonly Regex ValidModelNameRegex = new(@"^[a-zA-Z0-9\-_]+$", RegexOptions.Compiled);
+        private static readonly ConcurrentDictionary<string, (int Count, DateTime WindowStart)> _rateLimitTracker = new();
 
         private readonly ILogger<UpscalerController> _logger;
         private readonly ILibraryManager _libraryManager;
@@ -75,6 +79,35 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// </summary>
         private HttpClient GetAiServiceClient() => _httpClientFactory.CreateClient("AiUpscaler");
         private HttpClient GetMultiFrameClient() => _httpClientFactory.CreateClient("AiUpscalerLongTimeout");
+
+        /// <summary>
+        /// Per-user sliding-window rate limiter for upscale endpoints.
+        /// Returns true if the request should be rejected (rate exceeded).
+        /// </summary>
+        private bool IsRateLimited()
+        {
+            var userId = User?.Identity?.Name ?? HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var now = DateTime.UtcNow;
+            var entry = _rateLimitTracker.AddOrUpdate(
+                userId,
+                _ => (1, now),
+                (_, existing) =>
+                {
+                    if (now - existing.WindowStart > RateLimitWindow)
+                        return (1, now);
+                    return (existing.Count + 1, existing.WindowStart);
+                });
+            // Opportunistic pruning to prevent unbounded growth
+            if (_rateLimitTracker.Count > 500)
+            {
+                var cutoff = now - RateLimitWindow;
+                foreach (var key in _rateLimitTracker.Keys)
+                    if (_rateLimitTracker.TryGetValue(key, out var v) && v.WindowStart < cutoff)
+                        _rateLimitTracker.TryRemove(key, out _);
+            }
+
+            return entry.Count > RateLimitMaxRequests;
+        }
 
         /// <summary>
         /// Get the validated AI service URL. Rejects non-http(s) schemes and control characters.
@@ -292,6 +325,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpGet("hardware-info")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetHardwareInfo()
         {
@@ -317,6 +351,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpGet("recommendations")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> GetHardwareRecommendations()
         {
@@ -336,6 +371,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Used by the UI to show which model will be auto-selected.
         /// </summary>
         [HttpGet("recommend-model")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> RecommendModel(
             [FromQuery] string? genres = null,
@@ -377,6 +413,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpGet("compare/{itemId}")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> GetComparisonData(string itemId, [FromQuery] string model = "realesrgan", [FromQuery] int scale = 2)
         {
@@ -462,6 +499,8 @@ namespace JellyfinUpscalerPlugin.Controllers
             [FromQuery] int scale = 2,
             [FromQuery] string? imageTypes = null)
         {
+            if (IsRateLimited())
+                return StatusCode(429, new { error = "Rate limit exceeded. Max 10 upscale requests per minute." });
             try
             {
                 if (scale < 1 || scale > 8)
@@ -584,12 +623,6 @@ namespace JellyfinUpscalerPlugin.Controllers
                 // Security: Validate and normalize paths to prevent path traversal
                 var fullInputPath = Path.GetFullPath(request.InputPath);
                 var fullOutputPath = Path.GetFullPath(request.OutputPath);
-
-                // Reject path traversal attempts (normalized path must match original intent)
-                if (fullOutputPath.Contains("..", StringComparison.Ordinal))
-                {
-                    return BadRequest(new { success = false, error = "Path traversal not allowed" });
-                }
 
                 // Whitelist: output must be in same directory as input (sibling file)
                 // or in a subdirectory of the input's parent
@@ -909,6 +942,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpGet("cache/stats")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetCacheStats()
         {
@@ -942,6 +976,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpGet("hardware")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> GetHardwareProfile()
         {
@@ -963,6 +998,9 @@ namespace JellyfinUpscalerPlugin.Controllers
         [RequestSizeLimit(52428800)] // 50MB max
         public async Task<ActionResult> UpscaleImage([FromQuery] string model = "realesrgan-x4", [FromQuery] int scale = 2)
         {
+            if (IsRateLimited())
+                return StatusCode(429, new { error = "Rate limit exceeded. Max 10 upscale requests per minute." });
+
             try
             {
                 // Security: Validate scale parameter
@@ -1331,6 +1369,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpGet("fallback")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> GetFallbackStatus()
         {
@@ -1349,6 +1388,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Server-side health check proxy for the Docker AI service (avoids CORS issues)
         /// </summary>
         [HttpGet("service-health")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> CheckServiceHealth()
         {
@@ -1654,6 +1694,9 @@ namespace JellyfinUpscalerPlugin.Controllers
         [RequestSizeLimit(52_428_800)]
         public async Task<ActionResult> UpscaleFrame()
         {
+            if (IsRateLimited())
+                return StatusCode(429, new { error = "Rate limit exceeded. Max 10 upscale requests per minute." });
+
             try
             {
                 var serviceUrl = GetValidatedServiceUrl();
@@ -1699,6 +1742,9 @@ namespace JellyfinUpscalerPlugin.Controllers
         [RequestSizeLimit(52_428_800)]
         public async Task<ActionResult> UpscaleVideoChunk()
         {
+            if (IsRateLimited())
+                return StatusCode(429, new { error = "Rate limit exceeded. Max 10 upscale requests per minute." });
+
             var config = Plugin.Instance?.Configuration;
             if (config == null) return StatusCode(500, "Plugin not configured");
 
@@ -1717,7 +1763,12 @@ namespace JellyfinUpscalerPlugin.Controllers
                     var byteContent = new ByteArrayContent(ms.ToArray());
                     // Hardcode Content-Type to prevent header injection from user-controlled values
                     byteContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
-                    content.Add(byteContent, file.Name, file.FileName ?? file.Name);
+                    // Sanitize name/filename to prevent header injection via CRLF in multipart
+                    var safeName = ValidModelNameRegex.IsMatch(file.Name) ? file.Name : "frame";
+                    var rawFileName = file.FileName ?? file.Name;
+                    var safeFileName = ValidModelNameRegex.IsMatch(Path.GetFileNameWithoutExtension(rawFileName))
+                        ? rawFileName : "frame.png";
+                    content.Add(byteContent, safeName, safeFileName);
                 }
 
                 using var response = await GetMultiFrameClient().PostAsync($"{serviceUrl}/upscale-video-chunk", content);

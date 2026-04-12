@@ -20,6 +20,7 @@
         _explicitHeight: 0,
         _vertexShader: null,
         _fragmentShader: null,
+        _uniformLocations: null,
         
         // Shader sources
         vertexShaderSource: `
@@ -33,56 +34,85 @@
             }
         `,
         
-        // FSR-inspired fragment shader with edge-aware upscaling
+        // Lanczos2 resampling shader — real sub-pixel reconstruction
+        // Samples a 4x4 neighborhood from the source texture using a Lanczos kernel
+        // with window size 2, then applies optional CAS (Contrast Adaptive Sharpening)
         fragmentShaderSource: `
             precision highp float;
-            
+
             uniform sampler2D u_texture;
-            uniform vec2 u_resolution;
-            uniform float u_sharpness;
+            uniform vec2 u_resolution;  // output (canvas) size
+            uniform float u_sharpness;  // 0.0 – 1.0
             varying vec2 v_texCoord;
-            
-            // Edge detection kernel
-            vec3 detectEdge(vec2 uv, vec2 texelSize) {
-                vec3 n = texture2D(u_texture, uv + vec2(0.0, -texelSize.y)).rgb;
-                vec3 s = texture2D(u_texture, uv + vec2(0.0, texelSize.y)).rgb;
-                vec3 e = texture2D(u_texture, uv + vec2(texelSize.x, 0.0)).rgb;
-                vec3 w = texture2D(u_texture, uv + vec2(-texelSize.x, 0.0)).rgb;
-                
-                vec3 laplacian = abs(-4.0 * texture2D(u_texture, uv).rgb + n + s + e + w);
-                return laplacian;
+
+            #define PI 3.14159265359
+
+            // sinc(x) = sin(pi*x) / (pi*x), sinc(0)=1
+            float sinc(float x) {
+                if (abs(x) < 1e-5) return 1.0;
+                float px = PI * x;
+                return sin(px) / px;
             }
-            
-            // FSR EASU (Edge-Adaptive Spatial Upsampling)
-            vec3 fsrUpscale(vec2 uv, vec2 texelSize) {
-                vec3 center = texture2D(u_texture, uv).rgb;
-                vec3 edge = detectEdge(uv, texelSize);
-                
-                // Sample neighbors
-                vec3 n  = texture2D(u_texture, uv + vec2(0.0, -texelSize.y)).rgb;
-                vec3 s  = texture2D(u_texture, uv + vec2(0.0, texelSize.y)).rgb;
-                vec3 e  = texture2D(u_texture, uv + vec2(texelSize.x, 0.0)).rgb;
-                vec3 w  = texture2D(u_texture, uv + vec2(-texelSize.x, 0.0)).rgb;
-                vec3 ne = texture2D(u_texture, uv + vec2(texelSize.x, -texelSize.y)).rgb;
-                vec3 nw = texture2D(u_texture, uv + vec2(-texelSize.x, -texelSize.y)).rgb;
-                vec3 se = texture2D(u_texture, uv + vec2(texelSize.x, texelSize.y)).rgb;
-                vec3 sw = texture2D(u_texture, uv + vec2(-texelSize.x, texelSize.y)).rgb;
-                
-                // Edge-adaptive weighting
-                float edgeStrength = length(edge);
-                float sharpening = u_sharpness * (1.0 + edgeStrength * 2.0);
-                
-                // Bilateral filter with sharpening
-                vec3 result = center * (1.0 + sharpening);
-                result += (n + s + e + w) * -sharpening * 0.25;
-                
-                // Clamp to valid range
+
+            // Lanczos kernel, a = 2 (4-tap per axis, 16-tap total)
+            float lanczos2(float x) {
+                if (abs(x) >= 2.0) return 0.0;
+                return sinc(x) * sinc(x / 2.0);
+            }
+
+            // Lanczos2 resample: reconstruct one pixel from 4x4 source neighbourhood
+            vec3 lanczosResample(vec2 uv, vec2 srcTexelSize) {
+                // Map output UV to source pixel coordinate
+                vec2 srcCoord = uv / srcTexelSize - 0.5;
+                vec2 center = floor(srcCoord) + 0.5;
+                vec2 f = srcCoord - center; // fractional offset in [-0.5, 0.5)
+
+                vec3 color = vec3(0.0);
+                float totalWeight = 0.0;
+
+                for (int j = -1; j <= 2; j++) {
+                    for (int i = -1; i <= 2; i++) {
+                        vec2 offset = vec2(float(i), float(j));
+                        float w = lanczos2(f.x - offset.x + 1.0) * lanczos2(f.y - offset.y + 1.0);
+                        vec2 sampleUV = (center + offset) * srcTexelSize;
+                        color += texture2D(u_texture, sampleUV).rgb * w;
+                        totalWeight += w;
+                    }
+                }
+                return color / totalWeight;
+            }
+
+            // CAS (Contrast Adaptive Sharpening) pass
+            vec3 casSharpening(vec2 uv, vec3 center, vec2 texelSize, float strength) {
+                vec3 n = texture2D(u_texture, uv + vec2(0.0, -texelSize.y)).rgb;
+                vec3 s = texture2D(u_texture, uv + vec2(0.0,  texelSize.y)).rgb;
+                vec3 e = texture2D(u_texture, uv + vec2( texelSize.x, 0.0)).rgb;
+                vec3 w = texture2D(u_texture, uv + vec2(-texelSize.x, 0.0)).rgb;
+
+                vec3 minRGB = min(min(n, s), min(e, w));
+                vec3 maxRGB = max(max(n, s), max(e, w));
+                // Adaptive sharpening weight based on local contrast
+                vec3 d = 1.0 / (maxRGB - minRGB + 0.05);
+                d = clamp(d * (-0.125), -0.1, 0.0);
+                float peak = mix(-0.125, -0.04, strength);
+                d = max(d, vec3(peak));
+
+                vec3 result = (center + (n + s + e + w) * d) / (1.0 + 4.0 * d);
                 return clamp(result, 0.0, 1.0);
             }
-            
+
             void main() {
-                vec2 texelSize = 1.0 / u_resolution;
-                vec3 color = fsrUpscale(v_texCoord, texelSize);
+                // Source texel size (from the video/texture, not the output canvas)
+                vec2 srcTexelSize = 1.0 / u_resolution;
+
+                // Lanczos2 reconstruction
+                vec3 color = lanczosResample(v_texCoord, srcTexelSize);
+
+                // Optional CAS sharpening pass (strength driven by u_sharpness slider)
+                if (u_sharpness > 0.01) {
+                    color = casSharpening(v_texCoord, color, srcTexelSize, u_sharpness);
+                }
+
                 gl_FragColor = vec4(color, 1.0);
             }
         `,
@@ -129,11 +159,25 @@
                     videoContainer.appendChild(this.canvas);
                 }
                 
-                // Handle WebGL context loss
+                // Handle WebGL context loss and restoration
                 this.canvas.addEventListener('webglcontextlost', function(e) {
                     e.preventDefault();
                     console.warn('AI Upscaler: WebGL context lost');
                     WebGLUpscaler.disable();
+                }, false);
+
+                this.canvas.addEventListener('webglcontextrestored', function() {
+                    console.log('AI Upscaler: WebGL context restored, reinitializing...');
+                    WebGLUpscaler.gl = WebGLUpscaler.canvas.getContext('webgl2') || WebGLUpscaler.canvas.getContext('webgl');
+                    if (WebGLUpscaler.gl && WebGLUpscaler.compileShaders()) {
+                        WebGLUpscaler.setupGeometry();
+                        WebGLUpscaler.texture = WebGLUpscaler.gl.createTexture();
+                        WebGLUpscaler.gl.bindTexture(WebGLUpscaler.gl.TEXTURE_2D, WebGLUpscaler.texture);
+                        WebGLUpscaler.gl.texParameteri(WebGLUpscaler.gl.TEXTURE_2D, WebGLUpscaler.gl.TEXTURE_WRAP_S, WebGLUpscaler.gl.CLAMP_TO_EDGE);
+                        WebGLUpscaler.gl.texParameteri(WebGLUpscaler.gl.TEXTURE_2D, WebGLUpscaler.gl.TEXTURE_WRAP_T, WebGLUpscaler.gl.CLAMP_TO_EDGE);
+                        WebGLUpscaler.gl.texParameteri(WebGLUpscaler.gl.TEXTURE_2D, WebGLUpscaler.gl.TEXTURE_MIN_FILTER, WebGLUpscaler.gl.LINEAR);
+                        console.log('AI Upscaler: WebGL context restored successfully');
+                    }
                 }, false);
 
                 console.log('AI Upscaler: WebGL upscaler initialized successfully');
@@ -179,7 +223,13 @@
                 console.error('Program link error:', gl.getProgramInfoLog(this.program));
                 return false;
             }
-            
+
+            // Cache uniform locations once (avoids per-frame GPU roundtrips)
+            this._uniformLocations = {
+                resolution: gl.getUniformLocation(this.program, 'u_resolution'),
+                sharpness: gl.getUniformLocation(this.program, 'u_sharpness')
+            };
+
             return true;
         },
         
@@ -258,12 +308,10 @@
             // Use shader program
             gl.useProgram(this.program);
             
-            // Set uniforms
-            const resolutionLocation = gl.getUniformLocation(this.program, 'u_resolution');
-            gl.uniform2f(resolutionLocation, this.canvas.width, this.canvas.height);
-            
-            const sharpnessLocation = gl.getUniformLocation(this.program, 'u_sharpness');
-            gl.uniform1f(sharpnessLocation, this.sharpness);
+            // Set uniforms (using cached locations)
+            // u_resolution must be SOURCE (video) size for Lanczos kernel to sample correctly
+            gl.uniform2f(this._uniformLocations.resolution, video.videoWidth, video.videoHeight);
+            gl.uniform1f(this._uniformLocations.sharpness, this.sharpness);
 
             // Draw
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);

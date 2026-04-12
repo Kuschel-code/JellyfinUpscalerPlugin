@@ -14,10 +14,10 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: '9.0.x'
           
@@ -50,33 +50,33 @@ jobs:
           echo "PLUGIN_VERSION=${VERSION}" >> $GITHUB_ENV
           echo "ARCHIVE_NAME=JellyfinUpscalerPlugin-v${VERSION}.zip" >> $GITHUB_ENV
           
-      - name: Calculate MD5 checksum
+      - name: Calculate SHA-256 checksum
         id: checksum
         run: |
-          CHECKSUM=$(md5sum "${{ env.ARCHIVE_NAME }}" | awk '{print $1}')
-          echo "MD5_CHECKSUM=${CHECKSUM}" >> $GITHUB_ENV
-          echo "Calculated MD5: ${CHECKSUM}"
+          CHECKSUM=$(sha256sum "${ARCHIVE_NAME}" | awk '{print $1}')
+          echo "SHA256_CHECKSUM=${CHECKSUM}" >> $GITHUB_ENV
+          echo "Calculated SHA-256: ${CHECKSUM}"
           
       - name: Update manifest files
         run: |
-          # Update manifest.json
-          jq --arg version "${{ env.PLUGIN_VERSION }}" \
-             --arg checksum "${{ env.MD5_CHECKSUM }}" \
-             --arg url "https://github.com/${{ github.repository }}/releases/download/v${{ env.PLUGIN_VERSION }}/${{ env.ARCHIVE_NAME }}" \
+          # Update manifest.json (using shell env vars to avoid GHA expression injection)
+          jq --arg version "${PLUGIN_VERSION}" \
+             --arg checksum "${SHA256_CHECKSUM}" \
+             --arg url "https://github.com/${{ github.repository }}/releases/download/v${PLUGIN_VERSION}/${ARCHIVE_NAME}" \
              '.versions[0].version = $version | .versions[0].checksum = $checksum | .versions[0].sourceUrl = $url | .versions[0].timestamp = (now | strftime("%Y-%m-%dT%H:%M:%S.000Z"))' \
              manifest.json > manifest.tmp && mv manifest.tmp manifest.json
-             
+
           # Update repository-jellyfin.json
-          jq --arg version "${{ env.PLUGIN_VERSION }}" \
-             --arg checksum "${{ env.MD5_CHECKSUM }}" \
-             --arg url "https://github.com/${{ github.repository }}/releases/download/v${{ env.PLUGIN_VERSION }}/${{ env.ARCHIVE_NAME }}" \
+          jq --arg version "${PLUGIN_VERSION}" \
+             --arg checksum "${SHA256_CHECKSUM}" \
+             --arg url "https://github.com/${{ github.repository }}/releases/download/v${PLUGIN_VERSION}/${ARCHIVE_NAME}" \
              '.[0].versions[0].version = $version | .[0].versions[0].checksum = $checksum | .[0].versions[0].sourceUrl = $url | .[0].versions[0].timestamp = (now | strftime("%Y-%m-%dT%H:%M:%S.000Z"))' \
              repository-jellyfin.json > repository-jellyfin.tmp && mv repository-jellyfin.tmp repository-jellyfin.json
-             
+
           # Update repository-simple.json
-          jq --arg version "${{ env.PLUGIN_VERSION }}" \
-             --arg checksum "${{ env.MD5_CHECKSUM }}" \
-             --arg url "https://github.com/${{ github.repository }}/releases/download/v${{ env.PLUGIN_VERSION }}/${{ env.ARCHIVE_NAME }}" \
+          jq --arg version "${PLUGIN_VERSION}" \
+             --arg checksum "${SHA256_CHECKSUM}" \
+             --arg url "https://github.com/${{ github.repository }}/releases/download/v${PLUGIN_VERSION}/${ARCHIVE_NAME}" \
              '.[0].versions[0].version = $version | .[0].versions[0].checksum = $checksum | .[0].versions[0].sourceUrl = $url | .[0].versions[0].timestamp = (now | strftime("%Y-%m-%dT%H:%M:%S.000Z"))' \
              repository-simple.json > repository-simple.tmp && mv repository-simple.tmp repository-simple.json
              
@@ -89,7 +89,7 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add manifest.json repository-jellyfin.json repository-simple.json
-          git diff --staged --quiet || git commit -m "chore: Update manifests for v${{ env.PLUGIN_VERSION }} [skip ci]"
+          git diff --staged --quiet || git commit -m "chore: Update manifests for v${PLUGIN_VERSION} [skip ci]"
           # Only push manifests if the tagged commit is on main
           if git merge-base --is-ancestor HEAD origin/main 2>/dev/null; then
             git push origin HEAD:main || echo "Manifest push skipped (already updated)"
@@ -98,7 +98,7 @@ jobs:
           fi
           
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: ${{ env.ARCHIVE_NAME }}
           body: |
@@ -110,7 +110,7 @@ jobs:
             3. Restart Jellyfin
             
             ### 🔐 Checksum
-            **MD5**: `${{ env.MD5_CHECKSUM }}`
+            **SHA-256**: `${{ env.SHA256_CHECKSUM }}`
             
             ### 📝 Manifest URLs
             - **Jellyfin Format**: `https://raw.githubusercontent.com/${{ github.repository }}/main/repository-jellyfin.json`

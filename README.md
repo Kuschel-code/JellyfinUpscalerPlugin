@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.5.5.8
+# Jellyfin AI Upscaler Plugin v1.5.6.0
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -8,7 +8,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker6 / v1.5.5.8):**
+**Docker Images (docker6 / v1.5.6.0):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker6` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker6-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker6-intel` (Intel Arc/iGPU OpenVINO)
@@ -28,7 +28,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.5.5.7      │  │
+│  │  AI Upscaler Plugin v1.5.6.0      │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -75,7 +75,7 @@ The **Scheduled Task** ("Scan & Upscale Library Images") runs weekly on Sunday a
 ### Real-Time Upscaling During Playback (NEW in v1.5.3.3)
 When you press play, the plugin automatically enhances the video in real-time using a **two-tier system**:
 
-- **Tier 1 — WebGL (Client-Side):** An FSR-inspired shader runs on your browser's GPU. Zero latency, always available. Works on any device with WebGL support.
+- **Tier 1 — WebGL (Client-Side):** A Lanczos2 resampling shader with CAS (Contrast Adaptive Sharpening) runs on your browser's GPU. Zero latency, always available. Works on any device with WebGL support.
 - **Tier 2 — Server AI:** Video frames are captured, sent to the Docker AI service, upscaled with the selected model, and rendered back. Requires a powerful server.
 
 **How it decides:** At playback start, a benchmark runs against the Docker service. If the server can process frames fast enough (≥80% of video FPS), it uses Server AI mode. Otherwise, it falls back to WebGL. If server performance drops during playback, it auto-switches to WebGL.
@@ -283,6 +283,65 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 ---
 
 ## Changelog
+
+### v1.5.6.0 (Authorization, Rate Limiting, Lanczos Shader, Security Review Fixes)
+
+**Authorization & Rate Limiting:**
+- **RequiresElevation** — 8 sensitive admin endpoints (`/hardware-info`, `/recommendations`, `/recommend-model`, `/compare/{itemId}`, `/cache/stats`, `/hardware`, `/fallback`, `/service-health`) now require Jellyfin admin role
+- **Per-user rate limiting** — sliding-window limiter (10 requests/minute) on all upscale endpoints with automatic stale entry pruning
+
+**WebGL Upscaler — Lanczos2 Resampling:**
+- **Real Lanczos2 kernel** — replaced FSR-style sharpening with a true 4x4-tap (16 sample) Lanczos2 resampling shader that reconstructs sub-pixel detail from the source texture
+- **CAS (Contrast Adaptive Sharpening)** — AMD-style post-processing pass that adapts sharpening strength to local contrast
+- **Fixed u_resolution uniform** — shader now receives source video dimensions (not canvas size), fixing incorrect sample coordinates
+
+**Dashboard:**
+- **Test Upscale button** — sends a tiny test image through the full pipeline to verify Docker AI service is working end-to-end
+- **Namespace cleanup** — `window._benchModel` moved to `window.AiUpscaler._benchModel`
+- **Dashboard version** updated to v1.5.6.0
+
+**Docker:**
+- **Healthcheck** — `docker-compose.yml` now includes `curl -sf http://localhost:5000/health` healthcheck (30s interval, 3 retries, 30s start period)
+
+**Security Fixes (from code review):**
+- **SSRF bypass via IPv4-mapped IPv6** — `::ffff:192.168.1.1` (16-byte address) now correctly detected as private via `IPAddress.MapToIPv4()` normalization; applies to both static IP check and DNS rebinding protection
+- **Multipart filename injection** — `UpscaleVideoChunk` now sanitizes `file.Name`/`file.FileName` before forwarding to Docker AI service (prevents CRLF header injection)
+- **Dead path traversal check removed** — `Contains("..")` after `Path.GetFullPath()` was unreachable; directory allowlist is the actual protection
+
+**Concurrency Fixes (from code review):**
+- **Semaphore signal loss** — `DequeueAsync` now restores the semaphore permit when queue is empty (prevents eventual deadlock under concurrent dequeue workers)
+
+### v1.5.5.9 (Security Hardening, Concurrency Fixes, CI Supply Chain Protection)
+
+**Security — SSRF & DNS Rebinding:**
+- **Webhook DNS rebinding protection** — hostname is now DNS-resolved before dispatch; resolved IPs are re-checked against private ranges (prevents TOCTOU attacks where DNS changes between validation and request)
+- **CVE-2024-53981 + CVE-2026-28356** — python-multipart pinned to `>=1.2.2,<2.0` across all 7 requirement files
+- **CVE-2026-25990** — Pillow pinned to `>=12.1.1,<13.0` across all requirement files
+- **Docker API token** — `_require_api_token` now rejects requests when `API_TOKEN` env var is not set (secure-by-default; use `API_TOKEN=disable` to explicitly opt out)
+
+**Concurrency & Stability:**
+- **ProcessingQueue semaphore race** — pause/resume no longer leaks semaphore signals; pause is checked before consuming the signal, with a double-check after WaitAsync
+- **Timer-after-Dispose** — CacheManager and HardwareBenchmarkService timer callbacks now check `_disposed` flag; timers are stopped (`Change(Infinite, 0)`) before `Dispose()` to prevent callbacks firing during teardown
+- **CacheManager unlimited mode** — `CacheSizeMB=0` (unlimited) no longer triggers delete-everything cleanup
+
+**CI/CD Supply Chain:**
+- **GitHub Actions SHA pinning** — all 10 action references across both workflows pinned to full commit SHAs (protects against tag-swap supply chain attacks like tj-actions/changed-files 2025)
+- **SHA-256 checksums** — release workflow uses sha256sum instead of md5sum
+- **Shell injection fix** — `${{ env.* }}` replaced with `${VAR}` in `run:` blocks
+
+**WebGL Performance:**
+- **Uniform location caching** — `getUniformLocation` calls cached once at shader link time (eliminates ~120 GPU roundtrips/sec at 60fps)
+- **Context restore handler** — `webglcontextrestored` event rebuilds shaders, geometry, and textures automatically (previously required manual page reload)
+
+**Code Quality:**
+- **Namespace cleanup** — quick-menu.js globals moved from `window.loadDefaults` etc. to `window.AiUpscaler.*` namespace (backwards compat shims retained)
+- **HttpUpscalerService** — `GetServiceUrl()` documented as intentionally allowing localhost/private IPs (AI service runs locally, unlike webhooks)
+- **HttpResponseMessage disposal** — all 5 HTTP response objects now use `using var` (fixes potential socket exhaustion)
+- **Dashboard version** — config page updated to v1.5.5.9
+
+**Repository Cleanup:**
+- Removed 147 tracked files that shouldn't have been in git (old backups, publish dirs, batch scripts, debug logs, agent artifacts)
+- Updated `.gitignore` to prevent re-addition
 
 ### v1.5.5.8 (Deep Scan Fixes — Security, Performance, Concurrency)
 

@@ -97,20 +97,29 @@ namespace JellyfinUpscalerPlugin.Services
         {
             while (!ct.IsCancellationRequested)
             {
-                await _signal.WaitAsync(ct);
-
+                // Wait while paused — don't consume the semaphore signal during pause
                 if (_paused)
                 {
-                    // Re-signal so next WaitAsync picks it up after unpause, but only if queue has items
-                    if (_queue.Count > 0)
-                        _signal.Release();
                     await Task.Delay(500, ct);
+                    continue;
+                }
+
+                await _signal.WaitAsync(ct);
+
+                // Re-check pause after waking: if paused while waiting, restore signal and loop
+                if (_paused)
+                {
+                    _signal.Release();
                     continue;
                 }
 
                 lock (_queueLock)
                 {
-                    if (_queue.Count == 0) continue;
+                    if (_queue.Count == 0)
+                    {
+                        _signal.Release(); // Restore consumed signal to prevent deadlock
+                        continue;
+                    }
 
                     var job = _queue.Min!;
                     _queue.Remove(job);

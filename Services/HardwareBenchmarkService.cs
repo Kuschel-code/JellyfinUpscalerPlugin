@@ -60,6 +60,7 @@ namespace JellyfinUpscalerPlugin.Services
 
         private void RunBenchmarkCallback(object? state)
         {
+            if (_disposed) return;
             _ = Task.Run(async () =>
             {
                 try

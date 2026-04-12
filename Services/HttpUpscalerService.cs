@@ -79,6 +79,10 @@ namespace JellyfinUpscalerPlugin.Services
                 _logger.LogWarning("Invalid AiServiceUrl in config, falling back to default");
                 return "http://localhost:5000";
             }
+
+            // Note: localhost/private IPs are intentionally ALLOWED for AiServiceUrl
+            // because the Docker AI service typically runs on the same host or LAN.
+            // This is different from webhooks which are user-supplied external URLs.
             return url.TrimEnd('/');
         }
 
@@ -102,7 +106,7 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 cts.CancelAfter(TimeSpan.FromSeconds(10));
-                var response = await GetClient().GetAsync($"{baseUrl}/health", cts.Token);
+                using var response = await GetClient().GetAsync($"{baseUrl}/health", cts.Token);
                 if (response.IsSuccessStatusCode)
                 {
                     _logger.LogDebug("AI Service health check OK at {Url}", baseUrl);
@@ -132,7 +136,7 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 cts.CancelAfter(TimeSpan.FromSeconds(10));
-                var response = await GetClient().GetAsync($"{baseUrl}/status", cts.Token);
+                using var response = await GetClient().GetAsync($"{baseUrl}/status", cts.Token);
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync(cts.Token);
@@ -257,7 +261,7 @@ namespace JellyfinUpscalerPlugin.Services
                         _logger.LogDebug("Retry {Attempt}/{MaxRetries} for upscaling", attempt, maxRetries);
                     }
 
-                    var response = await GetClient().PostAsync($"{baseUrl}/upscale", content, cancellationToken);
+                    using var response = await GetClient().PostAsync($"{baseUrl}/upscale", content, cancellationToken);
 
                     if (response.IsSuccessStatusCode)
                     {
@@ -312,7 +316,7 @@ namespace JellyfinUpscalerPlugin.Services
                 {
                     using var content = new MultipartFormDataContent();
                     content.Add(new StringContent(modelName), "model_name");
-                    var response = await GetClient().PostAsync($"{baseUrl}/models/download", content, cancellationToken);
+                    using var response = await GetClient().PostAsync($"{baseUrl}/models/download", content, cancellationToken);
                     if (response.IsSuccessStatusCode) return true;
                     // Don't retry on 4xx client errors
                     if ((int)response.StatusCode < 500) return false;
@@ -355,7 +359,7 @@ namespace JellyfinUpscalerPlugin.Services
                     content.Add(new StringContent(modelName), "model_name");
                     content.Add(new StringContent(useGpu.ToString().ToLower()), "use_gpu");
                     content.Add(new StringContent(gpuDeviceId.ToString()), "gpu_device_id");
-                    var response = await GetClient().PostAsync($"{baseUrl}/models/load", content, cancellationToken);
+                    using var response = await GetClient().PostAsync($"{baseUrl}/models/load", content, cancellationToken);
                     if (response.IsSuccessStatusCode) return true;
                     if ((int)response.StatusCode < 500) return false;
                 }

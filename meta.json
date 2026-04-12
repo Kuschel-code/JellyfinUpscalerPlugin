@@ -3,10 +3,10 @@
     "name": "AI Upscaler Plugin",
     "overview": "AI-Powered Video Upscaling Plugin with Docker Microservice Architecture",
     "description": "Revolutionary AI upscaling plugin with Docker-based AI processing. Supports NVIDIA CUDA/TensorRT, Intel OpenVINO, AMD ROCm, and CPU. Features automated hardware benchmarking, intelligent fallback system, pre-processing cache, and sidebar integration.",
-    "version": "1.5.5.8",
+    "version": "1.5.6.0",
     "targetAbi": "10.11.0.0",
     "framework": "net9.0",
     "owner": "Kuschel-code",
     "category": "Video Enhancement",
-    "changelog": "v1.5.5.8: Deep scan fixes — targeted library refresh (no more full scan), FFmpeg argument injection fix (ArgumentList), HDR HttpClient timeout fix, settings import type safety, path traversal allowlist, plugin_connections thread safety, CUDA device_id type fix, /upscale-stream concurrency semaphore, Pillow dependency added to all Docker variants."
+    "changelog": "v1.5.6.0: RequiresElevation on 8 admin endpoints, per-user rate limiting (10 req/min) on upscale endpoints, real Lanczos2 WebGL shader replacing FSR sharpening, Test Upscale button, Docker healthcheck, IPv4-mapped IPv6 SSRF fix, semaphore deadlock fix, multipart filename sanitization, rate limiter memory leak fix, dead path traversal check removed."
 }

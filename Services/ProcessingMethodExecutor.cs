@@ -79,7 +79,10 @@ namespace JellyfinUpscalerPlugin.Services
                 var args = BuildFFmpegCommand(inputPath, outputPath, job.OptimizedOptions, job.HardwareProfile);
 
                 var result = await Cli.Wrap(_ffmpegPath)
-                    .WithArguments(args)
+                    .WithArguments(a => {
+                        foreach (var part in args.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                            a.Add(part);
+                    })
                     .WithValidation(CommandResultValidation.None)
                     .ExecuteAsync(cancellationToken);
 
@@ -266,11 +269,13 @@ namespace JellyfinUpscalerPlugin.Services
                 mfVfFilters.Add($"fps={effectiveFps.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
 
                 var mfVfArg = string.Join(",", mfVfFilters);
-                var extractArgs = $"-i \"{inputPath}\" -vf \"{mfVfArg}\" \"{framesDir}/frame_%06d.png\"";
-                _logger.LogInformation("Extracting frames for multi-frame processing: {Args}", extractArgs);
+                _logger.LogInformation("Extracting frames for multi-frame processing with filter: {Filter}", mfVfArg);
 
                 await Cli.Wrap(_ffmpegPath)
-                    .WithArguments(extractArgs)
+                    .WithArguments(args => args
+                        .Add("-i").Add(inputPath)
+                        .Add("-vf").Add(mfVfArg)
+                        .Add(Path.Combine(framesDir, "frame_%06d.png")))
                     .WithValidation(CommandResultValidation.ZeroExitCode)
                     .ExecuteAsync(cancellationToken);
 

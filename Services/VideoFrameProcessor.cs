@@ -67,16 +67,18 @@ namespace JellyfinUpscalerPlugin.Services
 
             var vfArg = string.Join(",", vfFilters);
 
-            var pixFmtArg = isHDR ? " -pix_fmt rgb48be" : "";
-            var args = $"-i \"{inputPath}\" -vf \"{vfArg}\"{pixFmtArg} \"{framesDir}/frame_%06d.png\"";
-
             if (isHDR)
             {
                 _logger.LogInformation("Extracting frames as 16-bit PNG for HDR content: {File}", Path.GetFileName(inputPath));
             }
 
             var result = await Cli.Wrap(_ffmpegPath)
-                .WithArguments(args)
+                .WithArguments(args => {
+                    args.Add("-i").Add(inputPath)
+                        .Add("-vf").Add(vfArg);
+                    if (isHDR) args.Add("-pix_fmt").Add("rgb48be");
+                    args.Add(Path.Combine(framesDir, "frame_%06d.png"));
+                })
                 .WithValidation(CommandResultValidation.None)
                 .ExecuteAsync(cancellationToken);
 
@@ -257,9 +259,11 @@ namespace JellyfinUpscalerPlugin.Services
 
             try
             {
-                var audioArgs = $"-i \"{originalPath}\" -vn -acodec copy -y \"{tempAudioPath}\"";
                 var audioResult = await Cli.Wrap(_ffmpegPath)
-                    .WithArguments(audioArgs)
+                    .WithArguments(args => args
+                        .Add("-i").Add(originalPath)
+                        .Add("-vn").Add("-acodec").Add("copy")
+                        .Add("-y").Add(tempAudioPath))
                     .WithValidation(CommandResultValidation.None)
                     .ExecuteAsync(cancellationToken);
 
@@ -299,18 +303,19 @@ namespace JellyfinUpscalerPlugin.Services
                 codecArgs = $"-c:v {outputCodec} -pix_fmt yuv420p";
             }
 
-            string reconstructArgs;
-            if (hasAudio && File.Exists(tempAudioPath))
-            {
-                reconstructArgs = $"-framerate {effectiveFps} -i \"{processedDir}/frame_%06d.png\" -i \"{tempAudioPath}\" {codecArgs} -r {effectiveFps} -c:a copy -y \"{outputPath}\"";
-            }
-            else
-            {
-                reconstructArgs = $"-framerate {effectiveFps} -i \"{processedDir}/frame_%06d.png\" {codecArgs} -r {effectiveFps} -y \"{outputPath}\"";
-            }
-
             var result = await Cli.Wrap(_ffmpegPath)
-                .WithArguments(reconstructArgs)
+                .WithArguments(args => {
+                    args.Add("-framerate").Add(effectiveFps.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                        .Add("-i").Add(Path.Combine(processedDir, "frame_%06d.png"));
+                    if (hasAudio && File.Exists(tempAudioPath))
+                        args.Add("-i").Add(tempAudioPath);
+                    foreach (var part in codecArgs.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                        args.Add(part);
+                    args.Add("-r").Add(effectiveFps.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    if (hasAudio && File.Exists(tempAudioPath))
+                        args.Add("-c:a").Add("copy");
+                    args.Add("-y").Add(outputPath);
+                })
                 .WithValidation(CommandResultValidation.None)
                 .ExecuteAsync(cancellationToken);
 

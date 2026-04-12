@@ -1,6 +1,6 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
 <style>
-    /* ===== AI Upscaler v1.5.5.4 — Jellyfin-compatible dark theme ===== */
+    /* ===== AI Upscaler v1.5.6.0 — Jellyfin-compatible dark theme ===== */
     #UpscalerConfigurationPage {
         --accent: #00d4ff;
         --accent-bg: rgba(0, 212, 255, 0.12);
@@ -360,7 +360,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.5.5.4 &middot; Docker Microservice Architecture</div>
+                <div class="upscaler-header-meta">v1.5.6.0 &middot; Docker Microservice Architecture</div>
             </div>
 
             <!-- Tab bar -->
@@ -459,6 +459,7 @@
                             </div>
                             <div style="margin-top:0.5rem;">
                                 <button type="button" id="btn-test-connection" class="raised">Test Connection</button>
+                                <button type="button" id="btn-test-upscale" class="raised" style="margin-left:0.5rem;">Test Upscale</button>
                                 <span id="connection-status" style="font-size:0.85rem;margin-left:0.5rem;"></span>
                             </div>
                         </div>
@@ -1373,7 +1374,7 @@
                 config.OutputCodec = page.querySelector('#OutputCodec').value;
                 config.RealtimeMode = page.querySelector('#RealtimeMode').value;
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
-                config.PluginVersion = '1.5.5.4';
+                config.PluginVersion = '1.5.6.0';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -1439,7 +1440,7 @@
                         catalogTable.addEventListener('click', function(e) {
                             var btn = e.target.closest('[data-bench-model]');
                             if (btn) {
-                                window._benchModel(btn.getAttribute('data-bench-model'));
+                                window.AiUpscaler._benchModel(btn.getAttribute('data-bench-model'));
                             }
                         });
                     }
@@ -1457,7 +1458,8 @@
         }
 
         // Benchmark a single model: load it, run benchmark, show result
-        window._benchModel = function(modelId) {
+        window.AiUpscaler = window.AiUpscaler || {};
+        window.AiUpscaler._benchModel = function(modelId) {
             var cell = document.querySelector('#bench-' + modelId);
             // Check if model needs downloading first
             var configPage = document.querySelector('#UpscalerConfigurationPage');
@@ -1666,6 +1668,36 @@
                     }
                 }).catch(function() {
                     status.textContent = 'Error';
+                    status.style.color = '#f87171';
+                });
+            });
+
+            page.querySelector('#btn-test-upscale').addEventListener('click', function() {
+                var status = page.querySelector('#connection-status');
+                status.textContent = 'Upscaling test image...';
+                status.style.color = '#fbbf24';
+                // Create a tiny 4x4 red PNG test image (68 bytes)
+                var png = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,4,0,0,0,4,8,2,0,0,0,38,147,9,41,0,0,0,22,73,68,65,84,120,156,99,252,15,4,12,12,12,140,24,0,0,0,52,0,1,79,154,188,86,0,0,0,0,73,69,78,68,174,66,96,130]);
+                var model = page.querySelector('#PreferredModel')?.value || 'realesrgan-x4';
+                fetch(ApiClient.getUrl('Upscaler/upscale/image') + '?model=' + encodeURIComponent(model) + '&scale=2', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/octet-stream', 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' },
+                    body: png.buffer
+                }).then(function(resp) {
+                    if (resp.ok) {
+                        return resp.blob().then(function(blob) {
+                            status.textContent = 'Upscale OK! Output: ' + blob.size + ' bytes (' + model + ')';
+                            status.style.color = '#4ade80';
+                        });
+                    } else if (resp.status === 429) {
+                        status.textContent = 'Rate limited - try again in a minute';
+                        status.style.color = '#fbbf24';
+                    } else {
+                        status.textContent = 'Upscale failed (HTTP ' + resp.status + ')';
+                        status.style.color = '#f87171';
+                    }
+                }).catch(function() {
+                    status.textContent = 'Upscale error - is Docker AI service running?';
                     status.style.color = '#f87171';
                 });
             });

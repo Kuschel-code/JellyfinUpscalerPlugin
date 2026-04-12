@@ -36,6 +36,7 @@ namespace JellyfinUpscalerPlugin.Services
 
         // Synchronization for cache cleanup vs store operations
         private readonly SemaphoreSlim _cleanupLock = new(1, 1);
+        private volatile bool _disposed;
 
         // Performance tracking
         private long _totalCacheSize;
@@ -437,6 +438,13 @@ namespace JellyfinUpscalerPlugin.Services
             try
             {
                 var maxCacheSize = (long)Config.CacheSizeMB * 1024 * 1024;
+
+                // CacheSizeMB==0 means unlimited — skip cleanup entirely
+                if (maxCacheSize <= 0)
+                {
+                    return;
+                }
+
                 var currentSize = Interlocked.Read(ref _totalCacheSize);
 
                 if (currentSize <= maxCacheSize)
@@ -573,6 +581,7 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         private void CleanupCallback(object? state)
         {
+            if (_disposed) return;
             _ = Task.Run(async () =>
             {
                 try
@@ -591,6 +600,7 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         private void StatsCallback(object? state)
         {
+            if (_disposed) return;
             try
             {
                 var stats = GetCacheStatistics();
@@ -607,6 +617,10 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         public void Dispose()
         {
+            _disposed = true;
+            // Stop timers before disposing to prevent callbacks firing during teardown
+            _cleanupTimer?.Change(Timeout.Infinite, 0);
+            _statsTimer?.Change(Timeout.Infinite, 0);
             _cleanupTimer?.Dispose();
             _statsTimer?.Dispose();
             

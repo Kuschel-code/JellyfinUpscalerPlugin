@@ -4,7 +4,7 @@
 # FastAPI and Server
 fastapi>=0.115.0,<1.0
 uvicorn[standard]>=0.32.0,<1.0
-python-multipart>=0.0.7
+python-multipart>=1.2.2,<2.0
 
 # AI/ML - ONNX Runtime (ROCm version attempted first in Dockerfile, fallback to CPU)
 onnxruntime>=1.20.0,<2.0.0
@@ -14,7 +14,7 @@ numpy>=1.24.0,<2.0.0
 opencv-contrib-python>=4.10.0,<5.0
 
 # Image Processing - Pillow required by realsr-ncnn-vulkan-python (ncnn path)
-Pillow>=10.0.0
+Pillow>=12.1.1,<13.0
 
 # Utilities
 httpx>=0.26.0

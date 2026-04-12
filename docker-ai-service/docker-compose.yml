@@ -24,6 +24,12 @@ services:
       - SKIP_TENSORRT=false
       - GPU_DEVICE_ID=0
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     # Resource limits to prevent OOM on host
     mem_limit: 8g
     memswap_limit: 12g

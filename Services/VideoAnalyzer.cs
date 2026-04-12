@@ -127,7 +127,12 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 var stdoutBuffer = new StringBuilder();
                 var result = await Cli.Wrap(_ffprobePath)
-                    .WithArguments($"-v quiet -select_streams v:0 -show_streams -print_format json \"{inputPath}\"")
+                    .WithArguments(args => args
+                        .Add("-v").Add("quiet")
+                        .Add("-select_streams").Add("v:0")
+                        .Add("-show_streams")
+                        .Add("-print_format").Add("json")
+                        .Add(inputPath))
                     .WithValidation(CommandResultValidation.None)
                     .WithStandardOutputPipe(PipeTarget.ToStringBuilder(stdoutBuffer))
                     .ExecuteAsync();
@@ -194,7 +199,12 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 var stdOutBuffer = new StringBuilder();
                 var result = await Cli.Wrap(_ffprobePath)
-                    .WithArguments($"-v quiet -select_streams v:0 -show_entries stream=field_order -of json \"{inputPath}\"")
+                    .WithArguments(args => args
+                        .Add("-v").Add("quiet")
+                        .Add("-select_streams").Add("v:0")
+                        .Add("-show_entries").Add("stream=field_order")
+                        .Add("-of").Add("json")
+                        .Add(inputPath))
                     .WithStandardOutputPipe(PipeTarget.ToStringBuilder(stdOutBuffer))
                     .WithValidation(CommandResultValidation.None)
                     .ExecuteAsync();
@@ -219,7 +229,12 @@ namespace JellyfinUpscalerPlugin.Services
                 // Fallback: check full stream info for interlaced indicators
                 var stdOutBuffer2 = new StringBuilder();
                 var result2 = await Cli.Wrap(_ffprobePath)
-                    .WithArguments($"-v quiet -select_streams v:0 -show_streams -of json \"{inputPath}\"")
+                    .WithArguments(args => args
+                        .Add("-v").Add("quiet")
+                        .Add("-select_streams").Add("v:0")
+                        .Add("-show_streams")
+                        .Add("-of").Add("json")
+                        .Add(inputPath))
                     .WithStandardOutputPipe(PipeTarget.ToStringBuilder(stdOutBuffer2))
                     .WithValidation(CommandResultValidation.None)
                     .ExecuteAsync();

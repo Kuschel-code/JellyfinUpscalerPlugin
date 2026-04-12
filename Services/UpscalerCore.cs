@@ -27,6 +27,33 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly IApplicationPaths _appPaths;
         private readonly HttpUpscalerService _httpUpscaler;
 
+        /// <summary>
+        /// Check if an IP address is private, loopback, link-local, or otherwise reserved.
+        /// Handles IPv4-mapped IPv6 addresses (e.g. ::ffff:192.168.1.1) correctly.
+        /// </summary>
+        private static bool IsPrivateOrReservedIp(System.Net.IPAddress ip)
+        {
+            if (System.Net.IPAddress.IsLoopback(ip) || ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal)
+                return true;
+
+            // Normalize IPv4-mapped IPv6 to IPv4 for range checks
+            var checkIp = ip.IsIPv4MappedToIPv6 ? ip.MapToIPv4() : ip;
+            var bytes = checkIp.GetAddressBytes();
+
+            if (bytes.Length == 4)
+            {
+                return bytes[0] == 0 ||                                              // 0.x.x.x
+                    bytes[0] == 127 ||                                               // 127.x.x.x
+                    bytes[0] == 10 ||                                                // 10.x.x.x
+                    (bytes[0] == 169 && bytes[1] == 254) ||                          // 169.254.x.x link-local
+                    (bytes[0] == 100 && bytes[1] >= 64 && bytes[1] <= 127) ||        // 100.64-127.x.x CGNAT
+                    (bytes[0] == 192 && bytes[1] == 168) ||                          // 192.168.x.x
+                    (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31);           // 172.16-31.x.x
+            }
+
+            return false;
+        }
+
         // Shared HttpClient for webhook delivery — reused to avoid socket exhaustion
         private static readonly System.Net.Http.HttpClient _webhookClient = new(new System.Net.Http.SocketsHttpHandler
         {
@@ -186,16 +213,7 @@ namespace JellyfinUpscalerPlugin.Services
 
             if (System.Net.IPAddress.TryParse(host, out var ip))
             {
-                var bytes = ip.GetAddressBytes();
-                bool isPrivate = ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal ||
-                    (bytes.Length == 4 && bytes[0] == 0) ||                                    // 0.x.x.x
-                    (bytes.Length == 4 && bytes[0] == 127) ||                                  // 127.x.x.x
-                    (bytes.Length == 4 && bytes[0] == 10) ||                                   // 10.x.x.x
-                    (bytes.Length == 4 && bytes[0] == 169 && bytes[1] == 254) ||               // 169.254.x.x link-local
-                    (bytes.Length == 4 && bytes[0] == 100 && bytes[1] >= 64 && bytes[1] <= 127) || // 100.64-127.x.x CGNAT
-                    (bytes.Length == 4 && bytes[0] == 192 && bytes[1] == 168) ||               // 192.168.x.x
-                    (bytes.Length == 4 && bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31); // 172.16-31.x.x
-                if (isPrivate)
+                if (IsPrivateOrReservedIp(ip))
                 {
                     _logger.LogWarning("Webhook URL rejected (private IP): {Url}", webhookUrl);
                     return;
@@ -207,6 +225,20 @@ namespace JellyfinUpscalerPlugin.Services
 
             try
             {
+                // DNS rebinding protection: resolve hostname and re-check resolved IPs
+                if (!System.Net.IPAddress.TryParse(host, out _))
+                {
+                    var addresses = await System.Net.Dns.GetHostAddressesAsync(host);
+                    foreach (var addr in addresses)
+                    {
+                        if (IsPrivateOrReservedIp(addr))
+                        {
+                            _logger.LogWarning("Webhook URL rejected (DNS resolves to private IP {Ip}): {Url}", addr, webhookUrl);
+                            return;
+                        }
+                    }
+                }
+
                 var payload = new Dictionary<string, object>
                 {
                     ["event"] = eventType,

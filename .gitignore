@@ -44,6 +44,7 @@ plugins/
 cache/
 
 # Backup directories
+backup_*/
 .backups/
 .archive/
 JellyfinUpscalerPlugin-Backup*/
@@ -51,6 +52,32 @@ JellyfinUpscalerPlugin_Backup_*/
 JellyfinUpscalerPlugin-v*/
 apps/
 apps-fork/
+
+# Old publish directories
+publish_*/
+
+# Temp/debug files
+harmony.log.txt
+temp_js.js
+issue39*
+release_notes_*.md
+
+# Old batch scripts
+commit*.bat
+final-commit.bat
+git-commit.bat
+build.bat
+
+# Agent/AI tool artifacts
+.zenflow/
+docs/superpowers/
+
+# Website/wiki (separate repos)
+website/
+wiki/
+JellyfinUpscalerPlugin.wiki/
+truenas-apps-submission/
+truenas-catalog/
 
 # Local Netlify folder
 .netlify

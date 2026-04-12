@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.5.6.0",
+        "changelog": "v1.5.6.0: RequiresElevation on 8 admin endpoints, per-user rate limiting (10 req/min), Lanczos2 WebGL shader, Test Upscale button, Docker healthcheck, IPv4-mapped IPv6 SSRF fix, semaphore deadlock fix.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.6.0/JellyfinUpscalerPlugin-v1.5.6.0.zip",
+        "checksum": "cc54d960fa74455964cc51966a78c1ece533fdd849f653b98ce4683e3aececcc",
+        "timestamp": "2026-04-12T22:30:00.000Z"
+      },
+      {
         "version": "1.5.5.4",
         "changelog": "v1.5.5.4: 5 new configurable features (Quality Metrics PSNR/SSIM, Face Enhancement GFPGAN, Film Grain Management, Custom ONNX Model Upload, OpenAPI Docs) + dashboard UI + deep security hardening.",
         "targetAbi": "10.11.0.0",

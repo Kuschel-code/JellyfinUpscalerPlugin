@@ -456,12 +456,21 @@
         document.addEventListener('DOMContentLoaded', onDomReady);
     }
 
-    // Global functions for HTML onclick handlers
-    window.loadDefaults = function() { QuickMenuActions.loadDefaults(); };
-    window.optimizeForDevice = function() { QuickMenuActions.optimizeForDevice(); };
-    window.testSystem = function() { QuickMenuActions.testSystem(); };
-    window.exportConfig = function() { QuickMenuActions.exportConfig(); };
-    window.showDiagnostics = function() { QuickMenuActions.showDiagnostics(); };
-    window.resetToDefaults = function() { QuickMenuActions.resetToDefaults(); };
+    // Namespaced globals for HTML onclick handlers (avoids polluting window.*)
+    window.AiUpscaler = window.AiUpscaler || {};
+    window.AiUpscaler.loadDefaults = function() { QuickMenuActions.loadDefaults(); };
+    window.AiUpscaler.optimizeForDevice = function() { QuickMenuActions.optimizeForDevice(); };
+    window.AiUpscaler.testSystem = function() { QuickMenuActions.testSystem(); };
+    window.AiUpscaler.exportConfig = function() { QuickMenuActions.exportConfig(); };
+    window.AiUpscaler.showDiagnostics = function() { QuickMenuActions.showDiagnostics(); };
+    window.AiUpscaler.resetToDefaults = function() { QuickMenuActions.resetToDefaults(); };
+
+    // Backwards compat: keep old names briefly so existing HTML onclick= attributes work
+    window.loadDefaults = window.AiUpscaler.loadDefaults;
+    window.optimizeForDevice = window.AiUpscaler.optimizeForDevice;
+    window.testSystem = window.AiUpscaler.testSystem;
+    window.exportConfig = window.AiUpscaler.exportConfig;
+    window.showDiagnostics = window.AiUpscaler.showDiagnostics;
+    window.resetToDefaults = window.AiUpscaler.resetToDefaults;
 
 })();
