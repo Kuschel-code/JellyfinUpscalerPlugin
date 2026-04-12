@@ -13,7 +13,7 @@
         "changelog": "v1.5.5.8: Deep scan fixes — targeted library refresh (no full scan), FFmpeg argument injection fix, HDR HttpClient timeout, settings import type safety, path traversal allowlist, plugin_connections lock, CUDA device_id fix, /upscale-stream semaphore, Pillow dependency.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.5.8/JellyfinUpscalerPlugin-v1.5.5.8.zip",
-        "checksum": "a0dbe3b6b3f40e98b36fbd360837121c",
+        "checksum": "897f51adb8c1fb49572ab2ee15a498c6",
         "timestamp": "2026-04-11T12:00:00.000Z"
       },
       {
