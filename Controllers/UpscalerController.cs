@@ -30,7 +30,7 @@ namespace JellyfinUpscalerPlugin.Controllers
     /// </summary>
     [ApiController]
     [Authorize]
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     public class UpscalerController : ControllerBase
     {
         // ── Constants ────────────────────────────────────────────────────

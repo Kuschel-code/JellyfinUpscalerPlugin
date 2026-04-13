@@ -7,9 +7,9 @@
     <TreatWarningsAsErrors Condition="'$(Configuration)'=='Release'">true</TreatWarningsAsErrors>
     <TreatWarningsAsErrors Condition="'$(Configuration)'!='Release'">false</TreatWarningsAsErrors>
     <AssemblyTitle>AI Upscaler Plugin</AssemblyTitle>
-    <Version>1.6.1.2</Version>
-    <AssemblyVersion>1.6.1.2</AssemblyVersion>
-    <FileVersion>1.6.1.2</FileVersion>
+    <Version>1.6.1.3</Version>
+    <AssemblyVersion>1.6.1.3</AssemblyVersion>
+    <FileVersion>1.6.1.3</FileVersion>
     <NoWarn>CS8632</NoWarn>
     <Nullable>enable</Nullable>
     <!-- AI processing now handled by external Docker service - minimal dependencies -->
