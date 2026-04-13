@@ -1,6 +1,6 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
 <style>
-    /* ===== AI Upscaler v1.5.6.0 — Jellyfin-compatible dark theme ===== */
+    /* ===== AI Upscaler v1.6.1.1 — Jellyfin-compatible dark theme ===== */
     #UpscalerConfigurationPage {
         --accent: #00d4ff;
         --accent-bg: rgba(0, 212, 255, 0.12);
@@ -69,6 +69,7 @@
     #UpscalerConfigurationPage .status-pill--processing { background: rgba(0,212,255,0.15); color: var(--accent); }
     #UpscalerConfigurationPage .status-pill--warning { background: rgba(251,191,36,0.15); color: var(--warning); }
     #UpscalerConfigurationPage .status-pill--checking { background: rgba(251,191,36,0.15); color: var(--warning); }
+    #UpscalerConfigurationPage .status-pill--standalone { background: rgba(148,163,184,0.15); color: var(--text-secondary, #94a3b8); }
 
     /* ===== Cards ===== */
     #UpscalerConfigurationPage .upscaler-card {
@@ -360,7 +361,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.5.6.0 &middot; Docker Microservice Architecture</div>
+                <div class="upscaler-header-meta">v1.6.1.1 &middot; AI Upscaling + Video Filters</div>
             </div>
 
             <!-- Tab bar -->
@@ -832,6 +833,16 @@
                         </div>
                         <button type="button" id="btn-run-benchmark" class="raised" style="width:100%;">Run Benchmark</button>
                     </div>
+                    <div class="upscaler-card">
+                        <h3>Filter Benchmark</h3>
+                        <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">
+                            Test video filter chain generation for each preset. Works without the AI service.
+                        </div>
+                        <div id="filter-bench-result" style="font-size:0.85rem;margin-bottom:0.5rem;">
+                            <div style="opacity:0.5;">No filter benchmark run yet</div>
+                        </div>
+                        <button type="button" id="btn-filter-benchmark" class="raised" style="width:100%;">Run Filter Benchmark</button>
+                    </div>
                 </div>
 
                 <!-- Model Catalog -->
@@ -984,6 +995,10 @@
                             <strong>FFmpeg filter chain:</strong> <span id="filter-chain-text"></span>
                         </div>
                     </div>
+
+                    <div style="margin-top:1.5rem;">
+                        <button type="button" id="btn-save-filters" class="raised btn-primary">Save Settings</button>
+                    </div>
                 </div>
 
             </div>
@@ -1079,12 +1094,17 @@
                 }
             }).catch(function() {
                 var badge = page.querySelector('#service-badge');
-                badge.className = 'status-pill status-pill--offline';
-                badge.textContent = 'Error';
-                // Clear skeleton states for service info rows
+                badge.className = 'status-pill status-pill--standalone';
+                badge.textContent = 'Standalone';
+                var banner = page.querySelector('#service-banner');
+                var bannerText = page.querySelector('#banner-text');
+                var bannerDetails = page.querySelector('#banner-details');
+                if (banner) banner.className = 'service-banner standalone';
+                if (bannerText) bannerText.textContent = 'Running in standalone mode \u2014 video filters are fully functional';
+                if (bannerDetails) bannerDetails.textContent = 'Configure AI Service URL in Settings to enable AI upscaling';
                 ['#svc-docker','#svc-gpu','#svc-latency','#svc-model','#svc-processing'].forEach(function(sel) {
                     var el = page.querySelector(sel);
-                    if (el) { el.textContent = 'Unavailable'; el.style.color = '#f87171'; }
+                    if (el) { el.textContent = 'Not configured'; el.style.color = '#94a3b8'; }
                 });
             });
         }
@@ -1145,7 +1165,7 @@
                 }
             }).catch(function() {
                 var el = page.querySelector('#active-jobs-list');
-                if (el) el.innerHTML = '<div style="text-align:center;padding:1.5rem;"><span style="color:var(--accent-warn,#f87171);">Unavailable</span></div>';
+                if (el) el.innerHTML = '<div style="text-align:center;padding:1.5rem;"><span style="color:#94a3b8;">Not configured</span></div>';
             });
 
             ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/cache/stats'), dataType: 'json' }).then(function(data) {
@@ -1154,7 +1174,7 @@
                 }
             }).catch(function() {
                 var el = page.querySelector('#stat-cache-hit');
-                if (el) el.innerHTML = '<span style="color:var(--accent-warn,#f87171);">Unavailable</span>';
+                if (el) el.innerHTML = '<span style="color:#94a3b8;">Not configured</span>';
             });
         }
 
@@ -1226,7 +1246,7 @@
                 var ids = ['cache-size', 'cache-entries', 'cache-hitrate', 'cache-usage'];
                 ids.forEach(function(id) {
                     var el = page.querySelector('#' + id);
-                    if (el) el.innerHTML = '<span style="color:var(--accent-warn,#f87171);">Unavailable</span>';
+                    if (el) el.innerHTML = '<span style="color:#94a3b8;">Not configured</span>';
                 });
             });
         }
@@ -1248,7 +1268,7 @@
                 var ids = ['hw-cpu', 'hw-platform', 'hw-container', 'hw-gpu', 'hw-providers'];
                 ids.forEach(function(id) {
                     var el = page.querySelector('#' + id);
-                    if (el) el.innerHTML = '<span style="color:var(--accent-warn,#f87171);">Unavailable</span>';
+                    if (el) el.innerHTML = '<span style="color:#94a3b8;">Not configured</span>';
                 });
             });
         }
@@ -1415,17 +1435,9 @@
                     var display = page.querySelector('#' + sliderMap[k]);
                     if (slider && display) display.textContent = slider.value;
                 });
-                // Re-init filter UI state
-                var enableCb = page.querySelector('#EnableVideoFilters');
-                var filterOpts = page.querySelector('#filter-options');
+                // Re-init filter UI state by dispatching change events
                 var presetSel = page.querySelector('#ActiveFilterPreset');
-                if (enableCb && enableCb.checked) {
-                    filterOpts.style.opacity = '1';
-                    filterOpts.style.pointerEvents = '';
-                }
-                if (presetSel && presetSel.value === 'custom') {
-                    page.querySelector('#custom-filters').style.display = '';
-                }
+                if (presetSel) presetSel.dispatchEvent(new Event('change'));
             }).catch(function(err) {
                 console.error('Failed to load plugin config:', err);
             });
@@ -1500,7 +1512,7 @@
                 config.RealtimeMode = page.querySelector('#RealtimeMode').value;
                 config.ActiveFilterPreset = page.querySelector('#ActiveFilterPreset').value;
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
-                config.PluginVersion = '1.6.1.0';
+                config.PluginVersion = '1.6.1.1';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -1579,7 +1591,7 @@
                 if (h3) h3.textContent = 'Model Catalog (' + models.length + ' Models)';
             }).catch(function() {
                 var tbody = page.querySelector('#model-catalog-body');
-                if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1rem;"><span style="color:var(--accent-warn,#f87171);">Unavailable</span></td></tr>';
+                if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1rem;"><span style="color:#94a3b8;">Not configured</span></td></tr>';
             });
         }
 
@@ -1684,10 +1696,18 @@
 
 
         async function runLiveVideoBenchmark(page) {
+            // Check AI service connectivity first
+            try {
+                await new Promise(function(resolve, reject) {
+                    ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/service-health'), dataType: 'json' }).then(resolve).catch(reject);
+                });
+            } catch(e) {
+                showToast('AI service not connected \u2014 configure AI Service URL in Settings', '#94a3b8'); return;
+            }
             // Get all models
             var allModels = page._allModels || [];
             if (allModels.length === 0) {
-                showToast('No models available — is Docker AI service running?', '#f87171'); return;
+                showToast('No models available \u2014 is Docker AI service running?', '#f87171'); return;
             }
 
             // Filter to available models only
@@ -1870,6 +1890,7 @@
         // ===== EVENT HANDLERS =====
         function attachEvents(page) {
             page.querySelector('#btn-save').addEventListener('click', function() { saveConfig(page); });
+            page.querySelector('#btn-save-filters').addEventListener('click', function() { saveConfig(page); });
 
             page.querySelector('#btn-test-connection').addEventListener('click', function() {
                 var status = page.querySelector('#connection-status');
@@ -1978,27 +1999,32 @@
 
             page.querySelector('#btn-run-benchmark').addEventListener('click', function() {
                 var result = page.querySelector('#benchmark-result');
-                result.innerHTML = '<div style="color:var(--warning);">Running benchmark...</div>';
-                ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/benchmark'), dataType: 'json' }).then(function(data) {
-                    if (data.success && data.results) {
-                        var r = data.results;
-                        if (!r.serviceAvailable) {
-                            result.innerHTML = '<div style="color:var(--danger);">Docker AI Service is not reachable. Check your AI Service URL and ensure the container is running.</div>';
-                            return;
-                        }
-                        var html = '<div class="info-row"><span class="label">Duration</span><span class="value">' + (r.duration || 0).toFixed(1) + 's</span></div>';
-                        if (r.optimalSettings) {
-                            html += '<div class="info-row"><span class="label">Rec. Model</span><span class="value">' + esc(r.optimalSettings.RecommendedModel || '-') + '</span></div>';
-                            html += '<div class="info-row"><span class="label">Max Res.</span><span class="value">' + esc(r.optimalSettings.RecommendedMaxResolution || '-') + '</span></div>';
-                            html += '<div class="info-row"><span class="label">Quality</span><span class="value">' + esc(r.optimalSettings.RecommendedQuality || '-') + '</span></div>';
-                            html += '<div class="info-row"><span class="label">Max Streams</span><span class="value">' + esc(String(r.optimalSettings.MaxConcurrentStreams || 1)) + '</span></div>';
-                        }
-                        result.innerHTML = html;
-                    } else {
-                        result.innerHTML = '<div style="color:var(--danger);">' + esc(data.message || 'Benchmark failed') + '</div>';
+                result.innerHTML = '<div style="color:var(--warning);">Checking AI service...</div>';
+                ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/service-health'), dataType: 'json' }).then(function(health) {
+                    if (!health || !health.available) {
+                        result.innerHTML = '<div style="color:#94a3b8;">AI service is not connected. Configure the AI Service URL in Settings and ensure the Docker container is running.</div>';
+                        return;
                     }
+                    result.innerHTML = '<div style="color:var(--warning);">Running benchmark...</div>';
+                    ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/benchmark'), dataType: 'json' }).then(function(data) {
+                        if (data.success && data.results) {
+                            var r = data.results;
+                            var html = '<div class="info-row"><span class="label">Duration</span><span class="value">' + (r.duration || 0).toFixed(1) + 's</span></div>';
+                            if (r.optimalSettings) {
+                                html += '<div class="info-row"><span class="label">Rec. Model</span><span class="value">' + esc(r.optimalSettings.RecommendedModel || '-') + '</span></div>';
+                                html += '<div class="info-row"><span class="label">Max Res.</span><span class="value">' + esc(r.optimalSettings.RecommendedMaxResolution || '-') + '</span></div>';
+                                html += '<div class="info-row"><span class="label">Quality</span><span class="value">' + esc(r.optimalSettings.RecommendedQuality || '-') + '</span></div>';
+                                html += '<div class="info-row"><span class="label">Max Streams</span><span class="value">' + esc(String(r.optimalSettings.MaxConcurrentStreams || 1)) + '</span></div>';
+                            }
+                            result.innerHTML = html;
+                        } else {
+                            result.innerHTML = '<div style="color:var(--danger);">' + esc(data.message || 'Benchmark failed') + '</div>';
+                        }
+                    }).catch(function() {
+                        result.innerHTML = '<div style="color:var(--danger);">Benchmark failed \u2014 check API connection</div>';
+                    });
                 }).catch(function() {
-                    result.innerHTML = '<div style="color:var(--danger);">Benchmark failed — check API connection</div>';
+                    result.innerHTML = '<div style="color:#94a3b8;">AI service is not connected. Configure the AI Service URL in Settings and ensure the Docker container is running.</div>';
                 });
             });
 
@@ -2010,6 +2036,40 @@
             // Live Model Benchmark
             page.querySelector('#btn-live-bench')?.addEventListener('click', function() { runLiveVideoBenchmark(page); });
             page.querySelector('#btn-stop-bench')?.addEventListener('click', function() { _liveBenchStop = true; });
+
+            // Filter Benchmark (works without AI service)
+            page.querySelector('#btn-filter-benchmark').addEventListener('click', function() {
+                var result = page.querySelector('#filter-bench-result');
+                var presets = ['cinematic', 'vintage', 'vivid', 'noir', 'warm', 'cool', 'hdr-pop'];
+                result.innerHTML = '<div style="color:var(--warning);">Testing filter presets...</div>';
+                var html = '';
+                var completed = 0;
+                var startTime = performance.now();
+                presets.forEach(function(preset) {
+                    ApiClient.ajax({
+                        type: 'POST',
+                        url: ApiClient.getUrl('Upscaler/filter-preview') + '?preset=' + encodeURIComponent(preset),
+                        dataType: 'json'
+                    }).then(function(data) {
+                        completed++;
+                        var chain = data.filterChain || '(none)';
+                        var complexity = (chain.match(/,/g) || []).length + 1;
+                        html += '<div class="info-row"><span class="label" style="text-transform:capitalize;">' + preset + '</span><span class="value">' + complexity + ' filters</span></div>';
+                        html += '<div style="font-size:0.72rem;color:var(--text-muted);padding:0 0 0.4rem 0.5rem;word-break:break-all;font-family:monospace;">' + esc(chain) + '</div>';
+                        if (completed === presets.length) {
+                            var elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+                            result.innerHTML = '<div style="margin-bottom:0.5rem;color:var(--success);font-size:0.8rem;">All ' + presets.length + ' presets validated in ' + elapsed + 's</div>' + html;
+                        }
+                    }).catch(function() {
+                        completed++;
+                        html += '<div class="info-row"><span class="label" style="text-transform:capitalize;">' + preset + '</span><span class="value" style="color:var(--danger);">Failed</span></div>';
+                        if (completed === presets.length) {
+                            var elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+                            result.innerHTML = '<div style="margin-bottom:0.5rem;font-size:0.8rem;">' + completed + ' presets tested in ' + elapsed + 's</div>' + html;
+                        }
+                    });
+                });
+            });
 
             page.querySelector('#btn-compare').addEventListener('click', function() {
                 var itemId = page.querySelector('#comparison-item').value;
@@ -2028,7 +2088,7 @@
                     page.querySelector('#comparison-container').style.display = '';
                     page.querySelector('#btn-compare').textContent = 'Generate Comparison';
                 }).catch(function() {
-                    showToast('Comparison failed', '#f87171');
+                    showToast('AI service not connected \u2014 configure AI Service URL in Settings', '#94a3b8');
                     page.querySelector('#btn-compare').textContent = 'Generate Comparison';
                 });
             });
