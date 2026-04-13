@@ -1,6 +1,6 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
 <style>
-    /* ===== AI Upscaler v1.6.1.1 — Jellyfin-compatible dark theme ===== */
+    /* ===== AI Upscaler v1.6.1.2 — Jellyfin-compatible dark theme ===== */
     #UpscalerConfigurationPage {
         --accent: #00d4ff;
         --accent-bg: rgba(0, 212, 255, 0.12);
@@ -361,7 +361,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.6.1.1 &middot; AI Upscaling + Video Filters</div>
+                <div class="upscaler-header-meta">v1.6.1.2 &middot; AI Upscaling + Video Filters</div>
             </div>
 
             <!-- Tab bar -->
@@ -1512,7 +1512,7 @@
                 config.RealtimeMode = page.querySelector('#RealtimeMode').value;
                 config.ActiveFilterPreset = page.querySelector('#ActiveFilterPreset').value;
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
-                config.PluginVersion = '1.6.1.1';
+                config.PluginVersion = '1.6.1.2';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -1543,8 +1543,8 @@
                 }
                 page.querySelector('#wrapper-platform').textContent = (data.Platform || '') + ' ' + (data.RuntimeIdentifier || '');
             }).catch(function() {
-                page.querySelector('#wrapper-status').textContent = 'Error';
-                page.querySelector('#wrapper-status').style.color = '#f87171';
+                page.querySelector('#wrapper-status').textContent = 'Not configured';
+                page.querySelector('#wrapper-status').style.color = '#94a3b8';
             });
         }
 
@@ -1906,8 +1906,8 @@
                         status.style.color = '#f87171';
                     }
                 }).catch(function() {
-                    status.textContent = 'Error';
-                    status.style.color = '#f87171';
+                    status.textContent = 'AI service not connected';
+                    status.style.color = '#94a3b8';
                 });
             });
 
@@ -1936,8 +1936,8 @@
                         status.style.color = '#f87171';
                     }
                 }).catch(function() {
-                    status.textContent = 'Upscale error - is Docker AI service running?';
-                    status.style.color = '#f87171';
+                    status.textContent = 'AI service not connected — start the Docker container first';
+                    status.style.color = '#94a3b8';
                 });
             });
 
@@ -1954,7 +1954,7 @@
                 ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/ssh/test'), data: body, contentType: 'application/json', dataType: 'json' }).then(function(data) {
                     status.textContent = data.success ? 'Connected!' : data.message || 'Failed';
                     status.style.color = data.success ? '#4ade80' : '#f87171';
-                }).catch(function() { status.textContent = 'Error'; status.style.color = '#f87171'; });
+                }).catch(function() { status.textContent = 'AI service not connected'; status.style.color = '#94a3b8'; });
             });
 
             page.querySelector('#btn-install-wrapper').addEventListener('click', function() {
