@@ -144,6 +144,9 @@ namespace JellyfinUpscalerPlugin
         /// <summary>Base URL of the Docker AI upscaler service.</summary>
         public string AiServiceUrl { get; set; } = "http://localhost:5000";
 
+        /// <summary>Bearer/X-Api-Token shared secret used to authenticate to the Docker AI service. Must match the API_TOKEN env var on the container.</summary>
+        public string AiServiceApiToken { get; set; } = string.Empty;
+
         /// <summary>URL prefix for downloading AI model files.</summary>
         public string ModelDownloadUrl { get; set; } = "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/models-v1.0";
 
@@ -506,6 +509,6 @@ namespace JellyfinUpscalerPlugin
         // ── Version Tracking ─────────────────────────────────────────────
 
         /// <summary>Current plugin version string for webhook payloads and diagnostics.</summary>
-        public string PluginVersion { get; set; } = "1.6.1.8";
+        public string PluginVersion { get; set; } = "1.6.1.9";
     }
 }

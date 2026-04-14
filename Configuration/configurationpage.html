@@ -1,6 +1,6 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
 <style>
-    /* ===== AI Upscaler v1.6.1.8 — Jellyfin-compatible dark theme ===== */
+    /* ===== AI Upscaler v1.6.1.9 — Jellyfin-compatible dark theme ===== */
     #UpscalerConfigurationPage {
         --accent: #00d4ff;
         --accent-bg: rgba(0, 212, 255, 0.12);
@@ -361,7 +361,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.6.1.8 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.6.1.9 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -453,6 +453,11 @@
                                 <label class="inputLabel" for="AiServiceUrl">AI Service URL</label>
                                 <input type="url" id="AiServiceUrl" placeholder="http://localhost:5000" />
                                 <div class="fieldDescription">URL to Docker AI Container (e.g. http://192.168.1.100:5000)</div>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel" for="AiServiceApiToken">AI Service API Token</label>
+                                <input type="password" id="AiServiceApiToken" placeholder="Required — must match container API_TOKEN env var" autocomplete="off" />
+                                <div class="fieldDescription">Shared secret sent as <code>X-Api-Token</code> header on every call to the AI service. Must match the <code>API_TOKEN</code> environment variable on the Docker container. Leave empty only if the service was deployed with <code>API_TOKEN=disable</code>.</div>
                             </div>
                             <div class="selectContainer">
                                 <label class="selectLabel" for="GpuDeviceIndex">GPU Device</label>
@@ -1474,7 +1479,7 @@
                 // Store config globally for perf monitor / benchmark fetch calls
                 window._pluginConfig = config;
 
-                var fields = ['AiServiceUrl','RemoteHost','RemoteSshPort','RemoteUser','RemoteSshKeyFile',
+                var fields = ['AiServiceUrl','AiServiceApiToken','RemoteHost','RemoteSshPort','RemoteUser','RemoteSshKeyFile',
                     'LocalMediaMountPoint','RemoteMediaMountPoint','RemoteTranscodePath',
                     'MaxVRAMUsage','CpuThreads','MaxConcurrentStreams','MaxCacheAgeDays','CacheSizeMB',
                     'ModelFallbackChain','PreferredAnimeModel','PreferredLiveActionModel','WebhookUrl',
@@ -1557,7 +1562,7 @@
                 saveBtn.textContent = 'Saving...';
             }
             ApiClient.getPluginConfiguration(pluginId).then(function(config) {
-                var fields = ['AiServiceUrl','RemoteHost','RemoteSshKeyFile','LocalMediaMountPoint',
+                var fields = ['AiServiceUrl','AiServiceApiToken','RemoteHost','RemoteSshKeyFile','LocalMediaMountPoint',
                     'RemoteMediaMountPoint','RemoteTranscodePath',
                     'ModelFallbackChain','PreferredAnimeModel','PreferredLiveActionModel','WebhookUrl'];
                 fields.forEach(function(f) {
@@ -1622,7 +1627,7 @@
                 var faceModelEl = page.querySelector('#FaceRestoreModel');
                 if (faceModelEl) config.FaceRestoreModel = faceModelEl.value;
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
-                config.PluginVersion = '1.6.1.8';
+                config.PluginVersion = '1.6.1.9';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');

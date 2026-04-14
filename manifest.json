@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.6.1.9",
+        "changelog": "Redesigned player quick-menu — glassmorphic 380px layout, custom on/off switch, filter chips (All/Downloaded/Recommended), summary strip (N of M models ready), per-model download-state icons + in-place spinner during loads. Menu stays open during model operations. NEW: AiServiceApiToken plugin config + X-Api-Token auth handler auto-injects shared secret on every AI service call — fixes 403 API_TOKEN errors on /models/download and /models/load.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.9/jellyfin-ai-upscaler-plugin-1.6.1.9.zip",
+        "checksum": "b089fdc570290559329a4ab87bb3e959",
+        "timestamp": "2026-04-14T18:20:00Z"
+      },
+      {
         "version": "1.6.1.8",
         "changelog": "Quick-menu model picker now actually loads the model — calls POST /Upscaler/models/load to make the AI service map the weights into memory (previously only persisted the config without warming the service). Error toasts now show the real HTTP/service error. Menu dismisses immediately so the load-progress toast is visible.",
         "targetAbi": "10.11.8.0",

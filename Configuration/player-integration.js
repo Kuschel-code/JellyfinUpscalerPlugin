@@ -1,4 +1,4 @@
-// AI Upscaler Plugin - Player Integration v1.6.1.8
+// AI Upscaler Plugin - Player Integration v1.6.1.9
 // Global script injection (loaded via index.html like Intro Skipper)
 // Compatible with Jellyfin 10.11+
 
@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.6.1.8';
+    const PLUGIN_VERSION = '1.6.1.9';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -489,6 +489,7 @@
         _menuAutoCloseTimer: null,
         _cachedConfig: null,
         _configCacheTime: 0,
+        _modelStates: null,
 
         // Initialize — called once when script loads
         init: function() {
@@ -670,17 +671,105 @@
                 return;
             }
 
-            // Read config to get position + current model + scale
+            // Read config first, then fetch model download states in parallel
             this.getPluginConfig().then(function(config) {
-                PlayerIntegration._buildMenu(config);
+                PlayerIntegration._buildMenu(config, null);
+                PlayerIntegration._fetchModelStates().then(function(states) {
+                    PlayerIntegration._refreshModelStates(states);
+                });
             }).catch(function(err) {
                 console.error('Failed to load plugin config for menu:', err);
-                // Build menu with defaults so button is never silently dead
-                PlayerIntegration._buildMenu({});
+                PlayerIntegration._buildMenu({}, null);
             });
         },
 
-        _buildMenu: function(config) {
+        _fetchModelStates: function() {
+            return fetch(ApiClient.getUrl('Upscaler/models'), {
+                credentials: 'include',
+                headers: { 'X-Emby-Authorization': ApiClient.getRequestHeader ? ApiClient.getRequestHeader() : '' }
+            }).then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            }).then(function(data) {
+                var map = {};
+                (data.models || []).forEach(function(m) {
+                    map[m.id] = { downloaded: !!m.downloaded, available: m.available !== false, loaded: !!m.loaded };
+                });
+                return map;
+            }).catch(function(err) {
+                console.warn('AI Upscaler: could not fetch model states —', err.message);
+                return null;
+            });
+        },
+
+        _renderModelCard: function(m, isActive, state) {
+            var stateIcon, stateClass, title;
+            if (state && !state.available) {
+                stateIcon = '&#9888;'; stateClass = 'err'; title = 'Not yet available';
+            } else if (state && state.downloaded) {
+                stateIcon = '&#10003;'; stateClass = 'ready'; title = 'Downloaded & ready';
+            } else if (state) {
+                stateIcon = '&#8595;'; stateClass = 'need-dl'; title = 'Click to download & load';
+            } else {
+                stateIcon = '&#8226;'; stateClass = 'need-dl'; title = 'Status unknown';
+            }
+            var html = '<button class="ai-menu__model' + (isActive ? ' ai-menu__model--active' : '') +
+                '" data-model="' + m.id + '" data-scale="' + m.scale + '" title="' + title + '">';
+            html += '<span class="ai-menu__state ai-menu__state--' + stateClass + '" data-state-slot="' + m.id + '">' + stateIcon + '</span>';
+            html += '<span class="ai-menu__model-name">' + m.name + '</span>';
+            if (m.badge) html += '<span class="ai-menu__badge">' + m.badge + '</span>';
+            html += '<span class="ai-menu__model-scale">' + m.scale + 'x</span>';
+            html += '</button>';
+            return html;
+        },
+
+        _refreshModelStates: function(states) {
+            if (!states) return;
+            var menu = document.querySelector('#aiUpscalerQuickMenu');
+            if (!menu) return;
+            PlayerIntegration._modelStates = states;
+
+            // Update summary counter
+            var total = 0, ready = 0;
+            Object.keys(states).forEach(function(k) {
+                total++;
+                if (states[k].downloaded) ready++;
+            });
+            var summ = menu.querySelector('[data-summary-ready]');
+            if (summ) summ.textContent = ready + ' of ' + total;
+
+            // Update each state icon
+            Object.keys(states).forEach(function(id) {
+                var slot = menu.querySelector('[data-state-slot="' + id + '"]');
+                if (!slot) return;
+                var s = states[id];
+                slot.classList.remove('ai-menu__state--ready','ai-menu__state--need-dl','ai-menu__state--busy','ai-menu__state--err');
+                if (!s.available) { slot.classList.add('ai-menu__state--err'); slot.innerHTML = '&#9888;'; }
+                else if (s.downloaded) { slot.classList.add('ai-menu__state--ready'); slot.innerHTML = '&#10003;'; }
+                else { slot.classList.add('ai-menu__state--need-dl'); slot.innerHTML = '&#8595;'; }
+            });
+        },
+
+        _applyChipFilter: function(menu, filter) {
+            menu.querySelectorAll('.ai-menu__chip').forEach(function(c) {
+                c.classList.toggle('ai-menu__chip--active', c.getAttribute('data-filter') === filter);
+            });
+            var states = PlayerIntegration._modelStates || {};
+            menu.querySelectorAll('.ai-menu__model').forEach(function(btn) {
+                var id = btn.getAttribute('data-model');
+                var s = states[id] || {};
+                var show = true;
+                if (filter === 'ready') show = !!s.downloaded;
+                else if (filter === 'recommended') show = ['realesrgan-x4','span-x2','clearreality-x4','ultrasharp-v2-x4','fsrcnn-x2'].indexOf(id) !== -1;
+                btn.style.display = show ? '' : 'none';
+            });
+            menu.querySelectorAll('.ai-menu__cat').forEach(function(cat) {
+                var visible = cat.querySelectorAll('.ai-menu__model:not([style*="display: none"])').length;
+                cat.style.display = visible > 0 ? '' : 'none';
+            });
+        },
+
+        _buildMenu: function(config, modelStates) {
             var position = (config.ButtonPosition || 'right').toLowerCase();
             var currentModel = config.Model || 'realesrgan-x4';
             var currentScale = config.ScaleFactor || 2;
@@ -690,13 +779,13 @@
             menu.id = 'aiUpscalerQuickMenu';
             menu.className = 'ai-menu ai-menu--' + position;
 
-            // Build model list HTML grouped by category
+            // Build category groups with state-aware model cards
             var modelsHtml = '';
             var cats = Object.keys(MODEL_CATALOG);
             for (var ci = 0; ci < cats.length; ci++) {
                 var catKey = cats[ci];
                 var cat = MODEL_CATALOG[catKey];
-                modelsHtml += '<div class="ai-menu__cat">';
+                modelsHtml += '<div class="ai-menu__cat" data-cat="' + catKey + '">';
                 modelsHtml += '<div class="ai-menu__cat-head">';
                 modelsHtml += '<span class="ai-menu__cat-name">' + cat.label + '</span>';
                 modelsHtml += '<span class="ai-menu__cat-desc">' + cat.desc + '</span>';
@@ -704,16 +793,8 @@
                 for (var mi = 0; mi < cat.models.length; mi++) {
                     var m = cat.models[mi];
                     var isActive = m.id === currentModel;
-                    modelsHtml += '<button class="ai-menu__model' + (isActive ? ' ai-menu__model--active' : '') + '" data-model="' + m.id + '" data-scale="' + m.scale + '">';
-                    modelsHtml += '<span class="ai-menu__model-name">' + m.name + '</span>';
-                    if (m.badge) {
-                        modelsHtml += '<span class="ai-menu__badge">' + m.badge + '</span>';
-                    }
-                    modelsHtml += '<span class="ai-menu__model-scale">' + m.scale + 'x</span>';
-                    if (isActive) {
-                        modelsHtml += '<span class="ai-menu__check">&#10003;</span>';
-                    }
-                    modelsHtml += '</button>';
+                    var st = modelStates ? modelStates[m.id] : null;
+                    modelsHtml += this._renderModelCard(m, isActive, st);
                 }
                 modelsHtml += '</div>';
             }
@@ -727,6 +808,15 @@
                 scaleHtml += '<button class="ai-menu__scale' + (sActive ? ' ai-menu__scale--active' : '') + '" data-scale-val="' + s + '">' + s + 'x</button>';
             }
 
+            // Count models for summary strip
+            var totalModels = 0, readyModels = 0;
+            if (modelStates) {
+                Object.keys(modelStates).forEach(function(k) {
+                    totalModels++;
+                    if (modelStates[k].downloaded) readyModels++;
+                });
+            }
+
             menu.innerHTML =
                 '<div class="ai-menu__header">' +
                     '<div class="ai-menu__header-left">' +
@@ -737,30 +827,40 @@
                         '</div>' +
                     '</div>' +
                     '<div class="ai-menu__header-right">' +
-                        '<button class="ai-menu__toggle' + (isEnabled ? ' ai-menu__toggle--on' : '') + '" data-action="toggle">' +
-                            (isEnabled ? 'ON' : 'OFF') +
-                        '</button>' +
-                        '<button class="ai-menu__close" data-action="close">&times;</button>' +
+                        '<button class="ai-menu__switch' + (isEnabled ? ' ai-menu__switch--on' : '') + '" data-action="toggle" aria-label="Toggle upscaling" title="' + (isEnabled ? 'Disable' : 'Enable') + ' upscaling"></button>' +
+                        '<button class="ai-menu__close" data-action="close" aria-label="Close">&times;</button>' +
                     '</div>' +
                 '</div>' +
+                '<div class="ai-menu__summary">' +
+                    '<span class="ai-menu__summary-dot' + (readyModels > 0 ? '' : ' ai-menu__summary-dot--off') + '"></span>' +
+                    '<span><span class="ai-menu__summary-strong" data-summary-ready>' + (totalModels ? (readyModels + ' of ' + totalModels) : '—') + '</span> models ready · current: <span class="ai-menu__summary-strong">' + currentModel + '</span></span>' +
+                '</div>' +
                 '<div class="ai-menu__body">' +
+                    '<div class="ai-menu__chips">' +
+                        '<button class="ai-menu__chip ai-menu__chip--active" data-filter="all">All</button>' +
+                        '<button class="ai-menu__chip" data-filter="ready">Downloaded</button>' +
+                        '<button class="ai-menu__chip" data-filter="recommended">Recommended</button>' +
+                    '</div>' +
                     '<div class="ai-menu__section">' +
-                        '<div class="ai-menu__section-title">Models</div>' +
+                        '<div class="ai-menu__section-title"><span>Models</span><span class="ai-menu__section-sub">Click to load</span></div>' +
                         '<div class="ai-menu__models">' + modelsHtml + '</div>' +
                     '</div>' +
                     '<div class="ai-menu__section">' +
-                        '<div class="ai-menu__section-title">Scale Factor</div>' +
+                        '<div class="ai-menu__section-title"><span>Scale Factor</span><span class="ai-menu__section-sub">Output multiplier</span></div>' +
                         '<div class="ai-menu__scales">' + scaleHtml + '</div>' +
                     '</div>' +
                     '<div class="ai-menu__section">' +
-                        '<div class="ai-menu__section-title">Real-Time Upscaling</div>' +
-                        '<div class="ai-menu__rt-status" id="aiRtStatus">' +
-                            '<span class="ai-menu__rt-label">Status:</span> ' +
-                            '<span class="ai-menu__rt-value" id="aiRtStatusValue">--</span>' +
-                        '</div>' +
-                        '<div class="ai-menu__rt-row">' +
-                            '<button class="ai-menu__rt-btn" data-action="rt-toggle">Toggle</button>' +
-                            '<button class="ai-menu__rt-btn" data-action="rt-switch">Switch Mode</button>' +
+                        '<div class="ai-menu__section-title"><span>Real-Time Upscaling</span></div>' +
+                        '<div class="ai-menu__rt-card">' +
+                            '<div class="ai-menu__rt-status">' +
+                                '<span class="ai-menu__rt-indicator" id="aiRtIndicator"></span>' +
+                                '<span class="ai-menu__rt-label">Status:</span>' +
+                                '<span class="ai-menu__rt-value" id="aiRtStatusValue">--</span>' +
+                            '</div>' +
+                            '<div class="ai-menu__rt-row">' +
+                                '<button class="ai-menu__rt-btn" data-action="rt-toggle">Toggle</button>' +
+                                '<button class="ai-menu__rt-btn" data-action="rt-switch">Switch Mode</button>' +
+                            '</div>' +
                         '</div>' +
                     '</div>' +
                     '<div class="ai-menu__section">' +
@@ -774,14 +874,17 @@
             // After DOM insertion, update RT status
             setTimeout(function() {
                 var statusEl = document.getElementById('aiRtStatusValue');
+                var indicator = document.getElementById('aiRtIndicator');
                 if (statusEl) {
                     var st = RealtimeUpscaler.getStatus();
                     if (st.active) {
-                        statusEl.textContent = st.mode.toUpperCase() + ' — ' + st.fps + ' fps';
+                        statusEl.textContent = st.mode.toUpperCase() + ' · ' + st.fps + ' fps';
                         statusEl.style.color = '#34d399';
+                        if (indicator) indicator.classList.add('ai-menu__rt-indicator--on');
                     } else {
                         statusEl.textContent = 'Inactive';
                         statusEl.style.color = 'rgba(255,255,255,0.4)';
+                        if (indicator) indicator.classList.remove('ai-menu__rt-indicator--on');
                     }
                 }
             }, 50);
@@ -790,6 +893,11 @@
 
             // Event delegation
             menu.addEventListener('click', function(e) {
+                var chip = e.target.closest('[data-filter]');
+                if (chip) {
+                    PlayerIntegration._applyChipFilter(menu, chip.getAttribute('data-filter'));
+                    return;
+                }
                 var target = e.target.closest('[data-model]');
                 if (target) {
                     PlayerIntegration.quickSetModel(target.getAttribute('data-model'));
@@ -857,48 +965,91 @@
 
         quickSetModel: function(model) {
             var self = this;
-            this.showPlayerNotification('Loading model: ' + model + '...', 'info');
-            // Close menu immediately so toast is visible
             var menu = document.querySelector('#aiUpscalerQuickMenu');
-            if (menu) menu.remove();
-            this._cleanupMenu();
+            var modelBtn = menu ? menu.querySelector('[data-model="' + model + '"]') : null;
+            var slot = menu ? menu.querySelector('[data-state-slot="' + model + '"]') : null;
+            var state = (this._modelStates && this._modelStates[model]) || null;
+            var needsDownload = state && !state.downloaded && state.available;
 
-            // Step 1: Persist selection in plugin config
+            // Block if model is not available at all
+            if (state && !state.available) {
+                this.showPlayerNotification(model + ' is not yet available', 'warning');
+                return;
+            }
+
+            // Show inline spinner on the clicked model; keep menu open
+            if (modelBtn) modelBtn.classList.add('ai-menu__model--loading');
+            if (slot) {
+                slot.classList.remove('ai-menu__state--ready','ai-menu__state--need-dl','ai-menu__state--err');
+                slot.classList.add('ai-menu__state--busy');
+                slot.innerHTML = '<div class="ai-menu__spinner"></div>';
+            }
+            this.showPlayerNotification(
+                (needsDownload ? 'Downloading ' : 'Loading ') + model + (needsDownload ? ' (may take 30-120s)' : '...'),
+                'info'
+            );
+
             this.updatePluginConfig({ Model: model }).then(function() {
-                // Step 2: Tell the AI service to actually load the model weights
-                // (this is the call that makes "Loading..." → "Loaded" meaningful)
-                var loadUrl = ApiClient.getUrl('Upscaler/models/load') +
-                    '?model_name=' + encodeURIComponent(model);
+                var loadUrl = ApiClient.getUrl('Upscaler/models/load') + '?model_name=' + encodeURIComponent(model);
                 return fetch(loadUrl, {
                     method: 'POST',
                     headers: { 'X-Emby-Authorization': ApiClient.getRequestHeader ? ApiClient.getRequestHeader() : '' },
                     credentials: 'include'
                 }).then(function(r) {
                     if (!r.ok) {
-                        return r.text().then(function(t) { throw new Error('HTTP ' + r.status + ': ' + (t || 'model load failed')); });
+                        return r.text().then(function(t) {
+                            var detail = t;
+                            try { var j = JSON.parse(t); detail = j.detail || j.message || t; } catch (e) {}
+                            throw new Error('HTTP ' + r.status + ': ' + (detail || 'model load failed'));
+                        });
                     }
                     return r.json().catch(function() { return {}; });
                 });
-            }).then(function(result) {
-                // Step 3: If a video is currently playing, (re)start real-time upscaling with the new model
+            }).then(function() {
+                // Update active styling + refresh states
+                if (menu) {
+                    menu.querySelectorAll('.ai-menu__model').forEach(function(b) { b.classList.remove('ai-menu__model--active'); });
+                    if (modelBtn) {
+                        modelBtn.classList.remove('ai-menu__model--loading');
+                        modelBtn.classList.add('ai-menu__model--active');
+                    }
+                }
+                if (slot) {
+                    slot.classList.remove('ai-menu__state--busy');
+                    slot.classList.add('ai-menu__state--ready');
+                    slot.innerHTML = '&#10003;';
+                }
+                if (self._modelStates && self._modelStates[model]) {
+                    self._modelStates[model].downloaded = true;
+                    self._modelStates[model].loaded = true;
+                }
+                // Restart real-time upscaling if it was running
                 if (RealtimeUpscaler._active) {
                     var bench = RealtimeUpscaler._benchmarkResult;
                     RealtimeUpscaler.stop();
                     var video = self.findVideoElement();
                     if (video) {
-                        self.getPluginConfig().then(function(cfg) {
-                            RealtimeUpscaler.start(video, cfg, bench);
-                        });
+                        self.getPluginConfig().then(function(cfg) { RealtimeUpscaler.start(video, cfg, bench); });
                     }
                 } else {
                     var video = self.findVideoElement();
                     if (video) self.startRealtimeUpscaling();
                 }
-                self.showPlayerNotification('Model loaded: ' + model, 'success');
+                self.showPlayerNotification('Model ready: ' + model, 'success');
             }).catch(function(err) {
                 console.error('AI Upscaler: quickSetModel failed', err);
+                if (modelBtn) modelBtn.classList.remove('ai-menu__model--loading');
+                if (slot) {
+                    slot.classList.remove('ai-menu__state--busy');
+                    slot.classList.add('ai-menu__state--err');
+                    slot.innerHTML = '&#9888;';
+                }
                 var msg = (err && err.message) ? err.message : 'unknown error';
-                self.showPlayerNotification('Failed to load ' + model + ': ' + msg, 'error');
+                // Surface config-specific hint when AI service token is missing
+                if (/API_TOKEN|403|401/.test(msg)) {
+                    msg = 'AI service auth not configured. Open Full Configuration → AI Service → set API Token.';
+                }
+                self.showPlayerNotification('Failed: ' + msg, 'error');
             });
         },
 
@@ -914,6 +1065,9 @@
             this.getPluginConfig().then(function(config) {
                 var newState = !config.EnablePlugin;
                 PlayerIntegration.updatePluginConfig({ EnablePlugin: newState });
+                // Live-update switch visual without closing the menu
+                var sw = document.querySelector('#aiUpscalerQuickMenu .ai-menu__switch');
+                if (sw) sw.classList.toggle('ai-menu__switch--on', newState);
                 PlayerIntegration.showPlayerNotification(
                     'Upscaling ' + (newState ? 'enabled' : 'disabled'),
                     newState ? 'success' : 'warning'
@@ -922,9 +1076,6 @@
                 console.error('AI Upscaler: config fetch failed', err);
                 PlayerIntegration.showPlayerNotification('Failed to toggle upscaling', 'error');
             });
-            var menu = document.querySelector('#aiUpscalerQuickMenu');
-            if (menu) menu.remove();
-            this._cleanupMenu();
         },
 
         openFullConfig: function() {
@@ -1063,323 +1214,124 @@
 
             var styles = document.createElement('style');
             styles.id = 'aiUpscalerPlayerStyles';
-            styles.textContent =
-                /* Button */
-                '#aiUpscalerButton {' +
-                    'display: inline-flex !important;' +
-                    'align-items: center;' +
-                    'justify-content: center;' +
-                    'color: #fff;' +
-                    'cursor: pointer;' +
-                    'transition: color 0.2s;' +
-                '}' +
-                '#aiUpscalerButton:hover {' +
-                    'color: #a78bfa;' +
-                '}' +
-                '#aiUpscalerButton .material-icons {' +
-                    'font-size: 24px;' +
-                '}' +
+            styles.textContent = [
+                /* ═══ Player toolbar button ═══ */
+                '#aiUpscalerButton{display:inline-flex!important;align-items:center;justify-content:center;color:#fff;cursor:pointer;transition:color .2s,transform .15s}',
+                '#aiUpscalerButton:hover{color:#a78bfa;transform:scale(1.08)}',
+                '#aiUpscalerButton .material-icons{font-size:24px}',
 
-                /* Menu base */
-                '.ai-menu {' +
-                    'position: fixed;' +
-                    'bottom: 90px;' +
-                    'z-index: 100000;' +
-                    'width: 320px;' +
-                    'max-height: calc(100vh - 140px);' +
-                    'background: rgba(15, 10, 30, 0.96);' +
-                    'border: 1px solid rgba(139, 92, 246, 0.3);' +
-                    'border-radius: 16px;' +
-                    'box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7), 0 0 60px rgba(139, 92, 246, 0.08);' +
-                    'backdrop-filter: blur(20px);' +
-                    '-webkit-backdrop-filter: blur(20px);' +
-                    'overflow: hidden;' +
-                    'animation: aiMenuIn 0.25s ease-out;' +
-                    'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;' +
-                '}' +
+                /* ═══ Menu shell ═══ */
+                '.ai-menu{position:fixed;bottom:90px;z-index:100000;width:380px;max-height:calc(100vh - 140px);background:linear-gradient(180deg,rgba(22,16,42,.985) 0%,rgba(14,10,28,.985) 100%);border:1px solid rgba(139,92,246,.28);border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.7),0 0 80px rgba(139,92,246,.12),inset 0 1px 0 rgba(255,255,255,.04);backdrop-filter:blur(24px) saturate(1.2);-webkit-backdrop-filter:blur(24px) saturate(1.2);overflow:hidden;animation:aiMenuIn .22s cubic-bezier(.22,.8,.36,1);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column}',
+                '.ai-menu--right{right:20px}.ai-menu--left{left:20px}.ai-menu--center{left:50%;transform:translateX(-50%)}',
+                '@keyframes aiMenuIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}',
+                '.ai-menu--center{animation:aiMenuInCenter .22s cubic-bezier(.22,.8,.36,1)}',
+                '@keyframes aiMenuInCenter{from{opacity:0;transform:translateX(-50%) translateY(16px) scale(.97)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}',
 
-                /* Position variants */
-                '.ai-menu--right { right: 20px; }' +
-                '.ai-menu--left { left: 20px; }' +
-                '.ai-menu--center { left: 50%; transform: translateX(-50%); }' +
+                /* ═══ Header ═══ */
+                '.ai-menu__header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:linear-gradient(135deg,rgba(139,92,246,.18) 0%,rgba(59,130,246,.10) 100%);border-bottom:1px solid rgba(139,92,246,.18);flex-shrink:0}',
+                '.ai-menu__header-left{display:flex;align-items:center;gap:11px}',
+                '.ai-menu__logo{font-size:22px;color:#a78bfa;filter:drop-shadow(0 0 8px rgba(167,139,250,.4))}',
+                '.ai-menu__title{font-size:14px;font-weight:700;color:#e2e0ff;letter-spacing:.2px;line-height:1.15}',
+                '.ai-menu__version{font-size:10px;color:rgba(167,139,250,.55);font-weight:500;margin-top:1px}',
+                '.ai-menu__header-right{display:flex;align-items:center;gap:10px}',
 
-                '@keyframes aiMenuIn {' +
-                    'from { opacity: 0; transform: translateY(20px); }' +
-                    'to { opacity: 1; transform: translateY(0); }' +
-                '}' +
-                '.ai-menu--center { animation: aiMenuInCenter 0.25s ease-out; }' +
-                '@keyframes aiMenuInCenter {' +
-                    'from { opacity: 0; transform: translateX(-50%) translateY(20px); }' +
-                    'to { opacity: 1; transform: translateX(-50%) translateY(0); }' +
-                '}' +
+                /* Custom switch toggle */
+                '.ai-menu__switch{position:relative;width:38px;height:22px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:rgba(255,60,60,.15);cursor:pointer;transition:all .22s;padding:0;flex-shrink:0}',
+                '.ai-menu__switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#ff6b6b;box-shadow:0 1px 3px rgba(0,0,0,.35);transition:all .22s cubic-bezier(.22,.8,.36,1)}',
+                '.ai-menu__switch--on{background:rgba(52,211,153,.22);border-color:rgba(52,211,153,.4)}',
+                '.ai-menu__switch--on::after{background:#34d399;left:18px;box-shadow:0 1px 6px rgba(52,211,153,.5)}',
 
-                /* Header */
-                '.ai-menu__header {' +
-                    'display: flex;' +
-                    'align-items: center;' +
-                    'justify-content: space-between;' +
-                    'padding: 14px 16px;' +
-                    'background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.1));' +
-                    'border-bottom: 1px solid rgba(139, 92, 246, 0.15);' +
-                '}' +
-                '.ai-menu__header-left {' +
-                    'display: flex;' +
-                    'align-items: center;' +
-                    'gap: 10px;' +
-                '}' +
-                '.ai-menu__logo {' +
-                    'font-size: 22px;' +
-                    'color: #a78bfa;' +
-                '}' +
-                '.ai-menu__title {' +
-                    'font-size: 14px;' +
-                    'font-weight: 600;' +
-                    'color: #e2e0ff;' +
-                    'letter-spacing: 0.3px;' +
-                '}' +
-                '.ai-menu__version {' +
-                    'font-size: 10px;' +
-                    'color: rgba(167, 139, 250, 0.6);' +
-                '}' +
-                '.ai-menu__header-right {' +
-                    'display: flex;' +
-                    'align-items: center;' +
-                    'gap: 8px;' +
-                '}' +
-                '.ai-menu__toggle {' +
-                    'padding: 4px 12px;' +
-                    'border-radius: 12px;' +
-                    'border: 1px solid rgba(255,255,255,0.15);' +
-                    'background: rgba(255, 60, 60, 0.2);' +
-                    'color: #ff6b6b;' +
-                    'font-size: 11px;' +
-                    'font-weight: 700;' +
-                    'cursor: pointer;' +
-                    'transition: all 0.2s;' +
-                '}' +
-                '.ai-menu__toggle--on {' +
-                    'background: rgba(52, 211, 153, 0.2);' +
-                    'color: #34d399;' +
-                    'border-color: rgba(52, 211, 153, 0.3);' +
-                '}' +
-                '.ai-menu__toggle:hover { opacity: 0.8; }' +
-                '.ai-menu__close {' +
-                    'background: none;' +
-                    'border: none;' +
-                    'color: rgba(255,255,255,0.4);' +
-                    'font-size: 20px;' +
-                    'cursor: pointer;' +
-                    'padding: 0;' +
-                    'width: 24px;' +
-                    'height: 24px;' +
-                    'display: flex;' +
-                    'align-items: center;' +
-                    'justify-content: center;' +
-                    'border-radius: 6px;' +
-                    'transition: all 0.15s;' +
-                '}' +
-                '.ai-menu__close:hover {' +
-                    'background: rgba(255,255,255,0.1);' +
-                    'color: #fff;' +
-                '}' +
+                '.ai-menu__close{background:none;border:none;color:rgba(255,255,255,.4);font-size:22px;cursor:pointer;padding:0;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:7px;transition:all .15s;line-height:1}',
+                '.ai-menu__close:hover{background:rgba(255,255,255,.1);color:#fff;transform:rotate(90deg)}',
 
-                /* Body */
-                '.ai-menu__body {' +
-                    'padding: 12px;' +
-                    'overflow-y: auto;' +
-                    'max-height: calc(100vh - 240px);' +
-                '}' +
-                '.ai-menu__body::-webkit-scrollbar { width: 4px; }' +
-                '.ai-menu__body::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.3); border-radius: 2px; }' +
-                '.ai-menu__body::-webkit-scrollbar-track { background: transparent; }' +
+                /* ═══ Summary strip ═══ */
+                '.ai-menu__summary{display:flex;align-items:center;gap:8px;padding:10px 16px;background:rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:rgba(255,255,255,.55);flex-shrink:0}',
+                '.ai-menu__summary-dot{width:6px;height:6px;border-radius:50%;background:#34d399;box-shadow:0 0 6px rgba(52,211,153,.6);flex-shrink:0}',
+                '.ai-menu__summary-dot--off{background:rgba(255,255,255,.25);box-shadow:none}',
+                '.ai-menu__summary-strong{color:rgba(255,255,255,.85);font-weight:600}',
 
-                /* Section */
-                '.ai-menu__section {' +
-                    'margin-bottom: 12px;' +
-                '}' +
-                '.ai-menu__section:last-child { margin-bottom: 0; }' +
-                '.ai-menu__section-title {' +
-                    'font-size: 10px;' +
-                    'font-weight: 600;' +
-                    'text-transform: uppercase;' +
-                    'letter-spacing: 1.2px;' +
-                    'color: rgba(167, 139, 250, 0.5);' +
-                    'padding: 0 4px 6px;' +
-                '}' +
+                /* ═══ Body ═══ */
+                '.ai-menu__body{padding:12px 14px;overflow-y:auto;flex:1;min-height:0}',
+                '.ai-menu__body::-webkit-scrollbar{width:5px}',
+                '.ai-menu__body::-webkit-scrollbar-thumb{background:rgba(139,92,246,.3);border-radius:3px}',
+                '.ai-menu__body::-webkit-scrollbar-thumb:hover{background:rgba(139,92,246,.5)}',
+                '.ai-menu__body::-webkit-scrollbar-track{background:transparent}',
 
-                /* Model categories */
-                '.ai-menu__cat {' +
-                    'margin-bottom: 8px;' +
-                '}' +
-                '.ai-menu__cat:last-child { margin-bottom: 0; }' +
-                '.ai-menu__cat-head {' +
-                    'display: flex;' +
-                    'align-items: baseline;' +
-                    'gap: 6px;' +
-                    'padding: 4px;' +
-                '}' +
-                '.ai-menu__cat-name {' +
-                    'font-size: 11px;' +
-                    'font-weight: 600;' +
-                    'color: rgba(255,255,255,0.7);' +
-                '}' +
-                '.ai-menu__cat-desc {' +
-                    'font-size: 10px;' +
-                    'color: rgba(255,255,255,0.3);' +
-                '}' +
+                /* ═══ Filter chips ═══ */
+                '.ai-menu__chips{display:flex;gap:6px;padding:2px 2px 10px;flex-wrap:wrap}',
+                '.ai-menu__chip{padding:5px 11px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:999px;color:rgba(255,255,255,.65);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:.2px}',
+                '.ai-menu__chip:hover{background:rgba(139,92,246,.12);border-color:rgba(139,92,246,.28);color:#fff}',
+                '.ai-menu__chip--active{background:rgba(139,92,246,.22);border-color:rgba(139,92,246,.5);color:#c4b5fd}',
 
-                /* Model button */
-                '.ai-menu__model {' +
-                    'display: flex;' +
-                    'align-items: center;' +
-                    'width: 100%;' +
-                    'padding: 7px 10px;' +
-                    'background: rgba(255,255,255,0.03);' +
-                    'border: 1px solid transparent;' +
-                    'border-radius: 8px;' +
-                    'color: rgba(255,255,255,0.75);' +
-                    'font-size: 12px;' +
-                    'cursor: pointer;' +
-                    'transition: all 0.15s;' +
-                    'margin: 2px 0;' +
-                    'text-align: left;' +
-                '}' +
-                '.ai-menu__model:hover {' +
-                    'background: rgba(139, 92, 246, 0.1);' +
-                    'border-color: rgba(139, 92, 246, 0.2);' +
-                    'color: #fff;' +
-                '}' +
-                '.ai-menu__model--active {' +
-                    'background: rgba(139, 92, 246, 0.15) !important;' +
-                    'border-color: rgba(139, 92, 246, 0.4) !important;' +
-                    'color: #a78bfa !important;' +
-                '}' +
-                '.ai-menu__model-name {' +
-                    'flex: 1;' +
-                '}' +
-                '.ai-menu__model-scale {' +
-                    'font-size: 10px;' +
-                    'color: rgba(255,255,255,0.35);' +
-                    'margin-left: 8px;' +
-                '}' +
-                '.ai-menu__badge {' +
-                    'font-size: 9px;' +
-                    'padding: 1px 6px;' +
-                    'border-radius: 4px;' +
-                    'background: rgba(139, 92, 246, 0.2);' +
-                    'color: #a78bfa;' +
-                    'margin-left: 6px;' +
-                    'font-weight: 600;' +
-                '}' +
-                '.ai-menu__check {' +
-                    'color: #34d399;' +
-                    'font-size: 13px;' +
-                    'margin-left: 6px;' +
-                '}' +
+                /* ═══ Section ═══ */
+                '.ai-menu__section{margin-bottom:14px}',
+                '.ai-menu__section:last-child{margin-bottom:0}',
+                '.ai-menu__section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.3px;color:rgba(167,139,250,.55);padding:0 2px 8px;display:flex;align-items:center;justify-content:space-between}',
+                '.ai-menu__section-sub{font-size:10px;font-weight:500;color:rgba(255,255,255,.3);text-transform:none;letter-spacing:.2px}',
 
-                /* Scale buttons */
-                '.ai-menu__scales {' +
-                    'display: flex;' +
-                    'gap: 6px;' +
-                '}' +
-                '.ai-menu__scale {' +
-                    'flex: 1;' +
-                    'padding: 8px;' +
-                    'background: rgba(255,255,255,0.04);' +
-                    'border: 1px solid rgba(255,255,255,0.1);' +
-                    'border-radius: 8px;' +
-                    'color: rgba(255,255,255,0.7);' +
-                    'font-size: 13px;' +
-                    'font-weight: 600;' +
-                    'cursor: pointer;' +
-                    'transition: all 0.15s;' +
-                '}' +
-                '.ai-menu__scale:hover {' +
-                    'background: rgba(139, 92, 246, 0.15);' +
-                    'border-color: rgba(139, 92, 246, 0.3);' +
-                    'color: #fff;' +
-                '}' +
-                '.ai-menu__scale--active {' +
-                    'background: rgba(139, 92, 246, 0.2) !important;' +
-                    'border-color: rgba(139, 92, 246, 0.5) !important;' +
-                    'color: #a78bfa !important;' +
-                '}' +
+                /* ═══ Category group ═══ */
+                '.ai-menu__cat{margin-bottom:10px}',
+                '.ai-menu__cat:last-child{margin-bottom:0}',
+                '.ai-menu__cat-head{display:flex;align-items:baseline;gap:8px;padding:3px 4px 6px;border-bottom:1px dashed rgba(255,255,255,.06);margin-bottom:4px}',
+                '.ai-menu__cat-name{font-size:11px;font-weight:700;color:rgba(255,255,255,.78);letter-spacing:.2px}',
+                '.ai-menu__cat-desc{font-size:10px;color:rgba(255,255,255,.32);font-style:italic}',
 
-                /* Action button */
-                '.ai-menu__action {' +
-                    'display: flex;' +
-                    'align-items: center;' +
-                    'justify-content: center;' +
-                    'width: 100%;' +
-                    'padding: 10px;' +
-                    'background: rgba(255,255,255,0.04);' +
-                    'border: 1px solid rgba(255,255,255,0.08);' +
-                    'border-radius: 8px;' +
-                    'color: rgba(255,255,255,0.6);' +
-                    'font-size: 12px;' +
-                    'cursor: pointer;' +
-                    'transition: all 0.15s;' +
-                '}' +
-                '.ai-menu__action:hover {' +
-                    'background: rgba(255,255,255,0.08);' +
-                    'color: #fff;' +
-                '}' +
+                /* ═══ Model button ═══ */
+                '.ai-menu__model{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.04);border-radius:9px;color:rgba(255,255,255,.78);font-size:12px;cursor:pointer;transition:all .15s cubic-bezier(.4,0,.2,1);margin:3px 0;text-align:left;position:relative;overflow:hidden}',
+                '.ai-menu__model::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:transparent;transition:background .15s}',
+                '.ai-menu__model:hover{background:rgba(139,92,246,.09);border-color:rgba(139,92,246,.22);color:#fff;transform:translateX(1px)}',
+                '.ai-menu__model:hover::before{background:rgba(139,92,246,.5)}',
+                '.ai-menu__model--active{background:linear-gradient(90deg,rgba(139,92,246,.22),rgba(139,92,246,.10))!important;border-color:rgba(139,92,246,.5)!important;color:#e2e0ff!important}',
+                '.ai-menu__model--active::before{background:#a78bfa!important;box-shadow:0 0 10px rgba(167,139,250,.6)}',
+                '.ai-menu__model--loading{opacity:.7;pointer-events:none}',
 
-                /* Notification */
-                '.ai-notif {' +
-                    'position: fixed;' +
-                    'top: 20px;' +
-                    'right: 20px;' +
-                    'padding: 10px 16px;' +
-                    'border-radius: 10px;' +
-                    'color: #fff;' +
-                    'font-size: 13px;' +
-                    'font-weight: 500;' +
-                    'z-index: 100001;' +
-                    'animation: aiNotifIn 0.3s ease-out;' +
-                    'pointer-events: none;' +
-                    'backdrop-filter: blur(12px);' +
-                    '-webkit-backdrop-filter: blur(12px);' +
-                '}' +
-                '.ai-notif--info { background: rgba(59, 130, 246, 0.85); }' +
-                '.ai-notif--success { background: rgba(16, 185, 129, 0.85); }' +
-                '.ai-notif--warning { background: rgba(245, 158, 11, 0.85); }' +
-                '.ai-notif--error { background: rgba(239, 68, 68, 0.85); }' +
-                '@keyframes aiNotifIn {' +
-                    'from { transform: translateY(-10px); opacity: 0; }' +
-                    'to { transform: translateY(0); opacity: 1; }' +
-                '}' +
+                '.ai-menu__model-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}',
+                '.ai-menu__model-scale{font-size:10px;color:rgba(255,255,255,.4);font-weight:600;padding:2px 6px;background:rgba(255,255,255,.05);border-radius:4px;flex-shrink:0}',
+                '.ai-menu__badge{font-size:9px;padding:2px 6px;border-radius:4px;background:linear-gradient(135deg,rgba(139,92,246,.3),rgba(99,102,241,.25));color:#c4b5fd;font-weight:700;text-transform:uppercase;letter-spacing:.5px;flex-shrink:0}',
 
-                /* Real-Time section */
-                '.ai-menu__rt-status {' +
-                    'padding: 6px 10px;' +
-                    'font-size: 12px;' +
-                    'color: rgba(255,255,255,0.6);' +
-                '}' +
-                '.ai-menu__rt-label { color: rgba(255,255,255,0.4); }' +
-                '.ai-menu__rt-value { font-weight: 600; }' +
-                '.ai-menu__rt-row {' +
-                    'display: flex;' +
-                    'gap: 6px;' +
-                    'padding: 0 4px;' +
-                '}' +
-                '.ai-menu__rt-btn {' +
-                    'flex: 1;' +
-                    'padding: 7px;' +
-                    'background: rgba(255,255,255,0.04);' +
-                    'border: 1px solid rgba(255,255,255,0.1);' +
-                    'border-radius: 8px;' +
-                    'color: rgba(255,255,255,0.7);' +
-                    'font-size: 11px;' +
-                    'font-weight: 600;' +
-                    'cursor: pointer;' +
-                    'transition: all 0.15s;' +
-                '}' +
-                '.ai-menu__rt-btn:hover {' +
-                    'background: rgba(139,92,246,0.15);' +
-                    'border-color: rgba(139,92,246,0.3);' +
-                    'color: #fff;' +
-                '}';
+                /* State icons */
+                '.ai-menu__state{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px}',
+                '.ai-menu__state--ready{color:#34d399}',
+                '.ai-menu__state--need-dl{color:rgba(255,255,255,.35)}',
+                '.ai-menu__state--busy{color:#a78bfa}',
+                '.ai-menu__state--err{color:#f87171}',
+                '.ai-menu__spinner{width:12px;height:12px;border:2px solid rgba(167,139,250,.2);border-top-color:#a78bfa;border-radius:50%;animation:aiSpin .7s linear infinite}',
+                '@keyframes aiSpin{to{transform:rotate(360deg)}}',
+
+                /* ═══ Scale picker ═══ */
+                '.ai-menu__scales{display:flex;gap:6px}',
+                '.ai-menu__scale{flex:1;padding:9px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:9px;color:rgba(255,255,255,.7);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s}',
+                '.ai-menu__scale:hover{background:rgba(139,92,246,.14);border-color:rgba(139,92,246,.3);color:#fff;transform:translateY(-1px)}',
+                '.ai-menu__scale--active{background:linear-gradient(135deg,rgba(139,92,246,.25),rgba(99,102,241,.2))!important;border-color:rgba(139,92,246,.55)!important;color:#c4b5fd!important}',
+
+                /* ═══ Real-Time card ═══ */
+                '.ai-menu__rt-card{padding:10px 12px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);border-radius:10px}',
+                '.ai-menu__rt-status{display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,.65);margin-bottom:9px}',
+                '.ai-menu__rt-label{color:rgba(255,255,255,.4);font-weight:500}',
+                '.ai-menu__rt-value{font-weight:700;letter-spacing:.2px}',
+                '.ai-menu__rt-indicator{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.2);flex-shrink:0}',
+                '.ai-menu__rt-indicator--on{background:#34d399;box-shadow:0 0 8px rgba(52,211,153,.6);animation:aiPulse 1.8s ease-in-out infinite}',
+                '@keyframes aiPulse{0%,100%{opacity:1}50%{opacity:.55}}',
+                '.ai-menu__rt-row{display:flex;gap:6px}',
+                '.ai-menu__rt-btn{flex:1;padding:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:rgba(255,255,255,.75);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:.2px}',
+                '.ai-menu__rt-btn:hover{background:rgba(139,92,246,.16);border-color:rgba(139,92,246,.32);color:#fff}',
+
+                /* ═══ Action link ═══ */
+                '.ai-menu__action{display:flex;align-items:center;justify-content:center;width:100%;padding:11px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:9px;color:rgba(255,255,255,.65);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:.2px}',
+                '.ai-menu__action:hover{background:rgba(139,92,246,.1);border-color:rgba(139,92,246,.25);color:#fff}',
+
+                /* ═══ Skeleton loading ═══ */
+                '.ai-menu__skeleton{height:36px;margin:4px 0;background:linear-gradient(90deg,rgba(255,255,255,.03) 0%,rgba(255,255,255,.06) 50%,rgba(255,255,255,.03) 100%);background-size:200% 100%;border-radius:9px;animation:aiShimmer 1.2s ease-in-out infinite}',
+                '@keyframes aiShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}',
+
+                /* ═══ Notification toast ═══ */
+                '.ai-notif{position:fixed;top:20px;right:20px;padding:11px 18px;border-radius:11px;color:#fff;font-size:13px;font-weight:500;z-index:100001;animation:aiNotifIn .3s cubic-bezier(.22,.8,.36,1);pointer-events:none;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:360px}',
+                '.ai-notif--info{background:rgba(59,130,246,.88);border:1px solid rgba(147,197,253,.25)}',
+                '.ai-notif--success{background:rgba(16,185,129,.88);border:1px solid rgba(110,231,183,.3)}',
+                '.ai-notif--warning{background:rgba(245,158,11,.88);border:1px solid rgba(253,224,71,.3)}',
+                '.ai-notif--error{background:rgba(239,68,68,.88);border:1px solid rgba(252,165,165,.3)}',
+                '@keyframes aiNotifIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}'
+            ].join('');
 
             document.head.appendChild(styles);
             this._stylesInjected = true;
