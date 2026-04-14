@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.6.1.0
+# Jellyfin AI Upscaler Plugin v1.6.1.7
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -28,7 +28,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.6.1.0      │  │
+│  │  AI Upscaler Plugin v1.6.1.7      │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -284,6 +284,46 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 ---
 
 ## Changelog
+
+### v1.6.1.7 (AI Face Restoration + 8 New Filter Presets + Auto-Preview)
+
+**AI Face Restoration (NEW):**
+- **GFPGAN v1.4** and **CodeFormer** ONNX models for restoring faces in low-quality / upscaled video frames
+- **OpenCV Haar cascade** face detection — no additional dependencies, uses the cascade bundled with `opencv-python`
+- **Feathered alpha-blend mask** (feather_ratio=0.12) for seamless paste-back — no visible seams on restored faces
+- **CodeFormer fidelity** (`w` parameter) handled via dynamic ONNX input enumeration (auto-fills secondary inputs)
+- **Configurable guards**: `FaceRestoreMaxPerFrame` (1–20, default 6) and `FaceRestoreMaxWidth` (0 = always, else only frames ≤ N px wide)
+- **4 new Docker endpoints**: `POST /face-restore/load`, `/face-restore/unload`, `GET /face-restore/status`, `POST /face-restore/frame`
+- **3 Jellyfin proxy endpoints** (all require elevation): `Upscaler/face-restore/load|unload|status`
+- **New Face Restore card** on Filters tab: model select, sliders, Load/Unload/Preview buttons, before/after comparison
+
+**8 New Camera-Style Filter Presets:**
+- **Sepia** — classic monochrome warm tone via curves
+- **Pastel** — soft washed look (low contrast/sat, warm WB)
+- **Cyberpunk** — high-sat neon push with cool WB and unsharp edge
+- **Drama** — punched contrast with vignette and darker curves
+- **Soft Glow** — gaussian bloom + mild sharpen (portrait-friendly)
+- **Sharp HD** — aggressive unsharp mask (7×7 radius) + mild contrast boost
+- **Retro Game** — saturation boost + gamma + subtle film noise
+- **Teal & Orange** — Hollywood grade (blues in shadows, oranges in skin tones)
+
+**Live Filter Preview Auto-Update:**
+- Changing the preset dropdown on the Filters tab now auto-triggers preview with 300ms debounce
+- In-flight cancellation pattern prevents race conditions — only the latest selection renders
+- Extracted into `runFilterPreviewCurrent(page, opts)` shared function
+
+**Diagnostic Hints in Model Catalog:**
+- 9 single-frame-incompatible models now show friendly N/A hints instead of generic "Failed":
+  - EDVR / RealBasicVSR / AnimeSR / APISR-x3 → "Multi-frame — needs 5 frames"
+  - RIFE → "Interpolation — needs 2 frames"
+  - Vulkan/NCNN variants → "Vulkan/NCNN runtime not bundled"
+  - Face restore models → "Use Face tab"
+
+**Docker Service 1.6.1.7:**
+- Version sync `main.py` → 1.6.1.7
+- New `AppState` fields: `face_restore_session`, `face_restore_model_name`, `face_restore_loaded`, `face_restore_input_size`, `face_detector`
+- 2 new model entries in `AVAILABLE_MODELS` (`gfpgan-v1.4`, `codeformer`) hosted on HuggingFace
+- Module-level `_face_restore_lock` + `_face_cascade_path_cache`
 
 ### v1.6.1.0 (Camera-Style Video Filters)
 

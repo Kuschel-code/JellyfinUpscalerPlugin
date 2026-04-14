@@ -15,6 +15,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
+using MediaBrowser.Controller.MediaEncoding;
 using JellyfinUpscalerPlugin.Services;
 using JellyfinUpscalerPlugin.Models;
 using MediaBrowser.Model.Entities;
@@ -43,6 +44,8 @@ namespace JellyfinUpscalerPlugin.Controllers
 
         private readonly ILogger<UpscalerController> _logger;
         private readonly ILibraryManager _libraryManager;
+        private readonly IMediaSourceManager _mediaSourceManager;
+        private readonly IMediaEncoder _mediaEncoder;
         private readonly ISessionManager _sessionManager;
         private readonly HardwareBenchmarkService _benchmarkService;
         private readonly UpscalerCore _upscalerCore;
@@ -54,6 +57,8 @@ namespace JellyfinUpscalerPlugin.Controllers
         public UpscalerController(
             ILogger<UpscalerController> logger,
             ILibraryManager libraryManager,
+            IMediaSourceManager mediaSourceManager,
+            IMediaEncoder mediaEncoder,
             ISessionManager sessionManager,
             HardwareBenchmarkService benchmarkService,
             UpscalerCore upscalerCore,
@@ -64,6 +69,8 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             _logger = logger;
             _libraryManager = libraryManager;
+            _mediaSourceManager = mediaSourceManager;
+            _mediaEncoder = mediaEncoder;
             _sessionManager = sessionManager;
             _benchmarkService = benchmarkService;
             _upscalerCore = upscalerCore;
@@ -175,7 +182,10 @@ namespace JellyfinUpscalerPlugin.Controllers
                 new { id = "fsrcnn-x4", name = "FSRCNN x4 (Fast)", description = "Fast 4x, lower quality", scale = new[] { 4 }, category = "fast", type = "pb", downloaded = false, loaded = false, available = true },
                 new { id = "espcn-x2", name = "ESPCN x2 (Fastest)", description = "Fastest model", scale = new[] { 2 }, category = "fast", type = "pb", downloaded = false, loaded = false, available = true },
                 new { id = "espcn-x4", name = "ESPCN x4 (Fastest)", description = "Fastest 4x", scale = new[] { 4 }, category = "fast", type = "pb", downloaded = false, loaded = false, available = true },
-                new { id = "edsr-x4", name = "EDSR x4 (Best OpenCV)", description = "Best quality 4x OpenCV", scale = new[] { 4 }, category = "quality", type = "pb", downloaded = false, loaded = false, available = true }
+                new { id = "edsr-x4", name = "EDSR x4 (Best OpenCV)", description = "Best quality 4x OpenCV", scale = new[] { 4 }, category = "quality", type = "pb", downloaded = false, loaded = false, available = true },
+                // v1.6.1.7 — Face restoration models (GFPGAN / CodeFormer)
+                new { id = "gfpgan-v1.4", name = "GFPGAN v1.4 (Face Restore)", description = "Tencent ARC face restoration GAN — 512x512 crops", scale = new[] { 1 }, category = "face_restore", type = "onnx", downloaded = false, loaded = false, available = true },
+                new { id = "codeformer", name = "CodeFormer (Face Restore)", description = "Transformer-codebook face restoration — 512x512 crops", scale = new[] { 1 }, category = "face_restore", type = "onnx", downloaded = false, loaded = false, available = true }
             };
             return Ok(new { models = fallbackModels, total = fallbackModels.Count });
         }
@@ -415,38 +425,49 @@ namespace JellyfinUpscalerPlugin.Controllers
         [HttpGet("compare/{itemId}")]
         [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
-        public async Task<ActionResult<object>> GetComparisonData(string itemId, [FromQuery] string model = "realesrgan", [FromQuery] int scale = 2)
+        public async Task<ActionResult<object>> GetComparisonData(
+            string itemId,
+            [FromQuery] string model = "realesrgan",
+            [FromQuery] int scale = 2,
+            CancellationToken cancellationToken = default)
         {
             try
             {
-                // Security: Validate model name
                 if (!ValidModelNameRegex.IsMatch(model))
                     return BadRequest(new { message = "Invalid model name" });
 
-                if (!Guid.TryParse(itemId, out var itemGuid))
-                {
+                if (!Guid.TryParse(itemId, out var itemGuid) || itemGuid == Guid.Empty)
                     return BadRequest(new { message = "Invalid item ID format" });
-                }
-                
+
                 var item = _libraryManager.GetItemById(itemGuid);
                 if (item == null) return NotFound(new { message = "Item not found" });
 
-                var imagePath = item.GetImagePath(ImageType.Primary, 0);
-                if (string.IsNullOrEmpty(imagePath))
+                // Use Jellyfin's media source manager to resolve paths (handles path substitutions for SMB, etc.)
+                var mediaSources = _mediaSourceManager.GetStaticMediaSources(item, true, null);
+                var mediaSource = mediaSources?.FirstOrDefault();
+
+                // Prefer the substituted path from MediaSourceManager, fall back to item.Path
+                var videoPath = mediaSource?.Path ?? item.Path;
+                if (string.IsNullOrEmpty(videoPath))
+                    return BadRequest(new { message = "No video path — select a movie or episode, not a library folder" });
+
+                _logger.LogInformation("Comparison: extracting frame from {Path}", videoPath);
+
+                // Determine seek position (~10% into video, fallback to 10s)
+                var seekPosition = TimeSpan.FromSeconds(10);
+                if (mediaSource?.RunTimeTicks != null)
                 {
-                    var images = item.GetImages(ImageType.Primary).ToList();
-                    if (images.Count == 0) return BadRequest(new { message = "No image available" });
-                    imagePath = images[0].Path;
+                    var totalSeconds = TimeSpan.FromTicks(mediaSource.RunTimeTicks.Value).TotalSeconds;
+                    if (totalSeconds > 30)
+                        seekPosition = TimeSpan.FromSeconds(totalSeconds * 0.10);
                 }
 
-                if (string.IsNullOrEmpty(imagePath))
-                    return BadRequest(new { message = "Image path is null or empty" });
+                // Extract frame using direct FFmpeg call with the resolved path
+                byte[] originalImageBytes = await _videoProcessor.ExtractSingleFrameAsync(videoPath, seekPosition, cancellationToken);
 
-                if (!IOFile.Exists(imagePath)) return NotFound(new { message = "Image file not found" });
-
-                byte[] originalData = await IOFile.ReadAllBytesAsync(imagePath);
-                
-                using (var image = Image.Load(originalData))
+                // Downscale for browser comparison
+                byte[] originalData;
+                using (var image = Image.Load(originalImageBytes))
                 {
                     if (image.Width > 1280 || image.Height > 720)
                     {
@@ -455,19 +476,15 @@ namespace JellyfinUpscalerPlugin.Controllers
                             Size = new Size(1280, 720),
                             Mode = ResizeMode.Max
                         }));
-                        
-                        using var ms = new MemoryStream();
-                        image.SaveAsJpeg(ms);
-                        originalData = ms.ToArray();
                     }
+                    using var ms = new MemoryStream();
+                    image.SaveAsJpeg(ms);
+                    originalData = ms.ToArray();
                 }
 
                 var upscaledData = await _upscalerCore.UpscaleImageAsync(originalData, model, scale);
-
                 if (upscaledData == null)
-                {
                     return StatusCode(503, new { message = "AI upscaling service unavailable" });
-                }
 
                 return Ok(new
                 {
@@ -1545,6 +1562,85 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
+        // ════════════════════════════════════════════════════════════════════
+        // Face Restore proxies (v1.6.1.7)
+        // ════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Proxy: Load a face-restore model (GFPGAN / CodeFormer) on the Docker service.
+        /// </summary>
+        [HttpPost("face-restore/load")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult> FaceRestoreLoad([FromQuery] string model_name = "gfpgan-v1.4")
+        {
+            try
+            {
+                // Allowlist — match IDs registered in Docker MODELS
+                var allowed = new[] { "gfpgan-v1.4", "codeformer" };
+                if (!allowed.Contains(model_name))
+                    return BadRequest(new { message = "Invalid face-restore model" });
+
+                var serviceUrl = GetValidatedServiceUrl();
+                var form = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("model_name", model_name)
+                });
+                using var response = await GetAiServiceClient().PostAsync($"{serviceUrl}/face-restore/load", form);
+                var content = await response.Content.ReadAsStringAsync();
+                return new ContentResult { Content = content, ContentType = "application/json", StatusCode = (int)response.StatusCode };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Face-restore load proxy failed");
+                return StatusCode(500, new { error = "Face-restore load failed" });
+            }
+        }
+
+        /// <summary>
+        /// Proxy: Get face-restore subsystem status (loaded model, available models, providers).
+        /// </summary>
+        [HttpGet("face-restore/status")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult> FaceRestoreStatus()
+        {
+            try
+            {
+                var serviceUrl = GetValidatedServiceUrl();
+                using var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/face-restore/status");
+                var content = await response.Content.ReadAsStringAsync();
+                return new ContentResult { Content = content, ContentType = "application/json", StatusCode = (int)response.StatusCode };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Face-restore status proxy failed");
+                return StatusCode(503, new { error = "Face-restore service unavailable", available = false });
+            }
+        }
+
+        /// <summary>
+        /// Proxy: Unload the face-restore model to free VRAM.
+        /// </summary>
+        [HttpPost("face-restore/unload")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult> FaceRestoreUnload()
+        {
+            try
+            {
+                var serviceUrl = GetValidatedServiceUrl();
+                using var response = await GetAiServiceClient().PostAsync($"{serviceUrl}/face-restore/unload", null);
+                var content = await response.Content.ReadAsStringAsync();
+                return new ContentResult { Content = content, ContentType = "application/json", StatusCode = (int)response.StatusCode };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Face-restore unload proxy failed");
+                return StatusCode(500, new { error = "Face-restore unload failed" });
+            }
+        }
+
         /// <summary>
         /// Proxy: Get Prometheus metrics from Docker AI service.
         /// </summary>
@@ -1953,8 +2049,100 @@ namespace JellyfinUpscalerPlugin.Controllers
                 enabled = config.EnableVideoFilters,
                 preset = preset ?? config.ActiveFilterPreset,
                 filterChain = filterChain ?? "(no filters active)",
-                availablePresets = new[] { "none", "cinematic", "vintage", "vivid", "noir", "warm", "cool", "hdr-pop", "custom" }
+                availablePresets = new[] { "none", "cinematic", "vintage", "vivid", "noir", "warm", "cool", "hdr-pop", "sepia", "pastel", "cyberpunk", "drama", "soft-glow", "sharp-hd", "retrogame", "teal-orange", "custom" }
             });
+        }
+
+        /// <summary>
+        /// Generate a live filter preview on a real video frame (admin only).
+        /// Extracts a frame from the given media item, applies the preset's FFmpeg filter chain,
+        /// and returns both the original and filtered frames as base64 JPEG.
+        /// </summary>
+        [HttpGet("filter-preview/frame/{itemId}")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult<object>> GetFilterPreviewFrame(
+            string itemId,
+            [FromQuery] string preset = "none",
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                if (!Guid.TryParse(itemId, out var itemGuid) || itemGuid == Guid.Empty)
+                    return BadRequest(new { message = "Invalid item ID format" });
+
+                var validPresets = new[] { "none", "cinematic", "vintage", "vivid", "noir", "warm", "cool", "hdr-pop", "sepia", "pastel", "cyberpunk", "drama", "soft-glow", "sharp-hd", "retrogame", "teal-orange", "custom" };
+                if (!validPresets.Contains(preset))
+                    return BadRequest(new { message = "Invalid preset name" });
+                // 'custom' isn't useful for filter-preview (would need full config round-trip) — treat as none
+                if (preset == "custom") preset = "none";
+
+                var item = _libraryManager.GetItemById(itemGuid);
+                if (item == null) return NotFound(new { message = "Item not found" });
+
+                var mediaSources = _mediaSourceManager.GetStaticMediaSources(item, true, null);
+                var mediaSource = mediaSources?.FirstOrDefault();
+                var videoPath = mediaSource?.Path ?? item.Path;
+                if (string.IsNullOrEmpty(videoPath))
+                    return BadRequest(new { message = "No video path — select a movie or episode, not a library folder" });
+
+                // Seek to ~10% of runtime, fallback to 10s
+                var seekPosition = TimeSpan.FromSeconds(10);
+                if (mediaSource?.RunTimeTicks != null)
+                {
+                    var totalSeconds = TimeSpan.FromTicks(mediaSource.RunTimeTicks.Value).TotalSeconds;
+                    if (totalSeconds > 30)
+                        seekPosition = TimeSpan.FromSeconds(totalSeconds * 0.10);
+                }
+
+                var filterService = new VideoFilterService();
+                var filterChain = filterService.GetPresetFilters(preset);
+
+                _logger.LogInformation("Filter preview: path={Path}, preset={Preset}, chain={Chain}", videoPath, preset, filterChain);
+
+                // Extract original frame (no filter)
+                var originalPng = await _videoProcessor.ExtractSingleFrameAsync(videoPath, seekPosition, cancellationToken);
+
+                // Extract filtered frame (or re-use original if preset is "none"/empty)
+                byte[] filteredPng;
+                if (string.IsNullOrWhiteSpace(filterChain))
+                {
+                    filteredPng = originalPng;
+                }
+                else
+                {
+                    filteredPng = await _videoProcessor.ExtractSingleFrameWithFiltersAsync(videoPath, seekPosition, filterChain, cancellationToken);
+                }
+
+                // Downscale both to <=1280x720 JPEG for fast transfer
+                byte[] EncodeJpeg(byte[] pngBytes)
+                {
+                    using var image = Image.Load(pngBytes);
+                    if (image.Width > 1280 || image.Height > 720)
+                        image.Mutate(x => x.Resize(new ResizeOptions { Size = new Size(1280, 720), Mode = ResizeMode.Max }));
+                    using var ms = new MemoryStream();
+                    image.SaveAsJpeg(ms);
+                    return ms.ToArray();
+                }
+
+                var originalJpeg = EncodeJpeg(originalPng);
+                var filteredJpeg = EncodeJpeg(filteredPng);
+
+                return Ok(new
+                {
+                    itemId,
+                    preset,
+                    filterChain = filterChain ?? "(no filters active)",
+                    originalBase64 = $"data:image/jpeg;base64,{Convert.ToBase64String(originalJpeg)}",
+                    filteredBase64 = $"data:image/jpeg;base64,{Convert.ToBase64String(filteredJpeg)}",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to generate filter preview for item {ItemId} preset {Preset}", itemId, preset);
+                return StatusCode(500, new { message = "Filter preview failed", error = "Internal server error" });
+            }
         }
     }
 

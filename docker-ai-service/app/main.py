@@ -67,7 +67,7 @@ CACHE_DIR = Path(os.getenv("CACHE_DIR", "/app/cache"))
 STATIC_DIR = Path(os.getenv("STATIC_DIR", "/app/static"))
 
 # Version
-VERSION = "1.5.5.8"
+VERSION = "1.6.1.7"
 
 # Global state
 class AppState:
@@ -140,6 +140,13 @@ class AppState:
         self.rife_session = None
         self.rife_model_name: Optional[str] = None
         self.rife_loaded: bool = False
+
+        # Face-restore model (v1.6.1.7: GFPGAN / CodeFormer)
+        self.face_restore_session = None
+        self.face_restore_model_name: Optional[str] = None
+        self.face_restore_loaded: bool = False
+        self.face_restore_input_size: int = 512   # Models standardised on 512x512 face crops
+        self.face_detector = None                  # Lazy-loaded OpenCV Haar cascade
 
         # FP16 mixed precision inference
         self.use_fp16: bool = False
@@ -812,6 +819,35 @@ AVAILABLE_MODELS = {
         "category": "interpolation",
         "model_type": "rife",
         "input_frames": 2,
+        "available": True
+    },
+
+    # ============================================================
+    # === Face-Restore Models (v1.6.1.7) ===
+    # ============================================================
+    # Restore faces in low-quality / old video. Works independently of the
+    # main upscaler — detect faces via OpenCV Haar cascade, run face model on
+    # each 512x512 crop, paste back with feathered-edge alpha blending.
+    "gfpgan-v1.4": {
+        "name": "GFPGAN v1.4 (Face Restore)",
+        "url": "https://huggingface.co/kuscheltier/jellyfin-vsr-models/resolve/main/gfpgan_v1.4.onnx",
+        "scale": 1,
+        "description": "GFPGAN v1.4 — Tencent ARC's face restoration GAN. Restores heavily degraded faces. 512x512 crops. Apache 2.0.",
+        "type": "onnx",
+        "category": "face_restore",
+        "model_type": "face_restore",
+        "input_size": 512,
+        "available": True
+    },
+    "codeformer": {
+        "name": "CodeFormer (Face Restore)",
+        "url": "https://huggingface.co/kuscheltier/jellyfin-vsr-models/resolve/main/codeformer.onnx",
+        "scale": 1,
+        "description": "CodeFormer — Robust face restoration with transformer codebook. Good for severely degraded faces. 512x512. S-Lab License.",
+        "type": "onnx",
+        "category": "face_restore",
+        "model_type": "face_restore",
+        "input_size": 512,
         "available": True
     },
 
@@ -2409,6 +2445,200 @@ def interpolate_frame_rife(frame1: np.ndarray, frame2: np.ndarray,
     output = cv2.cvtColor(output, cv2.COLOR_RGB2BGR)
 
     return output
+
+
+# ============================================================
+# === Face Restoration Pipeline (v1.6.1.7) ===
+# ============================================================
+# Detect faces with OpenCV's bundled Haar cascade (no extra deps), run each
+# 512x512 crop through an ONNX face-restore model (GFPGAN/CodeFormer), then
+# paste the restored face back with a feathered alpha mask to avoid visible
+# seams.  Designed to be fast enough to use in the real-time frame pipeline.
+
+_face_cascade_path_cache: Optional[str] = None
+_face_restore_lock = threading.Lock()
+
+
+def _get_face_detector():
+    """Return a cached OpenCV Haar cascade face detector.
+
+    Uses OpenCV's bundled haarcascade_frontalface_default.xml — no external
+    download, works on every OpenCV install. Lazy-loaded on first use.
+    """
+    global _face_cascade_path_cache
+    if state.face_detector is not None:
+        return state.face_detector
+    if _face_cascade_path_cache is None:
+        _face_cascade_path_cache = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    detector = cv2.CascadeClassifier(_face_cascade_path_cache)
+    if detector.empty():
+        raise RuntimeError(f"Failed to load Haar cascade at {_face_cascade_path_cache}")
+    state.face_detector = detector
+    return detector
+
+
+def load_face_restore_model(model_name: str) -> dict:
+    """Load a face-restore ONNX model into memory (GFPGAN / CodeFormer).
+
+    Unlike the main upscaler, we don't auto-download here — that's the
+    download_model_endpoint's job. If the file isn't present, surface a
+    clear error so the UI can prompt the user to run a download first.
+    """
+    if not ONNX_AVAILABLE:
+        raise RuntimeError("ONNX Runtime not available — face restore disabled")
+    if model_name not in AVAILABLE_MODELS:
+        raise ValueError(f"Unknown model {model_name}")
+    model_info = AVAILABLE_MODELS[model_name]
+    if model_info.get("category") != "face_restore":
+        raise ValueError(f"Model {model_name} is not a face-restore model")
+
+    model_path = get_model_path(model_name)
+    if not model_path.exists():
+        raise FileNotFoundError(
+            f"Face-restore model file not found: {model_path}. "
+            f"Run POST /download-model?model_name={model_name} first."
+        )
+
+    available_providers = ort.get_available_providers()
+    providers = []
+    if 'CUDAExecutionProvider' in available_providers and state.use_gpu:
+        providers.append('CUDAExecutionProvider')
+    providers.append('CPUExecutionProvider')
+
+    sess = ort.InferenceSession(str(model_path), providers=providers)
+    with _model_lock:
+        state.face_restore_session = sess
+        state.face_restore_model_name = model_name
+        state.face_restore_loaded = True
+        state.face_restore_input_size = int(model_info.get("input_size", 512))
+    logger.info(f"Face-restore model loaded: {model_name}")
+    return {
+        "success": True,
+        "model": model_name,
+        "input_size": state.face_restore_input_size,
+        "providers": list(sess.get_providers())
+    }
+
+
+def unload_face_restore_model() -> dict:
+    """Unload the face-restore model to free VRAM."""
+    with _model_lock:
+        state.face_restore_session = None
+        state.face_restore_model_name = None
+        state.face_restore_loaded = False
+    return {"success": True, "message": "Face-restore model unloaded"}
+
+
+def _restore_face_crop(face_bgr: np.ndarray, target_size: int = 512) -> np.ndarray:
+    """Run the loaded face-restore ONNX model on a single face crop.
+
+    Input: BGR np.uint8 array, any size. Output: BGR np.uint8 array at target_size x target_size.
+    """
+    sess = state.face_restore_session
+    if sess is None:
+        raise ModelNotReadyError("No face-restore model loaded")
+
+    # Resize crop to model's expected input size
+    face_resized = cv2.resize(face_bgr, (target_size, target_size), interpolation=cv2.INTER_CUBIC)
+    # BGR -> RGB, normalise to [-1, 1] (GFPGAN/CodeFormer convention)
+    face_rgb = cv2.cvtColor(face_resized, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+    face_rgb = (face_rgb - 0.5) / 0.5
+    blob = np.transpose(face_rgb, (2, 0, 1))[np.newaxis, ...].astype(np.float32)
+    if state.use_fp16:
+        blob = blob.astype(np.float16)
+
+    input_name = sess.get_inputs()[0].name
+    output_name = sess.get_outputs()[0].name
+
+    # CodeFormer takes an additional 'w' fidelity param in [0,1]; pass 0.7 as sensible default
+    inputs = {input_name: blob}
+    for inp in sess.get_inputs()[1:]:
+        if inp.name.lower() in ("w", "fidelity", "weight"):
+            inputs[inp.name] = np.array([0.7], dtype=np.float32)
+
+    result = sess.run([output_name], inputs)[0]
+    if state.use_fp16:
+        result = result.astype(np.float32)
+    if result.ndim == 4:
+        result = result[0]
+    if result.ndim == 3 and result.shape[0] in (1, 3):
+        result = np.transpose(result, (1, 2, 0))
+    # Denormalise back to [0, 255]
+    result = ((result * 0.5) + 0.5) * 255.0
+    result = np.clip(result, 0, 255).astype(np.uint8)
+    return cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
+
+
+def _feathered_mask(h: int, w: int, feather_ratio: float = 0.12) -> np.ndarray:
+    """Build a feathered alpha mask (h, w, 1) float32 in [0, 1].
+
+    Center of the mask is 1.0, edges fade to 0 over feather_ratio*min(h,w) pixels.
+    Used for seamless paste-back of restored face crops into the source frame.
+    """
+    mask = np.ones((h, w), dtype=np.float32)
+    feather = max(1, int(min(h, w) * feather_ratio))
+    # Horizontal fade
+    for i in range(feather):
+        alpha = (i + 1) / (feather + 1)
+        mask[:, i] *= alpha
+        mask[:, w - 1 - i] *= alpha
+    # Vertical fade
+    for i in range(feather):
+        alpha = (i + 1) / (feather + 1)
+        mask[i, :] *= alpha
+        mask[h - 1 - i, :] *= alpha
+    return mask[..., np.newaxis]
+
+
+def restore_faces_in_frame(img: np.ndarray, max_faces: int = 6) -> tuple:
+    """Detect and restore faces in a BGR image.
+
+    Returns (output_image, face_count). If no face-restore model is loaded or
+    no faces are detected, returns (img, 0) unchanged.
+    """
+    if not state.face_restore_loaded or state.face_restore_session is None:
+        return img, 0
+
+    detector = _get_face_detector()
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Conservative detection params — avoid too many false positives
+    faces = detector.detectMultiScale(
+        gray,
+        scaleFactor=1.15,
+        minNeighbors=5,
+        minSize=(48, 48)
+    )
+    if len(faces) == 0:
+        return img, 0
+
+    # Limit face count — runaway detection on busy scenes would tank frame rate
+    faces = list(faces)[:max_faces]
+    output = img.copy()
+    input_size = state.face_restore_input_size
+
+    with _face_restore_lock:
+        for (x, y, w, h) in faces:
+            # Expand crop by 20% to include jawline/hair for better context
+            pad = int(0.20 * max(w, h))
+            x0 = max(0, x - pad); y0 = max(0, y - pad)
+            x1 = min(img.shape[1], x + w + pad); y1 = min(img.shape[0], y + h + pad)
+            face_crop = img[y0:y1, x0:x1]
+            if face_crop.size == 0:
+                continue
+            try:
+                restored = _restore_face_crop(face_crop, target_size=input_size)
+            except Exception as e:
+                logger.warning(f"Face restore failed on one crop: {e}")
+                continue
+            # Resize restored face back to original crop dimensions
+            restored_resized = cv2.resize(restored, (x1 - x0, y1 - y0), interpolation=cv2.INTER_LANCZOS4)
+            # Feathered alpha blend to hide seams
+            mask = _feathered_mask(y1 - y0, x1 - x0, feather_ratio=0.12)
+            blended = (output[y0:y1, x0:x1].astype(np.float32) * (1.0 - mask) +
+                       restored_resized.astype(np.float32) * mask)
+            output[y0:y1, x0:x1] = np.clip(blended, 0, 255).astype(np.uint8)
+
+    return output, len(faces)
 
 
 def upscale_image_array(img: np.ndarray) -> np.ndarray:
@@ -4046,6 +4276,141 @@ async def interpolation_status():
         "providers": providers,
         "models": interpolation_models
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Feature: Face Restoration (v1.6.1.7 — GFPGAN / CodeFormer)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.post("/face-restore/load")
+async def face_restore_load_endpoint(model_name: str = Form("gfpgan-v1.4"), request: Request = None):
+    """Load a face-restore model (GFPGAN or CodeFormer) into memory."""
+    _require_api_token(request)
+    try:
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, load_face_restore_model, model_name)
+        return result
+    except FileNotFoundError as e:
+        # Auto-download on first load, same pattern as RIFE
+        logger.info(f"Face-restore model {model_name} not downloaded — auto-downloading...")
+        dl_success = await download_model(model_name)
+        if not dl_success:
+            raise HTTPException(status_code=404, detail=str(e))
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, load_face_restore_model, model_name)
+        return result
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Face-restore model load failed: {e}")
+        raise HTTPException(status_code=500, detail="Face-restore model load failed")
+
+
+@app.post("/face-restore/unload")
+async def face_restore_unload_endpoint(request: Request = None):
+    """Unload the face-restore model to free memory."""
+    _require_api_token(request)
+    return unload_face_restore_model()
+
+
+@app.get("/face-restore/status")
+async def face_restore_status(request: Request = None):
+    """Show status of the face-restore subsystem."""
+    _require_api_token(request)
+    with _model_lock:
+        loaded = state.face_restore_loaded
+        model = state.face_restore_model_name
+        sess = state.face_restore_session
+        input_size = state.face_restore_input_size
+
+    providers: list = []
+    if sess is not None:
+        try:
+            providers = list(sess.get_providers())
+        except Exception:
+            providers = ["unknown"]
+
+    models = []
+    for mid, info in AVAILABLE_MODELS.items():
+        if info.get("category") == "face_restore":
+            models.append({
+                "id": mid,
+                "name": info["name"],
+                "description": info["description"],
+                "downloaded": get_model_path(mid).exists(),
+                "loaded": model == mid,
+                "input_size": info.get("input_size", 512),
+                "available": info.get("available", True)
+            })
+
+    return {
+        "face_restore_available": ONNX_AVAILABLE,
+        "model_loaded": loaded and sess is not None,
+        "current_model": model,
+        "input_size": input_size,
+        "providers": providers,
+        "models": models
+    }
+
+
+@app.post("/face-restore/frame")
+async def face_restore_frame_endpoint(request: Request):
+    """Detect and restore faces in a single frame.
+
+    Accepts JPEG or PNG bytes in the request body. Returns the processed
+    frame as JPEG. If no model is loaded, auto-loads GFPGAN as a default.
+    """
+    _require_api_token(request)
+
+    body = await request.body()
+    if not body:
+        raise HTTPException(status_code=400, detail="Empty body")
+    if len(body) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail=f"Image too large ({len(body)} bytes)")
+
+    nparr = np.frombuffer(body, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    if img is None:
+        raise HTTPException(status_code=400, detail="Failed to decode image")
+
+    h, w = img.shape[:2]
+    if h * w > MAX_IMAGE_PIXELS:
+        raise HTTPException(status_code=413, detail=f"Image too large: {w}x{h}")
+
+    # Auto-load default face-restore model if none loaded yet
+    if not state.face_restore_loaded:
+        try:
+            model_path = get_model_path("gfpgan-v1.4")
+            if not model_path.exists():
+                await download_model("gfpgan-v1.4")
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, load_face_restore_model, "gfpgan-v1.4")
+        except Exception as e:
+            raise HTTPException(status_code=503, detail=f"Face-restore model unavailable: {e}")
+
+    start_time = time.time()
+    try:
+        loop = asyncio.get_running_loop()
+        restored, face_count = await loop.run_in_executor(
+            _cpu_executor, restore_faces_in_frame, img
+        )
+    except Exception as e:
+        logger.error(f"Face restoration failed: {e}")
+        raise HTTPException(status_code=500, detail="Face restoration failed")
+
+    duration_ms = (time.time() - start_time) * 1000
+    logger.info(f"Face restore: {face_count} faces in {duration_ms:.1f}ms (model={state.face_restore_model_name})")
+
+    success, buffer = cv2.imencode('.jpg', restored, [cv2.IMWRITE_JPEG_QUALITY, 92])
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to encode result")
+
+    headers = {
+        "X-Face-Count": str(face_count),
+        "X-Duration-Ms": f"{duration_ms:.1f}",
+        "X-Face-Model": state.face_restore_model_name or "unknown"
+    }
+    return Response(content=buffer.tobytes(), media_type="image/jpeg", headers=headers)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

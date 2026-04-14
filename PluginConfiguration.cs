@@ -401,7 +401,7 @@ namespace JellyfinUpscalerPlugin
         /// <summary>Master switch to enable camera-style video filters.</summary>
         public bool EnableVideoFilters { get; set; } = false;
 
-        /// <summary>Active filter preset: "none","cinematic","vintage","vivid","noir","warm","cool","hdr-pop","custom".</summary>
+        /// <summary>Active filter preset: "none","cinematic","vintage","vivid","noir","warm","cool","hdr-pop","sepia","pastel","cyberpunk","drama","soft-glow","sharp-hd","retrogame","teal-orange","custom".</summary>
         public string ActiveFilterPreset { get; set; } = "none";
 
         /// <summary>Brightness adjustment (-1.0 dark to 1.0 bright). Only used when preset is "custom".</summary>
@@ -479,9 +479,33 @@ namespace JellyfinUpscalerPlugin
         /// <summary>Path to a .cube LUT file for color grading (empty = disabled). Only used when preset is "custom".</summary>
         public string FilterLutPath { get; set; } = "";
 
+        // ── Face Restoration (v1.6.1.7 — GFPGAN / CodeFormer) ────────────
+
+        /// <summary>Enable AI face restoration for low-quality / old content.</summary>
+        public bool EnableFaceRestore { get; set; } = false;
+
+        /// <summary>Face-restore model ID: "gfpgan-v1.4" or "codeformer".</summary>
+        public string FaceRestoreModel { get; set; } = "gfpgan-v1.4";
+
+        /// <summary>Maximum faces to restore per frame (1-20). Protects against runaway detection.</summary>
+        public int FaceRestoreMaxPerFrame
+        {
+            get => _faceRestoreMaxPerFrame;
+            set => _faceRestoreMaxPerFrame = Math.Clamp(value, 1, 20);
+        }
+        private int _faceRestoreMaxPerFrame = 6;
+
+        /// <summary>Only run face restore on frames where the upscaled resolution is below this width (pixels). 0 = always. Keeps 4K content out.</summary>
+        public int FaceRestoreMaxWidth
+        {
+            get => _faceRestoreMaxWidth;
+            set => _faceRestoreMaxWidth = Math.Clamp(value, 0, 7680);
+        }
+        private int _faceRestoreMaxWidth = 1920;
+
         // ── Version Tracking ─────────────────────────────────────────────
 
         /// <summary>Current plugin version string for webhook payloads and diagnostics.</summary>
-        public string PluginVersion { get; set; } = "1.6.1.3";
+        public string PluginVersion { get; set; } = "1.6.1.7";
     }
 }

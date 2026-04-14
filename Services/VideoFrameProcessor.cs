@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using CliWrap;
@@ -93,6 +94,93 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 throw new InvalidOperationException($"Frame extraction failed with exit code {result.ExitCode}");
             }
+        }
+
+        /// <summary>
+        /// Extract a single frame from a video at the given position and return it as PNG bytes.
+        /// Uses input seeking (-ss before -i) for fast keyframe-based seeking.
+        /// </summary>
+        public async Task<byte[]> ExtractSingleFrameAsync(string videoPath, TimeSpan position, CancellationToken cancellationToken = default, string? ffmpegOverride = null)
+        {
+            var ffmpeg = !string.IsNullOrEmpty(ffmpegOverride) ? ffmpegOverride : _ffmpegPath;
+            if (string.IsNullOrEmpty(ffmpeg))
+                throw new InvalidOperationException("FFmpeg path is not configured — cannot extract frames");
+
+            using var ms = new MemoryStream();
+            var stderr = new StringBuilder();
+
+            var result = await Cli.Wrap(ffmpeg)
+                .WithArguments(args =>
+                {
+                    args.Add("-ss").Add(position.TotalSeconds.ToString("F2"))
+                        .Add("-i").Add(videoPath)
+                        .Add("-frames:v").Add("1")
+                        .Add("-f").Add("image2pipe")
+                        .Add("-vcodec").Add("png")
+                        .Add("pipe:1");
+                })
+                .WithStandardOutputPipe(PipeTarget.ToStream(ms))
+                .WithStandardErrorPipe(PipeTarget.ToStringBuilder(stderr))
+                .WithValidation(CommandResultValidation.None)
+                .ExecuteAsync(cancellationToken);
+
+            if (result.ExitCode != 0 || ms.Length == 0)
+            {
+                var stderrText = stderr.ToString();
+                // Log the last 1000 chars of stderr (the error is typically at the end, after the banner)
+                var logPart = stderrText.Length > 1000 ? stderrText[^1000..] : stderrText;
+                _logger.LogError("FFmpeg frame extraction failed: exit={Code}, stderr(tail)={Stderr}", result.ExitCode, logPart);
+                throw new InvalidOperationException($"Single frame extraction failed (exit code {result.ExitCode}, bytes {ms.Length})");
+            }
+
+            return ms.ToArray();
+        }
+
+        /// <summary>
+        /// Extract a single frame and apply an FFmpeg filter chain in one pass.
+        /// Returns the filtered frame as PNG bytes. Used for live filter preview in the config UI.
+        /// </summary>
+        public async Task<byte[]> ExtractSingleFrameWithFiltersAsync(
+            string videoPath,
+            TimeSpan position,
+            string? filterChain,
+            CancellationToken cancellationToken = default,
+            string? ffmpegOverride = null)
+        {
+            var ffmpeg = !string.IsNullOrEmpty(ffmpegOverride) ? ffmpegOverride : _ffmpegPath;
+            if (string.IsNullOrEmpty(ffmpeg))
+                throw new InvalidOperationException("FFmpeg path is not configured — cannot extract frames");
+
+            using var ms = new MemoryStream();
+            var stderr = new StringBuilder();
+
+            var result = await Cli.Wrap(ffmpeg)
+                .WithArguments(args =>
+                {
+                    args.Add("-ss").Add(position.TotalSeconds.ToString("F2"))
+                        .Add("-i").Add(videoPath)
+                        .Add("-frames:v").Add("1");
+                    if (!string.IsNullOrWhiteSpace(filterChain))
+                        args.Add("-vf").Add(filterChain);
+                    args.Add("-f").Add("image2pipe")
+                        .Add("-vcodec").Add("png")
+                        .Add("pipe:1");
+                })
+                .WithStandardOutputPipe(PipeTarget.ToStream(ms))
+                .WithStandardErrorPipe(PipeTarget.ToStringBuilder(stderr))
+                .WithValidation(CommandResultValidation.None)
+                .ExecuteAsync(cancellationToken);
+
+            if (result.ExitCode != 0 || ms.Length == 0)
+            {
+                var stderrText = stderr.ToString();
+                var logPart = stderrText.Length > 1000 ? stderrText[^1000..] : stderrText;
+                _logger.LogError("FFmpeg filtered frame extraction failed: exit={Code}, filter={Filter}, stderr(tail)={Stderr}",
+                    result.ExitCode, filterChain, logPart);
+                throw new InvalidOperationException($"Filtered frame extraction failed (exit code {result.ExitCode}, bytes {ms.Length})");
+            }
+
+            return ms.ToArray();
         }
 
         /// <summary>

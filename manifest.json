@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.6.1.7",
+        "changelog": "v1.6.1.7: AI Face Restoration \u2014 GFPGAN v1.4 + CodeFormer integration with OpenCV Haar face detection, feathered alpha-blend paste-back, configurable max-faces & resolution guard. 8 new camera-style filter presets (Sepia, Pastel, Cyberpunk, Drama, Soft Glow, Sharp HD, Retro Game, Teal & Orange). Live Filter Preview auto-updates on preset dropdown change (300ms debounce). Friendly N/A hints for multi-frame / interpolation / Vulkan models in single-frame bench. Docker service synced to 1.6.1.7 with /face-restore/* endpoints.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.7/jellyfin-ai-upscaler-plugin-1.6.1.7.zip",
+        "checksum": "505ebb52f296add31d7772d53e11581f",
+        "timestamp": "2026-04-14T02:25:00.000Z"
+      },
+      {
         "version": "1.6.1.0",
         "changelog": "v1.6.1.0: Camera-style video filters (7 presets + custom mode). Cinematic, Vintage, Vivid, Noir, Warm, Cool, HDR Pop presets. Custom controls: brightness, contrast, saturation, gamma, sharpness, color temperature, vignette, film grain, denoise, LUT color grading. New Filters tab in settings UI with live FFmpeg filter chain preview.",
         "targetAbi": "10.11.8.0",

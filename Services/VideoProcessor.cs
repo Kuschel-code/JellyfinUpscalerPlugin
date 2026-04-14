@@ -141,6 +141,34 @@ namespace JellyfinUpscalerPlugin.Services
         }
 
         /// <summary>
+        /// Extract a single frame from a video at the given position, returned as PNG bytes.
+        /// </summary>
+        public Task<byte[]> ExtractSingleFrameAsync(string videoPath, TimeSpan position, CancellationToken cancellationToken = default)
+        {
+            // Re-resolve ffmpegPath in case it wasn't available at construction time
+            if (string.IsNullOrEmpty(_ffmpegPath))
+            {
+                _ffmpegPath = _mediaEncoder.EncoderPath;
+                _logger.LogInformation("Late-resolved FFmpeg path: {Path}", _ffmpegPath);
+            }
+            return _frameProcessor.ExtractSingleFrameAsync(videoPath, position, cancellationToken, _ffmpegPath);
+        }
+
+        /// <summary>
+        /// Extract a single frame and apply an FFmpeg filter chain in one pass.
+        /// Used for live filter preview in the config UI.
+        /// </summary>
+        public Task<byte[]> ExtractSingleFrameWithFiltersAsync(string videoPath, TimeSpan position, string? filterChain, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrEmpty(_ffmpegPath))
+            {
+                _ffmpegPath = _mediaEncoder.EncoderPath;
+                _logger.LogInformation("Late-resolved FFmpeg path: {Path}", _ffmpegPath);
+            }
+            return _frameProcessor.ExtractSingleFrameWithFiltersAsync(videoPath, position, filterChain, cancellationToken, _ffmpegPath);
+        }
+
+        /// <summary>
         /// Process video with AI upscaling
         /// </summary>
         public async Task<VideoProcessingResult> ProcessVideoAsync(

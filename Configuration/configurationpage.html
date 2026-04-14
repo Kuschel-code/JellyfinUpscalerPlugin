@@ -1,6 +1,6 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
 <style>
-    /* ===== AI Upscaler v1.6.1.3 — Jellyfin-compatible dark theme ===== */
+    /* ===== AI Upscaler v1.6.1.7 — Jellyfin-compatible dark theme ===== */
     #UpscalerConfigurationPage {
         --accent: #00d4ff;
         --accent-bg: rgba(0, 212, 255, 0.12);
@@ -361,7 +361,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.6.1.3 &middot; AI Upscaling + Video Filters</div>
+                <div class="upscaler-header-meta">v1.6.1.7 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -940,6 +940,14 @@
                                 <option value="warm">Warm — Warm tones</option>
                                 <option value="cool">Cool — Cool tones</option>
                                 <option value="hdr-pop">HDR Pop — Pseudo-HDR</option>
+                                <option value="sepia">Sepia — Brownish old-photo</option>
+                                <option value="pastel">Pastel — Soft dreamy tones</option>
+                                <option value="cyberpunk">Cyberpunk — Neon & high-contrast</option>
+                                <option value="drama">Drama — High contrast, moody</option>
+                                <option value="soft-glow">Soft Glow — Dreamy diffusion</option>
+                                <option value="sharp-hd">Sharp HD — Crisp detail boost</option>
+                                <option value="retrogame">Retro Game — CRT-ish look</option>
+                                <option value="teal-orange">Teal & Orange — Hollywood grade</option>
                                 <option value="custom">Custom — Full control</option>
                             </select>
                         </div>
@@ -998,6 +1006,94 @@
 
                     <div style="margin-top:1.5rem;">
                         <button type="button" id="btn-save-filters" class="raised btn-primary">Save Settings</button>
+                    </div>
+                </div>
+
+                <!-- Live Filter Preview (real video frame) -->
+                <div class="upscaler-card">
+                    <h3>Live Filter Preview</h3>
+                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">
+                        Pick a video and apply the currently selected filter preset to a real frame. Compares before/after side by side.
+                    </div>
+                    <div class="form-row" style="margin-bottom:0.5rem;">
+                        <div class="form-col selectContainer">
+                            <label class="selectLabel" for="filter-preview-item">Media Item</label>
+                            <select id="filter-preview-item"></select>
+                        </div>
+                        <div class="form-col" style="padding-top:1.4rem;">
+                            <button type="button" id="btn-filter-preview-current" class="raised">Preview Current Preset</button>
+                            <button type="button" id="btn-filter-preview-all" class="raised">Preview All Presets</button>
+                        </div>
+                    </div>
+                    <div id="filter-preview-status" style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;"></div>
+                    <div id="filter-preview-container" style="display:none;">
+                        <div class="two-col">
+                            <div style="text-align:center;display:inline-block;width:48%;vertical-align:top;">
+                                <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.3rem;">Original</div>
+                                <img id="filter-img-original" style="max-width:100%;border-radius:6px;" />
+                            </div>
+                            <div style="text-align:center;display:inline-block;width:48%;vertical-align:top;">
+                                <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.3rem;" id="filter-img-label">Filtered</div>
+                                <img id="filter-img-filtered" style="max-width:100%;border-radius:6px;" />
+                            </div>
+                        </div>
+                    </div>
+                    <div id="filter-preview-all-results" style="display:none;margin-top:1rem;"></div>
+                </div>
+
+                <!-- AI Face Restoration (v1.6.1.7) -->
+                <div class="upscaler-card">
+                    <h3>AI Face Restoration</h3>
+                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.7rem;">
+                        Restore heavily degraded faces in old or low-quality video using GFPGAN or CodeFormer.
+                        Faces are detected via OpenCV, cropped to 512×512, restored with the chosen model, and feather-blended back.
+                    </div>
+
+                    <div class="checkboxContainer" style="margin-bottom:0.6rem;">
+                        <label><input type="checkbox" id="EnableFaceRestore" /> Enable Face Restoration</label>
+                    </div>
+
+                    <div id="face-restore-options" style="opacity:0.5;pointer-events:none;">
+                        <div class="form-row" style="margin-bottom:0.7rem;gap:0.8rem;">
+                            <div class="form-col selectContainer" style="flex:1;">
+                                <label class="selectLabel" for="FaceRestoreModel">Model</label>
+                                <select id="FaceRestoreModel" style="width:100%;padding:0.4rem;background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;">
+                                    <option value="gfpgan-v1.4">GFPGAN v1.4 (Apache 2.0)</option>
+                                    <option value="codeformer">CodeFormer (S-Lab License)</option>
+                                </select>
+                            </div>
+                            <div class="form-col" style="flex:1;">
+                                <label style="font-size:0.8rem;">Max faces per frame <span id="val-face-max" style="color:var(--accent);">6</span></label>
+                                <input type="range" id="FaceRestoreMaxPerFrame" min="1" max="20" step="1" value="6" style="width:100%;" />
+                            </div>
+                            <div class="form-col" style="flex:1;">
+                                <label style="font-size:0.8rem;">Skip above width (px) <span id="val-face-maxw" style="color:var(--accent);">1920</span></label>
+                                <input type="range" id="FaceRestoreMaxWidth" min="0" max="3840" step="120" value="1920" style="width:100%;" />
+                            </div>
+                        </div>
+
+                        <div id="face-restore-status" style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">
+                            Status: checking…
+                        </div>
+
+                        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                            <button type="button" id="btn-face-restore-load" class="raised">Load Face Model</button>
+                            <button type="button" id="btn-face-restore-unload" class="raised">Unload</button>
+                            <button type="button" id="btn-face-restore-preview" class="raised">Preview on Selected Media</button>
+                        </div>
+
+                        <div id="face-restore-preview-container" style="display:none;margin-top:1rem;">
+                            <div class="two-col">
+                                <div style="text-align:center;display:inline-block;width:48%;vertical-align:top;">
+                                    <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.3rem;">Before</div>
+                                    <img id="face-img-before" style="max-width:100%;border-radius:6px;" />
+                                </div>
+                                <div style="text-align:center;display:inline-block;width:48%;vertical-align:top;">
+                                    <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.3rem;" id="face-img-after-label">After (faces detected: —)</div>
+                                    <img id="face-img-after" style="max-width:100%;border-radius:6px;" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1339,24 +1435,33 @@
         function loadMediaItems(page) {
             try {
                 ApiClient.getItems(ApiClient.getCurrentUserId(), {
-                    IncludeItemTypes: 'Movie,Episode,Series',
+                    IncludeItemTypes: 'Movie,Episode',
+                    Recursive: true,
                     Limit: 50,
                     SortBy: 'DateCreated',
                     SortOrder: 'Descending',
-                    Fields: 'PrimaryImageAspectRatio,MediaStreams',
-                    ImageTypeLimit: 1,
-                    EnableImageTypes: 'Primary,Thumb'
+                    Fields: 'Path'
                 }).then(function(result) {
-                    var select = page.querySelector('#comparison-item');
-                    select.innerHTML = '<option value="">-- Select item --</option>';
+                    var selects = [
+                        page.querySelector('#comparison-item'),
+                        page.querySelector('#filter-preview-item')
+                    ];
+                    selects.forEach(function(sel) {
+                        if (!sel) return;
+                        sel.innerHTML = '<option value="">-- Select item --</option>';
+                    });
                     if (result && result.Items) {
                         result.Items.forEach(function(item) {
-                            var opt = document.createElement('option');
-                            opt.value = item.Id;
-                            var label = item.Name + (item.ProductionYear ? ' (' + item.ProductionYear + ')' : '');
-                            var type = item.Type === 'Episode' ? ' [EP]' : item.Type === 'Series' ? ' [Series]' : ' [Movie]';
-                            opt.textContent = label + type;
-                            select.appendChild(opt);
+                            var label = item.Type === 'Episode' && item.SeriesName
+                                ? item.SeriesName + ' — ' + item.Name + ' [EP]'
+                                : item.Name + (item.ProductionYear ? ' (' + item.ProductionYear + ')' : '') + ' [Movie]';
+                            selects.forEach(function(sel) {
+                                if (!sel) return;
+                                var opt = document.createElement('option');
+                                opt.value = item.Id;
+                                opt.textContent = label;
+                                sel.appendChild(opt);
+                            });
                         });
                     }
                 });
@@ -1380,7 +1485,8 @@
                     'FaceEnhanceStrength','GrainDenoiseStrength','GrainReaddIntensity',
                     'FilterBrightness','FilterContrast','FilterSaturation','FilterGamma',
                     'FilterSharpness','FilterColorTemperature','FilterVignette','FilterFilmGrain',
-                    'FilterDenoise','FilterLutPath'];
+                    'FilterDenoise','FilterLutPath',
+                    'FaceRestoreModel','FaceRestoreMaxPerFrame','FaceRestoreMaxWidth'];
                 fields.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el && config[f] !== undefined) el.value = config[f];
@@ -1396,7 +1502,7 @@
                     'EnableRealtimeUpscaling',
                     'EnableQualityMetrics','EnableFaceEnhancement','EnableGrainManagement',
                     'EnableCustomModelUpload','EnableApiDocs','EnableProgressNotifications',
-                    'EnableVideoFilters'];
+                    'EnableVideoFilters','EnableFaceRestore'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) {
@@ -1406,7 +1512,7 @@
                     }
                 });
 
-                var selects = ['Model','QualityLevel','ButtonPosition','OutputCodec','RealtimeMode','ActiveFilterPreset'];
+                var selects = ['Model','QualityLevel','ButtonPosition','OutputCodec','RealtimeMode','ActiveFilterPreset','FaceRestoreModel'];
                 selects.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el && config[f]) el.value = config[f];
@@ -1428,7 +1534,8 @@
                     FilterSaturation: 'val-saturation', FilterGamma: 'val-gamma',
                     FilterSharpness: 'val-sharpness', FilterColorTemperature: 'val-colortemp',
                     FilterVignette: 'val-vignette', FilterFilmGrain: 'val-filmgrain',
-                    FilterDenoise: 'val-denoise'
+                    FilterDenoise: 'val-denoise',
+                    FaceRestoreMaxPerFrame: 'val-face-max', FaceRestoreMaxWidth: 'val-face-maxw'
                 };
                 Object.keys(sliderMap).forEach(function(k) {
                     var slider = page.querySelector('#' + k);
@@ -1463,7 +1570,8 @@
                     'ModelDiskQuotaMB','ModelCleanupDays','HealthCheckIntervalSeconds',
                     'CircuitBreakerThreshold','CircuitBreakerResetSeconds',
                     'RealtimeTargetFps','RealtimeCaptureWidth','GrainDenoiseStrength',
-                    'FilterColorTemperature','FilterFilmGrain'];
+                    'FilterColorTemperature','FilterFilmGrain',
+                    'FaceRestoreMaxPerFrame','FaceRestoreMaxWidth'];
                 nums.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) { var parsed = parseInt(el.value, 10); if (!isNaN(parsed)) config[f] = parsed; }
@@ -1493,7 +1601,7 @@
                     'EnableRealtimeUpscaling',
                     'EnableQualityMetrics','EnableFaceEnhancement','EnableGrainManagement',
                     'EnableCustomModelUpload','EnableApiDocs','EnableProgressNotifications',
-                    'EnableVideoFilters'];
+                    'EnableVideoFilters','EnableFaceRestore'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) config[f] = !!el.checked;
@@ -1511,8 +1619,10 @@
                 config.OutputCodec = page.querySelector('#OutputCodec').value;
                 config.RealtimeMode = page.querySelector('#RealtimeMode').value;
                 config.ActiveFilterPreset = page.querySelector('#ActiveFilterPreset').value;
+                var faceModelEl = page.querySelector('#FaceRestoreModel');
+                if (faceModelEl) config.FaceRestoreModel = faceModelEl.value;
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
-                config.PluginVersion = '1.6.1.3';
+                config.PluginVersion = '1.6.1.7';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -1598,7 +1708,7 @@
         // Benchmark a single model: load it, run benchmark, show result
         window.AiUpscaler = window.AiUpscaler || {};
         window.AiUpscaler._benchModel = function(modelId) {
-            var cell = document.querySelector('#bench-' + modelId);
+            var cell = document.getElementById('bench-' + modelId);
             // Check if model needs downloading first
             var configPage = document.querySelector('#UpscalerConfigurationPage');
             var modelInfo = (configPage && configPage._allModels || []).find(function(m) { return m.id === modelId; });
@@ -1621,12 +1731,34 @@
                     var avgMs = bench.avg_time_ms ? bench.avg_time_ms.toFixed(0) : '?';
                     cell.innerHTML = '<span style="color:' + color + ';font-size:0.78rem;font-weight:600;">' + bench.fps.toFixed(1) + ' FPS</span><br><span style="font-size:0.7rem;color:var(--text-muted);">' + avgMs + 'ms</span>';
                 } else {
-                    cell.innerHTML = '<span style="color:var(--danger);font-size:0.75rem;">' + (bench && bench.error ? esc(bench.error) : 'Error') + '</span>';
+                    cell.innerHTML = window.AiUpscaler._renderBenchError(modelId, bench && bench.error);
                 }
             }).catch(function(err) {
-                if (cell) cell.innerHTML = '<span style="color:var(--danger);font-size:0.75rem;">Failed</span>';
+                if (cell) cell.innerHTML = window.AiUpscaler._renderBenchError(modelId, err && err.message);
                 console.error('Bench failed for ' + modelId, err);
             });
+        };
+
+        // Known-incompatible single-frame bench categories (see CHANGELOG v1.6.1.7 diagnostic docs)
+        window.AiUpscaler._renderBenchError = function(modelId, rawErr) {
+            var id = String(modelId || '').toLowerCase();
+            var hint = null;
+            if (/^edvr|realbasicvsr|animesr|apisr-x3/.test(id)) {
+                hint = 'Multi-frame — needs 5 frames';
+            } else if (/^rife/.test(id)) {
+                hint = 'Interpolation — needs 2 frames';
+            } else if (/vulkan|ncnn/.test(id)) {
+                hint = 'Vulkan/NCNN runtime not bundled';
+            } else if (/face/.test(id) || id === 'gfpgan-v1.4' || id === 'codeformer') {
+                hint = 'Face restore — use Face tab';
+            }
+            if (hint) {
+                var full = 'Single-frame bench unsupported: ' + hint;
+                return '<span style="color:var(--warning);font-size:0.72rem;" title="' + esc(full) + '">N/A</span>'
+                     + '<br><span style="font-size:0.65rem;color:var(--text-muted);" title="' + esc(full) + '">'
+                     + esc(hint) + '</span>';
+            }
+            return '<span style="color:var(--danger);font-size:0.75rem;">' + esc(rawErr || 'Failed') + '</span>';
         };
 
         // ===== LIVE PERFORMANCE MONITOR =====
@@ -1744,7 +1876,7 @@
                 page.querySelector('#live-bench-bar').style.width = pct + '%';
                 page.querySelector('#live-bench-status').textContent = 'Testing ' + (m.name || m.id) + ' (' + (i + 1) + '/' + models.length + ')...';
 
-                var row = page.querySelector('#lbr-' + m.id);
+                var row = document.getElementById('lbr-' + m.id);
                 if (row) row.querySelector('.lbr-fps').innerHTML = '<span style="color:var(--warning);">...</span>';
 
                 try {
@@ -1804,7 +1936,15 @@
             noir: 'Classic black-and-white film with high contrast, dark curves, vignette, and film grain.',
             warm: 'Subtle warm tone shift with slightly boosted saturation. Cozy and inviting look.',
             cool: 'Cool blue-ish tone with slightly reduced saturation. Clean, modern feel.',
-            'hdr-pop': 'Pseudo-HDR effect with boosted contrast, saturation, and sharpening for a punchy look.'
+            'hdr-pop': 'Pseudo-HDR effect with boosted contrast, saturation, and sharpening for a punchy look.',
+            sepia: 'Classic brownish sepia tone — emulates an old-photograph look. Desaturated with warm tinted curves.',
+            pastel: 'Soft, dreamy pastel tones with reduced contrast and a slight cool shift. Great for romantic or whimsical content.',
+            cyberpunk: 'Neon-heavy look with strong saturation, teal-leaning color temperature, and sharpened edges. Ideal for sci-fi content.',
+            drama: 'High-contrast moody grade with desaturation and vignette. Think prestige-TV or thriller aesthetics.',
+            'soft-glow': 'Dreamy diffusion glow with gentle blur. Flattering for faces and romantic scenes.',
+            'sharp-hd': 'Strong sharpening and mild contrast boost — makes HD content crisper without colour shift.',
+            retrogame: 'Nostalgic CRT-style look with boosted saturation, gamma curve, and light grain. For retro-gaming captures.',
+            'teal-orange': 'Hollywood-style teal-shadows + orange-highlights grade. Matches most modern blockbusters.'
         };
 
         function initFilterTab(page) {
@@ -2040,7 +2180,8 @@
             // Filter Benchmark (works without AI service)
             page.querySelector('#btn-filter-benchmark').addEventListener('click', function() {
                 var result = page.querySelector('#filter-bench-result');
-                var presets = ['cinematic', 'vintage', 'vivid', 'noir', 'warm', 'cool', 'hdr-pop'];
+                var presets = ['cinematic', 'vintage', 'vivid', 'noir', 'warm', 'cool', 'hdr-pop',
+                               'sepia', 'pastel', 'cyberpunk', 'drama', 'soft-glow', 'sharp-hd', 'retrogame', 'teal-orange'];
                 result.innerHTML = '<div style="color:var(--warning);">Testing filter presets...</div>';
                 var html = '';
                 var completed = 0;
@@ -2069,6 +2210,274 @@
                         }
                     });
                 });
+            });
+
+            // Live Filter Preview — single preset on a real video frame
+            // Shared runner so both button click and dropdown auto-change use the same code path
+            var _filterPreviewInflight = null;   // AbortController / cancel flag for in-flight request
+            var _filterPreviewDebounce = null;   // setTimeout handle for dropdown debounce
+
+            function runFilterPreviewCurrent(page, opts) {
+                opts = opts || {};
+                var itemId = page.querySelector('#filter-preview-item').value;
+                if (!itemId) {
+                    if (!opts.silent) showToast('Please select an item', '#fbbf24');
+                    return;
+                }
+                var preset = page.querySelector('#ActiveFilterPreset').value || 'none';
+                var status = page.querySelector('#filter-preview-status');
+                var container = page.querySelector('#filter-preview-container');
+                var allResults = page.querySelector('#filter-preview-all-results');
+                var label = page.querySelector('#filter-img-label');
+                var btn = page.querySelector('#btn-filter-preview-current');
+
+                // Mark previous in-flight as superseded
+                if (_filterPreviewInflight) _filterPreviewInflight.cancelled = true;
+                var token = { cancelled: false };
+                _filterPreviewInflight = token;
+
+                btn.disabled = true; btn.textContent = opts.auto ? 'Auto-updating…' : 'Generating...';
+                allResults.style.display = 'none';
+                status.style.color = 'var(--warning)';
+                status.textContent = (opts.auto ? 'Auto-preview: ' : '') + 'Extracting frame and applying "' + preset + '" filter...';
+                var start = performance.now();
+                ApiClient.ajax({
+                    type: 'GET',
+                    url: ApiClient.getUrl('Upscaler/filter-preview/frame/' + itemId + '?preset=' + encodeURIComponent(preset)),
+                    dataType: 'json'
+                }).then(function(data) {
+                    if (token.cancelled) return;  // newer request superseded this one
+                    var elapsed = ((performance.now() - start) / 1000).toFixed(1);
+                    if (data.originalBase64) page.querySelector('#filter-img-original').src = data.originalBase64;
+                    if (data.filteredBase64) page.querySelector('#filter-img-filtered').src = data.filteredBase64;
+                    label.textContent = 'Filtered — ' + preset;
+                    container.style.display = '';
+                    status.style.color = 'var(--success)';
+                    status.textContent = 'Preview generated in ' + elapsed + 's | Chain: ' + (data.filterChain || '(none)');
+                }).catch(function(err) {
+                    if (token.cancelled) return;
+                    status.style.color = 'var(--danger)';
+                    var msg = 'Filter preview failed';
+                    try { if (err && err.responseText) { var j = JSON.parse(err.responseText); if (j.message) msg = j.message; } } catch(e){}
+                    status.textContent = msg;
+                }).then(function() {
+                    if (token.cancelled) return;
+                    btn.disabled = false; btn.textContent = 'Preview Current Preset';
+                });
+            }
+
+            page.querySelector('#btn-filter-preview-current')?.addEventListener('click', function() {
+                runFilterPreviewCurrent(page, { auto: false });
+            });
+
+            // Auto-preview: re-render when the preset dropdown changes
+            // Debounced 300ms so rapid scrolling through options doesn't spam the server
+            page.querySelector('#ActiveFilterPreset')?.addEventListener('change', function() {
+                var itemId = page.querySelector('#filter-preview-item').value;
+                if (!itemId) return;  // silent if no media selected
+                // Only auto-preview if the Live Filter Preview container is visible (user is looking at Filters tab)
+                var filtersTab = page.querySelector('.upscaler-tab[data-tab="filters"]');
+                if (!filtersTab || !filtersTab.classList.contains('active')) return;
+                if (_filterPreviewDebounce) clearTimeout(_filterPreviewDebounce);
+                _filterPreviewDebounce = setTimeout(function() {
+                    runFilterPreviewCurrent(page, { auto: true, silent: true });
+                }, 300);
+            });
+
+            // ===== Face Restore (v1.6.1.7) =====
+            function updateFaceRestoreUI() {
+                var enabled = page.querySelector('#EnableFaceRestore').checked;
+                var opts = page.querySelector('#face-restore-options');
+                opts.style.opacity = enabled ? '1' : '0.5';
+                opts.style.pointerEvents = enabled ? '' : 'none';
+            }
+            page.querySelector('#EnableFaceRestore')?.addEventListener('change', updateFaceRestoreUI);
+            updateFaceRestoreUI();
+
+            // Face-restore slider display updaters
+            var faceMaxSlider = page.querySelector('#FaceRestoreMaxPerFrame');
+            var faceMaxDisplay = page.querySelector('#val-face-max');
+            if (faceMaxSlider && faceMaxDisplay) {
+                faceMaxSlider.addEventListener('input', function() { faceMaxDisplay.textContent = faceMaxSlider.value; });
+            }
+            var faceMaxwSlider = page.querySelector('#FaceRestoreMaxWidth');
+            var faceMaxwDisplay = page.querySelector('#val-face-maxw');
+            if (faceMaxwSlider && faceMaxwDisplay) {
+                faceMaxwSlider.addEventListener('input', function() {
+                    faceMaxwDisplay.textContent = faceMaxwSlider.value === '0' ? 'always' : faceMaxwSlider.value;
+                });
+            }
+
+            function refreshFaceRestoreStatus() {
+                var statusEl = page.querySelector('#face-restore-status');
+                if (!statusEl) return;
+                ApiClient.ajax({
+                    type: 'GET',
+                    url: ApiClient.getUrl('Upscaler/face-restore/status'),
+                    dataType: 'json'
+                }).then(function(data) {
+                    if (!data) { statusEl.textContent = 'Status: no response'; return; }
+                    if (data.error || data.available === false) {
+                        statusEl.style.color = '#94a3b8';
+                        statusEl.textContent = 'Status: AI service not connected (face restore requires Docker backend)';
+                        return;
+                    }
+                    if (data.model_loaded) {
+                        statusEl.style.color = 'var(--success)';
+                        statusEl.textContent = 'Loaded: ' + (data.current_model || '?') +
+                            ' | ' + (data.input_size || 512) + 'x' + (data.input_size || 512) +
+                            ' | providers: ' + (data.providers || []).join(', ');
+                    } else {
+                        statusEl.style.color = 'var(--text-muted)';
+                        statusEl.textContent = 'No face-restore model loaded. Click "Load Face Model" to begin.';
+                    }
+                }).catch(function() {
+                    statusEl.style.color = '#94a3b8';
+                    statusEl.textContent = 'Status: AI service unreachable';
+                });
+            }
+
+            page.querySelector('#btn-face-restore-load')?.addEventListener('click', function() {
+                var btn = this;
+                var model = page.querySelector('#FaceRestoreModel').value || 'gfpgan-v1.4';
+                var statusEl = page.querySelector('#face-restore-status');
+                btn.disabled = true;
+                statusEl.style.color = 'var(--warning)';
+                statusEl.textContent = 'Loading ' + model + ' (may download ~300MB on first use)...';
+                ApiClient.ajax({
+                    type: 'POST',
+                    url: ApiClient.getUrl('Upscaler/face-restore/load') + '?model_name=' + encodeURIComponent(model),
+                    dataType: 'json',
+                    timeout: 600000  // 10 min for first-time download
+                }).then(function() { refreshFaceRestoreStatus(); })
+                  .catch(function(err) {
+                      statusEl.style.color = 'var(--danger)';
+                      var msg = 'Load failed';
+                      try { var j = JSON.parse(err.responseText); if (j.detail) msg = j.detail; } catch(e) {}
+                      statusEl.textContent = msg;
+                  })
+                  .then(function() { btn.disabled = false; });
+            });
+
+            page.querySelector('#btn-face-restore-unload')?.addEventListener('click', function() {
+                var btn = this;
+                btn.disabled = true;
+                ApiClient.ajax({
+                    type: 'POST',
+                    url: ApiClient.getUrl('Upscaler/face-restore/unload'),
+                    dataType: 'json'
+                }).then(function() { refreshFaceRestoreStatus(); })
+                  .catch(function() {})
+                  .then(function() { btn.disabled = false; });
+            });
+
+            page.querySelector('#btn-face-restore-preview')?.addEventListener('click', function() {
+                var btn = this;
+                var itemId = page.querySelector('#filter-preview-item').value;
+                if (!itemId) { showToast('Select a media item in the Live Filter Preview dropdown first', '#fbbf24'); return; }
+                btn.disabled = true; btn.textContent = 'Running...';
+                var statusEl = page.querySelector('#face-restore-status');
+                statusEl.style.color = 'var(--warning)';
+                statusEl.textContent = 'Extracting frame and running face restore...';
+
+                // Use existing filter-preview endpoint to get a frame (preset=none), then pipe to face-restore
+                ApiClient.ajax({
+                    type: 'GET',
+                    url: ApiClient.getUrl('Upscaler/filter-preview/frame/' + itemId + '?preset=none'),
+                    dataType: 'json'
+                }).then(function(data) {
+                    if (!data.originalBase64) throw new Error('No frame returned');
+                    page.querySelector('#face-img-before').src = data.originalBase64;
+                    // Convert base64 data URL to blob, POST to face-restore/frame
+                    var base64 = data.originalBase64.split(',')[1];
+                    var bin = atob(base64);
+                    var bytes = new Uint8Array(bin.length);
+                    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                    var blob = new Blob([bytes], { type: 'image/jpeg' });
+                    return fetch(ApiClient.getUrl('Upscaler/face-restore/frame'), {
+                        method: 'POST',
+                        body: blob,
+                        headers: ApiClient.getRequestHeaders ? ApiClient.getRequestHeaders() : {}
+                    });
+                }).then(function(resp) {
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    var faces = resp.headers.get('X-Face-Count') || '?';
+                    var dur = resp.headers.get('X-Duration-Ms') || '?';
+                    page.querySelector('#face-img-after-label').textContent = 'After (faces detected: ' + faces + ', ' + dur + 'ms)';
+                    return resp.blob();
+                }).then(function(blob) {
+                    var reader = new FileReader();
+                    reader.onload = function() {
+                        page.querySelector('#face-img-after').src = reader.result;
+                        page.querySelector('#face-restore-preview-container').style.display = '';
+                        statusEl.style.color = 'var(--success)';
+                        statusEl.textContent = 'Face restore preview complete.';
+                    };
+                    reader.readAsDataURL(blob);
+                }).catch(function(err) {
+                    statusEl.style.color = 'var(--danger)';
+                    statusEl.textContent = 'Face restore preview failed: ' + (err.message || 'unknown error');
+                }).then(function() {
+                    btn.disabled = false; btn.textContent = 'Preview on Selected Media';
+                });
+            });
+
+            // Auto-refresh face-restore status on Filters tab activation
+            var filtersTabBtn = page.querySelector('.upscaler-tab[data-tab="filters"]');
+            if (filtersTabBtn) {
+                filtersTabBtn.addEventListener('click', function() { setTimeout(refreshFaceRestoreStatus, 200); });
+            }
+            refreshFaceRestoreStatus();
+
+            // Live Filter Preview — run all presets on a real video frame, sequential
+            page.querySelector('#btn-filter-preview-all')?.addEventListener('click', function() {
+                var itemId = page.querySelector('#filter-preview-item').value;
+                if (!itemId) { showToast('Please select an item', '#fbbf24'); return; }
+                var presets = ['none', 'cinematic', 'vintage', 'vivid', 'noir', 'warm', 'cool', 'hdr-pop'];
+                var status = page.querySelector('#filter-preview-status');
+                var container = page.querySelector('#filter-preview-container');
+                var allResults = page.querySelector('#filter-preview-all-results');
+                var btn = page.querySelector('#btn-filter-preview-all');
+                btn.disabled = true; btn.textContent = 'Running...';
+                container.style.display = 'none';
+                allResults.style.display = 'none';
+                allResults.innerHTML = '';
+                status.style.color = 'var(--warning)';
+                var start = performance.now();
+                var idx = 0;
+                function runNext() {
+                    if (idx >= presets.length) {
+                        var total = ((performance.now() - start) / 1000).toFixed(1);
+                        status.style.color = 'var(--success)';
+                        status.textContent = 'All ' + presets.length + ' presets rendered in ' + total + 's';
+                        allResults.style.display = '';
+                        btn.disabled = false; btn.textContent = 'Preview All Presets';
+                        return;
+                    }
+                    var preset = presets[idx++];
+                    status.textContent = 'Rendering preset ' + idx + '/' + presets.length + ': ' + preset + '...';
+                    ApiClient.ajax({
+                        type: 'GET',
+                        url: ApiClient.getUrl('Upscaler/filter-preview/frame/' + itemId + '?preset=' + encodeURIComponent(preset)),
+                        dataType: 'json'
+                    }).then(function(data) {
+                        var card = document.createElement('div');
+                        card.style.cssText = 'display:inline-block;width:23%;margin:0.3%;vertical-align:top;text-align:center;';
+                        card.innerHTML =
+                            '<div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.2rem;text-transform:capitalize;">' + esc(preset) + '</div>' +
+                            '<img src="' + (data.filteredBase64 || '') + '" style="max-width:100%;border-radius:4px;" />' +
+                            '<div style="font-size:0.65rem;color:var(--text-muted);margin-top:0.2rem;font-family:monospace;word-break:break-all;">' + esc(data.filterChain || '(none)') + '</div>';
+                        allResults.appendChild(card);
+                        runNext();
+                    }).catch(function() {
+                        var card = document.createElement('div');
+                        card.style.cssText = 'display:inline-block;width:23%;margin:0.3%;vertical-align:top;text-align:center;color:var(--danger);';
+                        card.innerHTML = '<div style="font-size:0.75rem;">' + esc(preset) + ' — failed</div>';
+                        allResults.appendChild(card);
+                        runNext();
+                    });
+                }
+                runNext();
             });
 
             page.querySelector('#btn-compare').addEventListener('click', function() {
