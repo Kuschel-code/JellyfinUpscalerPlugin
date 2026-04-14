@@ -1,4 +1,4 @@
-// AI Upscaler Plugin - Player Integration v1.6.1.7
+// AI Upscaler Plugin - Player Integration v1.6.1.8
 // Global script injection (loaded via index.html like Intro Skipper)
 // Compatible with Jellyfin 10.11+
 
@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.6.1.7';
+    const PLUGIN_VERSION = '1.6.1.8';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -858,8 +858,29 @@
         quickSetModel: function(model) {
             var self = this;
             this.showPlayerNotification('Loading model: ' + model + '...', 'info');
+            // Close menu immediately so toast is visible
+            var menu = document.querySelector('#aiUpscalerQuickMenu');
+            if (menu) menu.remove();
+            this._cleanupMenu();
+
+            // Step 1: Persist selection in plugin config
             this.updatePluginConfig({ Model: model }).then(function() {
-                // If real-time upscaling is currently active, restart it with the new model
+                // Step 2: Tell the AI service to actually load the model weights
+                // (this is the call that makes "Loading..." → "Loaded" meaningful)
+                var loadUrl = ApiClient.getUrl('Upscaler/models/load') +
+                    '?model_name=' + encodeURIComponent(model);
+                return fetch(loadUrl, {
+                    method: 'POST',
+                    headers: { 'X-Emby-Authorization': ApiClient.getRequestHeader ? ApiClient.getRequestHeader() : '' },
+                    credentials: 'include'
+                }).then(function(r) {
+                    if (!r.ok) {
+                        return r.text().then(function(t) { throw new Error('HTTP ' + r.status + ': ' + (t || 'model load failed')); });
+                    }
+                    return r.json().catch(function() { return {}; });
+                });
+            }).then(function(result) {
+                // Step 3: If a video is currently playing, (re)start real-time upscaling with the new model
                 if (RealtimeUpscaler._active) {
                     var bench = RealtimeUpscaler._benchmarkResult;
                     RealtimeUpscaler.stop();
@@ -867,23 +888,18 @@
                     if (video) {
                         self.getPluginConfig().then(function(cfg) {
                             RealtimeUpscaler.start(video, cfg, bench);
-                            self.showPlayerNotification('Model loaded: ' + model, 'success');
                         });
-                    } else {
-                        self.showPlayerNotification('Model set: ' + model + ' (play a video to activate)', 'success');
                     }
                 } else {
-                    // Not running — start it now so the selection actually takes effect
-                    self.startRealtimeUpscaling();
-                    self.showPlayerNotification('Model loaded: ' + model, 'success');
+                    var video = self.findVideoElement();
+                    if (video) self.startRealtimeUpscaling();
                 }
+                self.showPlayerNotification('Model loaded: ' + model, 'success');
             }).catch(function(err) {
                 console.error('AI Upscaler: quickSetModel failed', err);
-                self.showPlayerNotification('Failed to load model: ' + model, 'error');
+                var msg = (err && err.message) ? err.message : 'unknown error';
+                self.showPlayerNotification('Failed to load ' + model + ': ' + msg, 'error');
             });
-            var menu = document.querySelector('#aiUpscalerQuickMenu');
-            if (menu) menu.remove();
-            this._cleanupMenu();
         },
 
         setScale: function(scale) {
