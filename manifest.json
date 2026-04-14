@@ -13,7 +13,7 @@
         "changelog": "v1.6.1.7: AI Face Restoration \u2014 GFPGAN v1.4 + CodeFormer integration with OpenCV Haar face detection, feathered alpha-blend paste-back, configurable max-faces & resolution guard. 8 new camera-style filter presets (Sepia, Pastel, Cyberpunk, Drama, Soft Glow, Sharp HD, Retro Game, Teal & Orange). Live Filter Preview auto-updates on preset dropdown change (300ms debounce). Friendly N/A hints for multi-frame / interpolation / Vulkan models in single-frame bench. Docker service synced to 1.6.1.7 with /face-restore/* endpoints.",
         "targetAbi": "10.11.8.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.7/jellyfin-ai-upscaler-plugin-1.6.1.7.zip",
-        "checksum": "505ebb52f296add31d7772d53e11581f",
+        "checksum": "96dac47b2297cdd235ff5a29c57250f6",
         "timestamp": "2026-04-14T02:25:00.000Z"
       },
       {

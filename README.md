@@ -8,13 +8,13 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker6 / v1.5.6.0):**
-*   `kuscheltier/jellyfin-ai-upscaler:docker6` (NVIDIA CUDA + cuDNN 9)
-*   `kuscheltier/jellyfin-ai-upscaler:docker6-amd` (AMD ROCm)
-*   `kuscheltier/jellyfin-ai-upscaler:docker6-intel` (Intel Arc/iGPU OpenVINO)
-*   `kuscheltier/jellyfin-ai-upscaler:docker6-apple` (macOS Apple Silicon)
-*   `kuscheltier/jellyfin-ai-upscaler:docker6-vulkan` (Vulkan/ncnn — AMD pre-RDNA2, Intel iGPU)
-*   `kuscheltier/jellyfin-ai-upscaler:docker6-cpu` (CPU Only)
+**Docker Images (docker6.1 / v1.6.1.7):**
+*   `kuscheltier/jellyfin-ai-upscaler:docker6.1` (NVIDIA CUDA + cuDNN 9)
+*   `kuscheltier/jellyfin-ai-upscaler:docker6.1-amd` (AMD ROCm)
+*   `kuscheltier/jellyfin-ai-upscaler:docker6.1-intel` (Intel Arc/iGPU OpenVINO)
+*   `kuscheltier/jellyfin-ai-upscaler:docker6.1-apple` (macOS Apple Silicon)
+*   `kuscheltier/jellyfin-ai-upscaler:docker6.1-vulkan` (Vulkan/ncnn — AMD pre-RDNA2, Intel iGPU)
+*   `kuscheltier/jellyfin-ai-upscaler:docker6.1-cpu` (CPU Only)
 
 **Report bugs:** [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 
@@ -107,7 +107,7 @@ docker run -d \
   --gpus all \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:docker6
+  kuscheltier/jellyfin-ai-upscaler:docker6.1
 ```
 
 **Intel GPU (Arc / Iris):**
@@ -118,7 +118,7 @@ docker run -d \
   --group-add=render \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:docker6-intel
+  kuscheltier/jellyfin-ai-upscaler:docker6.1-intel
 ```
 
 **AMD GPU (ROCm):**
@@ -128,7 +128,7 @@ docker run -d \
   --device=/dev/kfd --device=/dev/dri \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:docker6-amd
+  kuscheltier/jellyfin-ai-upscaler:docker6.1-amd
 ```
 
 **Vulkan GPU (AMD RX 5700, Intel iGPU, etc.):**
@@ -139,7 +139,7 @@ docker run -d \
   --group-add=render \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:docker6-vulkan
+  kuscheltier/jellyfin-ai-upscaler:docker6.1-vulkan
 ```
 
 **CPU Only (any platform):**
@@ -148,7 +148,7 @@ docker run -d \
   --name jellyfin-ai-upscaler \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:docker6-cpu
+  kuscheltier/jellyfin-ai-upscaler:docker6.1-cpu
 ```
 
 Verify the container is running: `curl http://YOUR_SERVER_IP:5000/health`
@@ -274,12 +274,12 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 | Tag | GPU | Use Case |
 |-----|-----|----------|
-| `:docker6` | NVIDIA CUDA 12.8 + TensorRT | RTX 50/40/30/20, GTX 16/10 |
-| `:docker6-amd` | AMD ROCm | RX 7000, RX 6000 |
-| `:docker6-intel` | Intel OpenVINO | Arc A-Series, Iris Xe |
-| `:docker6-apple` | ARM64 Optimized | Apple M1–M5 (Docker=CPU, native=CoreML) |
-| `:docker6-vulkan` | Vulkan (ncnn) | AMD pre-RDNA2, Intel iGPU, any Vulkan GPU |
-| `:docker6-cpu` | Multi-threaded CPU | Any platform |
+| `:docker6.1` | NVIDIA CUDA 12.8 + TensorRT | RTX 50/40/30/20, GTX 16/10 |
+| `:docker6.1-amd` | AMD ROCm | RX 7000, RX 6000 |
+| `:docker6.1-intel` | Intel OpenVINO | Arc A-Series, Iris Xe |
+| `:docker6.1-apple` | ARM64 Optimized | Apple M1–M5 (Docker=CPU, native=CoreML) |
+| `:docker6.1-vulkan` | Vulkan (ncnn) | AMD pre-RDNA2, Intel iGPU, any Vulkan GPU |
+| `:docker6.1-cpu` | Multi-threaded CPU | Any platform |
 
 ---
 
@@ -502,7 +502,7 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 - **Manifests**: Normalized 11+ uppercase MD5 checksums to lowercase
 - **Manifests**: Fixed wrong changelog for v1.5.1.0 in repository-simple.json
 - **Manifests**: Aligned `targetAbi` to 10.11.0.0 in publish_plugin/meta.json
-- **Docker**: Updated docker-ai-service README (40+ models, docker6 tags)
+- **Docker**: Updated docker-ai-service README (40+ models, docker6.1 tags)
 
 ### v1.5.5.1 (Deepscan — Security & Quality Hardening)
 - **Security**: XSS prevention in Docker Web UI (escapeHtml + textContent)
@@ -533,7 +533,7 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 - **Updated**: onnxruntime bounds pinned `<2.0.0` across all 6 requirements files
 - **Updated**: onnxruntime-gpu upper bound raised to `<1.25.0`
 - **Docker**: .dockerignore added, resource limits in compose, version key removed
-- **Docker**: All 6 images tagged as docker6
+- **Docker**: All 6 images tagged as docker6.1
 
 ### v1.5.5.0 (Critical Bug Fixes)
 - **Fixed**: Circuit breaker half-open bypass — probe no longer lets ALL requests through
@@ -783,15 +783,15 @@ docker run --rm --gpus all nvidia/cuda:12.2.2-base-ubuntu22.04 nvidia-smi
 ```
 
 ### GPU not detected
-- **NVIDIA RTX 5000 (Blackwell)**: Requires CUDA 12.8+ — use latest `:docker6` image. Compute capability sm_120 auto-detected.
+- **NVIDIA RTX 5000 (Blackwell)**: Requires CUDA 12.8+ — use latest `:docker6.1` image. Compute capability sm_120 auto-detected.
 - **NVIDIA RTX 4000/3000/2000**: Install `nvidia-container-toolkit`, use `--gpus all`. TensorRT is skipped by default — set `SKIP_TENSORRT=false` if your GPU supports it.
-- **Intel**: Use `:docker6-intel` tag with `--device=/dev/dri --group-add=render`. Check diagnostics: `curl http://YOUR_SERVER_IP:5000/gpu-verify`
-- **AMD**: Use `:docker6-amd` tag with `--device=/dev/kfd --device=/dev/dri`
+- **Intel**: Use `:docker6.1-intel` tag with `--device=/dev/dri --group-add=render`. Check diagnostics: `curl http://YOUR_SERVER_IP:5000/gpu-verify`
+- **AMD**: Use `:docker6.1-amd` tag with `--device=/dev/kfd --device=/dev/dri`
 - **Apple M1–M5**: Docker on macOS runs CPU-only. For GPU acceleration via CoreML/Neural Engine, use the native install:
   ```bash
   cd docker-ai-service && chmod +x install-native-macos.sh && ./install-native-macos.sh
   ```
-- **Windows Docker Desktop**: GPU passthrough not supported — use `:docker6-cpu`
+- **Windows Docker Desktop**: GPU passthrough not supported — use `:docker6.1-cpu`
 
 ### Proxmox LXC GPU Passthrough
 ```bash
