@@ -1,4 +1,4 @@
-// AI Upscaler Plugin - Player Integration v1.5.5.4
+// AI Upscaler Plugin - Player Integration v1.6.1.7
 // Global script injection (loaded via index.html like Intro Skipper)
 // Compatible with Jellyfin 10.11+
 
@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.5.5.4';
+    const PLUGIN_VERSION = '1.6.1.7';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -641,16 +641,13 @@
         },
 
         updatePluginConfig: function(updates) {
-            if (window.ApiClient) {
-                this.getPluginConfig().then(function(config) {
-                    var newConfig = Object.assign({}, config, updates);
-                    PlayerIntegration._cachedConfig = newConfig;
-                    PlayerIntegration._configCacheTime = Date.now();
-                    return window.ApiClient.updatePluginConfiguration(PLUGIN_ID, newConfig);
-                }).catch(function(err) {
-                    console.error('Failed to save plugin config:', err);
-                });
-            }
+            if (!window.ApiClient) return Promise.reject(new Error('ApiClient unavailable'));
+            return this.getPluginConfig().then(function(config) {
+                var newConfig = Object.assign({}, config, updates);
+                PlayerIntegration._cachedConfig = newConfig;
+                PlayerIntegration._configCacheTime = Date.now();
+                return window.ApiClient.updatePluginConfiguration(PLUGIN_ID, newConfig);
+            });
         },
 
         // Menu management
@@ -859,8 +856,31 @@
         },
 
         quickSetModel: function(model) {
-            this.updatePluginConfig({ Model: model });
-            this.showPlayerNotification('Model: ' + model, 'success');
+            var self = this;
+            this.showPlayerNotification('Loading model: ' + model + '...', 'info');
+            this.updatePluginConfig({ Model: model }).then(function() {
+                // If real-time upscaling is currently active, restart it with the new model
+                if (RealtimeUpscaler._active) {
+                    var bench = RealtimeUpscaler._benchmarkResult;
+                    RealtimeUpscaler.stop();
+                    var video = self.findVideoElement();
+                    if (video) {
+                        self.getPluginConfig().then(function(cfg) {
+                            RealtimeUpscaler.start(video, cfg, bench);
+                            self.showPlayerNotification('Model loaded: ' + model, 'success');
+                        });
+                    } else {
+                        self.showPlayerNotification('Model set: ' + model + ' (play a video to activate)', 'success');
+                    }
+                } else {
+                    // Not running — start it now so the selection actually takes effect
+                    self.startRealtimeUpscaling();
+                    self.showPlayerNotification('Model loaded: ' + model, 'success');
+                }
+            }).catch(function(err) {
+                console.error('AI Upscaler: quickSetModel failed', err);
+                self.showPlayerNotification('Failed to load model: ' + model, 'error');
+            });
             var menu = document.querySelector('#aiUpscalerQuickMenu');
             if (menu) menu.remove();
             this._cleanupMenu();
