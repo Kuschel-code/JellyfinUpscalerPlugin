@@ -63,6 +63,11 @@ $ForbiddenPatterns = @(
 $fail = $false
 $tmp = Join-Path $env:TEMP ("verify-release-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+# $env:TEMP on Windows returns the 8.3 short path (e.g. C:\Users\KUSCHE~1\...),
+# but Get-ChildItem.FullName returns the resolved long-path form. That length
+# mismatch silently broke Substring-based relative-path extraction here. Neither
+# Resolve-Path nor Convert-Path expand 8.3 — only Get-Item.FullName does.
+$tmp = (Get-Item -LiteralPath $tmp).FullName
 
 try {
     Write-Host "=== Fetching live manifest ===" -ForegroundColor Cyan
@@ -111,10 +116,11 @@ try {
         $unzipDir = Join-Path $tmp ($zip.BaseName + "-unzipped")
         New-Item -ItemType Directory -Force -Path $unzipDir | Out-Null
         Expand-Archive -Path $zip.FullName -DestinationPath $unzipDir -Force
+        $unzipDir = (Get-Item -LiteralPath $unzipDir).FullName
 
-        $entries = Get-ChildItem -Path $unzipDir -Recurse -File | ForEach-Object {
+        $entries = @(Get-ChildItem -Path $unzipDir -Recurse -File | ForEach-Object {
             $_.FullName.Substring($unzipDir.Length + 1).Replace("\", "/")
-        }
+        })
 
         # Forbidden artifact check
         foreach ($pat in $ForbiddenPatterns) {

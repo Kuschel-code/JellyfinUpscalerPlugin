@@ -1,5 +1,12 @@
-name: Build and Release Plugin
+name: Build Plugin (CI)
 
+# Note: Auto-release on tag push was removed after v1.6.1.11 / v1.6.1.12 shipped
+# corrupt ZIPs. CI packaged `./publish/*` unfiltered (including .pdb, .deps.json,
+# test-coverage DLLs from `dotnet test`) and clobbered the hand-curated 6-file
+# plugin ZIP via softprops/action-gh-release. Releases are now always cut
+# manually: `gh release create vX.Y.Z release-stage-X.Y.Z.zip`, then
+# `pwsh Scripts/verify-release.ps1` to SHA-round-trip-validate. Keeping CI here
+# for build + test verification only.
 on:
   push:
     tags:
@@ -54,71 +61,5 @@ jobs:
         id: checksum
         run: |
           CHECKSUM=$(sha256sum "${ARCHIVE_NAME}" | awk '{print $1}')
-          echo "SHA256_CHECKSUM=${CHECKSUM}" >> $GITHUB_ENV
           echo "Calculated SHA-256: ${CHECKSUM}"
-          
-      - name: Update manifest files
-        run: |
-          # Update manifest.json (using shell env vars to avoid GHA expression injection)
-          jq --arg version "${PLUGIN_VERSION}" \
-             --arg checksum "${SHA256_CHECKSUM}" \
-             --arg url "https://github.com/${{ github.repository }}/releases/download/v${PLUGIN_VERSION}/${ARCHIVE_NAME}" \
-             '.versions[0].version = $version | .versions[0].checksum = $checksum | .versions[0].sourceUrl = $url | .versions[0].timestamp = (now | strftime("%Y-%m-%dT%H:%M:%S.000Z"))' \
-             manifest.json > manifest.tmp && mv manifest.tmp manifest.json
-
-          # Update repository-jellyfin.json
-          jq --arg version "${PLUGIN_VERSION}" \
-             --arg checksum "${SHA256_CHECKSUM}" \
-             --arg url "https://github.com/${{ github.repository }}/releases/download/v${PLUGIN_VERSION}/${ARCHIVE_NAME}" \
-             '.[0].versions[0].version = $version | .[0].versions[0].checksum = $checksum | .[0].versions[0].sourceUrl = $url | .[0].versions[0].timestamp = (now | strftime("%Y-%m-%dT%H:%M:%S.000Z"))' \
-             repository-jellyfin.json > repository-jellyfin.tmp && mv repository-jellyfin.tmp repository-jellyfin.json
-
-          # Update repository-simple.json
-          jq --arg version "${PLUGIN_VERSION}" \
-             --arg checksum "${SHA256_CHECKSUM}" \
-             --arg url "https://github.com/${{ github.repository }}/releases/download/v${PLUGIN_VERSION}/${ARCHIVE_NAME}" \
-             '.[0].versions[0].version = $version | .[0].versions[0].checksum = $checksum | .[0].versions[0].sourceUrl = $url | .[0].versions[0].timestamp = (now | strftime("%Y-%m-%dT%H:%M:%S.000Z"))' \
-             repository-simple.json > repository-simple.tmp && mv repository-simple.tmp repository-simple.json
-             
-          cat manifest.json
-          echo "---"
-          cat repository-jellyfin.json
-          
-      - name: Commit updated manifests
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add manifest.json repository-jellyfin.json repository-simple.json
-          git diff --staged --quiet || git commit -m "chore: Update manifests for v${PLUGIN_VERSION} [skip ci]"
-          # Only push manifests if the tagged commit is on main
-          if git merge-base --is-ancestor HEAD origin/main 2>/dev/null; then
-            git push origin HEAD:main || echo "Manifest push skipped (already updated)"
-          else
-            echo "Skipping manifest push: tagged commit is not on main branch"
-          fi
-          
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
-        with:
-          files: ${{ env.ARCHIVE_NAME }}
-          body: |
-            ## JellyfinUpscalerPlugin v${{ env.PLUGIN_VERSION }}
-            
-            ### 📦 Installation
-            1. Download `${{ env.ARCHIVE_NAME }}`
-            2. Extract to Jellyfin's plugin directory
-            3. Restart Jellyfin
-            
-            ### 🔐 Checksum
-            **SHA-256**: `${{ env.SHA256_CHECKSUM }}`
-            
-            ### 📝 Manifest URLs
-            - **Jellyfin Format**: `https://raw.githubusercontent.com/${{ github.repository }}/main/repository-jellyfin.json`
-            - **Simple Format**: `https://raw.githubusercontent.com/${{ github.repository }}/main/repository-simple.json`
-            
-            ### 🚀 What's New
-            See [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/README.md) for details.
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "(CI-built ZIP is intentionally NOT published. See workflow header for rationale.)"
