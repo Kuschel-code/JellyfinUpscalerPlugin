@@ -67,7 +67,7 @@ CACHE_DIR = Path(os.getenv("CACHE_DIR", "/app/cache"))
 STATIC_DIR = Path(os.getenv("STATIC_DIR", "/app/static"))
 
 # Version
-VERSION = "1.6.1.11"
+VERSION = "1.6.1.12"
 
 # Global state
 class AppState:
@@ -714,14 +714,14 @@ AVAILABLE_MODELS = {
         "available": True
     },
     "apisr-x3": {
-        "name": "APISR x3 (General Quality)",
+        "name": "APISR x3 (General Quality) [self-host required]",
         "url": "https://huggingface.co/Xenova/3x_APISR_RRDB_GAN_generator-onnx/resolve/main/onnx/model.onnx",
         "scale": 3,
-        "description": "CVPR 2024 — general 3x for photos & video. Ideal for 720p to 1080p. ~25MB.",
+        "description": "CVPR 2024 — general 3x for photos & video. Ideal for 720p to 1080p. ~25MB. [Upstream Xenova repo gated — see docs/MODEL-HOSTING.md to self-host.]",
         "type": "onnx",
         "category": "nextgen",
         "model_type": "rrdb",
-        # Xenova repo returns 401 anonymously — gated or removed upstream. TODO: mirror to our own HF repo.
+        # Xenova repo returns 401 anonymously — gated or removed upstream. See docs/MODEL-HOSTING.md for self-hosting instructions.
         "available": False
     },
 
@@ -729,39 +729,39 @@ AVAILABLE_MODELS = {
     # === VIDEO SR Models (Multi-Frame) ===
     # ============================================================
     "edvr-m-x4": {
-        "name": "EDVR-M x4 (Video SR - 5 Frame)",
+        "name": "EDVR-M x4 (Video SR - 5 Frame) [self-host required]",
         "url": "https://huggingface.co/kuscheltier/jellyfin-vsr-models/resolve/main/edvr_m_x4.onnx",
         "scale": 4,
-        "description": "EDVR-M — Multi-frame video super-resolution. Uses 5 frames for temporal consistency. Best batch quality.",
+        "description": "EDVR-M — Multi-frame video super-resolution. Uses 5 frames for temporal consistency. Best batch quality. [Requires self-hosted ONNX export — see docs/MODEL-HOSTING.md]",
         "type": "onnx",
         "category": "video-sr",
         "model_type": "edvr",
         "input_frames": 5,
-        # Pending upload to kuscheltier/jellyfin-vsr-models HF repo — URL 404s until then.
+        # Multi-frame VSR has no public ONNX mirror. User must export from official PyTorch weights — see docs/MODEL-HOSTING.md.
         "available": False
     },
     "realbasicvsr-x4": {
-        "name": "RealBasicVSR x4 (Video SR - 5 Frame)",
+        "name": "RealBasicVSR x4 (Video SR - 5 Frame) [self-host required]",
         "url": "https://huggingface.co/kuscheltier/jellyfin-vsr-models/resolve/main/realbasicvsr_x4.onnx",
         "scale": 4,
-        "description": "RealBasicVSR — Recurrent VSR with optical flow (CVPR 2022). Best for real-world degraded video (VHS, DVD, streaming). ~50MB.",
+        "description": "RealBasicVSR — Recurrent VSR with optical flow (CVPR 2022). Best for real-world degraded video (VHS, DVD, streaming). ~50MB. [Requires self-hosted ONNX — see docs/MODEL-HOSTING.md]",
         "type": "onnx",
         "category": "video-sr",
         "model_type": "realbasicvsr",
         "input_frames": 5,
-        # Pending upload to kuscheltier/jellyfin-vsr-models HF repo — URL 404s until then.
+        # Multi-frame VSR has no public ONNX mirror. User must export from official PyTorch weights — see docs/MODEL-HOSTING.md.
         "available": False
     },
     "animesr-v2-x4": {
-        "name": "AnimeSR v2 x4 (Anime Video SR - 5 Frame)",
+        "name": "AnimeSR v2 x4 (Anime Video SR - 5 Frame) [self-host required]",
         "url": "https://huggingface.co/kuscheltier/jellyfin-vsr-models/resolve/main/animesr_v2_x4.onnx",
         "scale": 4,
-        "description": "AnimeSR v2 — Anime-specialized multi-frame VSR (NeurIPS 2022). Preserves line art and flat colors. ~30MB.",
+        "description": "AnimeSR v2 — Anime-specialized multi-frame VSR (NeurIPS 2022). Preserves line art and flat colors. ~30MB. [Requires self-hosted ONNX — see docs/MODEL-HOSTING.md]",
         "type": "onnx",
         "category": "video-sr",
         "model_type": "animesr",
         "input_frames": 5,
-        # Pending upload to kuscheltier/jellyfin-vsr-models HF repo — URL 404s until then.
+        # Multi-frame VSR has no public ONNX mirror. User must export from official PyTorch weights — see docs/MODEL-HOSTING.md.
         "available": False
     },
 
@@ -804,30 +804,41 @@ AVAILABLE_MODELS = {
 
     # ============================================================
     # === RIFE Models (Frame Interpolation) ===
+    # URLs point to yuvraj108c/rife-onnx — community ONNX exports of Practical-RIFE.
+    # All three variants verified live (HEAD 200) as of v1.6.1.12 release.
     # ============================================================
-    "rife-v4.6": {
-        "name": "RIFE v4.6 (Frame Interpolation)",
-        "url": "https://github.com/nihui/rife-ncnn-vulkan/releases/download/v0.0.0/rife-v4.6.onnx",
+    "rife-v4.7": {
+        "name": "RIFE v4.7 (Fast Frame Interpolation)",
+        "url": "https://huggingface.co/yuvraj108c/rife-onnx/resolve/main/rife47_ensemble_True_scale_1_sim.onnx",
         "scale": 1,
-        "description": "RIFE v4.6 — Real-Time Frame Interpolation (2x FPS). Generates intermediate frames between two input frames.",
+        "description": "RIFE v4.7 — Faster Frame Interpolation (2x FPS). Ensemble enabled, scale=1. Lighter model for real-time use. 21MB.",
         "type": "onnx",
         "category": "interpolation",
         "model_type": "rife",
         "input_frames": 2,
-        # GitHub release tag v0.0.0 is a placeholder — 404s. TODO: host ONNX export in our own release.
-        "available": False
+        "available": True
     },
-    "rife-v4.6-lite": {
-        "name": "RIFE v4.6 Lite (Fast Frame Interpolation)",
-        "url": "https://github.com/nihui/rife-ncnn-vulkan/releases/download/v0.0.0/rife-v4.6-lite.onnx",
+    "rife-v4.8": {
+        "name": "RIFE v4.8 (Balanced Frame Interpolation)",
+        "url": "https://huggingface.co/yuvraj108c/rife-onnx/resolve/main/rife48_ensemble_True_scale_1_sim.onnx",
         "scale": 1,
-        "description": "RIFE v4.6 Lite — Faster Frame Interpolation with slightly reduced quality. Good for real-time use.",
+        "description": "RIFE v4.8 — Balanced Frame Interpolation (2x FPS). Middle ground between v4.7 (fast) and v4.9 (quality). 21MB.",
         "type": "onnx",
         "category": "interpolation",
         "model_type": "rife",
         "input_frames": 2,
-        # GitHub release tag v0.0.0 is a placeholder — 404s. TODO: host ONNX export in our own release.
-        "available": False
+        "available": True
+    },
+    "rife-v4.9": {
+        "name": "RIFE v4.9 (Quality Frame Interpolation)",
+        "url": "https://huggingface.co/yuvraj108c/rife-onnx/resolve/main/rife49_ensemble_True_scale_1_sim.onnx",
+        "scale": 1,
+        "description": "RIFE v4.9 — Best-quality Real-Time Frame Interpolation (2x FPS). Ensemble enabled, scale=1. Recommended for film/anime. 21MB.",
+        "type": "onnx",
+        "category": "interpolation",
+        "model_type": "rife",
+        "input_frames": 2,
+        "available": True
     },
 
     # ============================================================
@@ -838,30 +849,46 @@ AVAILABLE_MODELS = {
     # each 512x512 crop, paste back with feathered-edge alpha blending.
     "gfpgan-v1.4": {
         "name": "GFPGAN v1.4 (Face Restore)",
-        "url": "https://huggingface.co/kuscheltier/jellyfin-vsr-models/resolve/main/gfpgan_v1.4.onnx",
+        "url": "https://huggingface.co/facefusion/models-3.0.0/resolve/main/gfpgan_1.4.onnx",
         "scale": 1,
-        "description": "GFPGAN v1.4 — Tencent ARC's face restoration GAN. Restores heavily degraded faces. 512x512 crops. Apache 2.0.",
+        "description": "GFPGAN v1.4 — Tencent ARC's face restoration GAN. Restores heavily degraded faces. 512x512 crops. Apache 2.0. Mirrored via facefusion/models-3.0.0. ~340MB.",
         "type": "onnx",
         "category": "face_restore",
         "model_type": "face_restore",
         "input_size": 512,
-        # Pending upload to kuscheltier/jellyfin-vsr-models HF repo — URL 401s until then.
-        "available": False
+        "available": True
     },
     "codeformer": {
         "name": "CodeFormer (Face Restore)",
-        "url": "https://huggingface.co/kuscheltier/jellyfin-vsr-models/resolve/main/codeformer.onnx",
+        "url": "https://huggingface.co/facefusion/models-3.0.0/resolve/main/codeformer.onnx",
         "scale": 1,
-        "description": "CodeFormer — Robust face restoration with transformer codebook. Good for severely degraded faces. 512x512. S-Lab License.",
+        "description": "CodeFormer — Robust face restoration with transformer codebook. Good for severely degraded faces. 512x512. S-Lab License. Mirrored via facefusion/models-3.0.0. ~377MB.",
         "type": "onnx",
         "category": "face_restore",
         "model_type": "face_restore",
         "input_size": 512,
-        # Pending upload to kuscheltier/jellyfin-vsr-models HF repo — URL 404s until then.
-        "available": False
+        "available": True
     },
 
 }
+
+
+# Backward-compatibility aliases — map legacy model keys (from saved user configs
+# in v1.6.1.11 and earlier) to their v1.6.1.12 replacements. Resolved in
+# _resolve_model_key() below so both old key + new key work transparently.
+MODEL_ALIASES: dict[str, str] = {
+    "rife-v4.6": "rife-v4.9",          # v1.6.1.11 rife-v4.6 pointed at a 404 placeholder; v4.9 is the quality successor
+    "rife-v4.6-lite": "rife-v4.7",     # v4.6-lite was the fast variant; v4.7 (smaller) is its replacement
+}
+
+
+def _resolve_model_key(model_name: str) -> str:
+    """Translate a legacy model key to its current canonical name.
+
+    Returns the aliased key when `model_name` is a known alias; otherwise
+    returns the input unchanged.
+    """
+    return MODEL_ALIASES.get(model_name, model_name)
 
 
 def _resolve_fp16_setting() -> bool:
@@ -2331,7 +2358,7 @@ def upscale_multiframe(frames: list) -> np.ndarray:
     return cv2.cvtColor(output, cv2.COLOR_RGB2BGR)
 
 
-def load_rife_model(model_name: str = "rife-v4.6") -> bool:
+def load_rife_model(model_name: str = "rife-v4.9") -> bool:
     """Load a RIFE interpolation model into memory using ONNX Runtime.
 
     Follows the same provider fallback chain as load_onnx_model but stores
@@ -3151,6 +3178,7 @@ async def list_models():
 async def download_model_endpoint(model_name: str = Form(...), request: Request = None):
     """Download a model."""
     _require_api_token(request)
+    model_name = _resolve_model_key(model_name)
     if model_name not in AVAILABLE_MODELS:
         raise HTTPException(status_code=404, detail=f"Model {model_name} not found")
     
@@ -3178,6 +3206,7 @@ async def load_model_endpoint(
 ):
     """Load a model into memory. Optionally specify GPU device index."""
     _require_api_token(request)
+    model_name = _resolve_model_key(model_name)
     if gpu_device_id is not None and (gpu_device_id < 0 or gpu_device_id > 99):
         raise HTTPException(status_code=400, detail="gpu_device_id must be 0-99")
 
@@ -4139,7 +4168,7 @@ async def interpolate_frames(request: Request):
     """Interpolate a new frame between two input frames using RIFE.
 
     Accepts multipart form with 'frame1' and 'frame2' as PNG images.
-    Optional 'model' string to select RIFE variant (default 'rife-v4.6').
+    Optional 'model' string to select RIFE variant (default 'rife-v4.9').
     Optional 'timestep' float (0.0-1.0, default 0.5 for midpoint).
     Returns the interpolated frame as PNG.
     """
@@ -4165,7 +4194,7 @@ async def interpolate_frames(request: Request):
     if not 0.0 <= timestep <= 1.0:
         raise HTTPException(status_code=400, detail="timestep must be between 0.0 and 1.0")
 
-    model_name = str(form.get("model", "rife-v4.6"))
+    model_name = _resolve_model_key(str(form.get("model", "rife-v4.9")))
     if model_name not in AVAILABLE_MODELS:
         raise HTTPException(status_code=400, detail=f"Unknown model: {model_name}")
     if AVAILABLE_MODELS[model_name].get("category") != "interpolation":

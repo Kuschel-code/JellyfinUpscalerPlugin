@@ -18,7 +18,7 @@ FROM python:3.12-slim-bookworm
 
 LABEL maintainer="Kuschel-code"
 LABEL description="AI Upscaler Service optimized for Apple Silicon (ARM64)"
-LABEL version="1.6.1.11"
+LABEL version="1.6.1.12"
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
