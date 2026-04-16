@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.6.1.7
+# Jellyfin AI Upscaler Plugin v1.6.1.11
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
@@ -8,13 +8,13 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker6.1 / v1.6.1.7):**
+**Docker Images (docker6.1 / v1.6.1.7 Docker base — plugin is independently versioned at v1.6.1.11):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker6.1` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker6.1-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker6.1-intel` (Intel Arc/iGPU OpenVINO)
 *   `kuscheltier/jellyfin-ai-upscaler:docker6.1-apple` (macOS Apple Silicon)
 *   `kuscheltier/jellyfin-ai-upscaler:docker6.1-vulkan` (Vulkan/ncnn — AMD pre-RDNA2, Intel iGPU)
-*   `kuscheltier/jellyfin-ai-upscaler:docker6.1-cpu` (CPU Only)
+*   `kuscheltier/jellyfin-ai-upscaler:docker6.1.1-cpu` (CPU Only — v1.6.1.11 tested)
 
 **Report bugs:** [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 
@@ -28,7 +28,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.6.1.7      │  │
+│  │  AI Upscaler Plugin v1.6.1.11     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -284,6 +284,39 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 ---
 
 ## Changelog
+
+### v1.6.1.11 (Auth-header + Elevation Hardening, Model Catalog Cleanup)
+
+Bugfix release — addresses auth regressions and broken model catalog entries found during end-to-end deep-scan of v1.6.1.10.
+
+**Model-name validation:**
+- Regex widened to `^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*$` — model IDs with dots (rife-v4.6, gfpgan-v1.4, rife-v4.6-lite) no longer return HTTP 400. Path traversal (`..`, leading/trailing dots) still blocked.
+
+**Docker model catalog:**
+- 9 models with unreachable upstream URLs flipped to `available: false` so the UI filters them instead of fast-failing: `nomos8k-hat-x4` (CPU EP can't run HAT ops), `apisr-x3` (HF 401), `edvr-m-x4`, `realbasicvsr-x4`, `animesr-v2-x4` (pending HF upload), `rife-v4.6`, `rife-v4.6-lite` (GitHub placeholder tag), `gfpgan-v1.4`, `codeformer` (pending HF upload).
+
+**Auth-header regressions in player-integration.js:**
+- Three raw `fetch()` calls that were silently 401-ing switched to `ApiClient.accessToken()` bearer header: `POST /Upscaler/models/load` (primary quick-menu action), `POST /Upscaler/upscale-frame` (realtime frame), `GET /Upscaler/benchmark-frame` (realtime benchmark). Same root cause as v1.6.1.10's `_fetchModelStates` fix.
+
+**Hardening:**
+- `GET /Upscaler/jobs` now requires `RequiresElevation` (was exposing active-job file paths to any authenticated user).
+- `Jellyfin.Controller` SDK pin bumped 10.11.6 → 10.11.8 to match `targetAbi`.
+- `docker-ai-service/app/main.py` `VERSION`: 1.6.1.7 → 1.6.1.11.
+- `Dockerfile.amd`, `Dockerfile.apple` `LABEL version`: 1.6.1.10 → 1.6.1.11.
+
+**Verification:** 22/22 unit tests pass; bulk-load live-tested on Jellyfin 10.11.8 — 30 of 30 available models load successfully.
+
+### v1.6.1.10 (Quick-menu Model States Auth Fix)
+
+Hotfix — `_fetchModelStates` in player-integration.js was returning 401 because `ApiClient.getRequestHeader()` (singular method name) does not exist in current apiclient builds. Switched to `ApiClient.ajax` which auto-injects `X-Emby-Token`. Menu summary now shows accurate "N of 42 models ready" counter.
+
+### v1.6.1.9 (Redesigned Player Quick-Menu + API Token Plumbing)
+
+Glassmorphic 380px player menu with filter chips (All/Downloaded/Recommended), live summary strip, per-model download-state icons, in-place spinner during load, smarter failure messaging. New `AiServiceApiToken` plugin config + `X-Api-Token` auth handler auto-injects the shared secret on every AI service call (fixes 403 errors on `/models/download` and `/models/load`).
+
+### v1.6.1.8 (Quick-menu Model Picker Actually Loads)
+
+Quick-menu now calls `POST /Upscaler/models/load` to warm the AI service, not just persist the config. Error toasts now surface real HTTP/service errors instead of a generic message.
 
 ### v1.6.1.7 (AI Face Restoration + 8 New Filter Presets + Auto-Preview)
 

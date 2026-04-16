@@ -10,11 +10,11 @@
     "versions": [
       {
         "version": "1.6.1.11",
-        "changelog": "v1.6.1.11: (1) Model-name regex widened to allow dots as separators (rife-v4.6, gfpgan-v1.4, rife-v4.6-lite no longer 400). Path traversal still blocked. (2) Docker catalog: 9 broken/pending models flipped to available:false so the UI filters them out instead of fast-failing. (3) Fixed 3 remaining raw fetch() calls in player-integration.js that were silently 401-ing (Upscaler/models/load, /upscale-frame, /benchmark-frame) — now use ApiClient.accessToken() bearer header. Bulk-load verified: 30/30 available models load.",
+        "changelog": "v1.6.1.11: (1) Model-name regex widened to allow dots as separators (rife-v4.6, gfpgan-v1.4, rife-v4.6-lite no longer 400). Path traversal still blocked. (2) Docker catalog: 9 broken/pending models flipped to available:false so the UI filters them out instead of fast-failing. (3) Fixed 3 remaining raw fetch() calls in player-integration.js that were silently 401-ing (Upscaler/models/load, /upscale-frame, /benchmark-frame) — now use ApiClient.accessToken() bearer header. (4) GET /Upscaler/jobs now requires RequiresElevation — was leaking active-job file paths to any authenticated user. (5) Jellyfin.Controller SDK pin bumped 10.11.6 → 10.11.8 to match targetAbi. Bulk-load verified: 30/30 available models load.",
         "targetAbi": "10.11.8.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.11/JellyfinUpscalerPlugin-v1.6.1.11.zip",
-        "checksum": "3f514b60752724b70fa4f56f193f4c5eae226845a7199ccbfd5bd96c378ada31",
-        "timestamp": "2026-04-16T18:30:00.000Z"
+        "checksum": "db3409c4df0b4d7db0a81f42b5bc910b75b6f8d52b5d921bec87403dc34781cb",
+        "timestamp": "2026-04-16T18:45:00.000Z"
       },
       {
         "version": "1.5.6.0",

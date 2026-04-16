@@ -743,6 +743,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpGet("jobs")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetActiveJobs()
         {
