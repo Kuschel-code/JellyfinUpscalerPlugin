@@ -1,4 +1,4 @@
-// AI Upscaler Plugin - Player Integration v1.6.1.9
+// AI Upscaler Plugin - Player Integration v1.6.1.11
 // Global script injection (loaded via index.html like Intro Skipper)
 // Compatible with Jellyfin 10.11+
 
@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.6.1.9';
+    const PLUGIN_VERSION = '1.6.1.11';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -346,6 +346,7 @@
 
                 fetch(ApiClient.getUrl('Upscaler/upscale-frame'), {
                     method: 'POST',
+                    headers: { 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' },
                     body: blob
                 }).then(function(resp) {
                     if (resp.status === 503) {
@@ -684,12 +685,13 @@
         },
 
         _fetchModelStates: function() {
-            return fetch(ApiClient.getUrl('Upscaler/models'), {
-                credentials: 'include',
-                headers: { 'X-Emby-Authorization': ApiClient.getRequestHeader ? ApiClient.getRequestHeader() : '' }
-            }).then(function(r) {
-                if (!r.ok) throw new Error('HTTP ' + r.status);
-                return r.json();
+            // Use ApiClient.ajax so the X-Emby-Token header is attached automatically.
+            // Raw fetch() against /Upscaler/* returns 401 because the [Authorize] controller
+            // needs Jellyfin's session token and ApiClient.getRequestHeader() doesn't exist.
+            return ApiClient.ajax({
+                type: 'GET',
+                url: ApiClient.getUrl('Upscaler/models'),
+                dataType: 'json'
             }).then(function(data) {
                 var map = {};
                 (data.models || []).forEach(function(m) {
@@ -697,7 +699,7 @@
                 });
                 return map;
             }).catch(function(err) {
-                console.warn('AI Upscaler: could not fetch model states —', err.message);
+                console.warn('AI Upscaler: could not fetch model states —', err && (err.message || err.status || err));
                 return null;
             });
         },
@@ -993,7 +995,7 @@
                 var loadUrl = ApiClient.getUrl('Upscaler/models/load') + '?model_name=' + encodeURIComponent(model);
                 return fetch(loadUrl, {
                     method: 'POST',
-                    headers: { 'X-Emby-Authorization': ApiClient.getRequestHeader ? ApiClient.getRequestHeader() : '' },
+                    headers: { 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' },
                     credentials: 'include'
                 }).then(function(r) {
                     if (!r.ok) {
@@ -1124,7 +1126,9 @@
                 if (mode === 'auto' || mode === 'server') {
                     var captureW = config.RealtimeCaptureWidth || 480;
                     var captureH = Math.round(captureW * (video.videoHeight / video.videoWidth));
-                    fetch(ApiClient.getUrl('Upscaler/benchmark-frame') + '?width=' + captureW + '&height=' + captureH)
+                    fetch(ApiClient.getUrl('Upscaler/benchmark-frame') + '?width=' + captureW + '&height=' + captureH, {
+                        headers: { 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' }
+                    })
                         .then(function(r) { return r.json(); })
                         .then(function(bench) {
                             console.log('AI Upscaler RT: Benchmark result', bench);

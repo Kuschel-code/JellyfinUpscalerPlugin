@@ -67,7 +67,7 @@ CACHE_DIR = Path(os.getenv("CACHE_DIR", "/app/cache"))
 STATIC_DIR = Path(os.getenv("STATIC_DIR", "/app/static"))
 
 # Version
-VERSION = "1.6.1.7"
+VERSION = "1.6.1.11"
 
 # Global state
 class AppState:
@@ -687,7 +687,9 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "film-restore",
         "model_type": "hat",
-        "available": True
+        # HAT transformer uses ops (LayerNorm with dynamic shape) that fail on CPUExecutionProvider
+        # in this ONNX Runtime build. Re-enable once CUDA/ROCm EP is available or model is re-exported.
+        "available": False
     },
 
     # --- Anime Video Specialist ---
@@ -719,7 +721,8 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "nextgen",
         "model_type": "rrdb",
-        "available": True
+        # Xenova repo returns 401 anonymously — gated or removed upstream. TODO: mirror to our own HF repo.
+        "available": False
     },
 
     # ============================================================
@@ -734,7 +737,8 @@ AVAILABLE_MODELS = {
         "category": "video-sr",
         "model_type": "edvr",
         "input_frames": 5,
-        "available": True
+        # Pending upload to kuscheltier/jellyfin-vsr-models HF repo — URL 404s until then.
+        "available": False
     },
     "realbasicvsr-x4": {
         "name": "RealBasicVSR x4 (Video SR - 5 Frame)",
@@ -745,7 +749,8 @@ AVAILABLE_MODELS = {
         "category": "video-sr",
         "model_type": "realbasicvsr",
         "input_frames": 5,
-        "available": True
+        # Pending upload to kuscheltier/jellyfin-vsr-models HF repo — URL 404s until then.
+        "available": False
     },
     "animesr-v2-x4": {
         "name": "AnimeSR v2 x4 (Anime Video SR - 5 Frame)",
@@ -756,7 +761,8 @@ AVAILABLE_MODELS = {
         "category": "video-sr",
         "model_type": "animesr",
         "input_frames": 5,
-        "available": True
+        # Pending upload to kuscheltier/jellyfin-vsr-models HF repo — URL 404s until then.
+        "available": False
     },
 
     # ============================================================
@@ -808,7 +814,8 @@ AVAILABLE_MODELS = {
         "category": "interpolation",
         "model_type": "rife",
         "input_frames": 2,
-        "available": True
+        # GitHub release tag v0.0.0 is a placeholder — 404s. TODO: host ONNX export in our own release.
+        "available": False
     },
     "rife-v4.6-lite": {
         "name": "RIFE v4.6 Lite (Fast Frame Interpolation)",
@@ -819,7 +826,8 @@ AVAILABLE_MODELS = {
         "category": "interpolation",
         "model_type": "rife",
         "input_frames": 2,
-        "available": True
+        # GitHub release tag v0.0.0 is a placeholder — 404s. TODO: host ONNX export in our own release.
+        "available": False
     },
 
     # ============================================================
@@ -837,7 +845,8 @@ AVAILABLE_MODELS = {
         "category": "face_restore",
         "model_type": "face_restore",
         "input_size": 512,
-        "available": True
+        # Pending upload to kuscheltier/jellyfin-vsr-models HF repo — URL 401s until then.
+        "available": False
     },
     "codeformer": {
         "name": "CodeFormer (Face Restore)",
@@ -848,7 +857,8 @@ AVAILABLE_MODELS = {
         "category": "face_restore",
         "model_type": "face_restore",
         "input_size": 512,
-        "available": True
+        # Pending upload to kuscheltier/jellyfin-vsr-models HF repo — URL 404s until then.
+        "available": False
     },
 
 }

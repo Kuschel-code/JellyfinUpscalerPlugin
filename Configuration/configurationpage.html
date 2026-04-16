@@ -1,6 +1,6 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
 <style>
-    /* ===== AI Upscaler v1.6.1.9 — Jellyfin-compatible dark theme ===== */
+    /* ===== AI Upscaler v1.6.1.11 — Jellyfin-compatible dark theme ===== */
     #UpscalerConfigurationPage {
         --accent: #00d4ff;
         --accent-bg: rgba(0, 212, 255, 0.12);
@@ -361,7 +361,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.6.1.9 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.6.1.11 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -1627,7 +1627,7 @@
                 var faceModelEl = page.querySelector('#FaceRestoreModel');
                 if (faceModelEl) config.FaceRestoreModel = faceModelEl.value;
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
-                config.PluginVersion = '1.6.1.9';
+                config.PluginVersion = '1.6.1.11';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');

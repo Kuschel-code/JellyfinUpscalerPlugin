@@ -39,7 +39,9 @@ namespace JellyfinUpscalerPlugin.Controllers
         private const int RateLimitMaxRequests = 10;
         private static readonly TimeSpan RateLimitWindow = TimeSpan.FromMinutes(1);
 
-        private static readonly Regex ValidModelNameRegex = new(@"^[a-zA-Z0-9\-_]+$", RegexOptions.Compiled);
+        // Dots allowed only between alphanumeric/dash/underscore runs (e.g. rife-v4.6, gfpgan-v1.4).
+        // Rejects path-traversal patterns: .., leading/trailing ., empty segments.
+        private static readonly Regex ValidModelNameRegex = new(@"^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*$", RegexOptions.Compiled);
         private static readonly ConcurrentDictionary<string, (int Count, DateTime WindowStart)> _rateLimitTracker = new();
 
         private readonly ILogger<UpscalerController> _logger;
