@@ -12,7 +12,7 @@
         "changelog": "v1.6.1.13: In-player quick-menu redesigned with tabs [Models | Filters | Realtime]. New Filters tab adds live CSS video filters (Brightness / Contrast / Saturation sliders + 15 preset looks) that update the <video> element at ~60fps — no re-transcode, no AI service needed. Advanced section persists server-side FFmpeg filter params (Gamma / Sharpness / Color Temperature / Vignette / Film Grain / Denoise) via new POST /Upscaler/filter-config endpoint. LIVE indicator while CSS overlay active. Reset/Save on both tiers.",
         "targetAbi": "10.11.8.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.13/JellyfinUpscalerPlugin-v1.6.1.13.zip",
-        "checksum": "47713f0a28a2dbde52ae9abd58d3b3c62a95a1547df6353191d439954323a70e",
+        "checksum": "053dc1a5d693c854e5f7701a58169a0f",
         "timestamp": "2026-04-16T23:30:00.000Z"
       },
       {
@@ -20,7 +20,7 @@
         "changelog": "v1.6.1.12: Bugfix + model-catalog cleanup. Un-breaks 4 models (gfpgan-v1.4, codeformer, rife-v4.6 → rife-v4.9 alias, rife-v4.6-lite → rife-v4.7 alias). Adds rife-v4.8. 5 models without public ONNX mirrors documented in docs/MODEL-HOSTING.md. New Scripts/verify-release.ps1 prevents recurrence of v1.6.1.11 wrong-ZIP-upload bug. Net catalog: 32 available / 5 self-host.",
         "targetAbi": "10.11.8.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.12/JellyfinUpscalerPlugin-v1.6.1.12.zip",
-        "checksum": "5543d65db58b5932e0a63d586925263a3591676832731a4da75e767a6d978102",
+        "checksum": "d9e75cbefc6e3d8c1375ce3db89d0f23",
         "timestamp": "2026-04-16T22:00:00.000Z"
       },
       {
@@ -28,7 +28,7 @@
         "changelog": "v1.6.1.11: Regex allows dots in model names. 9 broken models flipped to available:false. Fixed 3 silent-401 fetch() calls in player quick-menu. /Upscaler/jobs now requires elevation. SDK pin bumped 10.11.6 → 10.11.8. Bulk-load: 30/30 pass.",
         "targetAbi": "10.11.8.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.11/JellyfinUpscalerPlugin-v1.6.1.11.zip",
-        "checksum": "db3409c4df0b4d7db0a81f42b5bc910b75b6f8d52b5d921bec87403dc34781cb",
+        "checksum": "fe436b788789964a3cce924e3543e248",
         "timestamp": "2026-04-16T18:45:00.000Z"
       },
       {

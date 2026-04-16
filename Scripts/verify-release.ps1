@@ -6,7 +6,9 @@
   Runs AFTER `gh release create`. It downloads every ZIP asset from the named
   release, verifies each is a well-formed plugin bundle (no Moq/Mono.Cecil/
   InstrumentationEngine/CodeCoverage/Scripts leak-through from a `dotnet test`
-  output), and confirms the SHA-256 matches the live manifest checksum.
+  output), and confirms the MD5 matches the live manifest checksum.
+  (Jellyfin's plugin installer computes MD5 of the downloaded ZIP and rejects
+  the package when it doesn't match the 32-char hex `checksum` in the manifest.)
 
   Exits 1 on ANY mismatch. Designed so the release is only marked "done" when
   this script passes — this is the guard that would have caught the v1.6.1.11
@@ -101,15 +103,17 @@ try {
         Write-Host ""
         Write-Host ("=== Verifying " + $zip.Name + " ===") -ForegroundColor Cyan
 
+        $md5 = (Get-FileHash -Algorithm MD5 -Path $zip.FullName).Hash.ToLower()
         $sha = (Get-FileHash -Algorithm SHA256 -Path $zip.FullName).Hash.ToLower()
         Write-Host ("  size: " + $zip.Length + " bytes")
-        Write-Host ("  sha256: " + $sha)
+        Write-Host ("  md5 (manifest): " + $md5)
+        Write-Host ("  sha256 (info):  " + $sha)
 
-        if ($sha -ne $manifestChecksum) {
-            Write-Host ("  [FAIL] SHA does not match manifest checksum") -ForegroundColor Red
+        if ($md5 -ne $manifestChecksum) {
+            Write-Host ("  [FAIL] MD5 does not match manifest checksum (Jellyfin expects MD5)") -ForegroundColor Red
             $fail = $true
         } else {
-            Write-Host "  [OK] SHA matches manifest"
+            Write-Host "  [OK] MD5 matches manifest"
         }
 
         # Inspect contents
