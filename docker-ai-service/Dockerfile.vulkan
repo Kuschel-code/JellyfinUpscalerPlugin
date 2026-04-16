@@ -11,6 +11,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV USE_GPU=true
 ENV VULKAN_BACKEND=true
 
+LABEL maintainer="Kuschel-code"
+LABEL description="AI Upscaler Service with Vulkan (ncnn) for AMD pre-RDNA2, Intel iGPU, any Vulkan GPU"
+LABEL version="1.6.1.13"
+
 WORKDIR /app
 
 # Install system dependencies: Vulkan SDK + Mesa drivers + OpenCV deps + build tools

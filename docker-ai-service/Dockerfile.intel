@@ -12,6 +12,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV USE_GPU=true
 ENV OPENVINO_DEVICE=GPU
 
+LABEL maintainer="Kuschel-code"
+LABEL description="AI Upscaler Service with Intel GPU via OpenVINO 2025.4 (Arc A-Series, Iris Xe, iGPU)"
+LABEL version="1.6.1.13"
+
 USER root
 
 WORKDIR /app

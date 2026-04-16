@@ -14,7 +14,7 @@ AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neura
 *   `kuscheltier/jellyfin-ai-upscaler:docker6.1-intel` (Intel Arc/iGPU OpenVINO)
 *   `kuscheltier/jellyfin-ai-upscaler:docker6.1-apple` (macOS Apple Silicon)
 *   `kuscheltier/jellyfin-ai-upscaler:docker6.1-vulkan` (Vulkan/ncnn — AMD pre-RDNA2, Intel iGPU)
-*   `kuscheltier/jellyfin-ai-upscaler:docker6.1.1-cpu` (CPU Only — v1.6.1.13 tested)
+*   `kuscheltier/jellyfin-ai-upscaler:docker6.1-cpu` (CPU Only — multi-threaded ONNXRuntime)
 
 **Report bugs:** [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 

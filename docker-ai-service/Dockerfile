@@ -15,6 +15,10 @@ ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 # Set SKIP_TENSORRT=false to re-enable TensorRT if your GPU supports it
 ENV SKIP_TENSORRT=true
 
+LABEL maintainer="Kuschel-code"
+LABEL description="AI Upscaler Service with NVIDIA CUDA 12.8 + cuDNN 9 (RTX 50/40/30/20 + GTX 16/10)"
+LABEL version="1.6.1.13"
+
 WORKDIR /app
 
 # Install Python and system dependencies for OpenCV
