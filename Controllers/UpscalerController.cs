@@ -2025,6 +2025,72 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
+        /// Read the current video-filter configuration for the player quick-menu.
+        /// Any authenticated user — the filter state is exposed so the quick-menu can seed
+        /// its live CSS filter preview without admin privileges. Modifications still require
+        /// elevation (see POST /filter-config).
+        /// </summary>
+        [HttpGet("filter-config")]
+        [Authorize]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> GetFilterConfig()
+        {
+            var c = Plugin.Instance?.Configuration ?? new PluginConfiguration();
+            return Ok(new
+            {
+                enabled = c.EnableVideoFilters,
+                preset = c.ActiveFilterPreset,
+                brightness = c.FilterBrightness,
+                contrast = c.FilterContrast,
+                saturation = c.FilterSaturation,
+                gamma = c.FilterGamma,
+                sharpness = c.FilterSharpness,
+                colorTemperature = c.FilterColorTemperature,
+                vignette = c.FilterVignette,
+                filmGrain = c.FilterFilmGrain,
+                denoise = c.FilterDenoise,
+                availablePresets = new[] { "none", "cinematic", "vintage", "vivid", "noir", "warm", "cool", "hdr-pop", "sepia", "pastel", "cyberpunk", "drama", "soft-glow", "sharp-hd", "retrogame", "teal-orange", "custom" }
+            });
+        }
+
+        /// <summary>
+        /// Persist video-filter changes from the player quick-menu (admin only).
+        /// Only fields present in the request body are updated — partial updates OK.
+        /// The per-property setters in PluginConfiguration clamp out-of-range values,
+        /// so malformed numbers saturate rather than throw.
+        /// </summary>
+        [HttpPost("filter-config")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> UpdateFilterConfig([FromBody] FilterConfigUpdate body)
+        {
+            if (body == null) return BadRequest(new { message = "Missing request body" });
+            var validPresets = new[] { "none", "cinematic", "vintage", "vivid", "noir", "warm", "cool", "hdr-pop", "sepia", "pastel", "cyberpunk", "drama", "soft-glow", "sharp-hd", "retrogame", "teal-orange", "custom" };
+            if (body.Preset != null && !validPresets.Contains(body.Preset))
+                return BadRequest(new { message = "Invalid preset name" });
+
+            var plugin = Plugin.Instance;
+            if (plugin == null) return StatusCode(500, new { message = "Plugin not initialized" });
+            var c = plugin.Configuration;
+
+            if (body.Enabled.HasValue) c.EnableVideoFilters = body.Enabled.Value;
+            if (body.Preset != null) c.ActiveFilterPreset = body.Preset;
+            if (body.Brightness.HasValue) c.FilterBrightness = body.Brightness.Value;
+            if (body.Contrast.HasValue) c.FilterContrast = body.Contrast.Value;
+            if (body.Saturation.HasValue) c.FilterSaturation = body.Saturation.Value;
+            if (body.Gamma.HasValue) c.FilterGamma = body.Gamma.Value;
+            if (body.Sharpness.HasValue) c.FilterSharpness = body.Sharpness.Value;
+            if (body.ColorTemperature.HasValue) c.FilterColorTemperature = body.ColorTemperature.Value;
+            if (body.Vignette.HasValue) c.FilterVignette = body.Vignette.Value;
+            if (body.FilmGrain.HasValue) c.FilterFilmGrain = body.FilmGrain.Value;
+            if (body.Denoise.HasValue) c.FilterDenoise = body.Denoise.Value;
+
+            plugin.SaveConfiguration();
+            _logger.LogInformation("Filter config updated via quick-menu: preset={Preset}, enabled={Enabled}", c.ActiveFilterPreset, c.EnableVideoFilters);
+            return Ok(new { success = true, preset = c.ActiveFilterPreset, enabled = c.EnableVideoFilters });
+        }
+
+        /// <summary>
         /// Preview video filter effect on a sample frame (admin only).
         /// Accepts a preset name or uses current config. Returns the FFmpeg filter chain
         /// and optionally applies it to a provided image via FFmpeg.
@@ -2158,5 +2224,25 @@ namespace JellyfinUpscalerPlugin.Controllers
         public int Port { get; set; } = 2222;
         public string User { get; set; } = "root";
         public string KeyFile { get; set; } = "";
+    }
+
+    /// <summary>
+    /// Partial-update body for POST /Upscaler/filter-config. Nullable fields let the
+    /// quick-menu send only what changed (e.g. just the preset + 3 live sliders)
+    /// without having to round-trip every filter property.
+    /// </summary>
+    public class FilterConfigUpdate
+    {
+        public bool? Enabled { get; set; }
+        public string? Preset { get; set; }
+        public double? Brightness { get; set; }
+        public double? Contrast { get; set; }
+        public double? Saturation { get; set; }
+        public double? Gamma { get; set; }
+        public double? Sharpness { get; set; }
+        public int? ColorTemperature { get; set; }
+        public double? Vignette { get; set; }
+        public int? FilmGrain { get; set; }
+        public double? Denoise { get; set; }
     }
 }

@@ -1,9 +1,9 @@
-// AI Upscaler Plugin - Sidebar Integration v1.6.1.12
+// AI Upscaler Plugin - Sidebar Integration v1.6.1.13
 // Adds sidebar menu item and quick-access panel
 (function() {
     'use strict';
 
-    const PLUGIN_VERSION = '1.6.1.12';
+    const PLUGIN_VERSION = '1.6.1.13';
     var _observer = null;
     var _observerAttached = false;
 

@@ -1,4 +1,4 @@
-// AI Upscaler Plugin - Player Integration v1.6.1.12
+// AI Upscaler Plugin - Player Integration v1.6.1.13
 // Global script injection (loaded via index.html like Intro Skipper)
 // Compatible with Jellyfin 10.11+
 
@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.6.1.12';
+    const PLUGIN_VERSION = '1.6.1.13';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -126,6 +126,56 @@
             ]
         }
     };
+
+    // ── v1.6.1.13: Live filter overlay (CSS filter on <video>) ────────────
+    //
+    // Client-side only — each preset maps to a CSS `filter` string applied directly
+    // to the playing <video> element. No transcode, no AI service. FFmpeg presets
+    // in VideoFilterService.cs are visually close but not pixel-identical: CSS can't
+    // express curves / LUTs / vignette / film grain. Those live in the Advanced pane
+    // and apply via the server filter chain on next seek.
+    const PRESET_CSS = {
+        'none':        '',
+        'cinematic':   'brightness(0.96) contrast(1.25) saturate(1.15)',
+        'vintage':     'contrast(1.1) saturate(0.65) sepia(0.3)',
+        'vivid':       'contrast(1.1) saturate(1.4)',
+        'noir':        'contrast(1.3) saturate(0) brightness(1.05)',
+        'warm':        'saturate(1.08) sepia(0.08) brightness(1.02)',
+        'cool':        'saturate(0.9) hue-rotate(-5deg) brightness(0.98)',
+        'hdr-pop':     'contrast(1.3) saturate(1.25) brightness(1.06)',
+        'sepia':       'sepia(0.85) saturate(1.2)',
+        'pastel':      'saturate(0.75) brightness(1.08) contrast(0.95)',
+        'cyberpunk':   'contrast(1.3) saturate(1.5) hue-rotate(10deg)',
+        'drama':       'contrast(1.4) saturate(0.8) brightness(0.92)',
+        'soft-glow':   'brightness(1.1) contrast(0.95) saturate(1.05) blur(0.5px)',
+        'sharp-hd':    'contrast(1.15) saturate(1.1)',
+        'retrogame':   'saturate(1.3) contrast(1.2) brightness(1.02)',
+        'teal-orange': 'contrast(1.15) saturate(1.2) hue-rotate(-5deg)'
+    };
+
+    // Ordered list for chip rendering. 'custom' is omitted — it's implied whenever
+    // a live slider moves off zero.
+    const PRESET_LABELS = [
+        ['none', 'None'],
+        ['cinematic', 'Cinematic'], ['vintage', 'Vintage'], ['vivid', 'Vivid'],
+        ['noir', 'Noir'], ['warm', 'Warm'], ['cool', 'Cool'], ['hdr-pop', 'HDR Pop'],
+        ['sepia', 'Sepia'], ['pastel', 'Pastel'], ['cyberpunk', 'Cyberpunk'],
+        ['drama', 'Drama'], ['soft-glow', 'Soft Glow'], ['sharp-hd', 'Sharp HD'],
+        ['retrogame', 'Retro'], ['teal-orange', 'Teal/Orange']
+    ];
+
+    // The 3 sliders that drive live CSS. Each owns a CSS formatter so the value
+    // stays in UI-space (-100..100 etc.) and converts to the float CSS expects
+    // only at apply time.
+    const LIVE_SLIDERS = [
+        { key: 'brightness', label: 'Brightness', min: -50, max: 50, def: 0, icon: 'brightness_6',
+          toCss: function(v) { return 'brightness(' + (1 + v * 0.01).toFixed(2) + ')'; } },
+        { key: 'contrast',   label: 'Contrast',   min: -50, max: 50, def: 0, icon: 'contrast',
+          toCss: function(v) { return 'contrast(' + (1 + v * 0.01).toFixed(2) + ')'; } },
+        { key: 'saturation', label: 'Saturation', min: -100, max: 100, def: 0, icon: 'palette',
+          toCss: function(v) { return 'saturate(' + (1 + v * 0.01).toFixed(2) + ')'; } }
+    ];
+
 
     // Real-Time Upscaler Engine
     const RealtimeUpscaler = {
@@ -819,6 +869,13 @@
                 });
             }
 
+            // v1.6.1.13: tab panes replace the flat scroll. Each pane is rendered
+            // but only the active one is visible — see ai-menu__pane--active in CSS.
+            // Filter state is seeded synchronously from cached config + defaults;
+            // then _loadFilterConfig() refreshes it from the server after menu mount.
+            var filterState = this._filterState || this._defaultFilterState();
+            var filtersHtml = this._buildFiltersPane(filterState);
+
             menu.innerHTML =
                 '<div class="ai-menu__header">' +
                     '<div class="ai-menu__header-left">' +
@@ -837,35 +894,45 @@
                     '<span class="ai-menu__summary-dot' + (readyModels > 0 ? '' : ' ai-menu__summary-dot--off') + '"></span>' +
                     '<span><span class="ai-menu__summary-strong" data-summary-ready>' + (totalModels ? (readyModels + ' of ' + totalModels) : '—') + '</span> models ready · current: <span class="ai-menu__summary-strong">' + currentModel + '</span></span>' +
                 '</div>' +
+                '<div class="ai-menu__tabs" role="tablist">' +
+                    '<button class="ai-menu__tab ai-menu__tab--active" data-tab="models" role="tab"><span class="material-icons">view_module</span><span>Models</span></button>' +
+                    '<button class="ai-menu__tab" data-tab="filters" role="tab"><span class="material-icons">tune</span><span>Filters</span><span class="ai-menu__tab-live" data-filter-live-dot></span></button>' +
+                    '<button class="ai-menu__tab" data-tab="realtime" role="tab"><span class="material-icons">bolt</span><span>Realtime</span></button>' +
+                '</div>' +
                 '<div class="ai-menu__body">' +
-                    '<div class="ai-menu__chips">' +
-                        '<button class="ai-menu__chip ai-menu__chip--active" data-filter="all">All</button>' +
-                        '<button class="ai-menu__chip" data-filter="ready">Downloaded</button>' +
-                        '<button class="ai-menu__chip" data-filter="recommended">Recommended</button>' +
+                    '<div class="ai-menu__pane ai-menu__pane--active" data-pane="models">' +
+                        '<div class="ai-menu__chips">' +
+                            '<button class="ai-menu__chip ai-menu__chip--active" data-filter="all">All</button>' +
+                            '<button class="ai-menu__chip" data-filter="ready">Downloaded</button>' +
+                            '<button class="ai-menu__chip" data-filter="recommended">Recommended</button>' +
+                        '</div>' +
+                        '<div class="ai-menu__section">' +
+                            '<div class="ai-menu__section-title"><span>Models</span><span class="ai-menu__section-sub">Click to load</span></div>' +
+                            '<div class="ai-menu__models">' + modelsHtml + '</div>' +
+                        '</div>' +
+                        '<div class="ai-menu__section">' +
+                            '<div class="ai-menu__section-title"><span>Scale Factor</span><span class="ai-menu__section-sub">Output multiplier</span></div>' +
+                            '<div class="ai-menu__scales">' + scaleHtml + '</div>' +
+                        '</div>' +
                     '</div>' +
-                    '<div class="ai-menu__section">' +
-                        '<div class="ai-menu__section-title"><span>Models</span><span class="ai-menu__section-sub">Click to load</span></div>' +
-                        '<div class="ai-menu__models">' + modelsHtml + '</div>' +
-                    '</div>' +
-                    '<div class="ai-menu__section">' +
-                        '<div class="ai-menu__section-title"><span>Scale Factor</span><span class="ai-menu__section-sub">Output multiplier</span></div>' +
-                        '<div class="ai-menu__scales">' + scaleHtml + '</div>' +
-                    '</div>' +
-                    '<div class="ai-menu__section">' +
-                        '<div class="ai-menu__section-title"><span>Real-Time Upscaling</span></div>' +
-                        '<div class="ai-menu__rt-card">' +
-                            '<div class="ai-menu__rt-status">' +
-                                '<span class="ai-menu__rt-indicator" id="aiRtIndicator"></span>' +
-                                '<span class="ai-menu__rt-label">Status:</span>' +
-                                '<span class="ai-menu__rt-value" id="aiRtStatusValue">--</span>' +
-                            '</div>' +
-                            '<div class="ai-menu__rt-row">' +
-                                '<button class="ai-menu__rt-btn" data-action="rt-toggle">Toggle</button>' +
-                                '<button class="ai-menu__rt-btn" data-action="rt-switch">Switch Mode</button>' +
+                    '<div class="ai-menu__pane" data-pane="filters">' + filtersHtml + '</div>' +
+                    '<div class="ai-menu__pane" data-pane="realtime">' +
+                        '<div class="ai-menu__section">' +
+                            '<div class="ai-menu__section-title"><span>Real-Time Upscaling</span></div>' +
+                            '<div class="ai-menu__rt-card">' +
+                                '<div class="ai-menu__rt-status">' +
+                                    '<span class="ai-menu__rt-indicator" id="aiRtIndicator"></span>' +
+                                    '<span class="ai-menu__rt-label">Status:</span>' +
+                                    '<span class="ai-menu__rt-value" id="aiRtStatusValue">--</span>' +
+                                '</div>' +
+                                '<div class="ai-menu__rt-row">' +
+                                    '<button class="ai-menu__rt-btn" data-action="rt-toggle">Toggle</button>' +
+                                    '<button class="ai-menu__rt-btn" data-action="rt-switch">Switch Mode</button>' +
+                                '</div>' +
                             '</div>' +
                         '</div>' +
                     '</div>' +
-                    '<div class="ai-menu__section">' +
+                    '<div class="ai-menu__footer">' +
                         '<button class="ai-menu__action" data-action="config">' +
                             '<span class="material-icons" style="font-size:16px;margin-right:8px">settings</span>' +
                             'Full Configuration' +
@@ -893,8 +960,41 @@
 
             document.body.appendChild(menu);
 
-            // Event delegation
+            // v1.6.1.13: apply any previously-chosen CSS filter and refresh the state
+            // from the server so the filter pane shows the current saved preset.
+            this._applyFilterState(filterState);
+            this._loadFilterConfig();
+
+            // Any interaction on the menu keeps it alive — important for filter sliders
+            // where users may drag for several seconds. _touchMenuTimer resets the auto-close.
+            var touchTimer = function() { PlayerIntegration._touchMenuTimer(menu); };
+            menu.addEventListener('pointerdown', touchTimer);
+            menu.addEventListener('input', function(e) {
+                touchTimer();
+                var slider = e.target.closest('[data-slider]');
+                if (slider) {
+                    PlayerIntegration._onSliderInput(menu, slider);
+                }
+            });
+            menu.addEventListener('change', function(e) {
+                var adv = e.target.closest('[data-adv-slider]');
+                if (adv) PlayerIntegration._onAdvSliderChange(menu, adv);
+            });
+
+            // Event delegation (click)
             menu.addEventListener('click', function(e) {
+                touchTimer();
+
+                var tab = e.target.closest('[data-tab]');
+                if (tab) {
+                    PlayerIntegration._switchTab(menu, tab.getAttribute('data-tab'));
+                    return;
+                }
+                var presetBtn = e.target.closest('[data-preset]');
+                if (presetBtn) {
+                    PlayerIntegration._pickPreset(menu, presetBtn.getAttribute('data-preset'));
+                    return;
+                }
                 var chip = e.target.closest('[data-filter]');
                 if (chip) {
                     PlayerIntegration._applyChipFilter(menu, chip.getAttribute('data-filter'));
@@ -920,6 +1020,15 @@
                         PlayerIntegration.toggleUpscaling();
                     } else if (action === 'config') {
                         PlayerIntegration.openFullConfig();
+                    } else if (action === 'filter-reset') {
+                        PlayerIntegration._resetFilters(menu);
+                    } else if (action === 'filter-save') {
+                        PlayerIntegration._saveFilterConfig(menu, target);
+                    } else if (action === 'filter-advanced-toggle') {
+                        var adv = menu.querySelector('[data-adv-pane]');
+                        if (adv) adv.classList.toggle('ai-menu__adv--open');
+                        var caret = target.querySelector('.ai-menu__adv-caret');
+                        if (caret) caret.textContent = adv && adv.classList.contains('ai-menu__adv--open') ? 'expand_less' : 'expand_more';
                     } else if (action === 'rt-toggle') {
                         if (RealtimeUpscaler._active) {
                             RealtimeUpscaler.stop();
@@ -958,11 +1067,279 @@
             };
             setTimeout(function() { document.addEventListener('click', PlayerIntegration._menuCloseHandler); }, 100);
 
-            // Auto-close after 20s
+            // Auto-close after 30s of no interaction. _touchMenuTimer resets this on
+            // any click/input — important for filter sliders that users drag for seconds.
+            this._touchMenuTimer(menu);
+        },
+
+        _touchMenuTimer: function(menu) {
+            if (this._menuAutoCloseTimer) clearTimeout(this._menuAutoCloseTimer);
             this._menuAutoCloseTimer = setTimeout(function() {
-                if (menu.parentElement) menu.remove();
+                if (menu && menu.parentElement) menu.remove();
                 PlayerIntegration._cleanupMenu();
-            }, 20000);
+            }, 30000);
+        },
+
+        // ── v1.6.1.13: filter pane ───────────────────────────────────────
+        _defaultFilterState: function() {
+            return {
+                enabled: false,
+                preset: 'none',
+                brightness: 0, contrast: 0, saturation: 0,
+                gamma: 1.0, sharpness: 0, colorTemperature: 6500,
+                vignette: 0, filmGrain: 0, denoise: 0,
+                canSave: false // set true after GET /filter-config response + admin check
+            };
+        },
+
+        _buildFiltersPane: function(st) {
+            // Preset chip grid
+            var chipsHtml = '';
+            for (var i = 0; i < PRESET_LABELS.length; i++) {
+                var key = PRESET_LABELS[i][0];
+                var label = PRESET_LABELS[i][1];
+                var active = (st.preset === key) ? ' ai-menu__preset--active' : '';
+                chipsHtml += '<button class="ai-menu__preset' + active + '" data-preset="' + key + '">' + label + '</button>';
+            }
+
+            // Live sliders (CSS filter on <video>)
+            var slidersHtml = '';
+            for (var j = 0; j < LIVE_SLIDERS.length; j++) {
+                var s = LIVE_SLIDERS[j];
+                var v = st[s.key];
+                slidersHtml +=
+                    '<div class="ai-menu__slider-row">' +
+                        '<label class="ai-menu__slider-label">' +
+                            '<span class="material-icons ai-menu__slider-icon">' + s.icon + '</span>' +
+                            '<span>' + s.label + '</span>' +
+                            '<span class="ai-menu__slider-val" data-slider-val="' + s.key + '">' + (v > 0 ? '+' : '') + v + '</span>' +
+                        '</label>' +
+                        '<input type="range" class="ai-menu__slider" data-slider="' + s.key + '"' +
+                               ' min="' + s.min + '" max="' + s.max + '" step="1" value="' + v + '">' +
+                    '</div>';
+            }
+
+            // Advanced (server-persisted) sliders — shown collapsed by default
+            var adv = [
+                { key: 'gamma', label: 'Gamma', min: 0.5, max: 2.5, step: 0.01, val: st.gamma },
+                { key: 'sharpness', label: 'Sharpness', min: 0, max: 3, step: 0.1, val: st.sharpness },
+                { key: 'colorTemperature', label: 'Color Temperature (K)', min: 3000, max: 10000, step: 100, val: st.colorTemperature },
+                { key: 'vignette', label: 'Vignette', min: 0, max: 3, step: 0.1, val: st.vignette },
+                { key: 'filmGrain', label: 'Film Grain', min: 0, max: 50, step: 1, val: st.filmGrain },
+                { key: 'denoise', label: 'Denoise', min: 0, max: 10, step: 0.5, val: st.denoise }
+            ];
+            var advHtml = '';
+            for (var k = 0; k < adv.length; k++) {
+                var a = adv[k];
+                advHtml +=
+                    '<div class="ai-menu__adv-row">' +
+                        '<label class="ai-menu__adv-label">' + a.label +
+                            '<span class="ai-menu__adv-val" data-adv-val="' + a.key + '">' + a.val + '</span>' +
+                        '</label>' +
+                        '<input type="range" class="ai-menu__adv-slider" data-adv-slider="' + a.key + '"' +
+                               ' min="' + a.min + '" max="' + a.max + '" step="' + a.step + '" value="' + a.val + '">' +
+                    '</div>';
+            }
+
+            return '' +
+                '<div class="ai-menu__section">' +
+                    '<div class="ai-menu__section-title">' +
+                        '<span>Look</span>' +
+                        '<span class="ai-menu__section-sub">Live — no transcode</span>' +
+                    '</div>' +
+                    '<div class="ai-menu__presets">' + chipsHtml + '</div>' +
+                '</div>' +
+                '<div class="ai-menu__section">' +
+                    '<div class="ai-menu__section-title"><span>Fine-tune</span></div>' +
+                    '<div class="ai-menu__sliders">' + slidersHtml + '</div>' +
+                '</div>' +
+                '<div class="ai-menu__section">' +
+                    '<button class="ai-menu__adv-toggle" data-action="filter-advanced-toggle">' +
+                        '<span>Advanced (applies on next seek)</span>' +
+                        '<span class="material-icons ai-menu__adv-caret">expand_more</span>' +
+                    '</button>' +
+                    '<div class="ai-menu__adv" data-adv-pane>' + advHtml + '</div>' +
+                '</div>' +
+                '<div class="ai-menu__filter-actions">' +
+                    '<button class="ai-menu__filter-btn ai-menu__filter-btn--secondary" data-action="filter-reset">Reset</button>' +
+                    '<button class="ai-menu__filter-btn ai-menu__filter-btn--primary" data-action="filter-save"' + (st.canSave ? '' : ' disabled title="Admin privileges required"') + '>Save</button>' +
+                '</div>';
+        },
+
+        _switchTab: function(menu, tabName) {
+            var tabs = menu.querySelectorAll('[data-tab]');
+            var panes = menu.querySelectorAll('[data-pane]');
+            for (var i = 0; i < tabs.length; i++) {
+                tabs[i].classList.toggle('ai-menu__tab--active', tabs[i].getAttribute('data-tab') === tabName);
+            }
+            for (var j = 0; j < panes.length; j++) {
+                panes[j].classList.toggle('ai-menu__pane--active', panes[j].getAttribute('data-pane') === tabName);
+            }
+        },
+
+        _onSliderInput: function(menu, slider) {
+            if (!this._filterState) this._filterState = this._defaultFilterState();
+            var key = slider.getAttribute('data-slider');
+            var v = parseInt(slider.value, 10) || 0;
+            this._filterState[key] = v;
+            // Any manual slider adjust transitions to 'custom' — clears preset highlight.
+            this._filterState.preset = 'custom';
+            this._filterState.enabled = true;
+            var valEl = menu.querySelector('[data-slider-val="' + key + '"]');
+            if (valEl) valEl.textContent = (v > 0 ? '+' : '') + v;
+            var presets = menu.querySelectorAll('[data-preset]');
+            for (var i = 0; i < presets.length; i++) presets[i].classList.remove('ai-menu__preset--active');
+            this._applyFilterState(this._filterState);
+        },
+
+        _onAdvSliderChange: function(menu, slider) {
+            // Advanced sliders don't drive live CSS — they apply server-side on next seek.
+            if (!this._filterState) this._filterState = this._defaultFilterState();
+            var key = slider.getAttribute('data-adv-slider');
+            var v = parseFloat(slider.value);
+            if (!isNaN(v)) this._filterState[key] = v;
+            var valEl = menu.querySelector('[data-adv-val="' + key + '"]');
+            if (valEl) valEl.textContent = (key === 'colorTemperature' || key === 'filmGrain') ? v.toFixed(0) : v.toFixed(2);
+        },
+
+        _pickPreset: function(menu, preset) {
+            if (!this._filterState) this._filterState = this._defaultFilterState();
+            this._filterState.preset = preset;
+            this._filterState.enabled = (preset !== 'none');
+            // Reset the 3 live sliders — presets define their own look.
+            this._filterState.brightness = 0;
+            this._filterState.contrast = 0;
+            this._filterState.saturation = 0;
+            // Reflect in UI
+            var presets = menu.querySelectorAll('[data-preset]');
+            for (var i = 0; i < presets.length; i++) {
+                presets[i].classList.toggle('ai-menu__preset--active', presets[i].getAttribute('data-preset') === preset);
+            }
+            var sliders = menu.querySelectorAll('[data-slider]');
+            for (var j = 0; j < sliders.length; j++) {
+                sliders[j].value = 0;
+                var k = sliders[j].getAttribute('data-slider');
+                var valEl = menu.querySelector('[data-slider-val="' + k + '"]');
+                if (valEl) valEl.textContent = '0';
+            }
+            this._applyFilterState(this._filterState);
+        },
+
+        _composeCssFromState: function(st) {
+            // Preset takes priority if the 3 live sliders are all zero.
+            var allSlidersZero = (st.brightness === 0 && st.contrast === 0 && st.saturation === 0);
+            if (st.preset && st.preset !== 'custom' && st.preset !== 'none' && allSlidersZero) {
+                return PRESET_CSS[st.preset] || '';
+            }
+            if (st.preset === 'none' && allSlidersZero) return '';
+            // Otherwise compose from live sliders.
+            var parts = [];
+            for (var i = 0; i < LIVE_SLIDERS.length; i++) {
+                var s = LIVE_SLIDERS[i];
+                var v = st[s.key];
+                if (v !== 0) parts.push(s.toCss(v));
+            }
+            return parts.join(' ');
+        },
+
+        _applyFilterState: function(st) {
+            var video = this.findVideoElement();
+            if (!video) return;
+            var css = this._composeCssFromState(st);
+            video.style.filter = css || '';
+            this._updateLiveDot(css.length > 0);
+        },
+
+        _updateLiveDot: function(isLive) {
+            var dot = document.querySelector('[data-filter-live-dot]');
+            if (dot) dot.classList.toggle('ai-menu__tab-live--on', isLive);
+        },
+
+        _loadFilterConfig: function() {
+            if (!window.ApiClient) return;
+            var self = this;
+            var url = ApiClient.getUrl('Upscaler/filter-config');
+            ApiClient.ajax({ type: 'GET', url: url, dataType: 'json' }).then(function(resp) {
+                if (!resp) return;
+                // Merge server state into client state. We preserve any slider moves
+                // the user already made this session (don't clobber active edits).
+                var cur = self._filterState;
+                if (!cur || (cur.brightness === 0 && cur.contrast === 0 && cur.saturation === 0)) {
+                    self._filterState = {
+                        enabled: !!resp.enabled,
+                        preset: resp.preset || 'none',
+                        brightness: 0, contrast: 0, saturation: 0,
+                        gamma: resp.gamma || 1.0,
+                        sharpness: resp.sharpness || 0,
+                        colorTemperature: resp.colorTemperature || 6500,
+                        vignette: resp.vignette || 0,
+                        filmGrain: resp.filmGrain || 0,
+                        denoise: resp.denoise || 0,
+                        canSave: true // server responded — we'll let the POST discover non-admin
+                    };
+                    self._applyFilterState(self._filterState);
+                    // Update UI to reflect loaded state
+                    var menu = document.querySelector('#aiUpscalerQuickMenu');
+                    if (menu) {
+                        var presets = menu.querySelectorAll('[data-preset]');
+                        for (var i = 0; i < presets.length; i++) {
+                            presets[i].classList.toggle('ai-menu__preset--active', presets[i].getAttribute('data-preset') === self._filterState.preset);
+                        }
+                    }
+                }
+            }).catch(function(err) {
+                console.warn('AI Upscaler: filter-config fetch failed:', err);
+            });
+        },
+
+        _resetFilters: function(menu) {
+            this._filterState = this._defaultFilterState();
+            // Reflect default state in all controls
+            var sliders = menu.querySelectorAll('[data-slider]');
+            for (var i = 0; i < sliders.length; i++) {
+                sliders[i].value = 0;
+                var k = sliders[i].getAttribute('data-slider');
+                var valEl = menu.querySelector('[data-slider-val="' + k + '"]');
+                if (valEl) valEl.textContent = '0';
+            }
+            var presets = menu.querySelectorAll('[data-preset]');
+            for (var j = 0; j < presets.length; j++) {
+                presets[j].classList.toggle('ai-menu__preset--active', presets[j].getAttribute('data-preset') === 'none');
+            }
+            this._applyFilterState(this._filterState);
+            this.showPlayerNotification('Filters reset', 'info');
+        },
+
+        _saveFilterConfig: function(menu, btn) {
+            var st = this._filterState;
+            if (!st) return;
+            if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+            var body = {
+                enabled: st.enabled,
+                preset: st.preset === 'custom' ? 'custom' : st.preset,
+                brightness: Math.max(-1, Math.min(1, st.brightness * 0.02)),
+                contrast: Math.max(0, Math.min(3, 1 + st.contrast * 0.02)),
+                saturation: Math.max(0, Math.min(3, 1 + st.saturation * 0.01)),
+                gamma: st.gamma,
+                sharpness: st.sharpness,
+                colorTemperature: Math.round(st.colorTemperature),
+                vignette: st.vignette,
+                filmGrain: Math.round(st.filmGrain),
+                denoise: st.denoise
+            };
+            var url = ApiClient.getUrl('Upscaler/filter-config');
+            ApiClient.ajax({
+                type: 'POST', url: url, contentType: 'application/json',
+                data: JSON.stringify(body), dataType: 'json'
+            }).then(function() {
+                PlayerIntegration.showPlayerNotification('Filter settings saved', 'success');
+                if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+            }).catch(function(err) {
+                var msg = 'Save failed — admin privileges required';
+                if (err && err.status && err.status !== 403) msg = 'Save failed: HTTP ' + err.status;
+                PlayerIntegration.showPlayerNotification(msg, 'warning');
+                if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+            });
         },
 
         quickSetModel: function(model) {
@@ -1334,7 +1711,59 @@
                 '.ai-notif--success{background:rgba(16,185,129,.88);border:1px solid rgba(110,231,183,.3)}',
                 '.ai-notif--warning{background:rgba(245,158,11,.88);border:1px solid rgba(253,224,71,.3)}',
                 '.ai-notif--error{background:rgba(239,68,68,.88);border:1px solid rgba(252,165,165,.3)}',
-                '@keyframes aiNotifIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}'
+                '@keyframes aiNotifIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}',
+
+                /* ═══ v1.6.1.13 — Tab bar + filter pane ═══ */
+                '.ai-menu__tabs{display:flex;gap:4px;padding:6px 8px 0;border-bottom:1px solid rgba(255,255,255,.06)}',
+                '.ai-menu__tab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 8px;background:transparent;border:none;color:rgba(255,255,255,.5);font-size:12px;font-weight:600;cursor:pointer;transition:color .15s,background .15s;border-radius:8px 8px 0 0;position:relative;letter-spacing:.2px}',
+                '.ai-menu__tab .material-icons{font-size:16px}',
+                '.ai-menu__tab:hover{color:rgba(255,255,255,.8);background:rgba(255,255,255,.04)}',
+                '.ai-menu__tab--active{color:#c4b5fd;background:rgba(139,92,246,.12)}',
+                '.ai-menu__tab--active::after{content:"";position:absolute;left:8px;right:8px;bottom:-1px;height:2px;background:#8b5cf6;border-radius:2px}',
+                '.ai-menu__tab-live{width:6px;height:6px;border-radius:50%;background:transparent;transition:background .2s}',
+                '.ai-menu__tab-live--on{background:#34d399;box-shadow:0 0 8px rgba(52,211,153,.7);animation:aiPulse 1.6s ease-in-out infinite}',
+                '.ai-menu__pane{display:none}',
+                '.ai-menu__pane--active{display:block}',
+                '.ai-menu__footer{padding-top:10px;margin-top:6px;border-top:1px solid rgba(255,255,255,.06)}',
+
+                /* Preset chips grid */
+                '.ai-menu__presets{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}',
+                '.ai-menu__preset{padding:8px 4px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;color:rgba(255,255,255,.7);font-size:11px;font-weight:600;cursor:pointer;transition:all .12s;text-align:center;letter-spacing:.1px}',
+                '.ai-menu__preset:hover{background:rgba(139,92,246,.14);border-color:rgba(139,92,246,.3);color:#fff}',
+                '.ai-menu__preset--active{background:linear-gradient(135deg,rgba(139,92,246,.26),rgba(236,72,153,.2));border-color:rgba(139,92,246,.6);color:#fff;box-shadow:0 2px 8px rgba(139,92,246,.2)}',
+
+                /* Live sliders */
+                '.ai-menu__sliders{display:flex;flex-direction:column;gap:9px}',
+                '.ai-menu__slider-row{display:flex;flex-direction:column;gap:5px}',
+                '.ai-menu__slider-label{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:rgba(255,255,255,.7);letter-spacing:.2px}',
+                '.ai-menu__slider-icon{font-size:14px;color:rgba(139,92,246,.85)}',
+                '.ai-menu__slider-val{margin-left:auto;color:#c4b5fd;font-variant-numeric:tabular-nums;min-width:32px;text-align:right}',
+                '.ai-menu__slider{width:100%;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:rgba(255,255,255,.08);outline:none;cursor:pointer}',
+                '.ai-menu__slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;background:#8b5cf6;cursor:pointer;border:2px solid rgba(255,255,255,.15);box-shadow:0 2px 6px rgba(139,92,246,.4);transition:transform .1s}',
+                '.ai-menu__slider::-webkit-slider-thumb:hover{transform:scale(1.15)}',
+                '.ai-menu__slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#8b5cf6;cursor:pointer;border:2px solid rgba(255,255,255,.15);box-shadow:0 2px 6px rgba(139,92,246,.4)}',
+
+                /* Advanced collapsible */
+                '.ai-menu__adv-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;padding:9px 11px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;color:rgba(255,255,255,.65);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:.2px}',
+                '.ai-menu__adv-toggle:hover{background:rgba(255,255,255,.05);color:#fff}',
+                '.ai-menu__adv-caret{font-size:18px;color:rgba(255,255,255,.5)}',
+                '.ai-menu__adv{max-height:0;overflow:hidden;transition:max-height .28s ease;display:flex;flex-direction:column;gap:7px}',
+                '.ai-menu__adv--open{max-height:480px;padding-top:8px}',
+                '.ai-menu__adv-row{display:flex;flex-direction:column;gap:3px;padding:5px 8px;background:rgba(0,0,0,.12);border-radius:6px}',
+                '.ai-menu__adv-label{display:flex;justify-content:space-between;font-size:10px;font-weight:600;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.4px}',
+                '.ai-menu__adv-val{color:#a78bfa;font-variant-numeric:tabular-nums}',
+                '.ai-menu__adv-slider{width:100%;-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;background:rgba(255,255,255,.08);outline:none;cursor:pointer}',
+                '.ai-menu__adv-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:11px;height:11px;border-radius:50%;background:#a78bfa;cursor:pointer;border:2px solid rgba(255,255,255,.15)}',
+                '.ai-menu__adv-slider::-moz-range-thumb{width:11px;height:11px;border-radius:50%;background:#a78bfa;cursor:pointer;border:2px solid rgba(255,255,255,.15)}',
+
+                /* Filter action buttons */
+                '.ai-menu__filter-actions{display:flex;gap:7px;padding-top:6px}',
+                '.ai-menu__filter-btn{flex:1;padding:9px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:.2px}',
+                '.ai-menu__filter-btn:disabled{opacity:.4;cursor:not-allowed}',
+                '.ai-menu__filter-btn--secondary{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.75)}',
+                '.ai-menu__filter-btn--secondary:hover:not(:disabled){background:rgba(255,255,255,.08);color:#fff}',
+                '.ai-menu__filter-btn--primary{background:linear-gradient(135deg,#8b5cf6,#ec4899);border:1px solid rgba(255,255,255,.15);color:#fff;box-shadow:0 3px 10px rgba(139,92,246,.3)}',
+                '.ai-menu__filter-btn--primary:hover:not(:disabled){filter:brightness(1.1);box-shadow:0 4px 14px rgba(139,92,246,.45)}'
             ].join('');
 
             document.head.appendChild(styles);

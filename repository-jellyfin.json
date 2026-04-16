@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.6.1.13",
+        "changelog": "v1.6.1.13: In-player quick-menu redesigned + live filter controls. The overlay that pops up from the Upscaler button during playback is now a tabbed interface [Models | Filters | Realtime] instead of a flat scroll. New Filters tab lets you tune the video look WITHOUT leaving playback: pick any of 15 preset looks (Cinematic, Vintage, Vivid, Sepia, Cyberpunk, Teal&Orange, ...) or drag 3 live sliders (Brightness / Contrast / Saturation) — the <video> element's CSS filter property updates at ~60fps for instant feedback, no re-transcode. An Advanced collapsible exposes server-side params (Gamma, Sharpness, Color Temperature, Vignette, Film Grain, Denoise) that persist via new POST /Upscaler/filter-config endpoint and kick in via FFmpeg on next seek. Reset/Save on both tiers. LIVE indicator dot pulses green while the CSS overlay is applied. Live sliders work fully offline — no AI service required; only the advanced FFmpeg params need the filter chain path.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.13/JellyfinUpscalerPlugin-v1.6.1.13.zip",
+        "checksum": "47713f0a28a2dbde52ae9abd58d3b3c62a95a1547df6353191d439954323a70e",
+        "timestamp": "2026-04-16T23:30:00.000Z"
+      },
+      {
         "version": "1.6.1.12",
         "changelog": "v1.6.1.12: Bugfix + model-catalog cleanup. (1) gfpgan-v1.4 + codeformer URLs repointed from the never-published kuscheltier/jellyfin-vsr-models repo to the public facefusion/models-3.0.0 mirror — both flipped to available:true. (2) RIFE frame-interpolation replaced: old rife-v4.6 / rife-v4.6-lite pointed at a 404 v0.0.0 placeholder tag — now rife-v4.9 (quality), rife-v4.8 (balanced, new), rife-v4.7 (fast) from yuvraj108c/rife-onnx. MODEL_ALIASES map keeps saved configs referencing the old keys working transparently. (3) Five models without public ONNX mirrors (edvr-m-x4, realbasicvsr-x4, animesr-v2-x4, apisr-x3, nomos8k-hat-x4) now carry [self-host required] suffix + link to docs/MODEL-HOSTING.md. (4) New Scripts/verify-release.ps1 runs end-to-end post-release validation: SHA against live manifest, ZIP-contents scan for forbidden patterns (Moq/Mono.Cecil/CodeCoverage/.pdb/.deps.json) that caused the v1.6.1.11 wrong-ZIP-upload bug. (5) Docker service VERSION + Dockerfile LABELs + csproj/HTML/JS version strings synced. Net catalog: 32 models available (up from 30), 5 self-host documented (down from 12 broken).",
         "targetAbi": "10.11.8.0",

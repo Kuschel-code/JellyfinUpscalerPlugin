@@ -67,7 +67,7 @@ CACHE_DIR = Path(os.getenv("CACHE_DIR", "/app/cache"))
 STATIC_DIR = Path(os.getenv("STATIC_DIR", "/app/static"))
 
 # Version
-VERSION = "1.6.1.12"
+VERSION = "1.6.1.13"
 
 # Global state
 class AppState:
