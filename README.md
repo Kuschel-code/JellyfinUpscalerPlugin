@@ -1,13 +1,16 @@
 # Jellyfin AI Upscaler Plugin v1.6.1.13
 
+[![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.7-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
+
+> **Built with Claude Opus 4.7** — this plugin is developed and maintained entirely with [Anthropic's Claude Opus](https://www.anthropic.com/claude/opus). Code contributions, Dockerfiles, CI workflows and documentation are produced in a pair-programming style with the model; the maintainer ([Kuschel-code](https://github.com/Kuschel-code)) reviews, tests and publishes every change. Release commits carry the `Co-Authored-By: Claude` trailer as disclosure.
+
+---
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
 [![Docker Hub](https://img.shields.io/docker/pulls/kuscheltier/jellyfin-ai-upscaler?logo=docker&label=Docker%20Hub)](https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler)
 [![Docker Image](https://img.shields.io/docker/v/kuscheltier/jellyfin-ai-upscaler?logo=docker&label=Latest)](https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler)
 [![Project Website](https://img.shields.io/badge/Website-Visit-blueviolet)](https://transcendent-blancmange-824967.netlify.app)
-[![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus-D97757?logo=anthropic&logoColor=white)](https://www.anthropic.com/claude/opus)
-
-> **Programmiert mit Claude Opus 4.7** — dieses Plugin wird vollständig mit [Anthropic's Claude Opus](https://www.anthropic.com/claude/opus) entwickelt und gewartet. Codebeiträge, Dockerfiles, CI-Workflows und Dokumentation werden im Pair-Programming-Stil mit dem Modell erarbeitet; der Maintainer ([Kuschel-code](https://github.com/Kuschel-code)) prüft, testet und veröffentlicht jede Änderung. Commits tragen den `Co-Authored-By: Claude` Trailer zur Kennzeichnung.
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
