@@ -9,9 +9,20 @@
 # GPU inference works via ROCm + ONNX Runtime ≤1.22.x; CPU fallback otherwise.
 FROM rocm/pytorch:rocm6.2_ubuntu22.04_py3.10_pytorch_release_2.3.0
 
-LABEL maintainer="Kuschel-code"
-LABEL description="AI Upscaler Service with AMD ROCm GPU Acceleration"
-LABEL version="1.6.1.13"
+# Build-time metadata — pass via: --build-arg APP_VERSION=1.6.1.13 --build-arg APP_COMMIT=$(git rev-parse --short HEAD)
+ARG APP_VERSION=1.6.1.13
+ARG APP_COMMIT=unknown
+ENV APP_VERSION=${APP_VERSION} \
+    APP_COMMIT=${APP_COMMIT}
+
+LABEL org.opencontainers.image.title="Jellyfin AI Upscaler (AMD ROCm)" \
+      org.opencontainers.image.description="AI Upscaler Service with AMD ROCm 6.2 GPU Acceleration (RDNA3/RDNA2)" \
+      org.opencontainers.image.vendor="Kuschel-code" \
+      org.opencontainers.image.source="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" \
+      org.opencontainers.image.documentation="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docker-ai-service/README.md" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.version="${APP_VERSION}" \
+      org.opencontainers.image.revision="${APP_COMMIT}"
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -44,9 +55,10 @@ COPY requirements-amd.txt requirements.txt
 # Install Python dependencies with ROCm ONNX Runtime
 # onnxruntime-rocm ≤1.22.x is the last version with ROCm EP (deprecated after v1.23)
 # Falls back to CPU-only onnxruntime if ROCm wheel is unavailable
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
-    (pip install --no-cache-dir "onnxruntime-rocm<=1.22.99" || pip install --no-cache-dir onnxruntime)
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip && \
+    pip install -r requirements.txt && \
+    (pip install "onnxruntime-rocm<=1.22.99" || pip install onnxruntime)
 
 # Copy application code
 COPY app/ ./app/

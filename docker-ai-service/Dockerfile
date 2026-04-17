@@ -15,9 +15,20 @@ ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 # Set SKIP_TENSORRT=false to re-enable TensorRT if your GPU supports it
 ENV SKIP_TENSORRT=true
 
-LABEL maintainer="Kuschel-code"
-LABEL description="AI Upscaler Service with NVIDIA CUDA 12.8 + cuDNN 9 (RTX 50/40/30/20 + GTX 16/10)"
-LABEL version="1.6.1.13"
+# Build-time metadata — pass via: --build-arg APP_VERSION=1.6.1.13 --build-arg APP_COMMIT=$(git rev-parse --short HEAD)
+ARG APP_VERSION=1.6.1.13
+ARG APP_COMMIT=unknown
+ENV APP_VERSION=${APP_VERSION} \
+    APP_COMMIT=${APP_COMMIT}
+
+LABEL org.opencontainers.image.title="Jellyfin AI Upscaler (NVIDIA CUDA)" \
+      org.opencontainers.image.description="AI Upscaler Service with NVIDIA CUDA 12.8 + cuDNN 9 (RTX 50/40/30/20 + GTX 16/10)" \
+      org.opencontainers.image.vendor="Kuschel-code" \
+      org.opencontainers.image.source="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" \
+      org.opencontainers.image.documentation="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docker-ai-service/README.md" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.version="${APP_VERSION}" \
+      org.opencontainers.image.revision="${APP_COMMIT}"
 
 WORKDIR /app
 
@@ -43,7 +54,9 @@ COPY requirements.txt .
 
 # Install Python dependencies (GPU version)
 # Use python -m pip because the CUDA base image has pip3 not pip in PATH
-RUN python -m pip install --no-cache-dir -r requirements.txt
+# BuildKit cache mount persists pip's wheel cache across builds (shaves ~90% off rebuilds)
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m pip install -r requirements.txt
 
 # Copy application code
 COPY app/ ./app/

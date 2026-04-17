@@ -11,9 +11,20 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV USE_GPU=true
 ENV VULKAN_BACKEND=true
 
-LABEL maintainer="Kuschel-code"
-LABEL description="AI Upscaler Service with Vulkan (ncnn) for AMD pre-RDNA2, Intel iGPU, any Vulkan GPU"
-LABEL version="1.6.1.13"
+# Build-time metadata — pass via: --build-arg APP_VERSION=1.6.1.13 --build-arg APP_COMMIT=$(git rev-parse --short HEAD)
+ARG APP_VERSION=1.6.1.13
+ARG APP_COMMIT=unknown
+ENV APP_VERSION=${APP_VERSION} \
+    APP_COMMIT=${APP_COMMIT}
+
+LABEL org.opencontainers.image.title="Jellyfin AI Upscaler (Vulkan/ncnn)" \
+      org.opencontainers.image.description="AI Upscaler Service with Vulkan (ncnn) for AMD pre-RDNA2, Intel iGPU, any Vulkan-capable GPU" \
+      org.opencontainers.image.vendor="Kuschel-code" \
+      org.opencontainers.image.source="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" \
+      org.opencontainers.image.documentation="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docker-ai-service/README.md" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.version="${APP_VERSION}" \
+      org.opencontainers.image.revision="${APP_COMMIT}"
 
 WORKDIR /app
 
@@ -47,18 +58,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy requirements first for better caching
 COPY requirements-vulkan.txt ./requirements.txt
 
-# Upgrade pip and install build tools
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+# Upgrade pip and install build tools (BuildKit cache speeds rebuilds of this + next RUN)
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip setuptools wheel
 
 # Install core Python dependencies from requirements file
-RUN pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
 
 # Install ncnn-vulkan — try pre-built wheel first, then build from source
 # Note: "ncnn-vulkan" is not a real PyPI package; the correct package is "ncnn"
-RUN pip install --no-cache-dir "realsr-ncnn-vulkan-python>=2.0.0,<3.0" 2>/dev/null || \
-    pip install --no-cache-dir "ncnn>=1.0.20250503,<2.0" 2>/dev/null || \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install "realsr-ncnn-vulkan-python>=2.0.0,<3.0" 2>/dev/null || \
+    pip install "ncnn>=1.0.20250503,<2.0" 2>/dev/null || \
     (echo "Building ncnn from source with Vulkan support..." && \
-     pip install --no-cache-dir pybind11 && \
+     pip install pybind11 && \
      git clone --depth 1 --branch 20250503 --single-branch https://github.com/Tencent/ncnn.git /tmp/ncnn && \
      cd /tmp/ncnn && mkdir build && cd build && \
      cmake -G Ninja \

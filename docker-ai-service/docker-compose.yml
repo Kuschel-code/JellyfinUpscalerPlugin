@@ -2,12 +2,16 @@ services:
   # GPU Version (NVIDIA CUDA) - Default
   # Uses Docker Hub image for easy auto-updates with Watchtower
   ai-upscaler:
-    image: kuscheltier/jellyfin-ai-upscaler:docker6.1
+    image: kuscheltier/jellyfin-ai-upscaler:docker7
     # Alternative: Build locally (uncomment below, comment image above)
     # build:
     #   context: .
     #   dockerfile: Dockerfile
     container_name: jellyfin-ai-upscaler
+    # Watchtower opt-in label — enables auto-update when the watchtower service
+    # (commented at bottom of this file) is uncommented with WATCHTOWER_LABEL_ENABLE=true.
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     ports:
       - "127.0.0.1:5000:5000"
       # SSH access disabled by default for security.

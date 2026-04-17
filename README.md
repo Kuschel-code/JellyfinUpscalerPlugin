@@ -5,16 +5,19 @@
 [![Docker Hub](https://img.shields.io/docker/pulls/kuscheltier/jellyfin-ai-upscaler?logo=docker&label=Docker%20Hub)](https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler)
 [![Docker Image](https://img.shields.io/docker/v/kuscheltier/jellyfin-ai-upscaler?logo=docker&label=Latest)](https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler)
 [![Project Website](https://img.shields.io/badge/Website-Visit-blueviolet)](https://transcendent-blancmange-824967.netlify.app)
+[![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus-D97757?logo=anthropic&logoColor=white)](https://www.anthropic.com/claude/opus)
+
+> **Programmiert mit Claude Opus 4.7** — dieses Plugin wird vollständig mit [Anthropic's Claude Opus](https://www.anthropic.com/claude/opus) entwickelt und gewartet. Codebeiträge, Dockerfiles, CI-Workflows und Dokumentation werden im Pair-Programming-Stil mit dem Modell erarbeitet; der Maintainer ([Kuschel-code](https://github.com/Kuschel-code)) prüft, testet und veröffentlicht jede Änderung. Commits tragen den `Co-Authored-By: Claude` Trailer zur Kennzeichnung.
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker6.1 / v1.6.1.7 Docker base — plugin is independently versioned at v1.6.1.13):**
-*   `kuscheltier/jellyfin-ai-upscaler:docker6.1` (NVIDIA CUDA + cuDNN 9)
-*   `kuscheltier/jellyfin-ai-upscaler:docker6.1-amd` (AMD ROCm)
-*   `kuscheltier/jellyfin-ai-upscaler:docker6.1-intel` (Intel Arc/iGPU OpenVINO)
-*   `kuscheltier/jellyfin-ai-upscaler:docker6.1-apple` (macOS Apple Silicon)
-*   `kuscheltier/jellyfin-ai-upscaler:docker6.1-vulkan` (Vulkan/ncnn — AMD pre-RDNA2, Intel iGPU)
-*   `kuscheltier/jellyfin-ai-upscaler:docker6.1-cpu` (CPU Only — multi-threaded ONNXRuntime)
+**Docker Images (docker7 base — plugin is independently versioned at v1.6.1.13):**
+*   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
+*   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
+*   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
+*   `kuscheltier/jellyfin-ai-upscaler:docker7-apple` (macOS Apple Silicon — multi-arch amd64/arm64)
+*   `kuscheltier/jellyfin-ai-upscaler:docker7-vulkan` (Vulkan/ncnn — AMD pre-RDNA2, Intel iGPU)
+*   `kuscheltier/jellyfin-ai-upscaler:docker7-cpu` (CPU Only — multi-threaded ONNXRuntime, multi-arch)
 
 **Report bugs:** [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 
@@ -107,7 +110,7 @@ docker run -d \
   --gpus all \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:docker6.1
+  kuscheltier/jellyfin-ai-upscaler:docker7
 ```
 
 **Intel GPU (Arc / Iris):**
@@ -118,7 +121,7 @@ docker run -d \
   --group-add=render \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:docker6.1-intel
+  kuscheltier/jellyfin-ai-upscaler:docker7-intel
 ```
 
 **AMD GPU (ROCm):**
@@ -128,7 +131,7 @@ docker run -d \
   --device=/dev/kfd --device=/dev/dri \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:docker6.1-amd
+  kuscheltier/jellyfin-ai-upscaler:docker7-amd
 ```
 
 **Vulkan GPU (AMD RX 5700, Intel iGPU, etc.):**
@@ -139,7 +142,7 @@ docker run -d \
   --group-add=render \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:docker6.1-vulkan
+  kuscheltier/jellyfin-ai-upscaler:docker7-vulkan
 ```
 
 **CPU Only (any platform):**
@@ -148,7 +151,7 @@ docker run -d \
   --name jellyfin-ai-upscaler \
   -p 5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:docker6.1-cpu
+  kuscheltier/jellyfin-ai-upscaler:docker7-cpu
 ```
 
 Verify the container is running: `curl http://YOUR_SERVER_IP:5000/health`
@@ -274,12 +277,17 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 | Tag | GPU | Use Case |
 |-----|-----|----------|
-| `:docker6.1` | NVIDIA CUDA 12.8 + TensorRT | RTX 50/40/30/20, GTX 16/10 |
-| `:docker6.1-amd` | AMD ROCm | RX 7000, RX 6000 |
-| `:docker6.1-intel` | Intel OpenVINO | Arc A-Series, Iris Xe |
-| `:docker6.1-apple` | ARM64 Optimized | Apple M1–M5 (Docker=CPU, native=CoreML) |
-| `:docker6.1-vulkan` | Vulkan (ncnn) | AMD pre-RDNA2, Intel iGPU, any Vulkan GPU |
-| `:docker6.1-cpu` | Multi-threaded CPU | Any platform |
+| `:docker7` | NVIDIA CUDA 12.8 + TensorRT | RTX 50/40/30/20, GTX 16/10 |
+| `:docker7-amd` | AMD ROCm 6.2 | RX 7000, RX 6000 |
+| `:docker7-intel` | Intel OpenVINO 2025.4 | Arc A-Series, Iris Xe, iGPU |
+| `:docker7-apple` | ARM64 Optimized (multi-arch) | Apple M1–M5 (Docker=CPU, native=CoreML) |
+| `:docker7-vulkan` | Vulkan (ncnn) | AMD pre-RDNA2, Intel iGPU, any Vulkan GPU |
+| `:docker7-cpu` | Multi-threaded CPU (multi-arch) | Any platform (amd64/arm64) |
+
+Each tag is published three ways so you can pin precisely:
+- `:docker7` — rolling tag family (Watchtower auto-updates)
+- `:docker7-v1.6.1.13` — pinned to a specific plugin release
+- `:v1.6.1.13-<backend>` — full semver (e.g. `:v1.6.1.13-cpu`)
 
 ---
 
@@ -816,15 +824,15 @@ docker run --rm --gpus all nvidia/cuda:12.2.2-base-ubuntu22.04 nvidia-smi
 ```
 
 ### GPU not detected
-- **NVIDIA RTX 5000 (Blackwell)**: Requires CUDA 12.8+ — use latest `:docker6.1` image. Compute capability sm_120 auto-detected.
+- **NVIDIA RTX 5000 (Blackwell)**: Requires CUDA 12.8+ — use latest `:docker7` image. Compute capability sm_120 auto-detected.
 - **NVIDIA RTX 4000/3000/2000**: Install `nvidia-container-toolkit`, use `--gpus all`. TensorRT is skipped by default — set `SKIP_TENSORRT=false` if your GPU supports it.
-- **Intel**: Use `:docker6.1-intel` tag with `--device=/dev/dri --group-add=render`. Check diagnostics: `curl http://YOUR_SERVER_IP:5000/gpu-verify`
-- **AMD**: Use `:docker6.1-amd` tag with `--device=/dev/kfd --device=/dev/dri`
+- **Intel**: Use `:docker7-intel` tag with `--device=/dev/dri --group-add=render`. Check diagnostics: `curl http://YOUR_SERVER_IP:5000/gpu-verify`
+- **AMD**: Use `:docker7-amd` tag with `--device=/dev/kfd --device=/dev/dri`
 - **Apple M1–M5**: Docker on macOS runs CPU-only. For GPU acceleration via CoreML/Neural Engine, use the native install:
   ```bash
   cd docker-ai-service && chmod +x install-native-macos.sh && ./install-native-macos.sh
   ```
-- **Windows Docker Desktop**: GPU passthrough not supported — use `:docker6.1-cpu`
+- **Windows Docker Desktop**: GPU passthrough not supported — use `:docker7-cpu`
 
 ### Proxmox LXC GPU Passthrough
 ```bash

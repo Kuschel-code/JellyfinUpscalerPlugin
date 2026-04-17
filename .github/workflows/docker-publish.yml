@@ -1,0 +1,159 @@
+name: Docker Publish (docker7)
+
+# Publishes all 6 AI-upscaler backend images to Docker Hub with semver
+# triple-tagging, multi-arch support for the slim-python variants,
+# and a Trivy vulnerability scan that uploads SARIF to the Security tab.
+#
+# Triggers:
+#   - Manual dispatch (pick variants + version)
+#   - Tag push of the form `docker7*` or `v*-docker7`
+#
+# Required repository secrets:
+#   DOCKERHUB_USERNAME   — Docker Hub account name
+#   DOCKERHUB_TOKEN      — Docker Hub access token with write:packages scope
+#
+# Actions below use version tags; pin to SHAs via Dependabot before first merge.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Plugin semver (e.g. 1.6.1.13)'
+        required: true
+        default: '1.6.1.13'
+      push:
+        description: 'Push to Docker Hub? (false = build-only dry run)'
+        required: true
+        default: 'true'
+  push:
+    tags:
+      - 'docker7*'
+      - 'v*-docker7'
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write   # required for upload-sarif
+
+env:
+  REGISTRY: docker.io
+  IMAGE: kuscheltier/jellyfin-ai-upscaler
+  FAMILY: docker7
+
+jobs:
+  build-push:
+    name: Build ${{ matrix.backend }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - backend: nvidia
+            dockerfile: Dockerfile
+            suffix: ''
+            platforms: 'linux/amd64'
+          - backend: amd
+            dockerfile: Dockerfile.amd
+            suffix: '-amd'
+            platforms: 'linux/amd64'
+          - backend: intel
+            dockerfile: Dockerfile.intel
+            suffix: '-intel'
+            platforms: 'linux/amd64'
+          - backend: apple
+            dockerfile: Dockerfile.apple
+            suffix: '-apple'
+            platforms: 'linux/amd64,linux/arm64'
+          - backend: vulkan
+            dockerfile: Dockerfile.vulkan
+            suffix: '-vulkan'
+            platforms: 'linux/amd64,linux/arm64'
+          - backend: cpu
+            dockerfile: Dockerfile.cpu
+            suffix: '-cpu'
+            platforms: 'linux/amd64,linux/arm64'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=$(grep -oP '<AssemblyVersion>\K[^<]+' JellyfinUpscalerPlugin.csproj)
+          fi
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "version=$VERSION"       >> "$GITHUB_OUTPUT"
+          echo "short_sha=$SHORT_SHA"   >> "$GITHUB_OUTPUT"
+          echo "Plugin version: $VERSION ($SHORT_SHA)"
+
+      - name: Set up QEMU (enables arm64 emulation for multi-arch builds)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: github.event.inputs.push != 'false'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Compose tag list
+        id: tags
+        run: |
+          V=${{ steps.version.outputs.version }}
+          S="${{ matrix.suffix }}"
+          FAMILY="${{ env.FAMILY }}"
+          IMG="${{ env.IMAGE }}"
+          # Three stable tag families:
+          #   1. Rolling:   docker7[-suffix]               → Watchtower target
+          #   2. Pinned:    docker7-v<ver>[-suffix]        → reproducible pulls
+          #   3. Semver:    v<ver>[-suffix]                → full version pin
+          TAGS="${IMG}:${FAMILY}${S}"
+          TAGS="${TAGS},${IMG}:${FAMILY}-v${V}${S}"
+          TAGS="${TAGS},${IMG}:v${V}${S}"
+          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
+          echo "primary=${IMG}:${FAMILY}${S}" >> "$GITHUB_OUTPUT"
+          echo "Will publish tags:"
+          printf '  %s\n' $(echo "$TAGS" | tr ',' '\n')
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker-ai-service
+          file: ./docker-ai-service/${{ matrix.dockerfile }}
+          platforms: ${{ matrix.platforms }}
+          push: ${{ github.event.inputs.push != 'false' }}
+          tags: ${{ steps.tags.outputs.tags }}
+          build-args: |
+            APP_VERSION=${{ steps.version.outputs.version }}
+            APP_COMMIT=${{ steps.version.outputs.short_sha }}
+          # Inline registry cache — rebuilds of the same backend reuse layers
+          cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache-${{ matrix.backend }}
+          cache-to: type=registry,ref=${{ env.IMAGE }}:buildcache-${{ matrix.backend }},mode=max
+          provenance: false
+
+      # ---------------------------------------------------------------
+      # Trivy: scan the primary tag (docker7[-suffix]) for HIGH/CRITICAL CVEs
+      # ---------------------------------------------------------------
+      - name: Trivy scan
+        if: github.event.inputs.push != 'false'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.tags.outputs.primary }}
+          format: sarif
+          output: trivy-${{ matrix.backend }}.sarif
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+          exit-code: '0'   # Report but don't fail the job — base images often have unfixable CVEs
+
+      - name: Upload Trivy SARIF
+        if: github.event.inputs.push != 'false'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-${{ matrix.backend }}.sarif
+          category: trivy-${{ matrix.backend }}

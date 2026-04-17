@@ -1,0 +1,55 @@
+# TrueNAS SCALE (24.10 "Electric Eel"+) — Custom App compose file.
+#
+# How to use:
+#   1. Apps → Discover Apps → Custom App (top right)
+#   2. Application Name: jellyfin-ai-upscaler
+#   3. Switch to "YAML" tab and paste this file
+#   4. For NVIDIA GPU: go to the "GPU" section and allocate 1x GPU
+#      (TrueNAS handles the nvidia runtime wiring — you do NOT need the
+#       `deploy.resources` block that bare docker-compose uses)
+#   5. For Intel/AMD: add Host Path mount /dev/dri → /dev/dri under "Storage"
+#
+# The path prefix /mnt/tank/apps/jellyfin-ai-upscaler is a placeholder; change
+# "tank" to whatever ZFS pool you use. TrueNAS apps run under UID 568.
+
+services:
+  ai-upscaler:
+    image: kuscheltier/jellyfin-ai-upscaler:docker7
+    container_name: jellyfin-ai-upscaler
+    restart: unless-stopped
+
+    # TrueNAS Custom App wraps compose in its own network; no ports needed
+    # if you only call it from the Jellyfin container on the same host.
+    # Expose on the LAN by uncommenting:
+    ports:
+      - "5000:5000"
+
+    environment:
+      - USE_GPU=true
+      - MAX_CONCURRENT_REQUESTS=4
+      - DEFAULT_MODEL=realesrgan-x4
+      - LOG_LEVEL=INFO
+      - SKIP_TENSORRT=true
+      - PUID=568
+      - PGID=568
+
+    # Persistent volumes — host paths must exist on the TrueNAS pool.
+    # Create them under Datasets → apps → jellyfin-ai-upscaler → {models,cache}
+    volumes:
+      - /mnt/tank/apps/jellyfin-ai-upscaler/models:/app/models
+      - /mnt/tank/apps/jellyfin-ai-upscaler/cache:/app/cache
+
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Resource limits — TrueNAS honors these via the docker runtime
+    mem_limit: 8g
+    cpus: 4.0
+
+    # Watchtower opt-in (if you run Watchtower elsewhere on the same host)
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
