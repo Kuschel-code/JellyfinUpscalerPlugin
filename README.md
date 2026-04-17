@@ -164,7 +164,7 @@ Verify the container is running: `curl http://YOUR_SERVER_IP:5000/health`
 1. Open Jellyfin Dashboard → **Plugins** → **Repositories** → **Add**
 2. Enter this repository URL:
    ```
-   https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/manifest.json
+   https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/repository-jellyfin.json
    ```
 3. Go to **Catalog** → find **AI Upscaler** → click **Install**
 4. **Restart Jellyfin** (required after any plugin install)
