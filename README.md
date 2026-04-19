@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.6.1.13
+# Jellyfin AI Upscaler Plugin v1.6.1.14
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.7-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.6.1.13):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.6.1.14):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.6.1.13     │  │
+│  │  AI Upscaler Plugin v1.6.1.14     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -289,12 +289,42 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.6.1.13` — pinned to a specific plugin release
-- `:v1.6.1.13-<backend>` — full semver (e.g. `:v1.6.1.13-cpu`)
+- `:docker7-v1.6.1.14` — pinned to a specific plugin release
+- `:v1.6.1.14-<backend>` — full semver (e.g. `:v1.6.1.14-cpu`)
 
 ---
 
 ## Changelog
+
+### v1.6.1.14 (Select Library + Docker UI Redesign)
+
+Implements a long-standing feature request and fixes three version-display bugs surfaced during full button-level verification.
+
+**Select Library (issue [#64](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/64)):**
+- Scheduled scan ("Scan & Upscale Library") can now target specific libraries instead of always scanning every virtual folder. Empty selection preserves the legacy "scan everything" behavior — no change needed for existing installs.
+- New UI on the Settings tab: chip-based picker with individual per-library checkboxes, Refresh button, and live chip styling (selected chips turn blue). Persisted via the new `EnabledLibraryIds` config field (comma-separated Jellyfin virtual-folder IDs).
+- Backend: `GET /Upscaler/libraries` enumerates virtual folders with ID/name/collectionType/paths. `LibraryUpscaleScanTask` resolves enabled IDs to physical paths once at scan start and post-filters fetched items by path prefix (handles mixed-library item queries correctly, since `InternalItemsQuery.ParentId` is single-GUID).
+
+**Bugfixes found during live-test:**
+- `saveConfig` in `configurationpage.html` now actually writes `EnabledLibraryIds` back to the plugin config. The field was added to the load path but missing from the save payload, so any chip selection silently reset to empty on every save click.
+- `config.PluginVersion` hardcoded string + header-meta version text + sidebar-upscaler.js `PLUGIN_VERSION` const all synced 1.6.1.13 → 1.6.1.14 (previously save always wrote the old version string back, making the plugin look permanently one version behind).
+- `JellyfinUpscalerPlugin.csproj` `Version` / `AssemblyVersion` / `FileVersion` synced, so Jellyfin's plugin manager shows the actual release version instead of the one baked in at source.
+
+**Docker AI service UI (localhost:5000) redesign:**
+- API_TOKEN-not-configured state now shows a single persistent dismissible banner instead of repeat-spamming toasts on every `/status` poll. Dismissal is remembered for the session via `sessionStorage`.
+- Toast stack now dedupes identical messages within a 10-second window, caps at max 3 visible, includes a close button, and click-to-dismiss with fade-out animation.
+- AI Models card gains a name-search box and a status filter (Available / Downloaded / Loaded / All) for quicker navigation through the 29-model catalog.
+- FastAPI `/status` endpoint now returns `api_token_configured` and `auth_enabled` so the UI can distinguish "auth intentionally disabled" (`API_TOKEN=disable`) from "operator forgot to set the secret".
+
+**Verification:** live-tested on Jellyfin 10.11.8 — all 26 config-page buttons clicked across 6 tabs with 0 console errors; library-picker chips render correctly from `/Upscaler/libraries`; EnabledLibraryIds persists through save + reload.
+
+### v1.6.1.13 (In-Player Quick-Menu Tabs + Live Filter Controls)
+
+The overlay that pops up from the Upscaler button during playback is now a tabbed interface [Models | Filters | Realtime] instead of a flat scroll. New Filters tab lets you tune video look WITHOUT leaving playback: pick any of 15 preset looks (Cinematic, Vintage, Vivid, Sepia, Cyberpunk, Teal&Orange, ...) or drag 3 live sliders (Brightness / Contrast / Saturation). The `<video>` element's CSS filter property updates at ~60fps for instant feedback — no re-transcode. Advanced collapsible exposes server-side params (Gamma, Sharpness, Color Temperature, Vignette, Film Grain, Denoise) that persist via `POST /Upscaler/filter-config` and kick in via FFmpeg on next seek.
+
+### v1.6.1.12 (Face-Restore Model Fix + RIFE Upgrade)
+
+gfpgan-v1.4 + codeformer repointed from the never-published `kuscheltier/jellyfin-vsr-models` to the public `facefusion/models-3.0.0` mirror — both now `available: true`. RIFE frame-interpolation replaced: old `rife-v4.6` / `rife-v4.6-lite` (pointed at a 404 v0.0.0 placeholder tag) replaced with `rife-v4.9` / `rife-v4.8` / `rife-v4.7` from the `yuvraj108c/rife-onnx` export. `MODEL_ALIASES` keeps old config keys working transparently. Five models without public ONNX mirrors marked `[self-host required]` with `docs/MODEL-HOSTING.md` recipe. New `Scripts/verify-release.ps1` validates release assets (SHA + forbidden-pattern check) after `gh release create`.
 
 ### v1.6.1.11 (Auth-header + Elevation Hardening, Model Catalog Cleanup)
 

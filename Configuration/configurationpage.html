@@ -1,6 +1,6 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
 <style>
-    /* ===== AI Upscaler v1.6.1.13 — Jellyfin-compatible dark theme ===== */
+    /* ===== AI Upscaler v1.6.1.14 — Jellyfin-compatible dark theme ===== */
     #UpscalerConfigurationPage {
         --accent: #00d4ff;
         --accent-bg: rgba(0, 212, 255, 0.12);
@@ -361,7 +361,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.6.1.13 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.6.1.14 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -573,6 +573,17 @@
                     <details>
                         <summary>Library Scan</summary>
                         <div class="details-body">
+                            <div class="inputContainer" style="margin-bottom:0.75rem;">
+                                <label class="inputLabel" style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
+                                    <span>Scan Scope &mdash; which libraries?</span>
+                                    <button type="button" id="btn-refresh-libraries" is="emby-button" class="raised" style="font-size:0.85em;padding:0.25em 0.8em;">Refresh</button>
+                                </label>
+                                <div id="EnabledLibraryIdsList" style="display:flex;flex-wrap:wrap;gap:0.5rem;padding:0.6rem;border:1px solid rgba(148,163,184,0.2);border-radius:6px;background:rgba(15,23,42,0.35);min-height:2.4em;">
+                                    <span style="color:var(--text-secondary);font-size:0.9em;">Loading libraries&hellip;</span>
+                                </div>
+                                <input type="hidden" id="EnabledLibraryIds" />
+                                <div class="fieldDescription">Select one or more libraries to scope the nightly scan. Leave empty to scan <strong>all</strong> libraries (legacy behavior).</div>
+                            </div>
                             <div class="form-row">
                                 <div class="form-col inputContainer"><label class="inputLabel" for="MinResolutionWidth">Min Resolution Width</label><input type="number" id="MinResolutionWidth" min="0" max="7680" /><div class="fieldDescription">Videos below this width are upscaled (default: 1920)</div></div>
                                 <div class="form-col inputContainer"><label class="inputLabel" for="MinResolutionHeight">Min Resolution Height</label><input type="number" id="MinResolutionHeight" min="0" max="4320" /><div class="fieldDescription">Videos below this height are upscaled (default: 1080)</div></div>
@@ -1473,6 +1484,68 @@
             } catch(e) {}
         }
 
+        // ===== LIBRARY PICKER (Issue #64) =====
+        var _librariesCache = null;
+
+        function _renderLibraryChips(page, libs, selectedIds) {
+            var container = page.querySelector('#EnabledLibraryIdsList');
+            var hidden = page.querySelector('#EnabledLibraryIds');
+            if (!container || !hidden) return;
+            container.innerHTML = '';
+            if (!libs || libs.length === 0) {
+                container.innerHTML = '<span style="color:var(--text-secondary);font-size:0.9em;">No libraries found.</span>';
+                return;
+            }
+            var selected = new Set((selectedIds || '').split(',').map(function(s){return s.trim();}).filter(Boolean));
+            libs.forEach(function(lib) {
+                var chip = document.createElement('label');
+                chip.style.cssText = 'display:inline-flex;align-items:center;gap:0.35rem;padding:0.3rem 0.7rem;border:1px solid rgba(148,163,184,0.3);border-radius:999px;cursor:pointer;background:rgba(30,41,59,0.4);user-select:none;font-size:0.9em;transition:all 0.15s;';
+                var cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = lib.id;
+                cb.checked = selected.has(lib.id);
+                cb.style.cssText = 'margin:0;cursor:pointer;';
+                var applyChipStyle = function(){
+                    if (cb.checked) {
+                        chip.style.background = 'rgba(59,130,246,0.2)';
+                        chip.style.borderColor = 'rgba(59,130,246,0.6)';
+                    } else {
+                        chip.style.background = 'rgba(30,41,59,0.4)';
+                        chip.style.borderColor = 'rgba(148,163,184,0.3)';
+                    }
+                };
+                cb.addEventListener('change', function() {
+                    applyChipStyle();
+                    var ids = Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(function(c){return c.value;});
+                    hidden.value = ids.join(',');
+                });
+                applyChipStyle();
+                chip.appendChild(cb);
+                var label = document.createElement('span');
+                label.textContent = lib.name;
+                chip.appendChild(label);
+                container.appendChild(chip);
+            });
+        }
+
+        function _loadLibrariesPicker(page, selectedIds) {
+            var container = page.querySelector('#EnabledLibraryIdsList');
+            if (!container) return;
+            if (_librariesCache) {
+                _renderLibraryChips(page, _librariesCache, selectedIds);
+                return;
+            }
+            container.innerHTML = '<span style="color:var(--text-secondary);font-size:0.9em;">Loading libraries&hellip;</span>';
+            ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/libraries'), dataType: 'json' })
+                .then(function(r) {
+                    _librariesCache = r.libraries || [];
+                    _renderLibraryChips(page, _librariesCache, selectedIds);
+                })
+                .catch(function(err) {
+                    container.innerHTML = '<span style="color:#f87171;font-size:0.9em;">Failed to load libraries: ' + (err.message || err) + '</span>';
+                });
+        }
+
         // ===== CONFIG LOAD/SAVE =====
         function loadConfig(page) {
             ApiClient.getPluginConfiguration(pluginId).then(function(config) {
@@ -1491,11 +1564,14 @@
                     'FilterBrightness','FilterContrast','FilterSaturation','FilterGamma',
                     'FilterSharpness','FilterColorTemperature','FilterVignette','FilterFilmGrain',
                     'FilterDenoise','FilterLutPath',
-                    'FaceRestoreModel','FaceRestoreMaxPerFrame','FaceRestoreMaxWidth'];
+                    'FaceRestoreModel','FaceRestoreMaxPerFrame','FaceRestoreMaxWidth',
+                    'EnabledLibraryIds'];
                 fields.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el && config[f] !== undefined) el.value = config[f];
                 });
+
+                _loadLibrariesPicker(page, config.EnabledLibraryIds || '');
 
                 var checks = ['EnablePlugin','PlayerButton','HardwareAcceleration','Notifications','AutoRetryButton',
                     'EnableComparisonView','EnablePerformanceMetrics','EnableAutoBenchmarking',
@@ -1627,7 +1703,9 @@
                 var faceModelEl = page.querySelector('#FaceRestoreModel');
                 if (faceModelEl) config.FaceRestoreModel = faceModelEl.value;
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
-                config.PluginVersion = '1.6.1.13';
+                var libHidden = page.querySelector('#EnabledLibraryIds');
+                if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
+                config.PluginVersion = '1.6.1.14';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -2036,6 +2114,15 @@
         function attachEvents(page) {
             page.querySelector('#btn-save').addEventListener('click', function() { saveConfig(page); });
             page.querySelector('#btn-save-filters').addEventListener('click', function() { saveConfig(page); });
+
+            var btnRefreshLibs = page.querySelector('#btn-refresh-libraries');
+            if (btnRefreshLibs) {
+                btnRefreshLibs.addEventListener('click', function() {
+                    _librariesCache = null;
+                    var hidden = page.querySelector('#EnabledLibraryIds');
+                    _loadLibrariesPicker(page, hidden ? hidden.value : '');
+                });
+            }
 
             page.querySelector('#btn-test-connection').addEventListener('click', function() {
                 var status = page.querySelector('#connection-status');

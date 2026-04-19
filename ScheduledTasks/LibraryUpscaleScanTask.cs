@@ -85,6 +85,37 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
             }
             _logger.LogInformation("AI Upscaler: Docker AI service is online");
 
+            // Parse library filter: empty = all libraries, else CSV of virtual-folder item IDs
+            var enabledLibraryIds = (config.EnabledLibraryIds ?? "")
+                .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => Guid.TryParse(s, out _))
+                .Select(Guid.Parse)
+                .ToHashSet();
+
+            // Resolve library IDs to library paths (for path-based filtering post-fetch;
+            // InternalItemsQuery.ParentId only accepts a single GUID, and users may pick multiple).
+            HashSet<string>? enabledLibraryPaths = null;
+            if (enabledLibraryIds.Count > 0)
+            {
+                var virtualFolders = _libraryManager.GetVirtualFolders();
+                enabledLibraryPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var vf in virtualFolders)
+                {
+                    if (Guid.TryParse(vf.ItemId, out var vfId) && enabledLibraryIds.Contains(vfId))
+                    {
+                        foreach (var loc in vf.Locations ?? Array.Empty<string>())
+                        {
+                            if (!string.IsNullOrEmpty(loc))
+                                enabledLibraryPaths.Add(Path.GetFullPath(loc));
+                        }
+                    }
+                }
+                _logger.LogInformation(
+                    "AI Upscaler: Library filter active — {Count} selected, {Paths} resolved paths",
+                    enabledLibraryIds.Count, enabledLibraryPaths.Count);
+            }
+
             // Get all video items from the library
             var query = new InternalItemsQuery
             {
@@ -94,6 +125,23 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
             };
 
             var items = _libraryManager.GetItemList(query);
+
+            if (enabledLibraryPaths != null && enabledLibraryPaths.Count > 0)
+            {
+                items = items.Where(it =>
+                {
+                    var p = it.Path;
+                    if (string.IsNullOrEmpty(p)) return false;
+                    var full = Path.GetFullPath(p);
+                    foreach (var lib in enabledLibraryPaths)
+                    {
+                        var libWithSep = lib.EndsWith(Path.DirectorySeparatorChar) ? lib : lib + Path.DirectorySeparatorChar;
+                        if (full.StartsWith(libWithSep, StringComparison.OrdinalIgnoreCase)) return true;
+                    }
+                    return false;
+                }).ToList();
+            }
+
             var totalItems = items.Count;
 
             _logger.LogInformation("AI Upscaler: Found {Total} video items to analyze", totalItems);

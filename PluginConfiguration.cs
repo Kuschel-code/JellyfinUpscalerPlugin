@@ -210,6 +210,12 @@ namespace JellyfinUpscalerPlugin
             set => _maxItemsPerScan = Math.Max(value, 0);
         }
 
+        /// <summary>
+        /// Comma-separated library IDs (Jellyfin virtual folder item IDs) that the scheduled
+        /// scan should process. Empty = all libraries (legacy behavior).
+        /// </summary>
+        public string EnabledLibraryIds { get; set; } = "";
+
         // ── Real-Time Upscaling ──────────────────────────────────────────
 
         /// <summary>Enable real-time upscaling during video playback.</summary>
@@ -509,6 +515,6 @@ namespace JellyfinUpscalerPlugin
         // ── Version Tracking ─────────────────────────────────────────────
 
         /// <summary>Current plugin version string for webhook payloads and diagnostics.</summary>
-        public string PluginVersion { get; set; } = "1.6.1.13";
+        public string PluginVersion { get; set; } = "1.6.1.14";
     }
 }

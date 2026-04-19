@@ -1,4 +1,4 @@
-// AI Upscaler Plugin - Player Integration v1.6.1.13
+// AI Upscaler Plugin - Player Integration v1.6.1.14
 // Global script injection (loaded via index.html like Intro Skipper)
 // Compatible with Jellyfin 10.11+
 
@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.6.1.13';
+    const PLUGIN_VERSION = '1.6.1.14';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -256,27 +256,19 @@
 
         _loadWebGLScript: function(callback) {
             // Check if already loaded
-            if (document.querySelector('script[src*="webgl-upscaler"]')) {
-                if (window.AIUpscalerWebGL) { callback(); return; }
+            if (window.AIUpscalerWebGL) { callback(); return; }
+            if (document.querySelector('script[data-upscaler-webgl]')) {
                 setTimeout(callback, 500);
                 return;
             }
-            var paths = [
-                '/api/upscaler/js/webgl-upscaler.js',
-                '/upscaler/js/webgl-upscaler.js'
-            ];
-            var tryLoad = function(idx) {
-                if (idx >= paths.length) {
-                    console.warn('AI Upscaler RT: Could not load WebGL shader');
-                    return;
-                }
-                var script = document.createElement('script');
-                script.src = paths[idx];
-                script.onload = function() { setTimeout(callback, 100); };
-                script.onerror = function() { tryLoad(idx + 1); };
-                document.head.appendChild(script);
+            var script = document.createElement('script');
+            script.src = '/web/configurationpage?name=UPSCALERWebGLShader';
+            script.setAttribute('data-upscaler-webgl', '1');
+            script.onload = function() { setTimeout(callback, 100); };
+            script.onerror = function() {
+                console.warn('AI Upscaler RT: Could not load WebGL shader from', script.src);
             };
-            tryLoad(0);
+            document.head.appendChild(script);
         },
 
         _initWebGL: function() {
@@ -323,14 +315,17 @@
             this._fpsFrameCount = 0;
             this._fpsLastTime = performance.now();
             this._lastSuccessfulFrame = performance.now();
+            this._serverStartTime = performance.now();
             this._serverRenderLoop();
-            // Timer-based fallback check: if no successful frame for 5 seconds, switch to WebGL
+            // Timer-based fallback check: if no successful frame for 10 seconds, switch to WebGL.
+            // The grace window accounts for slow first-frame warmup on CPU backends (fsrcnn-x2
+            // on 4-core CPU takes ~250ms/frame cold, plus model-load race on fresh sessions).
             this._fallbackCheckInterval = setInterval(function() {
                 if (!RealtimeUpscaler._active || RealtimeUpscaler._mode !== 'server') {
                     clearInterval(RealtimeUpscaler._fallbackCheckInterval);
                     return;
                 }
-                if (performance.now() - RealtimeUpscaler._lastSuccessfulFrame > 5000) {
+                if (performance.now() - RealtimeUpscaler._lastSuccessfulFrame > 10000) {
                     console.log('AI Upscaler RT: No frames for 5s, switching to WebGL');
                     clearInterval(RealtimeUpscaler._fallbackCheckInterval);
                     RealtimeUpscaler._stopServer();
@@ -580,7 +575,45 @@
             if (isVideoPage) {
                 this._buttonInjected = false;
                 this.injectPlayerButton();
+                // Modern Jellyfin (10.11+) no longer exposes window.playbackManager,
+                // so playbackstart listener never fires. Wait for video element + playing event instead.
+                this._waitForVideoAndAutoStart();
+            } else {
+                // Leaving video page — stop upscaling
+                if (window.RealtimeUpscaler && window.RealtimeUpscaler._active) {
+                    window.RealtimeUpscaler.stop();
+                }
             }
+        },
+
+        _waitForVideoAndAutoStart: function() {
+            if (this._autoStartPending) return;
+            this._autoStartPending = true;
+            var self = this;
+            var retries = 0;
+            var maxRetries = 60; // 30s @ 500ms
+            var check = function() {
+                var v = self.findVideoElement();
+                if (v) {
+                    self._autoStartPending = false;
+                    var trigger = function() {
+                        if (window.location.hash.indexOf('#/video') !== 0) return;
+                        setTimeout(function() { self.startRealtimeUpscaling(); }, 600);
+                    };
+                    if (v.readyState >= 2 && !v.paused) {
+                        trigger();
+                    } else {
+                        v.addEventListener('playing', trigger, { once: true });
+                    }
+                    return;
+                }
+                if (++retries < maxRetries) {
+                    setTimeout(check, 500);
+                } else {
+                    self._autoStartPending = false;
+                }
+            };
+            check();
         },
 
         _injectRetryCount: 0,
@@ -1493,20 +1526,25 @@
 
                 var mode = (config.RealtimeMode || 'auto').toLowerCase();
 
-                // Skip upscaling if source resolution is already high enough
-                if (video.videoWidth >= 1920) {
-                    console.log('AI Upscaler RT: Source resolution already high enough (' + video.videoWidth + 'x' + video.videoHeight + '), skipping real-time upscaling');
+                // WebGL-only mode skips any AI-service interaction.
+                if (mode === 'webgl') {
+                    RealtimeUpscaler.start(video, config, null);
                     return;
                 }
 
-                // If mode is auto or server, run benchmark first
-                if (mode === 'auto' || mode === 'server') {
-                    var captureW = config.RealtimeCaptureWidth || 480;
-                    var captureH = Math.round(captureW * (video.videoHeight / video.videoWidth));
+                // Auto + Server modes require an active server-side model before the
+                // benchmark (otherwise /benchmark-frame returns 400 "No model loaded",
+                // the auto-tier picks WebGL, and server-mode never engages).
+                var captureW = config.RealtimeCaptureWidth || 480;
+                var captureH = Math.round(captureW * (video.videoHeight / video.videoWidth));
+                var modelName = config.Model || 'fsrcnn-x2';
+                var authHeaders = { 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' };
+
+                var runBenchmarkAndStart = function() {
                     fetch(ApiClient.getUrl('Upscaler/benchmark-frame') + '?width=' + captureW + '&height=' + captureH, {
-                        headers: { 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' }
+                        headers: authHeaders
                     })
-                        .then(function(r) { return r.json(); })
+                        .then(function(r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
                         .then(function(bench) {
                             console.log('AI Upscaler RT: Benchmark result', bench);
                             RealtimeUpscaler.start(video, config, bench);
@@ -1515,10 +1553,22 @@
                             console.warn('AI Upscaler RT: Benchmark failed, using WebGL', err);
                             RealtimeUpscaler.start(video, config, { error: 'benchmark failed' });
                         });
-                } else {
-                    // WebGL mode, no benchmark needed
-                    RealtimeUpscaler.start(video, config, null);
-                }
+                };
+
+                fetch(ApiClient.getUrl('Upscaler/models/load') + '?model_name=' + encodeURIComponent(modelName), {
+                    method: 'POST',
+                    headers: authHeaders
+                })
+                    .then(function(r) {
+                        if (!r.ok) {
+                            console.warn('AI Upscaler RT: Model preload failed (HTTP ' + r.status + '), running benchmark anyway');
+                        }
+                        runBenchmarkAndStart();
+                    })
+                    .catch(function(err) {
+                        console.warn('AI Upscaler RT: Model preload network error, running benchmark anyway', err);
+                        runBenchmarkAndStart();
+                    });
             }).catch(function(err) {
                 console.error('AI Upscaler: config fetch failed for RT upscaling', err);
             });

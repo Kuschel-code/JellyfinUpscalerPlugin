@@ -435,6 +435,52 @@
             to { transform: rotate(360deg); }
         }
 
+        /* Persistent warning banner (API_TOKEN, service issues) */
+        .banner {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.85rem 1.1rem;
+            margin-bottom: 1rem;
+            border-radius: var(--radius);
+            border: 1px solid rgba(251, 191, 36, 0.35);
+            background: rgba(251, 191, 36, 0.08);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        .banner .banner-icon {
+            flex-shrink: 0;
+            width: 1.5em;
+            height: 1.5em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            border-radius: 50%;
+            background: rgba(251, 191, 36, 0.2);
+            color: var(--warning);
+        }
+        .banner strong { color: var(--warning); }
+        .banner code {
+            background: rgba(0,0,0,0.3);
+            padding: 0.1em 0.35em;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: 'SFMono-Regular', Consolas, monospace;
+        }
+        .banner-close {
+            margin-left: auto;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.2em;
+            cursor: pointer;
+            padding: 0 0.3em;
+            line-height: 1;
+        }
+        .banner-close:hover { color: var(--text-primary); }
+
         /* Toast Notifications */
         .toast-container {
             position: fixed;
@@ -444,6 +490,7 @@
             flex-direction: column;
             gap: 0.5rem;
             z-index: 1000;
+            max-width: min(420px, calc(100vw - 3rem));
         }
 
         .toast {
@@ -458,6 +505,18 @@
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--border);
+            cursor: pointer;
+        }
+        .toast-close {
+            margin-left: auto;
+            opacity: 0.6;
+            font-size: 1.1em;
+            line-height: 1;
+        }
+        .toast:hover .toast-close { opacity: 1; }
+        .toast.fading { animation: fadeOut 0.25s ease forwards; }
+        @keyframes fadeOut {
+            to { transform: translateX(100%); opacity: 0; }
         }
 
         .toast.success {
@@ -526,6 +585,8 @@
                 </div>
             </div>
         </header>
+
+        <div id="bannerContainer"></div>
 
         <div class="grid grid-3">
             <!-- Service Status -->
@@ -607,6 +668,14 @@
                 <div class="card-header">
                     <div class="card-icon">M</div>
                     <h2 class="card-title">AI Models</h2>
+                    <div style="margin-left:auto;display:flex;gap:0.4rem;align-items:center;">
+                        <input id="modelSearch" type="search" placeholder="Filter&hellip;" style="padding:0.3rem 0.6rem;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);font-size:0.85rem;width:140px;">
+                        <select id="modelFilterStatus" style="padding:0.3rem 0.5rem;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);font-size:0.85rem;">
+                            <option value="all">All</option>
+                            <option value="ready">Ready</option>
+                            <option value="missing">Missing</option>
+                        </select>
+                    </div>
                 </div>
                 <div id="modelList" class="model-list">
                     <div class="info-item">Loading models...</div>
@@ -667,6 +736,11 @@
                 const res = await fetch('/status');
                 const data = await res.json();
                 updateStatusUI(data);
+
+                // Proactively surface API_TOKEN not set as a persistent banner (once).
+                if (data && (data.api_token_configured === false || data.auth_enabled === false)) {
+                    showBanner('api-token', '<strong>API token not set.</strong> Any caller can hit this service. Set <code>API_TOKEN=&lt;your-secret&gt;</code> in the Docker env to secure it, then restart the container.');
+                }
             } catch (e) {
                 document.getElementById('statusBadge').className = 'status-pill offline';
                 document.getElementById('statusText').textContent = 'Offline';
@@ -867,10 +941,27 @@
             return div.innerHTML;
         }
 
+        var _allModels = [];
         function updateModelsUI(models) {
+            _allModels = models || [];
+            _renderFilteredModels();
+        }
+        function _renderFilteredModels() {
             var container = document.getElementById('modelList');
             container.innerHTML = '';
-            models.forEach(function(m) {
+            var search = (document.getElementById('modelSearch')?.value || '').toLowerCase().trim();
+            var statusFilter = document.getElementById('modelFilterStatus')?.value || 'all';
+            var visible = _allModels.filter(function(m) {
+                if (search && !((m.name + ' ' + (m.id || '') + ' ' + (m.description || '')).toLowerCase().includes(search))) return false;
+                if (statusFilter === 'ready' && !m.downloaded) return false;
+                if (statusFilter === 'missing' && m.downloaded) return false;
+                return true;
+            });
+            if (visible.length === 0) {
+                container.innerHTML = '<div class="info-item" style="color:var(--text-secondary);">No models match.</div>';
+                return;
+            }
+            visible.forEach(function(m) {
                 var item = document.createElement('div');
                 item.className = 'model-item' + (!m.available ? ' unavailable' : '');
 
@@ -921,16 +1012,83 @@
             document.getElementById('upscaleBtn').disabled = !selectedFile || !currentModelLoaded;
         }
 
+        // Persistent banners (shown once, dismissible, remembered per session)
+        var _dismissedBanners = new Set();
+        try {
+            var d = sessionStorage.getItem('aiupscaler.dismissedBanners');
+            if (d) _dismissedBanners = new Set(JSON.parse(d));
+        } catch (e) {}
+
+        function showBanner(id, html) {
+            if (_dismissedBanners.has(id)) return;
+            var container = document.getElementById('bannerContainer');
+            if (!container || container.querySelector('[data-banner-id="' + id + '"]')) return;
+            var el = document.createElement('div');
+            el.className = 'banner';
+            el.setAttribute('data-banner-id', id);
+            el.innerHTML =
+                '<div class="banner-icon">!</div>' +
+                '<div style="flex:1;">' + html + '</div>' +
+                '<button class="banner-close" aria-label="Dismiss">&times;</button>';
+            el.querySelector('.banner-close').addEventListener('click', function() {
+                _dismissedBanners.add(id);
+                try { sessionStorage.setItem('aiupscaler.dismissedBanners', JSON.stringify(Array.from(_dismissedBanners))); } catch (e) {}
+                el.remove();
+            });
+            container.appendChild(el);
+        }
+
+        // De-duplicate repetitive errors — prevents the "API_TOKEN" toast spam pattern.
+        // If the same error comes within 10s, it's counted but not re-shown as a separate toast.
+        var _recentToasts = new Map();
+        var MAX_ACTIVE_TOASTS = 3;
+
         function showToast(message, type) {
             type = type || 'info';
+            message = String(message || '');
+
+            // Route recurring security/config errors to the persistent banner instead of toast spam.
+            if (/API_TOKEN not configured/i.test(message)) {
+                showBanner('api-token', '<strong>API token not set.</strong> Any caller can hit this service. Set <code>API_TOKEN=&lt;your-secret&gt;</code> in the Docker env to secure it, then restart the container.');
+                return;
+            }
+
+            // De-dupe: same message within 10s is silenced (still counted for visibility).
+            var key = type + ':' + message;
+            var now = Date.now();
+            var last = _recentToasts.get(key);
+            if (last && (now - last) < 10000) {
+                return;
+            }
+            _recentToasts.set(key, now);
+
             var container = document.getElementById('toastContainer');
+            if (!container) return;
+
+            // Cap active toasts (oldest pushed out).
+            while (container.children.length >= MAX_ACTIVE_TOASTS) {
+                container.firstChild.remove();
+            }
+
             var toast = document.createElement('div');
             toast.className = 'toast ' + type;
             var span = document.createElement('span');
             span.textContent = message;
             toast.appendChild(span);
+            var close = document.createElement('span');
+            close.className = 'toast-close';
+            close.textContent = '\u00d7';
+            toast.appendChild(close);
+
+            var dismiss = function() {
+                if (toast.classList.contains('fading')) return;
+                toast.classList.add('fading');
+                setTimeout(function() { toast.remove(); }, 250);
+            };
+            toast.addEventListener('click', dismiss);
+
             container.appendChild(toast);
-            setTimeout(function() { toast.remove(); }, 4000);
+            setTimeout(dismiss, 5000);
         }
 
         // File handling
@@ -972,6 +1130,12 @@
 
         document.getElementById('upscaleBtn').addEventListener('click', upscaleImage);
         document.getElementById('benchmarkBtn').addEventListener('click', runBenchmark);
+
+        // Model filter wiring
+        var _modelSearchInput = document.getElementById('modelSearch');
+        var _modelStatusSelect = document.getElementById('modelFilterStatus');
+        if (_modelSearchInput) _modelSearchInput.addEventListener('input', _renderFilteredModels);
+        if (_modelStatusSelect) _modelStatusSelect.addEventListener('change', _renderFilteredModels);
 
         // Initialize
         fetchStatus();

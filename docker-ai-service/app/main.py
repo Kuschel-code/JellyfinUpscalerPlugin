@@ -2886,6 +2886,12 @@ async def status():
     has_cuda = any("CUDA" in p for p in state.providers)
     has_tensorrt = any("Tensorrt" in p for p in state.providers)
     
+    # Expose auth posture so the UI can show a one-time banner instead of error toasts
+    # on every call when the operator forgot to set API_TOKEN. "disable" = explicit opt-out.
+    api_token_env = os.getenv("API_TOKEN", "")
+    api_token_configured = bool(api_token_env) and api_token_env != "disable"
+    auth_enabled = bool(api_token_env)
+
     return {
         "status": "running",
         "version": VERSION,
@@ -2902,6 +2908,8 @@ async def status():
         "tensorrt_available": has_tensorrt,
         "input_frames": state.current_model_input_frames,
         "use_fp16": state.use_fp16,
+        "api_token_configured": api_token_configured,
+        "auth_enabled": auth_enabled,
         "scene_change_detection": {
             "enabled": SCENE_CHANGE_THRESHOLD < 1.0,
             "threshold": SCENE_CHANGE_THRESHOLD

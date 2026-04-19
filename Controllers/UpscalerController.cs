@@ -225,6 +225,37 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
+        /// <summary>
+        /// Lists Jellyfin media libraries (virtual folders) so the config UI can render
+        /// a library picker for the scheduled-scan scope filter (issue #64).
+        /// </summary>
+        [HttpGet("libraries")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> GetLibraries()
+        {
+            try
+            {
+                var folders = _libraryManager.GetVirtualFolders();
+                var result = folders
+                    .Where(f => f != null && !string.IsNullOrEmpty(f.ItemId))
+                    .Select(f => new
+                    {
+                        id = f.ItemId,
+                        name = f.Name ?? "(unnamed)",
+                        collectionType = f.CollectionType?.ToString() ?? "mixed",
+                        locations = f.Locations ?? Array.Empty<string>()
+                    })
+                    .OrderBy(x => x.name, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                return Ok(new { libraries = result });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to list libraries");
+                return StatusCode(500, new { error = "Failed to list libraries" });
+            }
+        }
+
         [HttpGet("status")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetStatus()
