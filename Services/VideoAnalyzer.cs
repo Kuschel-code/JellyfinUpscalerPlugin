@@ -18,12 +18,24 @@ namespace JellyfinUpscalerPlugin.Services
     public class VideoAnalyzer
     {
         private readonly ILogger _logger;
-        private readonly string _ffprobePath;
+        private string _ffprobePath;
 
         public VideoAnalyzer(ILogger logger, string ffprobePath)
         {
             _logger = logger;
             _ffprobePath = ffprobePath;
+        }
+
+        /// <summary>
+        /// Update the ffprobe path after construction — required when Jellyfin's MediaEncoder
+        /// resolves its ProbePath late (after plugin singletons are already built).
+        /// </summary>
+        public void UpdateFFprobePath(string newPath)
+        {
+            if (!string.IsNullOrEmpty(newPath))
+            {
+                _ffprobePath = newPath;
+            }
         }
 
         /// <summary>

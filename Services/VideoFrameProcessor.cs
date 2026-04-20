@@ -21,7 +21,16 @@ namespace JellyfinUpscalerPlugin.Services
     public class VideoFrameProcessor
     {
         private readonly ILogger _logger;
-        private readonly string _ffmpegPath;
+        private string _ffmpegPath;
+
+        public void UpdateFFmpegPath(string newPath)
+        {
+            if (!string.IsNullOrEmpty(newPath))
+            {
+                _ffmpegPath = newPath;
+            }
+        }
+
         private readonly UpscalerCore _upscalerCore;
         private readonly UpscalerProgressHub _progressHub;
         private readonly IHttpClientFactory _httpClientFactory;

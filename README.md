@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.6.1.14
+# Jellyfin AI Upscaler Plugin v1.6.1.16
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.7-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.6.1.14):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.6.1.16):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.6.1.14     │  │
+│  │  AI Upscaler Plugin v1.6.1.16     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -289,12 +289,29 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.6.1.14` — pinned to a specific plugin release
-- `:v1.6.1.14-<backend>` — full semver (e.g. `:v1.6.1.14-cpu`)
+- `:docker7-v1.6.1.16` — pinned to a specific plugin release
+- `:v1.6.1.16-<backend>` — full semver (e.g. `:v1.6.1.16-cpu`)
 
 ---
 
 ## Changelog
+
+### v1.6.1.16 (Hotfix: FFprobe Late-Resolution)
+
+Fixes issue [#64](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/64) where the nightly `Scan & Upscale Library` task failed on every item with `AI Upscaler: Failed to upscale <name>: File not found: ffprobe`, even though `ffprobe` was present at the standard path (`/usr/lib/jellyfin-ffmpeg/ffprobe`).
+
+**Root cause:** `VideoProcessor` was constructed as a Jellyfin plugin singleton, and inside its constructor `VideoAnalyzer` was instantiated with the captured `_mediaEncoder.ProbePath`. When `MediaEncoder` had not finished resolving its encoder/probe paths by the time the plugin loaded (cold-start race), `_ffprobePath` was captured as an empty string — permanently. All subsequent `FFprobe.AnalyseAsync` / `Cli.Wrap(_ffprobePath)` calls then failed because `FFMpegCore`'s `GlobalFFOptions.BinaryFolder` was also empty, so FFMpegCore tried to find `ffprobe` in the current directory.
+
+**Fix (three singletons, not one):**
+- New `VideoProcessor.EnsureFFmpegReady()` — idempotent: re-queries `MediaEncoder.EncoderPath`/`ProbePath` when either is missing, reconfigures `FFMpegCore`'s `GlobalFFOptions`, and pushes the resolved paths into **all three** sub-services that cache them at construction.
+- `VideoAnalyzer` gets the fresh ffprobe path via new `UpdateFFprobePath()`.
+- `VideoFrameProcessor` gets the fresh ffmpeg path via new `UpdateFFmpegPath()` — this closed a second-stage error that surfaced after the first fix: `Cannot start process because a file name has not been provided` during `ExtractFramesAsync`, caused by `Cli.Wrap(_ffmpegPath)` with an empty string.
+- `ProcessingMethodExecutor` gets the same treatment — another `_ffmpegPath` capture at construction that breaks batch / frame-by-frame routing.
+- Called once at construction and again at the top of every entry point that touches ffmpeg or ffprobe: `ProcessVideoAsync`, `ExtractSingleFrameAsync`, `ExtractSingleFrameWithFiltersAsync`. All three affected fields dropped `readonly` so they can be updated late.
+
+**Also:** README header was still labeled v1.6.1.14 after the v1.6.1.15 release — bumped title, docker-image-family banner, architecture diagram, and docker-tag examples to v1.6.1.16 in one pass.
+
+**Verification:** live-tested on Jellyfin 10.11.8 (ABI `10.11.8.0`) — scan task now logs `FFmpeg ready: ffmpeg=/usr/lib/jellyfin-ffmpeg/ffmpeg, ffprobe=/usr/lib/jellyfin-ffmpeg/ffprobe`, `Video analysis: 1280x720 @ 30.0fps` succeeds, and frame extraction actively progresses through the library (31% at verification) where the pre-fix run failed 70/70 items instantly.
 
 ### v1.6.1.15 (In-Player Panel Redesign + Auto-Mode)
 

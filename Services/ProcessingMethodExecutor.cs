@@ -18,8 +18,17 @@ namespace JellyfinUpscalerPlugin.Services
     public class ProcessingMethodExecutor
     {
         private readonly ILogger _logger;
-        private readonly string _ffmpegPath;
+        private string _ffmpegPath;
         private readonly UpscalerProgressHub _progressHub;
+
+        public void UpdateFFmpegPath(string newPath)
+        {
+            if (!string.IsNullOrEmpty(newPath))
+            {
+                _ffmpegPath = newPath;
+            }
+        }
+
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly VideoFrameProcessor _frameProcessor;
         private readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> _pausedJobs;

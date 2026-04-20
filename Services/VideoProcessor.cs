@@ -68,8 +68,8 @@ namespace JellyfinUpscalerPlugin.Services
             // Limit concurrent processing based on hardware
             _processingSemaphore = new SemaphoreSlim(Math.Max(1, Config.MaxConcurrentStreams));
 
-            // Initialize FFmpeg
-            InitializeFFmpeg();
+            // Initialize FFmpeg (paths may still be empty here; EnsureFFmpegReady re-resolves on demand)
+            EnsureFFmpegReady();
 
             // Construct sub-services (shared state passed by reference)
             _videoAnalyzer = new VideoAnalyzer(_logger, _ffprobePath);
@@ -110,19 +110,36 @@ namespace JellyfinUpscalerPlugin.Services
             _logger.LogInformation("VideoProcessor initialized with FFmpeg integration");
         }
 
+
         /// <summary>
-        /// Initialize FFmpeg configuration
+        /// Re-resolve FFmpeg + FFprobe paths from the MediaEncoder and reconfigure FFMpegCore.
+        /// Idempotent: returns immediately when both paths are already known.
+        /// Needed because Jellyfin sometimes constructs plugin singletons before MediaEncoder
+        /// has finished resolving its probe/encoder paths, which leaves VideoAnalyzer pointing
+        /// at an empty string (seen as "File not found: ffprobe" during LibraryUpscaleScanTask).
         /// </summary>
-        private void InitializeFFmpeg()
+        private void EnsureFFmpegReady()
         {
+            if (!string.IsNullOrEmpty(_ffmpegPath) && !string.IsNullOrEmpty(_ffprobePath))
+            {
+                return;
+            }
+
             try
             {
-                _ffmpegPath = _mediaEncoder.EncoderPath;
-                _ffprobePath = _mediaEncoder.ProbePath;
-
                 if (string.IsNullOrEmpty(_ffmpegPath))
                 {
-                    _logger.LogWarning("FFmpeg path not available from MediaEncoder");
+                    _ffmpegPath = _mediaEncoder.EncoderPath ?? string.Empty;
+                }
+                if (string.IsNullOrEmpty(_ffprobePath))
+                {
+                    _ffprobePath = _mediaEncoder.ProbePath ?? string.Empty;
+                }
+
+                if (string.IsNullOrEmpty(_ffmpegPath) || string.IsNullOrEmpty(_ffprobePath))
+                {
+                    _logger.LogWarning("FFmpeg/FFprobe path still unresolved after MediaEncoder query (ffmpeg='{FFmpeg}', ffprobe='{FFprobe}')",
+                        _ffmpegPath, _ffprobePath);
                     return;
                 }
 
@@ -132,11 +149,15 @@ namespace JellyfinUpscalerPlugin.Services
                     TemporaryFilesFolder = Path.GetTempPath()
                 });
 
-                _logger.LogInformation("FFmpeg configured: {FfmpegPath}", _ffmpegPath);
+                _videoAnalyzer?.UpdateFFprobePath(_ffprobePath);
+                _frameProcessor?.UpdateFFmpegPath(_ffmpegPath);
+                _methodExecutor?.UpdateFFmpegPath(_ffmpegPath);
+
+                _logger.LogInformation("FFmpeg ready: ffmpeg={FFmpeg}, ffprobe={FFprobe}", _ffmpegPath, _ffprobePath);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to initialize FFmpeg");
+                _logger.LogError(ex, "Failed to resolve FFmpeg paths from MediaEncoder");
             }
         }
 
@@ -145,12 +166,7 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         public Task<byte[]> ExtractSingleFrameAsync(string videoPath, TimeSpan position, CancellationToken cancellationToken = default)
         {
-            // Re-resolve ffmpegPath in case it wasn't available at construction time
-            if (string.IsNullOrEmpty(_ffmpegPath))
-            {
-                _ffmpegPath = _mediaEncoder.EncoderPath;
-                _logger.LogInformation("Late-resolved FFmpeg path: {Path}", _ffmpegPath);
-            }
+            EnsureFFmpegReady();
             return _frameProcessor.ExtractSingleFrameAsync(videoPath, position, cancellationToken, _ffmpegPath);
         }
 
@@ -160,11 +176,7 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         public Task<byte[]> ExtractSingleFrameWithFiltersAsync(string videoPath, TimeSpan position, string? filterChain, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(_ffmpegPath))
-            {
-                _ffmpegPath = _mediaEncoder.EncoderPath;
-                _logger.LogInformation("Late-resolved FFmpeg path: {Path}", _ffmpegPath);
-            }
+            EnsureFFmpegReady();
             return _frameProcessor.ExtractSingleFrameWithFiltersAsync(videoPath, position, filterChain, cancellationToken, _ffmpegPath);
         }
 
@@ -204,6 +216,9 @@ namespace JellyfinUpscalerPlugin.Services
                 }
                 semaphoreAcquired = true;
                 _logger.LogInformation("Starting video processing: {FileName}", Path.GetFileName(inputPath));
+
+                // Late-resolve FFmpeg/FFprobe in case MediaEncoder wasn't ready at plugin-singleton construction.
+                EnsureFFmpegReady();
 
                 // 1. Analyze input video
                 var inputInfo = await _videoAnalyzer.AnalyzeVideoAsync(inputPath);

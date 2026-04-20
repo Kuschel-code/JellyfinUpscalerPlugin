@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.6.1.16",
+        "changelog": "v1.6.1.16: Hotfix for issue #64 — LibraryUpscaleScanTask was failing on every item with two related cold-start errors (\"File not found: ffprobe\" → then after partial fix \"Cannot start process because a file name has not been provided\"). Root cause: THREE singletons (VideoAnalyzer, VideoFrameProcessor, ProcessingMethodExecutor) all captured empty ffmpeg/ffprobe path strings at plugin construction time, before Jellyfin's MediaEncoder finished resolving /usr/lib/jellyfin-ffmpeg/{ffmpeg,ffprobe}. Fix: new EnsureFFmpegReady() in VideoProcessor re-resolves EncoderPath/ProbePath on demand, reconfigures FFMpegCore's GlobalFFOptions, and pushes the resolved paths into all three sub-services via new UpdateFFprobePath() / UpdateFFmpegPath() methods. Called at top of ProcessVideoAsync / ExtractSingleFrameAsync / ExtractSingleFrameWithFiltersAsync so scheduled tasks work even when the plugin boots before MediaEncoder. Verified live on Jellyfin 10.11.8 — scan task now extracts frames at 31% progress where previously it was 0/70 success. README header synced 1.6.1.14 → 1.6.1.16 (was missed in v1.6.1.15).",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.16/JellyfinUpscalerPlugin-v1.6.1.16.zip",
+        "checksum": "e594390c6de3a0fbe180247b20651c81",
+        "timestamp": "2026-04-20T10:00:00.000Z"
+      },
+      {
         "version": "1.6.1.15",
         "changelog": "v1.6.1.15: In-player panel redesigned from AI-gradient/neon to a clean operator dashboard (Docker-Dashboard palette: #0b0d12/#11141b surfaces, #3b82f6 accent, underline tabs, monospace numerics). New live status strip at the top of the quick-menu: active-dot + state (ACTIVE/STANDBY/IDLE/DISABLED) + mode (Server/WebGL) + FPS + active model — polls every 500ms while menu is open so you can see whether upscaling is actually running. Docker AI service operator console redesigned (Grafana/Linear/Vercel): sticky topbar with live status dot + auth-posture chip, 4 tabs, KPI tiles, inline SVG latency sparkline from /metrics, model catalog with search+filter, hardware panel, API browser from /openapi.json + live Console tab that streams service logs via SSE. NEW Auto-Mode (default OFF under Settings → Auto Model Selection): when enabled, the plugin calls /Upscaler/recommend-model on playback start and picks both model and color-filter preset per video — anime → animesr-v2-x4/anime-compact-x4 + vivid, horror/thriller → drama, sci-fi → cyberpunk, documentary/low-res → sharp-hd, multi-frame batch → edvr-m-x4/realbasicvsr-x4. Override is session-only; saved preferences are preserved. Library-Scan codec picker expanded 3 → 12 options with per-codec encoder defaults. Player FPS HUD auto-hides in sync with Jellyfin's OSD fade.",
         "targetAbi": "10.11.8.0",
