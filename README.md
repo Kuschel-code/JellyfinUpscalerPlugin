@@ -296,6 +296,39 @@ Each tag is published three ways so you can pin precisely:
 
 ## Changelog
 
+### v1.6.1.15 (In-Player Panel Redesign + Auto-Mode)
+
+The quick-menu that pops up from the Upscaler button during playback has been completely redesigned and a new Auto-Mode lets the plugin pick model + filter per video.
+
+**Redesigned in-player panel (non-AI style):**
+- Replaces the purple/neon "AI aesthetic" with a clean operator dashboard inspired by Docker Dashboard, Grafana, and Linear.
+- Palette: `#0b0d12` background, `#11141b`/`#161a23` surfaces, `#1f2430` borders, `#3b82f6` accent. No gradients, no glow shadows, no `backdrop-filter: blur`.
+- Tabs switched from filled-pill to underline-style (2px `#3b82f6` bottom-border on the active tab — same pattern as the config page).
+- Border-radius reduced from 18px to 6px (outer) / 3px (inner controls). Square thumb on the main toggle instead of a circle.
+- Monospace numerics (`ui-monospace, SFMono-Regular, Menlo, Consolas`) for scale picker, version, FPS, model ID — consistent with the Docker console.
+- HTML structure unchanged — all existing event handlers and actions keep working.
+
+**Live status row at the top of the menu:**
+- Shows at a glance whether upscaling is running: `● ACTIVE · Server · 24 fps · Real-ESRGAN x4` (or `● IDLE · — · -- fps · <configured model>` when no video is playing).
+- Four states, each color-coded via the leading dot: **ACTIVE** (green, upscaling live) / **STANDBY** (amber, video playing but RT not started) / **DISABLED** (gray, user turned upscaling off) / **IDLE** (gray, no playback).
+- Polls `RealtimeUpscaler.getStatus()` every 500ms while the menu is open; tears down cleanly on menu close.
+- Answers the "is my video actually being upscaled?" question the in-OSD FPS HUD can only hint at.
+
+**Auto-Mode (default OFF):**
+- New opt-in toggle under Settings → Auto Model Selection & Fallback: when enabled, the plugin picks **both** the AI model and a color-filter preset for each video on playback start.
+- Heuristic runs on the server (`ResolveModelForVideo` + new `ResolveFilterForVideo`) and uses real signals — genres, source resolution, multi-frame capability — not a placeholder:
+  - Anime/Animation/Cartoon → `animesr-v2-x4` (batch) / `anime-compact-x4` (realtime) + `vivid` filter
+  - Horror/Thriller → genre-appropriate model + `drama` filter
+  - Sci-Fi/Cyberpunk → model by resolution + `cyberpunk` filter
+  - Documentary/News → `sharp-hd` filter (clarity over aesthetic)
+  - Very low-res batch → `realbasicvsr-x4` / `ultrasharp-v2-x4`
+  - HD realtime without strong genre signal → `nomosuni-compact-x2` + no filter (conservative default)
+- Frontend wiring: `PlayerIntegration._autoSelectForVideo()` calls `GET /Upscaler/recommend-model?width=W&height=H&isBatch=false&genres=…` when `EnableAutoModelSelection` is true. The picked model + filter are applied to the current session only — your saved preferences remain unchanged.
+- `ResolveModelForVideo` gained a `forceAuto` flag so the endpoint bypasses the "respect user's explicit model" early-return — otherwise the endpoint would just echo back the configured model.
+- Batch scan task (`LibraryUpscaleScanTask`) continues to consult the flag for scheduled library scans.
+
+**Verification:** live-tested on Jellyfin 10.11.8 — 0 console errors on home + video pages; `GET /Upscaler/recommend-model` returns correct picks for anime 480p (`anime-compact-x4` + `vivid`), documentary 1080p (`nomosuni-compact-x2` + `sharp-hd`), horror 480p (`span-x2` + `drama`), and 4K without genre (`nomosuni-compact-x2` + `none`).
+
 ### v1.6.1.14 (Select Library + Docker UI Redesign)
 
 Implements a long-standing feature request and fixes three version-display bugs surfaced during full button-level verification.

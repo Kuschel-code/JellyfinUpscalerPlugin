@@ -1,6 +1,6 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
 <style>
-    /* ===== AI Upscaler v1.6.1.14 — Jellyfin-compatible dark theme ===== */
+    /* ===== AI Upscaler v1.6.1.15 — Jellyfin-compatible dark theme ===== */
     #UpscalerConfigurationPage {
         --accent: #00d4ff;
         --accent-bg: rgba(0, 212, 255, 0.12);
@@ -361,7 +361,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.6.1.14 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.6.1.15 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -559,8 +559,8 @@
                     <details>
                         <summary>Auto Model Selection &amp; Fallback</summary>
                         <div class="details-body">
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableAutoModelSelection" /> Enable Auto Model Selection</label></div>
-                            <div class="fieldDescription" style="margin-bottom:0.5rem;">Automatically picks the best model based on content genre (anime/live-action), resolution, and processing mode.</div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableAutoModelSelection" /> Enable Auto Mode (AI picks model + filter per video)</label></div>
+                            <div class="fieldDescription" style="margin-bottom:0.5rem;"><b>Default: off.</b> When enabled, the plugin picks the best AI model and color-filter preset for each video on playback start — using genre (anime/horror/sci-fi/documentary), source resolution, and multi-frame capability. Overrides your chosen model only for the current video; your saved preferences remain unchanged. Batch library scans follow the same heuristic when active.</div>
                             <div class="inputContainer"><label class="inputLabel" for="ModelFallbackChain">Model Fallback Chain</label><input type="text" id="ModelFallbackChain" placeholder="realesrgan-x4,span-x4,edsr-x4" /><div class="fieldDescription">Comma-separated model names. If primary fails, tries next in chain.</div></div>
                             <div class="form-row" style="margin-top:0.5rem;">
                                 <div class="form-col inputContainer"><label class="inputLabel" for="PreferredAnimeModel">Preferred Anime Model</label><input type="text" id="PreferredAnimeModel" placeholder="auto" /><div class="fieldDescription">Override for anime content (empty = auto)</div></div>
@@ -597,9 +597,24 @@
                             <div class="selectContainer" style="margin-top:0.5rem;">
                                 <label class="selectLabel" for="OutputCodec">Output Codec</label>
                                 <select id="OutputCodec">
-                                    <option value="libx264">H.264 (libx264)</option>
-                                    <option value="libx265">H.265 (libx265)</option>
-                                    <option value="copy">Stream Copy</option>
+                                    <optgroup label="Software (CPU)">
+                                        <option value="libx264">H.264 (libx264) — universal compatibility</option>
+                                        <option value="libx265">H.265 / HEVC (libx265) — ~40% smaller</option>
+                                        <option value="libsvtav1">AV1 (libsvtav1) — best size/speed</option>
+                                        <option value="libaom-av1">AV1 (libaom-av1) — highest quality, slow</option>
+                                        <option value="libvpx-vp9">VP9 (libvpx-vp9)</option>
+                                    </optgroup>
+                                    <optgroup label="NVIDIA NVENC (GPU)">
+                                        <option value="h264_nvenc">H.264 NVENC</option>
+                                        <option value="hevc_nvenc">HEVC NVENC</option>
+                                        <option value="av1_nvenc">AV1 NVENC (RTX 40+)</option>
+                                    </optgroup>
+                                    <optgroup label="Intel Quick Sync (GPU)">
+                                        <option value="h264_qsv">H.264 QSV</option>
+                                        <option value="hevc_qsv">HEVC QSV</option>
+                                        <option value="av1_qsv">AV1 QSV (Arc / 11th gen+)</option>
+                                    </optgroup>
+                                    <option value="copy">Stream Copy (no re-encode)</option>
                                 </select>
                             </div>
                         </div>
@@ -1705,7 +1720,7 @@
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.6.1.14';
+                config.PluginVersion = '1.6.1.15';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');

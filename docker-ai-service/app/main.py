@@ -8,6 +8,7 @@ Multi-GPU selection, robust TensorRT/CUDA/OpenVINO fallback
 import os
 import re
 import time
+import json
 import logging
 import asyncio
 import collections
@@ -61,13 +62,61 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Live log streaming — in-memory ring buffer + asyncio event bus for SSE
+LOG_BUFFER: "collections.deque[dict]" = collections.deque(maxlen=1000)
+_LOG_SEQ = 0
+_LOG_LOCK = threading.Lock()
+_LOG_SUBSCRIBERS: "set[asyncio.Queue[dict]]" = set()
+_LOG_LOOP: "Optional[asyncio.AbstractEventLoop]" = None
+
+class _BufferHandler(logging.Handler):
+    """Captures every log record into LOG_BUFFER and fans out to SSE subscribers."""
+    def emit(self, record: logging.LogRecord) -> None:
+        global _LOG_SEQ
+        try:
+            msg = self.format(record)
+        except Exception:
+            msg = record.getMessage()
+        with _LOG_LOCK:
+            _LOG_SEQ += 1
+            entry = {
+                "seq": _LOG_SEQ,
+                "ts": record.created,
+                "level": record.levelname,
+                "logger": record.name,
+                "msg": msg,
+            }
+            LOG_BUFFER.append(entry)
+            subs = list(_LOG_SUBSCRIBERS)
+        if _LOG_LOOP is not None and subs:
+            for q in subs:
+                try:
+                    _LOG_LOOP.call_soon_threadsafe(q.put_nowait, entry)
+                except Exception:
+                    pass
+
+_buffer_handler = _BufferHandler()
+_buffer_handler.setFormatter(logging.Formatter("%(message)s"))
+_buffer_handler.setLevel(logging.DEBUG)
+logging.getLogger().addHandler(_buffer_handler)
+
+def _attach_buffer_to_uvicorn():
+    """Uvicorn configures its own loggers with propagate=False AFTER import,
+    so we call this from lifespan() (post-uvicorn-config) to capture access logs."""
+    for _name in ("uvicorn", "uvicorn.error", "uvicorn.access", "fastapi"):
+        _lg = logging.getLogger(_name)
+        if _buffer_handler not in _lg.handlers:
+            _lg.addHandler(_buffer_handler)
+        if _lg.level == logging.NOTSET:
+            _lg.setLevel(logging.INFO)
+
 # Paths — env-var overrides allow running outside Docker (e.g. CI unit tests)
 MODELS_DIR = Path(os.getenv("MODELS_DIR", "/app/models"))
 CACHE_DIR = Path(os.getenv("CACHE_DIR", "/app/cache"))
 STATIC_DIR = Path(os.getenv("STATIC_DIR", "/app/static"))
 
 # Version
-VERSION = "1.6.1.13"
+VERSION = "1.6.1.15"
 
 # Global state
 class AppState:
@@ -1206,6 +1255,9 @@ async def lifespan(app: FastAPI):
     
     # Detect hardware (run in executor to avoid blocking event loop with subprocess calls)
     loop = asyncio.get_running_loop()
+    global _LOG_LOOP
+    _LOG_LOOP = loop
+    _attach_buffer_to_uvicorn()
     await loop.run_in_executor(None, detect_hardware)
     logger.info(f"CPU: {state.cpu_name} ({state.cpu_cores} cores)")
     logger.info(f"GPU: {state.gpu_name} ({state.gpu_memory})")
@@ -2852,6 +2904,56 @@ async def root():
     if html_path.exists():
         return HTMLResponse(content=html_path.read_text())
     return HTMLResponse(content="<h1>AI Upscaler Service</h1><p>UI not found</p>")
+
+
+@app.get("/logs/recent")
+async def logs_recent(limit: int = 200):
+    """Return the most recent log entries (from ring buffer). Used when the
+    Console tab is first opened to populate history before live-streaming."""
+    limit = max(1, min(limit, 1000))
+    with _LOG_LOCK:
+        items = list(LOG_BUFFER)[-limit:]
+    return {"count": len(items), "entries": items}
+
+
+@app.get("/logs/stream")
+async def logs_stream(request: Request):
+    """Server-Sent Events stream of live log records. The client gets every
+    log line in near real-time. Auto-cleans subscriber queue on disconnect."""
+    q: "asyncio.Queue[dict]" = asyncio.Queue(maxsize=500)
+
+    # Register subscriber + prime with recent history so UI shows context
+    with _LOG_LOCK:
+        recent = list(LOG_BUFFER)[-100:]
+        _LOG_SUBSCRIBERS.add(q)
+
+    async def event_gen():
+        try:
+            # Replay recent history first
+            for entry in recent:
+                yield f"data: {json.dumps(entry)}\n\n"
+            # Then stream live. Heartbeat every 15s so proxies don't kill idle conn.
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    entry = await asyncio.wait_for(q.get(), timeout=15.0)
+                    yield f"data: {json.dumps(entry)}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": heartbeat\n\n"
+        finally:
+            with _LOG_LOCK:
+                _LOG_SUBSCRIBERS.discard(q)
+
+    return StreamingResponse(
+        event_gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 @app.get("/health")

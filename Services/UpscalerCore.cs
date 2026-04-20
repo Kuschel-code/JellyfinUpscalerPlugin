@@ -287,11 +287,15 @@ namespace JellyfinUpscalerPlugin.Services
             int width = 0,
             int height = 0,
             bool isBatch = true,
-            int inputFrames = 1)
+            int inputFrames = 1,
+            bool forceAuto = false)
         {
-            // Check if user has explicitly configured a non-auto model
+            // Respect the user's explicit model choice unless the caller opted in
+            // to auto (EnableAutoModelSelection + in-player Auto-Mode, or the batch
+            // scan task already gating on "auto" sentinel). forceAuto=true bypasses
+            // so the heuristic actually runs.
             var configured = Config.Model;
-            if (!string.IsNullOrEmpty(configured) && configured != "auto")
+            if (!forceAuto && !string.IsNullOrEmpty(configured) && configured != "auto")
                 return configured;
 
             var genreList = genres?.Select(g => g.ToLowerInvariant()).ToList() ?? new List<string>();
@@ -360,6 +364,59 @@ namespace JellyfinUpscalerPlugin.Services
             // Default batch: good balance
             _logger.LogDebug("Auto-model: general batch → realesrgan-x4");
             return "realesrgan-x4";
+        }
+
+        /// <summary>
+        /// Returns the preset key ("none", "vivid", "sharp-hd", ...) best suited for
+        /// the given content. Mapped against VideoFilterService.GetPresetFilters keys.
+        /// Conservative by default: returns "none" when we lack signal to choose.
+        /// </summary>
+        public string ResolveFilterForVideo(
+            IEnumerable<string>? genres = null,
+            int width = 0,
+            int height = 0)
+        {
+            var genreList = genres?.Select(g => g.ToLowerInvariant()).ToList() ?? new List<string>();
+
+            bool isAnime = genreList.Any(g => g.Contains("anime") || g.Contains("animation") || g.Contains("cartoon"));
+            if (isAnime)
+            {
+                _logger.LogDebug("Auto-filter: anime content → vivid");
+                return "vivid";
+            }
+
+            bool isHorror = genreList.Any(g => g.Contains("horror") || g.Contains("thriller"));
+            if (isHorror)
+            {
+                _logger.LogDebug("Auto-filter: horror/thriller → drama");
+                return "drama";
+            }
+
+            bool isSciFi = genreList.Any(g => g.Contains("sci-fi") || g.Contains("science fiction") || g.Contains("cyberpunk"));
+            if (isSciFi)
+            {
+                _logger.LogDebug("Auto-filter: sci-fi → cyberpunk");
+                return "cyberpunk";
+            }
+
+            bool isDoc = genreList.Any(g => g.Contains("documentary") || g.Contains("news"));
+            if (isDoc)
+            {
+                _logger.LogDebug("Auto-filter: documentary → sharp-hd");
+                return "sharp-hd";
+            }
+
+            // Low-res/SD source gets mild sharpening to recover detail lost to upscaling.
+            bool isLowRes = width > 0 && height > 0 && (width < 1280 || height < 720);
+            if (isLowRes)
+            {
+                _logger.LogDebug("Auto-filter: low-res ({W}x{H}) → sharp-hd", width, height);
+                return "sharp-hd";
+            }
+
+            // HD content where we don't have genre signal — no filter beats a wrong filter.
+            _logger.LogDebug("Auto-filter: no strong signal → none");
+            return "none";
         }
 
         /// <summary>

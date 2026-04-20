@@ -779,20 +779,19 @@ namespace JellyfinUpscalerPlugin.Services
             else
             {
                 var outputCodec = Config.OutputCodec ?? "libx264";
-                var allowedCodecs = new HashSet<string> { "libx264", "libx265", "hevc_nvenc", "h264_nvenc", "h264_qsv", "hevc_qsv", "copy" };
+                var allowedCodecs = new HashSet<string>
+                {
+                    "libx264", "libx265", "libsvtav1", "libaom-av1", "libvpx-vp9",
+                    "hevc_nvenc", "h264_nvenc", "av1_nvenc",
+                    "h264_qsv", "hevc_qsv", "av1_qsv",
+                    "copy"
+                };
                 if (!allowedCodecs.Contains(outputCodec))
                 {
                     _logger.LogWarning("Invalid output codec '{Codec}', falling back to libx264", outputCodec);
                     outputCodec = "libx264";
                 }
-                if (outputCodec == "copy")
-                {
-                    args.Add("-c:v copy");
-                }
-                else
-                {
-                    args.Add($"-c:v {outputCodec} -preset medium -crf 23");
-                }
+                args.Add(BuildEncoderArgs(outputCodec));
             }
 
             // Audio
@@ -805,6 +804,28 @@ namespace JellyfinUpscalerPlugin.Services
             _logger.LogDebug("Generated FFmpeg Command: ffmpeg {Command}", fullCommand);
 
             return fullCommand;
+        }
+
+        // Per-codec sane defaults. Picked to roughly match each encoder's
+        // "medium quality ≈ file size similar to libx264 @ CRF 23" reference point.
+        private static string BuildEncoderArgs(string codec)
+        {
+            switch (codec)
+            {
+                case "copy":       return "-c:v copy";
+                case "libx264":    return "-c:v libx264 -preset medium -crf 23";
+                case "libx265":    return "-c:v libx265 -preset medium -crf 26";
+                case "libsvtav1":  return "-c:v libsvtav1 -preset 6 -crf 30";
+                case "libaom-av1": return "-c:v libaom-av1 -cpu-used 4 -crf 30 -b:v 0";
+                case "libvpx-vp9": return "-c:v libvpx-vp9 -crf 31 -b:v 0 -row-mt 1";
+                case "h264_nvenc": return "-c:v h264_nvenc -preset p4 -tune hq -cq 23";
+                case "hevc_nvenc": return "-c:v hevc_nvenc -preset p4 -tune hq -cq 25";
+                case "av1_nvenc":  return "-c:v av1_nvenc -preset p4 -tune hq -cq 30";
+                case "h264_qsv":   return "-c:v h264_qsv -preset slow -global_quality 23";
+                case "hevc_qsv":   return "-c:v hevc_qsv -preset slow -global_quality 25";
+                case "av1_qsv":    return "-c:v av1_qsv -preset slow -global_quality 30";
+                default:           return $"-c:v {codec} -preset medium -crf 23";
+            }
         }
     }
 }

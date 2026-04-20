@@ -1,1150 +1,906 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Upscaler Service</title>
-    <style>
-        :root {
-            --bg-primary: #0f172a;
-            --bg-secondary: #1e293b;
-            --bg-card: rgba(30, 41, 59, 0.6);
-            --bg-input: #1e293b;
-            --accent: #00d4ff;
-            --accent-glow: rgba(0, 212, 255, 0.15);
-            --accent-hover: #00b8e6;
-            --success: #4ade80;
-            --warning: #fbbf24;
-            --error: #f87171;
-            --text-primary: #e2e8f0;
-            --text-secondary: #94a3b8;
-            --text-muted: #64748b;
-            --border: rgba(255, 255, 255, 0.06);
-            --border-hover: rgba(255, 255, 255, 0.12);
-            --radius: 12px;
-            --radius-sm: 8px;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
-            line-height: 1.6;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 1.5rem;
-        }
-
-        /* Header */
-        .header {
-            text-align: center;
-            margin-bottom: 1.5rem;
-            padding: 1.5rem;
-            background: var(--bg-card);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-        }
-
-        .header h1 {
-            font-size: 1.75rem;
-            font-weight: 700;
-            margin-bottom: 0.25rem;
-            color: var(--accent);
-        }
-
-        .header p {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        .header-badges {
-            display: flex;
-            justify-content: center;
-            gap: 0.5rem;
-            margin-top: 0.75rem;
-            flex-wrap: wrap;
-        }
-
-        /* Status Pills — matching plugin style */
-        .status-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 3px 10px;
-            border-radius: 100px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-
-        .status-pill.online {
-            background: rgba(74, 222, 128, 0.15);
-            color: var(--success);
-        }
-
-        .status-pill.offline {
-            background: rgba(248, 113, 113, 0.15);
-            color: var(--error);
-        }
-
-        .status-pill.warning {
-            background: rgba(251, 191, 36, 0.15);
-            color: var(--warning);
-        }
-
-        .status-pill.accent {
-            background: var(--accent-glow);
-            color: var(--accent);
-        }
-
-        .status-dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        .status-pill.online .status-dot { background: var(--success); }
-        .status-pill.offline .status-dot { background: var(--error); }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-        }
-
-        /* Grid Layout */
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .grid-3 {
-            grid-template-columns: repeat(3, 1fr);
-        }
-
-        /* Glassmorphism Cards — matching plugin */
-        .card {
-            background: var(--bg-card);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            padding: 1.25rem;
-            transition: border-color 0.2s;
-        }
-
-        .card:hover {
-            border-color: var(--border-hover);
-        }
-
-        .card-header {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 1rem;
-            padding-bottom: 0.75rem;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .card-icon {
-            width: 34px;
-            height: 34px;
-            border-radius: var(--radius-sm);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1rem;
-            background: var(--accent-glow);
-            border: 1px solid rgba(0, 212, 255, 0.2);
-        }
-
-        .card-title {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: var(--accent);
-        }
-
-        /* Info Items */
-        .info-grid {
-            display: grid;
-            gap: 0.4rem;
-        }
-
-        .info-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.5rem 0.75rem;
-            background: rgba(15, 23, 42, 0.5);
-            border-radius: var(--radius-sm);
-            font-size: 0.85rem;
-            border: 1px solid var(--border);
-        }
-
-        .info-label {
-            color: var(--text-secondary);
-        }
-
-        .info-value {
-            font-weight: 600;
-        }
-
-        .info-value.success { color: var(--success); }
-        .info-value.warning { color: var(--warning); }
-        .info-value.error { color: var(--error); }
-
-        /* Hardware Items */
-        .hw-item {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.75rem;
-            background: rgba(15, 23, 42, 0.5);
-            border-radius: var(--radius-sm);
-            margin-bottom: 0.5rem;
-            border: 1px solid var(--border);
-        }
-
-        .hw-icon { font-size: 1.4rem; }
-
-        .hw-details { flex: 1; }
-
-        .hw-name {
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-
-        .hw-sub {
-            color: var(--text-muted);
-            font-size: 0.75rem;
-        }
-
-        /* Models List */
-        .model-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.4rem;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .model-list::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .model-list::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .model-list::-webkit-scrollbar-thumb {
-            background: var(--text-muted);
-            border-radius: 4px;
-        }
-
-        .model-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.65rem 0.75rem;
-            background: rgba(15, 23, 42, 0.5);
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--border);
-            transition: border-color 0.2s;
-        }
-
-        .model-item:hover { border-color: var(--border-hover); }
-
-        .model-item.unavailable { opacity: 0.5; }
-
-        .model-info { flex: 1; min-width: 0; }
-
-        .model-name {
-            font-weight: 600;
-            font-size: 0.85rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .model-desc {
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .model-status {
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-
-        .badge {
-            padding: 2px 8px;
-            border-radius: 100px;
-            font-size: 0.68rem;
-            font-weight: 600;
-        }
-
-        .badge-downloaded { background: rgba(74, 222, 128, 0.15); color: var(--success); }
-        .badge-loaded { background: var(--accent-glow); color: var(--accent); }
-        .badge-pending { background: rgba(251, 191, 36, 0.15); color: var(--warning); }
-        .badge-unavailable { background: rgba(248, 113, 113, 0.15); color: var(--error); }
-
-        /* Buttons — matching plugin */
-        .btn {
-            padding: 0.4rem 0.75rem;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--border);
-            font-weight: 600;
-            font-size: 0.75rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.3rem;
-            background: var(--bg-input);
-            color: var(--text-primary);
-        }
-
-        .btn:hover {
-            border-color: var(--accent);
-            color: var(--accent);
-        }
-
-        .btn-primary {
-            background: var(--accent);
-            color: #0f172a;
-            border-color: var(--accent);
-        }
-
-        .btn-primary:hover {
-            background: var(--accent-hover);
-            box-shadow: 0 0 20px var(--accent-glow);
-            color: #0f172a;
-        }
-
-        .btn:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-
-        .btn:disabled:hover {
-            border-color: var(--border);
-            color: var(--text-primary);
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 0.4rem;
-        }
-
-        /* Test Section */
-        .test-section {
-            background: var(--bg-card);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            padding: 1.25rem;
-            transition: border-color 0.2s;
-        }
-
-        .test-section:hover { border-color: var(--border-hover); }
-
-        .upload-area {
-            border: 2px dashed rgba(0, 212, 255, 0.2);
-            border-radius: var(--radius-sm);
-            padding: 1.5rem;
-            text-align: center;
-            margin-bottom: 1rem;
-            transition: all 0.2s;
-            cursor: pointer;
-            color: var(--text-secondary);
-        }
-
-        .upload-area:hover {
-            border-color: var(--accent);
-            background: var(--accent-glow);
-            color: var(--accent);
-        }
-
-        .upload-icon {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .preview-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-
-        .preview-box {
-            aspect-ratio: 16/9;
-            background: rgba(15, 23, 42, 0.5);
-            border-radius: var(--radius-sm);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            border: 1px solid var(--border);
-        }
-
-        .preview-box img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }
-
-        .preview-label {
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 0.8rem;
-            margin-top: 0.5rem;
-        }
-
-        /* Loading Spinner */
-        .loading {
-            display: inline-block;
-            width: 14px;
-            height: 14px;
-            border: 2px solid transparent;
-            border-top-color: currentColor;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Persistent warning banner (API_TOKEN, service issues) */
-        .banner {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.75rem;
-            padding: 0.85rem 1.1rem;
-            margin-bottom: 1rem;
-            border-radius: var(--radius);
-            border: 1px solid rgba(251, 191, 36, 0.35);
-            background: rgba(251, 191, 36, 0.08);
-            color: var(--text-primary);
-            font-size: 0.9rem;
-            line-height: 1.5;
-        }
-        .banner .banner-icon {
-            flex-shrink: 0;
-            width: 1.5em;
-            height: 1.5em;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            border-radius: 50%;
-            background: rgba(251, 191, 36, 0.2);
-            color: var(--warning);
-        }
-        .banner strong { color: var(--warning); }
-        .banner code {
-            background: rgba(0,0,0,0.3);
-            padding: 0.1em 0.35em;
-            border-radius: 4px;
-            font-size: 0.9em;
-            font-family: 'SFMono-Regular', Consolas, monospace;
-        }
-        .banner-close {
-            margin-left: auto;
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 1.2em;
-            cursor: pointer;
-            padding: 0 0.3em;
-            line-height: 1;
-        }
-        .banner-close:hover { color: var(--text-primary); }
-
-        /* Toast Notifications */
-        .toast-container {
-            position: fixed;
-            bottom: 1.5rem;
-            right: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            z-index: 1000;
-            max-width: min(420px, calc(100vw - 3rem));
-        }
-
-        .toast {
-            padding: 0.65rem 1rem;
-            border-radius: var(--radius-sm);
-            font-weight: 500;
-            font-size: 0.82rem;
-            animation: slideIn 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--border);
-            cursor: pointer;
-        }
-        .toast-close {
-            margin-left: auto;
-            opacity: 0.6;
-            font-size: 1.1em;
-            line-height: 1;
-        }
-        .toast:hover .toast-close { opacity: 1; }
-        .toast.fading { animation: fadeOut 0.25s ease forwards; }
-        @keyframes fadeOut {
-            to { transform: translateX(100%); opacity: 0; }
-        }
-
-        .toast.success {
-            background: rgba(74, 222, 128, 0.15);
-            color: var(--success);
-            border-color: rgba(74, 222, 128, 0.3);
-        }
-
-        .toast.error {
-            background: rgba(248, 113, 113, 0.15);
-            color: var(--error);
-            border-color: rgba(248, 113, 113, 0.3);
-        }
-
-        .toast.info {
-            background: var(--accent-glow);
-            color: var(--accent);
-            border-color: rgba(0, 212, 255, 0.3);
-        }
-
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-
-        /* Footer */
-        .footer {
-            text-align: center;
-            padding: 1rem 0;
-            color: var(--text-muted);
-            font-size: 0.75rem;
-        }
-
-        .footer a {
-            color: var(--accent);
-            text-decoration: none;
-        }
-
-        .footer a:hover { text-decoration: underline; }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .container { padding: 1rem; }
-            .header h1 { font-size: 1.3rem; }
-            .grid, .grid-3 { grid-template-columns: 1fr; }
-            .preview-container { grid-template-columns: 1fr; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Upscaler Service · Operator Console</title>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --surface: #11141b;
+    --surface-2: #161a23;
+    --border: #1f2430;
+    --border-strong: #2a3040;
+    --text: #e6e8ec;
+    --text-dim: #9199a6;
+    --text-muted: #5c6472;
+    --accent: #3b82f6;
+    --accent-soft: #1e3a8a33;
+    --ok: #10b981;
+    --warn: #f59e0b;
+    --err: #ef4444;
+    --mono: ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--text); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+    font-size: 13px; line-height: 1.5;
+    min-height: 100vh; font-feature-settings: 'cv11';
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, .mono, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* Topbar */
+  .topbar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; gap: 16px;
+    min-height: 48px; padding: 8px 24px;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 13px; letter-spacing: -0.01em; }
+  .brand-mark { width: 18px; height: 18px; border-radius: 4px; background: var(--accent); display: grid; place-items: center; color: #fff; font-size: 11px; font-weight: 700; }
+  .brand-sub { color: var(--text-muted); font-weight: 400; font-size: 12px; }
+  .topbar-status { display: flex; align-items: center; gap: 6px; margin-left: auto; font-size: 12px; color: var(--text-dim); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
+  .dot--ok { background: var(--ok); box-shadow: 0 0 0 3px rgba(16,185,129,.15); }
+  .dot--warn { background: var(--warn); box-shadow: 0 0 0 3px rgba(245,158,11,.15); }
+  .dot--err { background: var(--err); box-shadow: 0 0 0 3px rgba(239,68,68,.15); }
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; font-size: 11px; border: 1px solid var(--border); color: var(--text-dim); background: var(--surface-2); line-height: 1.5; }
+  .chip--ok   { color: #6ee7b7; border-color: #064e3b; background: #022c22; }
+  .chip--warn { color: #fcd34d; border-color: #713f12; background: #27180a; }
+  .chip--err  { color: #fca5a5; border-color: #7f1d1d; background: #270b0b; }
+
+  /* Tabs */
+  .tabs { display: flex; align-items: center; gap: 4px; padding: 0 24px; background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: thin; }
+  .tab { padding: 10px 12px; font-size: 13px; color: var(--text-dim); border-bottom: 2px solid transparent; cursor: pointer; user-select: none; transition: color .15s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+  /* Content */
+  .wrap { width: 100%; margin: 0; padding: 20px 24px; }
+  @media (max-width: 700px) { .wrap { padding: 14px 14px; } .topbar { padding: 6px 14px; } .tabs { padding: 0 14px; } .foot { padding: 0 14px; } }
+  .row { display: grid; gap: 16px; }
+  .row-12 { grid-template-columns: repeat(12, 1fr); }
+  @media (max-width: 1100px) { .row-12 { grid-template-columns: repeat(6, 1fr); } }
+  @media (max-width: 700px)  { .row-12 { grid-template-columns: repeat(2, 1fr); } }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
+  .card-title { font-size: 12px; font-weight: 600; color: var(--text); letter-spacing: .01em; text-transform: uppercase; }
+  .card-body { padding: 16px; }
+  .card-meta { font-size: 11px; color: var(--text-muted); }
+
+  /* KPI tiles */
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); font-weight: 500; }
+  .kpi-value { font-size: 22px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .kpi-value.small { font-size: 15px; font-weight: 500; }
+  .kpi-sub { font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+  .span-3  { grid-column: span 3; }
+  .span-4  { grid-column: span 4; }
+  .span-6  { grid-column: span 6; }
+  .span-12 { grid-column: span 12; }
+  @media (max-width: 1100px) { .span-3, .span-4 { grid-column: span 3; } .span-6 { grid-column: span 6; } .span-12 { grid-column: span 6; } }
+  @media (max-width: 700px)  { .span-3, .span-4, .span-6 { grid-column: span 2; } .span-12 { grid-column: span 2; } }
+
+  /* Banner (only when really needed) */
+  .banner { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-radius: 6px; border: 1px solid; font-size: 12px; line-height: 1.55; margin-bottom: 14px; }
+  .banner--warn { background: #2a1b06; border-color: #5a3a0c; color: #fde8b5; }
+  .banner--err  { background: #2a0b0b; border-color: #5a1111; color: #fecaca; }
+  .banner code { background: rgba(0,0,0,.25); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+  .banner button { margin-left: auto; background: transparent; border: 1px solid currentColor; color: currentColor; padding: 3px 8px; border-radius: 4px; font: inherit; cursor: pointer; opacity: .75; }
+  .banner button:hover { opacity: 1; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  th { color: var(--text-muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; background: var(--surface-2); position: sticky; top: 0; }
+  tbody tr:hover { background: var(--surface-2); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); }
+  .tag { display: inline-block; padding: 1px 6px; border: 1px solid var(--border-strong); border-radius: 3px; font-size: 10px; color: var(--text-dim); background: var(--surface-2); font-family: var(--mono); text-transform: uppercase; letter-spacing: .02em; }
+  .tag--ok   { color: #6ee7b7; border-color: #0f4a38; background: #042822; }
+  .tag--dim  { color: var(--text-muted); }
+
+  /* Inputs */
+  .input, select { background: var(--bg); color: var(--text); border: 1px solid var(--border-strong); border-radius: 4px; padding: 6px 10px; font: inherit; font-size: 12px; outline: none; transition: border-color .15s; }
+  .input:focus, select:focus { border-color: var(--accent); }
+  .input--sm { padding: 4px 8px; font-size: 12px; }
+
+  /* Sparkline */
+  .spark { width: 100%; height: 32px; }
+  .spark path { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+  .spark .fill { fill: var(--accent-soft); stroke: none; }
+
+  /* Definition list */
+  .dl { display: grid; grid-template-columns: 140px 1fr; gap: 8px 16px; font-size: 12px; }
+  .dl dt { color: var(--text-muted); }
+  .dl dd { color: var(--text); font-family: var(--mono); font-variant-numeric: tabular-nums; word-break: break-all; }
+  @media (max-width: 540px) { .dl { grid-template-columns: 1fr; } .dl dd { margin-bottom: 4px; } }
+
+  /* Code block */
+  pre.code { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 10px 12px; font-family: var(--mono); font-size: 11.5px; color: var(--text-dim); overflow-x: auto; line-height: 1.55; }
+  pre.code .k { color: #93c5fd; }
+  pre.code .s { color: #86efac; }
+  pre.code .c { color: var(--text-muted); }
+
+  /* Live console */
+  .console-log { background: #05070a; border: 1px solid var(--border); border-radius: 4px; font-family: var(--mono); font-size: 11.5px; line-height: 1.5; padding: 10px 12px; height: 520px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; }
+  .console-log .ln { display: grid; grid-template-columns: 68px 52px 1fr; gap: 10px; padding: 1px 0; }
+  .console-log .ln-ts    { color: var(--text-muted); }
+  .console-log .ln-level { color: var(--text-muted); text-transform: uppercase; font-size: 10.5px; letter-spacing: .04em; }
+  .console-log .ln-msg   { color: var(--text-dim); white-space: pre-wrap; }
+  .console-log .lvl-DEBUG   .ln-level { color: #64748b; }
+  .console-log .lvl-INFO    .ln-level { color: #93c5fd; }
+  .console-log .lvl-WARNING .ln-level { color: #fbbf24; }
+  .console-log .lvl-WARNING .ln-msg   { color: #fde68a; }
+  .console-log .lvl-ERROR   .ln-level { color: #f87171; }
+  .console-log .lvl-ERROR   .ln-msg   { color: #fecaca; }
+  .console-log .lvl-CRITICAL .ln-level, .console-log .lvl-CRITICAL .ln-msg { color: #fca5a5; font-weight: 600; }
+  .console-log:empty::before { content: 'connecting…'; color: var(--text-muted); }
+  .card-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .btn { background: var(--surface-2); color: var(--text); border: 1px solid var(--border-strong); border-radius: 4px; padding: 6px 10px; font: inherit; font-size: 12px; cursor: pointer; transition: border-color .15s, background .15s; }
+  .btn:hover { border-color: var(--accent); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn--sm { padding: 4px 8px; font-size: 11.5px; }
+  .btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+  select.btn, input.btn { padding: 4px 8px; }
+
+  /* Footer */
+  .foot { width: 100%; margin: 24px 0 40px; padding: 0 24px; color: var(--text-muted); font-size: 11px; display: flex; gap: 16px; flex-wrap: wrap; }
+
+  /* View switching */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* Utility */
+  .muted { color: var(--text-muted); }
+  .dim   { color: var(--text-dim); }
+  .grow  { flex: 1; }
+  .flex  { display: flex; }
+  .items-center { align-items: center; }
+  .gap-8 { gap: 8px; }
+  .mt-8  { margin-top: 8px; }
+  .mt-12 { margin-top: 12px; }
+  .hidden { display: none !important; }
+  hr.sep { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  /* Load state */
+  .skel { display: inline-block; height: 1em; width: 60px; background: var(--surface-2); border-radius: 3px; animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
+</style>
 </head>
-
 <body>
-    <div class="container">
-        <header class="header">
-            <h1>AI Upscaler Service</h1>
-            <p>Docker Microservice Architecture for Jellyfin</p>
-            <div class="header-badges">
-                <div id="statusBadge" class="status-pill online">
-                    <span class="status-dot"></span>
-                    <span id="statusText">Checking...</span>
-                </div>
-                <div id="pluginBadge" class="status-pill warning">
-                    <span id="pluginText">No Plugin</span>
-                </div>
-                <div id="versionBadge" class="status-pill accent">
-                    <span id="versionText">v1.5.5.4</span>
-                </div>
-            </div>
-        </header>
 
-        <div id="bannerContainer"></div>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">U</span>
+    <span>Upscaler Service</span>
+    <span class="brand-sub" id="brand-version">—</span>
+  </div>
+  <div class="topbar-status">
+    <span class="dot" id="conn-dot"></span>
+    <span id="conn-label">connecting…</span>
+    <span class="chip" id="auth-chip" title="API token posture">—</span>
+  </div>
+</header>
 
-        <div class="grid grid-3">
-            <!-- Service Status -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon">S</div>
-                    <h2 class="card-title">Service Status</h2>
-                </div>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <span class="info-label">Current Model</span>
-                        <span id="currentModel" class="info-value">None</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Active Requests</span>
-                        <span id="activeRequests" class="info-value">0 / 4</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">CUDA Available</span>
-                        <span id="cudaStatus" class="info-value">-</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">ONNX Runtime</span>
-                        <span id="onnxStatus" class="info-value">-</span>
-                    </div>
-                </div>
-            </div>
+<nav class="tabs" role="tablist">
+  <div class="tab active" data-view="overview">Overview</div>
+  <div class="tab" data-view="models">Models</div>
+  <div class="tab" data-view="hardware">Hardware</div>
+  <div class="tab" data-view="api">API</div>
+  <div class="tab" data-view="console">Console</div>
+</nav>
 
-            <!-- GPU Info -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon">G</div>
-                    <h2 class="card-title">GPU</h2>
-                </div>
-                <div class="hw-item">
-                    <span class="hw-icon">&#9632;</span>
-                    <div class="hw-details">
-                        <div id="gpuName" class="hw-name">Detecting...</div>
-                        <div id="gpuMemory" class="hw-sub">Memory: -</div>
-                    </div>
-                </div>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <span class="info-label">CUDA</span>
-                        <span id="gpuCuda" class="info-value">-</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">TensorRT</span>
-                        <span id="gpuTensorrt" class="info-value">-</span>
-                    </div>
-                </div>
-            </div>
+<main class="wrap">
+  <div id="banners"></div>
 
-            <!-- CPU Info -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon">C</div>
-                    <h2 class="card-title">CPU</h2>
-                </div>
-                <div class="hw-item">
-                    <span class="hw-icon">&#9881;</span>
-                    <div class="hw-details">
-                        <div id="cpuName" class="hw-name">Detecting...</div>
-                        <div id="cpuCores" class="hw-sub">Cores: -</div>
-                    </div>
-                </div>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <span class="info-label">Providers</span>
-                        <span id="providers" class="info-value">-</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="grid">
-            <!-- Models -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon">M</div>
-                    <h2 class="card-title">AI Models</h2>
-                    <div style="margin-left:auto;display:flex;gap:0.4rem;align-items:center;">
-                        <input id="modelSearch" type="search" placeholder="Filter&hellip;" style="padding:0.3rem 0.6rem;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);font-size:0.85rem;width:140px;">
-                        <select id="modelFilterStatus" style="padding:0.3rem 0.5rem;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);font-size:0.85rem;">
-                            <option value="all">All</option>
-                            <option value="ready">Ready</option>
-                            <option value="missing">Missing</option>
-                        </select>
-                    </div>
-                </div>
-                <div id="modelList" class="model-list">
-                    <div class="info-item">Loading models...</div>
-                </div>
-            </div>
-
-            <!-- Test Upscaling -->
-            <div class="test-section">
-                <div class="card-header">
-                    <div class="card-icon">T</div>
-                    <h2 class="card-title">Test Upscaling</h2>
-                </div>
-
-                <div id="uploadArea" class="upload-area">
-                    <div class="upload-icon">&#8679;</div>
-                    <p>Drop an image here or click to upload</p>
-                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
-                </div>
-
-                <div class="btn-group" style="justify-content: center;">
-                    <button id="upscaleBtn" class="btn btn-primary" disabled>
-                        Upscale Image
-                    </button>
-                    <button id="benchmarkBtn" class="btn">
-                        Benchmark
-                    </button>
-                </div>
-
-                <div class="preview-container" style="display: none;" id="previewContainer">
-                    <div>
-                        <div class="preview-box" id="originalPreview"></div>
-                        <p class="preview-label">Original</p>
-                    </div>
-                    <div>
-                        <div class="preview-box" id="upscaledPreview"></div>
-                        <p class="preview-label">Upscaled</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="footer">
-            AI Upscaler Plugin &mdash; <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub</a>
-        </div>
+  <!-- OVERVIEW ==================================================== -->
+  <section id="view-overview" class="view active">
+    <div class="row row-12" style="margin-bottom:16px">
+      <div class="kpi span-3">
+        <div class="kpi-label">Status</div>
+        <div class="kpi-value small" id="kpi-status">—</div>
+        <div class="kpi-sub"><span id="kpi-uptime" class="mono">—</span></div>
+      </div>
+      <div class="kpi span-3">
+        <div class="kpi-label">Active Jobs</div>
+        <div class="kpi-value"><span id="kpi-active">—</span><span class="kpi-sub"> / <span id="kpi-max">—</span></span></div>
+        <div class="kpi-sub">Concurrent slots</div>
+      </div>
+      <div class="kpi span-3">
+        <div class="kpi-label">Total Jobs</div>
+        <div class="kpi-value" id="kpi-jobs">—</div>
+        <div class="kpi-sub"><span id="kpi-frames">—</span> frames processed</div>
+      </div>
+      <div class="kpi span-3">
+        <div class="kpi-label">Failure Rate</div>
+        <div class="kpi-value" id="kpi-failrate">—</div>
+        <div class="kpi-sub"><span id="kpi-failures">—</span> failures total</div>
+      </div>
     </div>
 
-    <div id="toastContainer" class="toast-container"></div>
+    <div class="row row-12" style="margin-bottom:16px">
+      <div class="card span-6">
+        <div class="card-head">
+          <div class="card-title">Active model</div>
+          <span class="chip" id="model-type-chip">—</span>
+        </div>
+        <div class="card-body">
+          <dl class="dl">
+            <dt>Model</dt><dd id="model-name">—</dd>
+            <dt>Scale</dt><dd id="model-scale">—</dd>
+            <dt>Input frames</dt><dd id="model-input-frames">—</dd>
+            <dt>FP16</dt><dd id="model-fp16">—</dd>
+            <dt>HDR</dt><dd id="model-hdr">—</dd>
+            <dt>Scene-cut</dt><dd id="model-scene">—</dd>
+          </dl>
+        </div>
+      </div>
+      <div class="card span-6">
+        <div class="card-head">
+          <div class="card-title">Processing latency (last jobs)</div>
+          <span class="card-meta" id="lat-meta">—</span>
+        </div>
+        <div class="card-body">
+          <svg class="spark" id="spark-latency" viewBox="0 0 300 32" preserveAspectRatio="none">
+            <path class="fill" d=""></path>
+            <path class="line" d=""></path>
+          </svg>
+          <div class="flex items-center gap-8 mt-12" style="justify-content:space-between">
+            <div><div class="kpi-label">Avg</div><div class="kpi-value small" id="lat-avg">—</div></div>
+            <div><div class="kpi-label">Last</div><div class="kpi-value small" id="lat-last">—</div></div>
+            <div><div class="kpi-label">Circuit</div><div class="kpi-value small" id="lat-circuit">—</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-    <script>
-        // State
-        let selectedFile = null;
-        let currentModelLoaded = null;
-        let lastUpscaledObjectURL = null;
+    <div class="row row-12">
+      <div class="card span-12">
+        <div class="card-head">
+          <div class="card-title">Feature configuration</div>
+          <span class="card-meta">/features</span>
+        </div>
+        <div class="card-body">
+          <table id="feat-table">
+            <thead>
+              <tr><th>Feature</th><th>State</th><th>Parameter</th><th class="num">Value</th></tr>
+            </thead>
+            <tbody id="feat-body">
+              <tr><td colspan="4" class="muted">loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
 
-        // API calls
-        async function fetchStatus() {
-            try {
-                const res = await fetch('/status');
-                const data = await res.json();
-                updateStatusUI(data);
+  <!-- MODELS ====================================================== -->
+  <section id="view-models" class="view">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Model catalog</div>
+        <div class="flex items-center gap-8">
+          <span class="card-meta" id="models-count">—</span>
+          <select id="models-filter" class="input input--sm">
+            <option value="all">All</option>
+            <option value="available">Available</option>
+            <option value="downloaded">Downloaded</option>
+            <option value="loaded">Loaded</option>
+            <option value="unavailable">Unavailable</option>
+          </select>
+          <input id="models-search" class="input input--sm" type="search" placeholder="Filter by name / id / category" style="width:240px">
+        </div>
+      </div>
+      <div class="card-body" style="padding:0; max-height:640px; overflow:auto">
+        <table id="models-table">
+          <thead>
+            <tr>
+              <th>ID</th><th>Name</th><th>Category</th><th class="num">Scale</th><th>Type</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="models-body">
+            <tr><td colspan="6" class="muted" style="padding:16px">loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="muted mt-12" style="font-size:11px">
+      Download / load / delete actions live in the Jellyfin plugin config page to avoid duplicate state.
+      This view is read-only and reflects on-disk + in-memory state after <code>/models/download</code> or <code>/models/load</code> calls.
+    </p>
+  </section>
 
-                // Proactively surface API_TOKEN not set as a persistent banner (once).
-                if (data && (data.api_token_configured === false || data.auth_enabled === false)) {
-                    showBanner('api-token', '<strong>API token not set.</strong> Any caller can hit this service. Set <code>API_TOKEN=&lt;your-secret&gt;</code> in the Docker env to secure it, then restart the container.');
-                }
-            } catch (e) {
-                document.getElementById('statusBadge').className = 'status-pill offline';
-                document.getElementById('statusText').textContent = 'Offline';
-            }
-        }
+  <!-- HARDWARE ==================================================== -->
+  <section id="view-hardware" class="view">
+    <div class="row row-12" style="margin-bottom:16px">
+      <div class="card span-6">
+        <div class="card-head"><div class="card-title">Compute</div><span class="card-meta">/hardware</span></div>
+        <div class="card-body">
+          <dl class="dl">
+            <dt>GPU name</dt><dd id="hw-gpu-name">—</dd>
+            <dt>GPU memory</dt><dd id="hw-gpu-mem">—</dd>
+            <dt>CUDA</dt><dd id="hw-cuda">—</dd>
+            <dt>TensorRT</dt><dd id="hw-trt">—</dd>
+            <dt>Using GPU</dt><dd id="hw-using">—</dd>
+            <dt>CPU</dt><dd id="hw-cpu">—</dd>
+            <dt>CPU cores</dt><dd id="hw-cores">—</dd>
+          </dl>
+        </div>
+      </div>
+      <div class="card span-6">
+        <div class="card-head"><div class="card-title">ONNX execution providers</div><span class="card-meta">In order of preference</span></div>
+        <div class="card-body">
+          <div id="providers-list" class="flex items-center gap-8" style="flex-wrap:wrap"><span class="muted">loading…</span></div>
+          <hr class="sep">
+          <div class="dl">
+            <dt>ONNX available</dt><dd id="hw-onnx">—</dd>
+            <dt>FP16 enabled</dt><dd id="hw-fp16">—</dd>
+            <dt>Input-frame model</dt><dd id="hw-inputframes">—</dd>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Detected GPUs</div><span class="card-meta">/gpus</span></div>
+      <div class="card-body" style="padding:0">
+        <table>
+          <thead><tr><th class="num">#</th><th>Vendor</th><th>Name</th><th>Driver</th><th class="num">Memory</th><th class="num">Free</th></tr></thead>
+          <tbody id="gpus-body"><tr><td colspan="6" class="muted" style="padding:16px">loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 
-        async function fetchHardware() {
-            try {
-                const res = await fetch('/hardware');
-                const data = await res.json();
-                updateHardwareUI(data);
-            } catch (e) {
-                console.error('Failed to fetch hardware info');
-            }
-        }
+  <!-- API ========================================================= -->
+  <section id="view-api" class="view">
+    <div class="row row-12" style="margin-bottom:16px">
+      <div class="card span-6">
+        <div class="card-head"><div class="card-title">Interactive documentation</div></div>
+        <div class="card-body">
+          <p class="dim">Full OpenAPI schema with try-it-out, generated from FastAPI handler signatures.</p>
+          <div class="flex items-center gap-8 mt-12" style="flex-wrap:wrap">
+            <a href="/docs" target="_blank" rel="noopener">Swagger UI  /docs</a>
+            <a href="/redoc" target="_blank" rel="noopener">ReDoc  /redoc</a>
+            <a href="/openapi.json" target="_blank" rel="noopener">openapi.json</a>
+          </div>
+        </div>
+      </div>
+      <div class="card span-6">
+        <div class="card-head"><div class="card-title">Authentication</div></div>
+        <div class="card-body">
+          <p class="dim">All mutating endpoints require the <code>X-Api-Token</code> header when <code>API_TOKEN</code> is set.</p>
+          <pre class="code" style="margin-top:10px"><span class="c"># Health (no auth)</span>
+<span class="k">curl</span> -s <span class="s" id="curl-origin">$SERVICE</span>/status | jq .
 
-        async function fetchModels() {
-            try {
-                const res = await fetch('/models');
-                const data = await res.json();
-                updateModelsUI(data.models);
-            } catch (e) {
-                showToast('Failed to fetch models', 'error');
-            }
-        }
+<span class="c"># Load a model (auth required)</span>
+<span class="k">curl</span> -s -X POST <span class="s" id="curl-origin-2">$SERVICE</span>/models/load \
+  -H <span class="s">"X-Api-Token: $API_TOKEN"</span> \
+  -F <span class="s">model_name=realesrgan-x2</span>
 
-        async function fetchConnections() {
-            try {
-                const res = await fetch('/connections');
-                const data = await res.json();
-                updateConnectionsUI(data);
-            } catch (e) {
-                console.error('Failed to fetch connections');
-            }
-        }
+<span class="c"># Upscale a frame</span>
+<span class="k">curl</span> -s -X POST <span class="s" id="curl-origin-3">$SERVICE</span>/upscale-frame \
+  -H <span class="s">"X-Api-Token: $API_TOKEN"</span> \
+  -F <span class="s">file=@frame.png</span> &gt; out.png</pre>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Endpoints</div>
+        <div class="flex items-center gap-8">
+          <span class="card-meta" id="api-count">—</span>
+          <input id="api-search" class="input input--sm" type="search" placeholder="Filter" style="width:200px">
+        </div>
+      </div>
+      <div class="card-body" style="padding:0; max-height:540px; overflow:auto">
+        <table id="api-table">
+          <thead><tr><th style="width:80px">Method</th><th>Path</th><th>Summary</th><th style="width:140px">Tags</th></tr></thead>
+          <tbody id="api-body"><tr><td colspan="4" class="muted" style="padding:16px">loading openapi.json…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 
-        async function downloadModel(modelName) {
-            showToast('Downloading ' + modelName + '...', 'info');
-            try {
-                const formData = new FormData();
-                formData.append('model_name', modelName);
-                const res = await fetch('/models/download', { method: 'POST', body: formData });
-                if (res.ok) {
-                    showToast('Model ' + modelName + ' downloaded!', 'success');
-                    fetchModels();
-                } else {
-                    const err = await res.json();
-                    throw new Error(err.detail || 'Download failed');
-                }
-            } catch (e) {
-                showToast(e.message, 'error');
-            }
-        }
+  <!-- CONSOLE ===================================================== -->
+  <section id="view-console" class="view">
+    <div class="card">
+      <div class="card-head">
+        <h3>Live Console</h3>
+        <div class="card-actions">
+          <span id="console-state" class="tag tag--dim">idle</span>
+          <span id="console-count" class="muted mono" style="font-size:12px">0 lines</span>
+          <label class="muted" style="display:inline-flex;align-items:center;gap:6px;font-size:12px">
+            <input type="checkbox" id="console-autoscroll" checked> auto-scroll
+          </label>
+          <select id="console-level" class="btn btn--sm" title="Minimum level">
+            <option value="DEBUG">DEBUG+</option>
+            <option value="INFO" selected>INFO+</option>
+            <option value="WARNING">WARN+</option>
+            <option value="ERROR">ERROR only</option>
+          </select>
+          <input type="search" id="console-filter" placeholder="filter…" class="btn btn--sm" style="width:140px">
+          <button type="button" class="btn btn--sm" id="console-pause">Pause</button>
+          <button type="button" class="btn btn--sm" id="console-clear">Clear</button>
+        </div>
+      </div>
+      <div id="console-log" class="console-log" role="log" aria-live="polite" aria-label="Live log output"></div>
+    </div>
+  </section>
+</main>
 
-        async function loadModel(modelName) {
-            showToast('Loading ' + modelName + '...', 'info');
-            try {
-                const formData = new FormData();
-                formData.append('model_name', modelName);
-                formData.append('use_gpu', 'true');
-                const res = await fetch('/models/load', { method: 'POST', body: formData });
-                if (res.ok) {
-                    showToast('Model ' + modelName + ' loaded!', 'success');
-                    fetchStatus();
-                    fetchModels();
-                } else {
-                    const err = await res.json();
-                    throw new Error(err.detail || 'Load failed');
-                }
-            } catch (e) {
-                showToast(e.message, 'error');
-            }
-        }
+<footer class="foot">
+  <span>AI Upscaler Service</span>
+  <span>·</span>
+  <span id="foot-version">—</span>
+  <span>·</span>
+  <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank" rel="noopener">GitHub</a>
+  <span>·</span>
+  <a href="/docs" target="_blank" rel="noopener">OpenAPI</a>
+  <span>·</span>
+  <a href="/metrics" target="_blank" rel="noopener">Prometheus metrics</a>
+</footer>
 
-        async function runBenchmark() {
-            const btn = document.getElementById('benchmarkBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span> Running...';
+<script>
+(() => {
+  const $ = (s, p=document) => p.querySelector(s);
+  const $$ = (s, p=document) => Array.from(p.querySelectorAll(s));
+  const fmt = {
+    int: n => Number.isFinite(n) ? n.toLocaleString('en-US') : '—',
+    pct: n => Number.isFinite(n) ? n.toFixed(n < 10 ? 2 : 1) + '%' : '—',
+    ms:  n => !Number.isFinite(n) ? '—' : n < 1 ? '<1 ms' : n < 1000 ? Math.round(n) + ' ms' : (n/1000).toFixed(2) + ' s',
+    bytes: n => {
+      if (!Number.isFinite(n) || n <= 0) return '—';
+      const units = ['B','KB','MB','GB','TB'];
+      let i = 0; while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+      return n.toFixed(n < 10 ? 1 : 0) + ' ' + units[i];
+    },
+    mb: n => Number.isFinite(n) && n > 0 ? n.toLocaleString('en-US') + ' MB' : '—',
+    uptime: s => {
+      if (!Number.isFinite(s) || s < 0) return '—';
+      const d = Math.floor(s / 86400); s -= d*86400;
+      const h = Math.floor(s / 3600);  s -= h*3600;
+      const m = Math.floor(s / 60);
+      const parts = [];
+      if (d) parts.push(d + 'd');
+      if (h || d) parts.push(h + 'h');
+      parts.push(m + 'm');
+      return parts.join(' ');
+    }
+  };
 
-            try {
-                const res = await fetch('/benchmark');
-                const data = await res.json();
+  // --- Tabs -------------------------------------------------------
+  $$('.tab').forEach(t => t.addEventListener('click', () => {
+    $$('.tab').forEach(x => x.classList.toggle('active', x === t));
+    const v = t.dataset.view;
+    $$('.view').forEach(x => x.classList.toggle('active', x.id === 'view-' + v));
+    if (v === 'api' && !apiLoaded) loadApi();
+    if (v === 'hardware' && !hwLoaded) loadHardware();
+    if (v === 'models' && !modelsLoaded) loadModels();
+    if (v === 'console' && !consoleStarted) startConsole();
+  }));
 
-                if (res.ok && !data.error) {
-                    const fps = data.fps !== undefined ? data.fps : 'N/A';
-                    const time = data.avg_time_ms !== undefined ? data.avg_time_ms : 'N/A';
-                    showToast('Benchmark: ' + fps + ' FPS (' + time + 'ms)', 'success');
-                    fetchStatus();
-                } else {
-                    throw new Error(data.detail || data.error || 'Benchmark failed');
-                }
-            } catch (e) {
-                showToast(e.message, 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = 'Benchmark';
-            }
-        }
+  // --- Banners ----------------------------------------------------
+  function showBanner(id, severity, html) {
+    if ($('#banner-' + id)) return;
+    const b = document.createElement('div');
+    b.className = 'banner banner--' + severity;
+    b.id = 'banner-' + id;
+    b.innerHTML = `<div>${html}</div><button type="button">Dismiss</button>`;
+    b.querySelector('button').onclick = () => b.remove();
+    $('#banners').appendChild(b);
+  }
 
-        async function upscaleImage() {
-            if (!selectedFile) return;
+  // --- Overview + status poll ------------------------------------
+  const latHistory = [];
+  const LAT_MAX = 60;
 
-            const btn = document.getElementById('upscaleBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span> Processing...';
+  async function fetchJson(url, opts) {
+    const r = await fetch(url, opts);
+    if (!r.ok) throw new Error(url + ' → HTTP ' + r.status);
+    return r.json();
+  }
 
-            try {
-                const formData = new FormData();
-                formData.append('file', selectedFile);
-                formData.append('scale', '2');
+  async function refreshStatus() {
+    try {
+      const s = await fetchJson('/status');
+      $('#brand-version').textContent = 'v' + s.version;
+      $('#foot-version').textContent = 'v' + s.version;
+      $('#conn-dot').className = 'dot dot--ok';
+      $('#conn-label').textContent = 'running';
 
-                const res = await fetch('/upscale', { method: 'POST', body: formData });
-                if (res.ok) {
-                    const blob = await res.blob();
-                    if (lastUpscaledObjectURL) {
-                        URL.revokeObjectURL(lastUpscaledObjectURL);
-                    }
-                    const url = URL.createObjectURL(blob);
-                    lastUpscaledObjectURL = url;
-                    var upscaledImg = document.createElement('img');
-                    upscaledImg.src = url;
-                    upscaledImg.alt = 'Upscaled';
-                    upscaledImg.style.maxWidth = '100%';
-                    document.getElementById('upscaledPreview').replaceChildren(upscaledImg);
-                    showToast('Upscaling complete!', 'success');
-                } else {
-                    const err = await res.json();
-                    throw new Error(err.detail || 'Upscaling failed');
-                }
-            } catch (e) {
-                showToast(e.message, 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = 'Upscale Image';
-            }
-        }
+      // Auth chip (honest, not alarmist)
+      const authChip = $('#auth-chip');
+      if (s.api_token_configured) {
+        authChip.className = 'chip chip--ok'; authChip.textContent = 'API token set';
+      } else if (s.auth_enabled === false || (typeof s.auth_enabled === 'undefined')) {
+        authChip.className = 'chip chip--warn'; authChip.textContent = 'No API token';
+        showBanner('auth', 'warn',
+          '<strong>API token not set.</strong> The service is reachable without authentication. ' +
+          'Set <code>API_TOKEN=&lt;secret&gt;</code> in the container environment and restart to lock down mutating endpoints. ' +
+          'Set <code>API_TOKEN=disable</code> to dismiss this permanently.');
+      } else {
+        authChip.className = 'chip'; authChip.textContent = 'Auth disabled';
+      }
 
-        // UI Updates
-        function updateStatusUI(data) {
-            var badge = document.getElementById('statusBadge');
-            var statusText = document.getElementById('statusText');
+      $('#kpi-status').textContent = s.status;
+      $('#kpi-active').textContent = fmt.int(s.processing_count);
+      $('#kpi-max').textContent = fmt.int(s.max_concurrent);
 
-            badge.className = 'status-pill online';
-            statusText.textContent = 'Running';
+      $('#model-name').textContent = s.current_model || 'none loaded';
+      $('#model-scale').textContent = s.model_scale ? ('×' + s.model_scale) : '—';
+      $('#model-input-frames').textContent = fmt.int(s.input_frames);
+      $('#model-fp16').textContent = s.use_fp16 ? 'yes' : 'no';
+      $('#model-hdr').textContent = s.hdr_supported ? 'yes' : 'no';
+      const sc = s.scene_change_detection || {};
+      $('#model-scene').textContent = sc.enabled ? ('on · threshold ' + sc.threshold) : 'off';
+      const mtc = $('#model-type-chip');
+      mtc.textContent = s.model_type ? s.model_type.toUpperCase() : '—';
+      mtc.className = 'chip chip--ok';
 
-            document.getElementById('currentModel').textContent = data.current_model || 'None';
-            document.getElementById('currentModel').className = 'info-value ' + (data.current_model ? 'success' : '');
+      return s;
+    } catch (e) {
+      $('#conn-dot').className = 'dot dot--err';
+      $('#conn-label').textContent = 'unreachable';
+      return null;
+    }
+  }
 
-            document.getElementById('activeRequests').textContent =
-                data.processing_count + ' / ' + data.max_concurrent;
+  function parseMetrics(txt) {
+    const out = {};
+    txt.split('\n').forEach(line => {
+      if (!line || line.startsWith('#')) return;
+      const sp = line.indexOf(' ');
+      if (sp < 0) return;
+      const key = line.slice(0, sp);
+      const val = parseFloat(line.slice(sp + 1));
+      if (!Number.isFinite(val)) return;
+      out[key] = val;
+    });
+    return out;
+  }
 
-            document.getElementById('cudaStatus').textContent = data.cuda_available ? 'Yes' : 'No';
-            document.getElementById('cudaStatus').className = 'info-value ' + (data.cuda_available ? 'success' : 'error');
+  async function refreshMetrics() {
+    try {
+      const txt = await fetch('/metrics').then(r => r.text());
+      const m = parseMetrics(txt);
 
-            document.getElementById('onnxStatus').textContent = data.onnx_available ? 'Yes' : 'No';
-            document.getElementById('onnxStatus').className = 'info-value ' + (data.onnx_available ? 'success' : 'error');
+      const jobs = m.upscaler_jobs_total || 0;
+      const fails = m.upscaler_failures_total || 0;
+      const rate = jobs > 0 ? (fails / jobs) * 100 : 0;
 
-            document.getElementById('versionText').textContent = 'v' + data.version;
+      $('#kpi-jobs').textContent = fmt.int(jobs);
+      $('#kpi-frames').textContent = fmt.int(m.upscaler_frames_total || 0);
+      $('#kpi-failrate').textContent = jobs > 0 ? fmt.pct(rate) : '—';
+      $('#kpi-failures').textContent = fmt.int(fails);
+      $('#kpi-uptime').textContent = fmt.uptime(m.upscaler_uptime_seconds);
 
-            currentModelLoaded = data.current_model;
-            updateUpscaleButton();
-        }
+      $('#lat-avg').textContent = fmt.ms(m.upscaler_processing_time_avg_ms);
+      $('#lat-last').textContent = fmt.ms(m.upscaler_last_job_time_ms);
+      const circ = m.upscaler_circuit_open >= 1;
+      const circEl = $('#lat-circuit');
+      circEl.textContent = circ ? 'open' : 'closed';
+      circEl.style.color = circ ? 'var(--err)' : 'var(--ok)';
 
-        function updateHardwareUI(data) {
-            document.getElementById('gpuName').textContent = data.gpu.name;
-            document.getElementById('gpuMemory').textContent = 'Memory: ' + data.gpu.memory;
-            document.getElementById('gpuCuda').textContent = data.gpu.cuda_available ? 'Active' : 'Off';
-            document.getElementById('gpuCuda').className = 'info-value ' + (data.gpu.cuda_available ? 'success' : 'error');
-            document.getElementById('gpuTensorrt').textContent = data.gpu.tensorrt_available ? 'Active' : 'Off';
-            document.getElementById('gpuTensorrt').className = 'info-value ' + (data.gpu.tensorrt_available ? 'success' : 'error');
+      if (Number.isFinite(m.upscaler_last_job_time_ms) && m.upscaler_last_job_time_ms > 0) {
+        latHistory.push(m.upscaler_last_job_time_ms);
+        if (latHistory.length > LAT_MAX) latHistory.shift();
+      }
+      drawSpark();
 
-            document.getElementById('cpuName').textContent = data.cpu.name || 'Unknown';
-            document.getElementById('cpuCores').textContent = 'Cores: ' + data.cpu.cores;
+      $('#lat-meta').textContent = latHistory.length + ' samples · updated ' + new Date().toLocaleTimeString();
+    } catch (e) { /* service unreachable already surfaced via status */ }
+  }
 
-            var shortProviders = data.providers
-                .map(function(p) { return p.replace('ExecutionProvider', ''); })
-                .slice(0, 3)
-                .join(', ');
-            document.getElementById('providers').textContent = shortProviders;
-        }
+  function drawSpark() {
+    const svg = $('#spark-latency');
+    const line = svg.querySelector('.line');
+    const fill = svg.querySelector('.fill');
+    if (latHistory.length < 2) { line.setAttribute('d',''); fill.setAttribute('d',''); return; }
+    const W = 300, H = 32;
+    const max = Math.max(...latHistory);
+    const min = Math.min(...latHistory);
+    const range = Math.max(max - min, 1);
+    const pts = latHistory.map((v, i) => {
+      const x = (i / (latHistory.length - 1)) * W;
+      const y = H - ((v - min) / range) * (H - 4) - 2;
+      return [x, y];
+    });
+    const path = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+    line.setAttribute('d', path);
+    fill.setAttribute('d', path + ` L${W},${H} L0,${H} Z`);
+  }
 
-        function updateConnectionsUI(data) {
-            var badge = document.getElementById('pluginBadge');
-            var text = document.getElementById('pluginText');
+  async function refreshFeatures() {
+    try {
+      const f = await fetchJson('/features');
+      const rows = [];
+      const add = (feat, state, param, val) => rows.push(`<tr>
+        <td>${feat}</td>
+        <td><span class="tag ${state ? 'tag--ok':''}">${state ? 'enabled' : 'disabled'}</span></td>
+        <td class="muted">${param || ''}</td>
+        <td class="num">${val != null ? val : '—'}</td>
+      </tr>`);
+      if (f.quality_metrics) add('Quality metrics (SSIM/PSNR)', f.quality_metrics.enabled);
+      if (f.face_enhancement) {
+        add('Face enhancement', f.face_enhancement.enabled, 'strength', f.face_enhancement.strength);
+        add('Face ONNX model', f.face_enhancement.onnx_model_loaded, 'loaded', f.face_enhancement.onnx_model_loaded ? 'yes' : 'no');
+      }
+      if (f.grain_management) {
+        add('Grain management', f.grain_management.enabled, 'denoise', f.grain_management.denoise_strength);
+        add('Grain re-add', f.grain_management.enabled, 'intensity', f.grain_management.readd_intensity);
+      }
+      if (f.model_upload) add('Custom model upload', f.model_upload.enabled, 'max size MB', f.model_upload.max_size_mb);
+      if (f.fp16_mixed_precision) add('FP16 mixed precision', f.fp16_mixed_precision.enabled, 'setting', f.fp16_mixed_precision.setting);
+      if (f.scene_change_detection) add('Scene-change detection', f.scene_change_detection.threshold < 1, 'threshold', f.scene_change_detection.threshold);
+      if (f.api_docs) add('API documentation', f.api_docs.enabled, 'url', f.api_docs.docs_url || '—');
+      $('#feat-body').innerHTML = rows.join('') || '<tr><td colspan="4" class="muted">no features exposed</td></tr>';
+    } catch (e) {
+      $('#feat-body').innerHTML = '<tr><td colspan="4" class="muted">/features endpoint unavailable</td></tr>';
+    }
+  }
 
-            if (data.total > 0) {
-                badge.className = 'status-pill online';
-                text.textContent = data.total + ' Plugin(s)';
-            } else {
-                badge.className = 'status-pill warning';
-                text.textContent = 'No Plugin';
-            }
-        }
+  // --- Models tab -------------------------------------------------
+  let modelsLoaded = false;
+  let modelsRaw = [];
+  async function loadModels() {
+    modelsLoaded = true;
+    try {
+      const r = await fetchJson('/models');
+      modelsRaw = r.models || [];
+      $('#models-count').textContent = (r.total || modelsRaw.length) + ' total';
+      renderModels();
+    } catch (e) {
+      $('#models-body').innerHTML = `<tr><td colspan="6" class="muted" style="padding:16px">failed to load: ${e.message}</td></tr>`;
+    }
+  }
+  function renderModels() {
+    const q = $('#models-search').value.toLowerCase().trim();
+    const f = $('#models-filter').value;
+    const rows = modelsRaw
+      .filter(m => {
+        if (f === 'available' && !m.available) return false;
+        if (f === 'unavailable' && m.available) return false;
+        if (f === 'downloaded' && !m.downloaded) return false;
+        if (f === 'loaded' && !m.loaded) return false;
+        if (q && !(m.id + ' ' + m.name + ' ' + (m.category||'')).toLowerCase().includes(q)) return false;
+        return true;
+      })
+      .map(m => {
+        let tags = [];
+        if (m.loaded) tags.push('<span class="tag tag--ok">loaded</span>');
+        else if (m.downloaded) tags.push('<span class="tag">ready</span>');
+        else if (!m.available) tags.push('<span class="tag tag--dim">offline</span>');
+        else tags.push('<span class="tag tag--dim">—</span>');
+        return `<tr>
+          <td><code>${m.id}</code></td>
+          <td>${m.name}</td>
+          <td class="muted">${m.category || '—'}</td>
+          <td class="num">×${m.scale}</td>
+          <td><span class="tag">${(m.type||'—').toUpperCase()}</span></td>
+          <td>${tags.join(' ') || '—'}</td>
+        </tr>`;
+      });
+    $('#models-body').innerHTML = rows.join('') || '<tr><td colspan="6" class="muted" style="padding:16px">no matches</td></tr>';
+    $('#models-count').textContent = `${rows.length} of ${modelsRaw.length}`;
+  }
+  $('#models-search').addEventListener('input', renderModels);
+  $('#models-filter').addEventListener('change', renderModels);
 
-        function escapeHtml(str) {
-            var div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
-        }
+  // --- Hardware tab ----------------------------------------------
+  let hwLoaded = false;
+  async function loadHardware() {
+    hwLoaded = true;
+    try {
+      const [hw, s] = await Promise.all([
+        fetchJson('/hardware'),
+        fetchJson('/status').catch(() => null),
+      ]);
+      $('#hw-gpu-name').textContent = hw.gpu?.name || '—';
+      $('#hw-gpu-mem').textContent = hw.gpu?.memory ? fmt.mb(hw.gpu.memory) : '—';
+      $('#hw-cuda').textContent = hw.gpu?.cuda_available ? 'available' : 'unavailable';
+      $('#hw-trt').textContent = hw.gpu?.tensorrt_available ? 'available' : 'unavailable';
+      $('#hw-using').textContent = hw.using_gpu ? 'yes' : 'no';
+      $('#hw-cpu').textContent = hw.cpu?.name || '—';
+      $('#hw-cores').textContent = fmt.int(hw.cpu?.cores);
 
-        var _allModels = [];
-        function updateModelsUI(models) {
-            _allModels = models || [];
-            _renderFilteredModels();
-        }
-        function _renderFilteredModels() {
-            var container = document.getElementById('modelList');
-            container.innerHTML = '';
-            var search = (document.getElementById('modelSearch')?.value || '').toLowerCase().trim();
-            var statusFilter = document.getElementById('modelFilterStatus')?.value || 'all';
-            var visible = _allModels.filter(function(m) {
-                if (search && !((m.name + ' ' + (m.id || '') + ' ' + (m.description || '')).toLowerCase().includes(search))) return false;
-                if (statusFilter === 'ready' && !m.downloaded) return false;
-                if (statusFilter === 'missing' && m.downloaded) return false;
-                return true;
-            });
-            if (visible.length === 0) {
-                container.innerHTML = '<div class="info-item" style="color:var(--text-secondary);">No models match.</div>';
-                return;
-            }
-            visible.forEach(function(m) {
-                var item = document.createElement('div');
-                item.className = 'model-item' + (!m.available ? ' unavailable' : '');
+      const providers = hw.providers || [];
+      $('#providers-list').innerHTML = providers.length
+        ? providers.map(p => `<span class="chip ${/CUDA|Tensorrt/i.test(p) ? 'chip--ok' : ''}">${p}</span>`).join('')
+        : '<span class="muted">no ONNX providers available</span>';
 
-                var info = document.createElement('div');
-                info.className = 'model-info';
-                var nameDiv = document.createElement('div');
-                nameDiv.className = 'model-name';
-                nameDiv.textContent = m.name;
-                var descDiv = document.createElement('div');
-                descDiv.className = 'model-desc';
-                descDiv.textContent = m.description;
-                info.appendChild(nameDiv);
-                info.appendChild(descDiv);
+      $('#hw-onnx').textContent = s?.onnx_available ? 'yes' : 'no';
+      $('#hw-fp16').textContent = s?.use_fp16 ? 'yes' : 'no';
+      $('#hw-inputframes').textContent = fmt.int(s?.input_frames);
 
-                var statusDiv = document.createElement('div');
-                statusDiv.className = 'model-status';
-                var badge = document.createElement('span');
-                if (m.loaded) { badge.className = 'badge badge-loaded'; badge.textContent = 'Loaded'; }
-                else if (m.downloaded) { badge.className = 'badge badge-downloaded'; badge.textContent = 'Ready'; }
-                else if (m.available) { badge.className = 'badge badge-pending'; badge.textContent = 'Not Downloaded'; }
-                else { badge.className = 'badge badge-unavailable'; badge.textContent = 'Coming Soon'; }
-                statusDiv.appendChild(badge);
+      await loadGpus();
+    } catch (e) {
+      ['hw-gpu-name','hw-gpu-mem','hw-cuda','hw-trt','hw-using','hw-cpu','hw-cores'].forEach(id => {
+        $('#' + id).textContent = '—';
+      });
+      $('#providers-list').innerHTML = `<span class="muted">error: ${e.message}</span>`;
+    }
+  }
+  async function loadGpus() {
+    try {
+      const r = await fetchJson('/gpus');
+      const gpus = r.gpus || r || [];
+      const body = $('#gpus-body');
+      if (!gpus.length) {
+        body.innerHTML = '<tr><td colspan="6" class="muted" style="padding:16px">no GPUs detected by nvidia-smi / rocm-smi</td></tr>';
+        return;
+      }
+      body.innerHTML = gpus.map(g => `<tr>
+        <td class="num">${g.index ?? '—'}</td>
+        <td><span class="tag">${g.vendor || 'GPU'}</span></td>
+        <td>${g.name || '—'}</td>
+        <td class="muted">${g.driver_version || '—'}</td>
+        <td class="num">${g.memory_total ? fmt.mb(g.memory_total) : '—'}</td>
+        <td class="num">${g.memory_free != null ? fmt.mb(g.memory_free) : '—'}</td>
+      </tr>`).join('');
+    } catch (e) {
+      $('#gpus-body').innerHTML = `<tr><td colspan="6" class="muted" style="padding:16px">/gpus unavailable (${e.message})</td></tr>`;
+    }
+  }
 
-                var btnGroup = document.createElement('div');
-                btnGroup.className = 'btn-group';
-                if (!m.downloaded && m.available) {
-                    var dlBtn = document.createElement('button');
-                    dlBtn.className = 'btn';
-                    dlBtn.textContent = 'Download';
-                    dlBtn.addEventListener('click', (function(id) { return function() { downloadModel(id); }; })(m.id));
-                    btnGroup.appendChild(dlBtn);
-                } else if (m.downloaded && !m.loaded) {
-                    var ldBtn = document.createElement('button');
-                    ldBtn.className = 'btn btn-primary';
-                    ldBtn.textContent = 'Load';
-                    ldBtn.addEventListener('click', (function(id) { return function() { loadModel(id); }; })(m.id));
-                    btnGroup.appendChild(ldBtn);
-                }
+  // --- API tab ----------------------------------------------------
+  let apiLoaded = false;
+  let apiRaw = [];
+  async function loadApi() {
+    apiLoaded = true;
+    // Set origin in curl examples
+    const origin = location.origin;
+    ['curl-origin','curl-origin-2','curl-origin-3'].forEach(id => {
+      const el = $('#' + id); if (el) el.textContent = origin;
+    });
+    try {
+      const spec = await fetchJson('/openapi.json');
+      const paths = spec.paths || {};
+      apiRaw = [];
+      Object.keys(paths).sort().forEach(p => {
+        Object.keys(paths[p]).forEach(method => {
+          const op = paths[p][method];
+          if (!op || typeof op !== 'object') return;
+          apiRaw.push({
+            method: method.toUpperCase(),
+            path: p,
+            summary: op.summary || op.description || '',
+            tags: op.tags || []
+          });
+        });
+      });
+      renderApi();
+    } catch (e) {
+      $('#api-body').innerHTML = `<tr><td colspan="4" class="muted" style="padding:16px">/openapi.json unavailable (${e.message})</td></tr>`;
+    }
+  }
+  function renderApi() {
+    const q = $('#api-search').value.toLowerCase().trim();
+    const rows = apiRaw
+      .filter(e => !q || (e.path + ' ' + e.summary + ' ' + e.tags.join(' ')).toLowerCase().includes(q))
+      .map(e => {
+        const c = e.method === 'GET' ? '#6ee7b7'
+                : e.method === 'POST' ? '#93c5fd'
+                : e.method === 'DELETE' ? '#fca5a5'
+                : '#fcd34d';
+        return `<tr>
+          <td><code style="color:${c}">${e.method}</code></td>
+          <td><code>${e.path}</code></td>
+          <td class="muted">${e.summary.replace(/\n/g,' ').slice(0,140)}</td>
+          <td>${e.tags.map(t => `<span class="tag">${t}</span>`).join(' ')}</td>
+        </tr>`;
+      });
+    $('#api-body').innerHTML = rows.join('') || '<tr><td colspan="4" class="muted" style="padding:16px">no matches</td></tr>';
+    $('#api-count').textContent = `${rows.length} of ${apiRaw.length} endpoints`;
+  }
+  $('#api-search').addEventListener('input', renderApi);
 
-                item.appendChild(info);
-                item.appendChild(statusDiv);
-                item.appendChild(btnGroup);
-                container.appendChild(item);
-            });
-        }
+  // --- Live console ----------------------------------------------
+  let consoleStarted = false;
+  let consoleES = null;
+  let consolePaused = false;
+  const LEVEL_RANK = { DEBUG: 10, INFO: 20, WARNING: 30, WARN: 30, ERROR: 40, CRITICAL: 50 };
+  const CONSOLE_MAX = 2000;
+  let consoleMinLevel = 'INFO';
+  let consoleFilter = '';
 
-        function updateUpscaleButton() {
-            document.getElementById('upscaleBtn').disabled = !selectedFile || !currentModelLoaded;
-        }
+  function _fmtTs(ts) {
+    const d = new Date(ts * 1000);
+    return d.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
 
-        // Persistent banners (shown once, dismissible, remembered per session)
-        var _dismissedBanners = new Set();
+  function _consoleMatches(entry) {
+    const minRank = LEVEL_RANK[consoleMinLevel] || 20;
+    const rank = LEVEL_RANK[entry.level] || 20;
+    if (rank < minRank) return false;
+    if (consoleFilter && !entry.msg.toLowerCase().includes(consoleFilter)) return false;
+    return true;
+  }
+
+  function _appendLogLine(entry) {
+    if (!_consoleMatches(entry)) return;
+    const box = $('#console-log');
+    if (!box) return;
+    const line = document.createElement('div');
+    line.className = 'ln lvl-' + (entry.level || 'INFO');
+    line.innerHTML =
+      `<span class="ln-ts">${_fmtTs(entry.ts)}</span>` +
+      `<span class="ln-level">${entry.level || '-'}</span>` +
+      `<span class="ln-msg"></span>`;
+    line.querySelector('.ln-msg').textContent = entry.msg;
+    box.appendChild(line);
+    while (box.childElementCount > CONSOLE_MAX) box.removeChild(box.firstElementChild);
+    if ($('#console-autoscroll').checked) box.scrollTop = box.scrollHeight;
+    const cnt = $('#console-count');
+    if (cnt) cnt.textContent = `${box.childElementCount} lines`;
+  }
+
+  function _setConsoleState(txt, cls) {
+    const el = $('#console-state'); if (!el) return;
+    el.textContent = txt;
+    el.className = 'tag ' + (cls || 'tag--dim');
+  }
+
+  function startConsole() {
+    if (consoleStarted) return;
+    consoleStarted = true;
+    $('#console-level').addEventListener('change', e => { consoleMinLevel = e.target.value; });
+    $('#console-filter').addEventListener('input', e => { consoleFilter = e.target.value.toLowerCase(); });
+    $('#console-clear').addEventListener('click', () => {
+      $('#console-log').innerHTML = '';
+      $('#console-count').textContent = '0 lines';
+    });
+    const pauseBtn = $('#console-pause');
+    pauseBtn.addEventListener('click', () => {
+      consolePaused = !consolePaused;
+      pauseBtn.textContent = consolePaused ? 'Resume' : 'Pause';
+      pauseBtn.classList.toggle('active', consolePaused);
+      if (consolePaused) {
+        if (consoleES) { consoleES.close(); consoleES = null; }
+        _setConsoleState('paused', 'tag--dim');
+      } else {
+        _connectConsole();
+      }
+    });
+    _connectConsole();
+  }
+
+  function _connectConsole() {
+    try {
+      _setConsoleState('connecting', 'tag--dim');
+      consoleES = new EventSource('/logs/stream');
+      consoleES.onopen = () => _setConsoleState('live', 'tag--ok');
+      consoleES.onmessage = (ev) => {
+        if (consolePaused) return;
         try {
-            var d = sessionStorage.getItem('aiupscaler.dismissedBanners');
-            if (d) _dismissedBanners = new Set(JSON.parse(d));
-        } catch (e) {}
+          const entry = JSON.parse(ev.data);
+          _appendLogLine(entry);
+        } catch (e) { /* ignore malformed */ }
+      };
+      consoleES.onerror = () => {
+        _setConsoleState('reconnecting', 'tag--dim');
+        // EventSource auto-reconnects; nothing to do.
+      };
+    } catch (e) {
+      _setConsoleState('error', 'tag--dim');
+    }
+  }
 
-        function showBanner(id, html) {
-            if (_dismissedBanners.has(id)) return;
-            var container = document.getElementById('bannerContainer');
-            if (!container || container.querySelector('[data-banner-id="' + id + '"]')) return;
-            var el = document.createElement('div');
-            el.className = 'banner';
-            el.setAttribute('data-banner-id', id);
-            el.innerHTML =
-                '<div class="banner-icon">!</div>' +
-                '<div style="flex:1;">' + html + '</div>' +
-                '<button class="banner-close" aria-label="Dismiss">&times;</button>';
-            el.querySelector('.banner-close').addEventListener('click', function() {
-                _dismissedBanners.add(id);
-                try { sessionStorage.setItem('aiupscaler.dismissedBanners', JSON.stringify(Array.from(_dismissedBanners))); } catch (e) {}
-                el.remove();
-            });
-            container.appendChild(el);
-        }
-
-        // De-duplicate repetitive errors — prevents the "API_TOKEN" toast spam pattern.
-        // If the same error comes within 10s, it's counted but not re-shown as a separate toast.
-        var _recentToasts = new Map();
-        var MAX_ACTIVE_TOASTS = 3;
-
-        function showToast(message, type) {
-            type = type || 'info';
-            message = String(message || '');
-
-            // Route recurring security/config errors to the persistent banner instead of toast spam.
-            if (/API_TOKEN not configured/i.test(message)) {
-                showBanner('api-token', '<strong>API token not set.</strong> Any caller can hit this service. Set <code>API_TOKEN=&lt;your-secret&gt;</code> in the Docker env to secure it, then restart the container.');
-                return;
-            }
-
-            // De-dupe: same message within 10s is silenced (still counted for visibility).
-            var key = type + ':' + message;
-            var now = Date.now();
-            var last = _recentToasts.get(key);
-            if (last && (now - last) < 10000) {
-                return;
-            }
-            _recentToasts.set(key, now);
-
-            var container = document.getElementById('toastContainer');
-            if (!container) return;
-
-            // Cap active toasts (oldest pushed out).
-            while (container.children.length >= MAX_ACTIVE_TOASTS) {
-                container.firstChild.remove();
-            }
-
-            var toast = document.createElement('div');
-            toast.className = 'toast ' + type;
-            var span = document.createElement('span');
-            span.textContent = message;
-            toast.appendChild(span);
-            var close = document.createElement('span');
-            close.className = 'toast-close';
-            close.textContent = '\u00d7';
-            toast.appendChild(close);
-
-            var dismiss = function() {
-                if (toast.classList.contains('fading')) return;
-                toast.classList.add('fading');
-                setTimeout(function() { toast.remove(); }, 250);
-            };
-            toast.addEventListener('click', dismiss);
-
-            container.appendChild(toast);
-            setTimeout(dismiss, 5000);
-        }
-
-        // File handling
-        var uploadArea = document.getElementById('uploadArea');
-        var fileInput = document.getElementById('fileInput');
-
-        uploadArea.addEventListener('click', function() { fileInput.click(); });
-        uploadArea.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            uploadArea.style.borderColor = 'var(--accent)';
-        });
-        uploadArea.addEventListener('dragleave', function() {
-            uploadArea.style.borderColor = 'rgba(0, 212, 255, 0.2)';
-        });
-        uploadArea.addEventListener('drop', function(e) {
-            e.preventDefault();
-            uploadArea.style.borderColor = 'rgba(0, 212, 255, 0.2)';
-            handleFile(e.dataTransfer.files[0]);
-        });
-        fileInput.addEventListener('change', function(e) { handleFile(e.target.files[0]); });
-
-        function handleFile(file) {
-            if (!file || !file.type.startsWith('image/')) return;
-            selectedFile = file;
-
-            var reader = new FileReader();
-            reader.onload = function(e) {
-                var originalImg = document.createElement('img');
-                originalImg.src = e.target.result;
-                originalImg.alt = 'Original';
-                originalImg.style.maxWidth = '100%';
-                document.getElementById('originalPreview').replaceChildren(originalImg);
-                document.getElementById('upscaledPreview').innerHTML = '<span style="color: var(--text-muted)">Click Upscale</span>';
-                document.getElementById('previewContainer').style.display = 'grid';
-            };
-            reader.readAsDataURL(file);
-            updateUpscaleButton();
-        }
-
-        document.getElementById('upscaleBtn').addEventListener('click', upscaleImage);
-        document.getElementById('benchmarkBtn').addEventListener('click', runBenchmark);
-
-        // Model filter wiring
-        var _modelSearchInput = document.getElementById('modelSearch');
-        var _modelStatusSelect = document.getElementById('modelFilterStatus');
-        if (_modelSearchInput) _modelSearchInput.addEventListener('input', _renderFilteredModels);
-        if (_modelStatusSelect) _modelStatusSelect.addEventListener('change', _renderFilteredModels);
-
-        // Initialize
-        fetchStatus();
-        fetchHardware();
-        fetchModels();
-        fetchConnections();
-        setInterval(fetchStatus, 10000);
-        setInterval(fetchConnections, 30000);
-    </script>
+  // --- Boot + poll ------------------------------------------------
+  (async () => {
+    await refreshStatus();
+    await refreshMetrics();
+    await refreshFeatures();
+    setInterval(refreshStatus, 5000);
+    setInterval(refreshMetrics, 5000);
+  })();
+})();
+</script>
 </body>
-
 </html>

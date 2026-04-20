@@ -15,8 +15,8 @@ ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 # Set SKIP_TENSORRT=false to re-enable TensorRT if your GPU supports it
 ENV SKIP_TENSORRT=true
 
-# Build-time metadata — pass via: --build-arg APP_VERSION=1.6.1.13 --build-arg APP_COMMIT=$(git rev-parse --short HEAD)
-ARG APP_VERSION=1.6.1.13
+# Build-time metadata — pass via: --build-arg APP_VERSION=1.6.1.15 --build-arg APP_COMMIT=$(git rev-parse --short HEAD)
+ARG APP_VERSION=1.6.1.15
 ARG APP_COMMIT=unknown
 ENV APP_VERSION=${APP_VERSION} \
     APP_COMMIT=${APP_COMMIT}

@@ -431,20 +431,31 @@ namespace JellyfinUpscalerPlugin.Controllers
                     ? Array.Empty<string>()
                     : genres.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
+                // The endpoint is called by clients that explicitly want an auto
+                // recommendation (the in-player panel only calls it when Auto-Mode
+                // is enabled). forceAuto=true so the heuristic runs even if the
+                // user has a non-auto Model value saved.
                 var recommendedModel = _upscalerCore.ResolveModelForVideo(
                     genres: genreList,
                     width: width,
                     height: height,
                     isBatch: isBatch,
-                    inputFrames: inputFrames);
+                    inputFrames: inputFrames,
+                    forceAuto: true);
+
+                var recommendedFilter = _upscalerCore.ResolveFilterForVideo(
+                    genres: genreList,
+                    width: width,
+                    height: height);
 
                 var config = Plugin.Instance?.Configuration;
                 return Ok(new
                 {
                     success = true,
                     recommended_model = recommendedModel,
+                    recommended_filter = recommendedFilter,
                     input_frames = inputFrames,
-                    auto_selection_enabled = config?.EnableAutoModelSelection ?? true,
+                    auto_selection_enabled = config?.EnableAutoModelSelection ?? false,
                     parameters = new { genres = genreList, width, height, is_batch = isBatch }
                 });
             }
