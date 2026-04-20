@@ -1,23 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  --paper:        #faf8f3;
-  --paper-tint:   #f3efe6;
-  --paper-deep:   #ebe5d8;
-  --ink:          #1c1917;
-  --ink-soft:     #3f3b36;
-  --ink-dim:      #6b645c;
-  --ink-faint:    #8c857b;
-  --rule:         #e3ddd0;
-  --rule-strong:  #cdc5b3;
-  --accent:       #a94a1a;
-  --accent-soft:  #f4e9dc;
-  --accent-ink:   #7a3412;
-  --ok:           #4d6b3c;
-  --warn:         #a9651a;
-  --danger:       #9a2d2d;
-  --code-bg:      #231f1a;
-  --code-fg:      #ede6d6;
+  --paper:        #16130e;
+  --paper-tint:   #1d1912;
+  --paper-deep:   #252017;
+  --ink:          #ece6d7;
+  --ink-soft:     #c7bfab;
+  --ink-dim:      #94897a;
+  --ink-faint:    #6d655a;
+  --rule:         #2d2820;
+  --rule-strong:  #3d382e;
+  --accent:       #e09560;
+  --accent-soft:  #2d2218;
+  --accent-ink:   #f0b080;
+  --ok:           #a8c48a;
+  --warn:         #d9a45e;
+  --danger:       #d9746c;
+  --code-bg:      #0c0a07;
+  --code-fg:      #ece6d7;
 
   --serif: 'Fraunces', 'Source Serif Pro', Georgia, 'Times New Roman', serif;
   --sans:  'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
@@ -144,7 +144,7 @@ body {
 }
 .nav a:hover {
   color: var(--ink);
-  background: rgba(0,0,0,0.025);
+  background: rgba(255,255,255,0.03);
 }
 .nav a.active {
   color: var(--accent-ink);
@@ -428,7 +428,7 @@ pre {
   font-size: .86rem;
   line-height: 1.6;
   margin: 1.25rem 0;
-  border: 1px solid #2d2922;
+  border: 1px solid var(--rule-strong);
 }
 pre code {
   background: none;
@@ -481,10 +481,10 @@ tbody tr:hover { background: var(--paper-tint); }
 }
 .callout strong { color: var(--accent-ink); }
 .callout.warn {
-  background: #fbe9dc;
-  border-left-color: #b25615;
+  background: #2e1f12;
+  border-left-color: #d9a45e;
 }
-.callout.warn strong { color: #8f3f08; }
+.callout.warn strong { color: #f0c78a; }
 
 /* ---------- Tags / pills ---------- */
 
@@ -501,10 +501,10 @@ tbody tr:hover { background: var(--paper-tint); }
   border: 1px solid var(--rule);
   margin-right: .25rem;
 }
-.tag.success, .tag.ok { background: #e8ecd8; color: #3f5a2b; border-color: #c9d3ac; }
-.tag.warn { background: #f8e6cf; color: #8f4f10; border-color: #e8cb9f; }
-.tag.accent { background: var(--accent-soft); color: var(--accent-ink); border-color: #e8d4bb; }
-.tag.danger { background: #f2d6d6; color: #732929; border-color: #dcb3b3; }
+.tag.success, .tag.ok { background: #1e271a; color: #a8c48a; border-color: #394a32; }
+.tag.warn { background: #2a2014; color: #d9a45e; border-color: #453625; }
+.tag.accent { background: var(--accent-soft); color: var(--accent-ink); border-color: #4a3523; }
+.tag.danger { background: #2a1717; color: #d9746c; border-color: #4a2a2a; }
 
 /* ---------- Footer ---------- */
 
