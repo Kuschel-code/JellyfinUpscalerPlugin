@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Features — Jellyfin AI Upscaler</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.16</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+
+<main class="container">
+  <h1>Features</h1>
+  <p class="lead" style="color: var(--text-dim);">Every user-visible feature, grouped by subsystem.</p>
+
+  <h2>Upscaling engine</h2>
+  <div class="grid grid-2">
+    <div class="card"><h3>30+ ONNX models</h3><p>Real-ESRGAN family (x4plus / x2plus / anime), SwinIR (M/L), HAT (S/M/L), EDVR-M, RealBasicVSR, AnimeSR v2, Anime Compact, RIFE frame-interp (v4.7/v4.8/v4.9), FSRCNN, Waifu2x.</p></div>
+    <div class="card"><h3>4 hardware backends</h3><p>NVIDIA CUDA + TensorRT, Intel OpenVINO, AMD ROCm, CPU-only. Auto-detected on service startup, routed per-model based on benchmark history.</p></div>
+    <div class="card"><h3>5 processing strategies</h3><p>Real-time (per-frame passthrough), Frame-by-Frame (batch of N frames), Batch (multi-segment), Multi-Frame (temporal), Real-Time AI (throttled queue).</p></div>
+    <div class="card"><h3>Pre-processing cache</h3><p>Upscaled frames persist to disk keyed by (file hash, model, scale). Replaying a processed video costs zero GPU cycles.</p></div>
+    <div class="card"><h3>Stream-copy codec path</h3><p>When you only want filters applied without re-encoding, stream-copy mode keeps the original video bitstream and copies audio 1:1.</p></div>
+    <div class="card"><h3>Hardware-accel encoder defaults</h3><p>12 codec options, each with tuned parameters — libsvtav1 <code>-preset 6 -crf 30</code>, libaom-av1 <code>-cpu-used 4</code>, NVENC <code>-cq per H/HEVC/AV1</code>, QSV <code>global_quality</code>.</p></div>
+  </div>
+
+  <h2>In-player quick menu</h2>
+  <div class="grid grid-2">
+    <div class="card"><h3>Tabbed overlay</h3><p>[Models · Filters · Realtime] opens from the Upscaler button next to subtitles. Non-modal — keeps playing while you tune.</p></div>
+    <div class="card"><h3>Live CSS filter sliders</h3><p>Brightness · Contrast · Saturation — change the <code>&lt;video&gt;</code> element's CSS <code>filter</code> at 60fps, no server round-trip.</p></div>
+    <div class="card"><h3>15 preset looks</h3><p>Cinematic · Vintage · Vivid · Sepia · Cyberpunk · Teal &amp; Orange · Drama · Soft Glow · Sharp HD · Retro Game · Pastel · Noir · Night Vision · Thermal · Custom.</p></div>
+    <div class="card"><h3>Live status strip</h3><p>Active-dot + state (ACTIVE/STANDBY/IDLE/DISABLED) + mode (Server/WebGL) + FPS + active model — polls every 500ms while menu is open.</p></div>
+    <div class="card"><h3>Per-model state icons</h3><p>Ready · Download · Busy · Error — with inline spinner during load. Menu stays open so you see progress.</p></div>
+    <div class="card"><h3>Auto-Mode (optional)</h3><p>Plugin picks model + filter per video based on genre tags. Session-override leaves saved prefs untouched.</p></div>
+  </div>
+
+  <h2>Docker AI service</h2>
+  <div class="grid grid-2">
+    <div class="card"><h3>Operator dashboard</h3><p>Grafana/Linear/Vercel-inspired UI at <code>:5000</code>. Sticky topbar, 4 tabs (Overview/Models/Hardware/API), KPI tiles with tabular-num typography, inline SVG latency sparkline.</p></div>
+    <div class="card"><h3>OpenAPI explorer</h3><p>Built-in endpoint browser — every route shown with method+path+tags, pulled from live <code>/openapi.json</code>.</p></div>
+    <div class="card"><h3>Log streaming console</h3><p>SSE-based log tail inside the UI — tail the service without <code>docker logs</code>.</p></div>
+    <div class="card"><h3>Model catalog browser</h3><p>Live table of the 30+ models with search + status filter, one-click download/load/unload.</p></div>
+    <div class="card"><h3>Hardware panel</h3><p>Per-provider chips sourced from <code>/hardware</code> + <code>/gpus</code>. Tells you exactly what Onnxruntime sees.</p></div>
+    <div class="card"><h3>Live metrics</h3><p><code>/metrics</code> endpoint (Prometheus-compatible) with per-model latency, queue depth, VRAM usage.</p></div>
+  </div>
+
+  <h2>Library scan &amp; batch processing</h2>
+  <div class="grid grid-2">
+    <div class="card"><h3>Scheduled nightly task</h3><p><code>Scan &amp; Upscale Library</code> runs via Jellyfin's scheduler. Daily trigger configurable in standard Jellyfin UI.</p></div>
+    <div class="card"><h3>Select libraries</h3><p>Chip-based picker lets you target specific Jellyfin virtual folders — no more "scan everything every night".</p></div>
+    <div class="card"><h3>Progress-aware</h3><p>Per-item progress surfaced via Jellyfin's standard scheduled-task UI (<em>[42/70] Processing: ...</em>).</p></div>
+    <div class="card"><h3>Skip already-upscaled</h3><p>Output files named <code>*_upscaled.mp4</code> are detected on re-scan — no duplicate work.</p></div>
+  </div>
+
+  <h2>Face restoration (v1.6.1.7+)</h2>
+  <div class="grid grid-2">
+    <div class="card"><h3>GFPGAN v1.4 / CodeFormer</h3><p>Both models shipped, switchable via config. CodeFormer gives sharper faces; GFPGAN is more forgiving on blurry sources.</p></div>
+    <div class="card"><h3>Haar-cascade detection</h3><p>OpenCV face detection runs before the restoration pass. Min face size and max-faces-per-frame configurable.</p></div>
+    <div class="card"><h3>Feathered alpha-blend</h3><p>Restored faces are blended back into the upscaled frame with configurable feather width — no hard edges.</p></div>
+    <div class="card"><h3>Resolution guard</h3><p>Skip faces below a threshold so you don't waste compute on tiny distant heads.</p></div>
+  </div>
+
+  <h2>Comparison view</h2>
+  <ul>
+    <li>Side-by-side before/after extracted directly from FFmpeg — not poster images.</li>
+    <li>Works over SMB / network shares via Jellyfin <code>IMediaEncoder</code> path resolution.</li>
+    <li>Pick any model and any filter preset to compare against the raw source.</li>
+  </ul>
+
+  <h2>Internationalisation</h2>
+  <p>The operator-facing UI (both plugin settings and Docker console) ships with six languages out of the box:</p>
+  <p><span class="tag">English</span><span class="tag">Deutsch</span><span class="tag">Français</span><span class="tag">中文</span><span class="tag">Русский</span><span class="tag">日本語</span></p>
+</main>
+
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.16</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<script src="assets/nav.js"></script>
+</body>
+</html>

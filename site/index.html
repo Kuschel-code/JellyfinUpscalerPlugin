@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jellyfin AI Upscaler — GPU-accelerated video upscaling</title>
+<meta name="description" content="AI-powered video upscaling plugin for Jellyfin 10.11.x. Dockerized microservice with 30+ models, 7 camera-style filters, AI face restoration, and live in-player controls.">
+<meta property="og:title" content="Jellyfin AI Upscaler Plugin">
+<meta property="og:description" content="Dockerized AI upscaler for Jellyfin — 30+ models, NVIDIA/Intel/AMD acceleration, face restoration, camera-style filters.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-logo">AI</span>
+      <span>Jellyfin AI Upscaler</span>
+      <span class="brand-version">v1.6.1.16</span>
+    </a>
+    <nav class="nav" data-nav></nav>
+    <div class="nav-cta">
+      <a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank" rel="noopener">GitHub →</a>
+    </div>
+  </div>
+</header>
+
+<section class="container">
+  <div class="hero">
+    <span class="hero-eyebrow">Jellyfin 10.11.x · Opus 4.7 co-engineered</span>
+    <h1>Upscale your Jellyfin library with real AI models — not just bicubic.</h1>
+    <p class="lead">A production-grade plugin that pairs Jellyfin with a containerised AI service: 30+ upscalers (Real-ESRGAN, SwinIR, EDVR, AnimeSR, RIFE), camera-style filters, GFPGAN/CodeFormer face restoration, and a live operator console. Runs on NVIDIA CUDA, Intel OpenVINO, AMD ROCm, or CPU.</p>
+    <div class="hero-ctas">
+      <a href="installation.html" class="btn btn-primary">Install guide →</a>
+      <a href="features.html" class="btn btn-ghost">See features</a>
+      <a href="architecture.html" class="btn btn-ghost">How it works</a>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top: 32px;">
+    <div class="kpi"><div class="kpi-val">30+</div><div class="kpi-label">AI upscale models</div></div>
+    <div class="kpi"><div class="kpi-val">4</div><div class="kpi-label">Hardware backends</div></div>
+    <div class="kpi"><div class="kpi-val">15</div><div class="kpi-label">Camera-style filters</div></div>
+    <div class="kpi"><div class="kpi-val">6</div><div class="kpi-label">UI languages</div></div>
+  </div>
+
+  <h2>What makes it different</h2>
+  <div class="grid grid-2">
+    <a class="card card-link" href="architecture.html">
+      <h3>Docker microservice architecture</h3>
+      <p>The AI runtime runs in its own container, isolated from Jellyfin's .NET process. No native DLL conflicts, no GPU driver coupling, update either side independently.</p>
+    </a>
+    <a class="card card-link" href="models.html">
+      <h3>Real model catalog</h3>
+      <p>Not a wrapper around one model — 30+ ONNX upscalers across Real-ESRGAN / SwinIR / HAT / EDVR / AnimeSR / RIFE families, with live status + hot-reloadable loader.</p>
+    </a>
+    <a class="card card-link" href="features.html">
+      <h3>Live in-player controls</h3>
+      <p>Tabbed quick-menu over the Jellyfin video player: Models, Filters (15 presets + 3 live CSS sliders), Realtime. No re-transcode for look tweaks.</p>
+    </a>
+    <a class="card card-link" href="hardware.html">
+      <h3>Hardware-aware routing</h3>
+      <p>Auto-benchmark on first run, pick the best provider (CUDA → DirectML → OpenVINO → ROCm → CPU), log per-model throughput, route jobs accordingly.</p>
+    </a>
+    <a class="card card-link" href="api.html">
+      <h3>Inspectable REST API</h3>
+      <p>Both the plugin and the AI service expose OpenAPI — browse endpoints live, call them from the console, or wire them into your own automation.</p>
+    </a>
+    <a class="card card-link" href="security.html">
+      <h3>Self-hosted &amp; private</h3>
+      <p>No SaaS calls, no telemetry. Optional shared-secret API token between plugin and AI service. Runs fully offline once models are downloaded.</p>
+    </a>
+  </div>
+
+  <h2>Latest release</h2>
+  <div class="card">
+    <h3>v1.6.1.16 · Hotfix: FFmpeg / FFprobe late-resolution</h3>
+    <p style="color: var(--text-dim); margin-bottom: 12px;">Fixes issue <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/64" target="_blank">#64</a> where the nightly <code>Scan &amp; Upscale Library</code> task failed on every item because three plugin singletons (<code>VideoAnalyzer</code>, <code>VideoFrameProcessor</code>, <code>ProcessingMethodExecutor</code>) captured empty ffmpeg / ffprobe paths before Jellyfin's MediaEncoder finished resolving them. New <code>EnsureFFmpegReady()</code> late-resolves and propagates paths on demand.</p>
+    <a href="changelog.html" class="btn btn-ghost">Full changelog →</a>
+    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.6.1.16" target="_blank" class="btn btn-ghost" style="margin-left: 8px;">Release on GitHub →</a>
+  </div>
+
+  <h2>Who it's for</h2>
+  <ul>
+    <li><strong>Home-lab operators</strong> running Jellyfin on TrueNAS SCALE, Unraid, Synology, or bare Docker who want a real upscaler they control.</li>
+    <li><strong>Anime / old-TV libraries</strong> where 480p is dominant and bicubic looks terrible — AnimeSR + camera filters deliver visible gains.</li>
+    <li><strong>Mixed GPU environments</strong> where you want the same plugin to work across NVIDIA desktops, Intel N100 mini-PCs, and CPU-only NAS boxes.</li>
+    <li><strong>Developers</strong> who want to self-host an ONNX inference service behind an auth-gated REST API and script their own pipelines.</li>
+  </ul>
+
+  <h2>Quick start</h2>
+  <p>Two steps — add the plugin, run the AI service.</p>
+  <pre><code># 1. Jellyfin: add repository URL under Dashboard → Plugins → Repositories
+https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/repository-jellyfin.json
+
+# 2. Host: run the Docker AI service (CUDA build shown)
+docker run -d --name jellyfin-ai-upscaler \
+  --gpus all -p 5000:5000 \
+  -v upscaler-models:/app/models \
+  kuscheltier/jellyfin-ai-upscaler:latest-cuda
+
+# 3. Plugin settings → AI Service URL: http://&lt;host&gt;:5000 → Test Connection</code></pre>
+  <p><a href="installation.html">Full install guide →</a></p>
+</section>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.6.1.16 · not affiliated with the Jellyfin project
+      <div style="margin-top: 4px;"><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a> · <a href="https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler">Docker Hub</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues">Issues</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">Releases</a></div>
+    </div>
+    <div>Co-engineered with <a href="https://claude.com/claude-code">Claude Opus 4.7</a></div>
+  </div>
+</footer>
+<script src="assets/nav.js"></script>
+</body>
+</html>

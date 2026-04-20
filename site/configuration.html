@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configuration — Jellyfin AI Upscaler</title>
+<meta name="description" content="Complete settings reference for the Jellyfin AI Upscaler plugin — every tab, every option, with recommended defaults.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.16</span></a>
+    <nav class="nav" data-nav></nav>
+    <div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div>
+  </div>
+</header>
+
+<main class="container-narrow">
+  <h1>Configuration reference</h1>
+  <p class="lead" style="color: var(--text-dim);">The settings page is organised into six tabs. Every control here maps 1:1 to a key in <code>PluginConfiguration.cs</code>.</p>
+
+  <h2>Settings tab</h2>
+  <h3>AI Service connection</h3>
+  <table>
+    <thead><tr><th>Field</th><th>Default</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>AI Service URL</code></td><td>—</td><td>Full URL to the Docker AI service. Typically <code>http://localhost:5000</code> or <code>http://&lt;host&gt;:5000</code>.</td></tr>
+      <tr><td><code>AI Service API Token</code></td><td>empty</td><td>Shared secret. Plugin attaches it as <code>X-Api-Token</code> to every call. Must match the container's <code>API_TOKEN</code> env var.</td></tr>
+      <tr><td><code>Test Connection</code></td><td>—</td><td>Fires <code>GET /health</code> — shows online/offline + auth posture.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Library scan</h3>
+  <table>
+    <tbody>
+      <tr><td><code>Enabled Libraries</code></td><td>all</td><td>Chip picker. Empty = scan all; picks limit to specific virtual folders (added in v1.6.1.14 for issue #64).</td></tr>
+      <tr><td><code>Min Width / Min Height</code></td><td>1920 / 1080</td><td>Threshold for what counts as "low-resolution". OR-logic: a video qualifies if <em>either</em> dimension is below.</td></tr>
+      <tr><td><code>Output Codec</code></td><td>libx264</td><td>12 options: libx264/libx265/libsvtav1/libaom-av1/libvpx-vp9 (software), h264/hevc/av1_nvenc (NVIDIA), h264/hevc/av1_qsv (Intel), plus stream-copy.</td></tr>
+      <tr><td><code>Target Scale</code></td><td>2x</td><td>1x–4x. 3x is the sweet spot for 480p→1440p source material.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Auto Model Selection</h3>
+  <p>New in v1.6.1.15. When enabled, the plugin calls <code>/Upscaler/recommend-model</code> at playback start and picks both model and color-filter preset per video based on genre tags.</p>
+  <ul>
+    <li>Anime → <code>animesr-v2-x4</code> / <code>anime-compact-x4</code> + <em>Vivid</em> filter</li>
+    <li>Horror/thriller → <code>realesrgan-x4plus</code> + <em>Drama</em></li>
+    <li>Sci-fi → <code>hat-x4</code> + <em>Cyberpunk</em></li>
+    <li>Documentary/low-res → <code>swinir-m-x4</code> + <em>Sharp HD</em></li>
+    <li>Multi-frame batch → <code>edvr-m-x4</code> / <code>realbasicvsr-x4</code></li>
+  </ul>
+
+  <h2>AI Models tab</h2>
+  <p>Live model catalog pulled from <code>/models</code>. Each row shows:</p>
+  <ul>
+    <li><strong>Status dot</strong> — available / downloaded / loaded / unavailable</li>
+    <li><strong>Scale factor</strong> — 2×, 3×, 4×</li>
+    <li><strong>VRAM estimate</strong> — based on benchmark</li>
+    <li><strong>Actions</strong> — Download, Load/Unload, Benchmark</li>
+  </ul>
+  <p>Filter bar: search-by-name + status filter (all / available / downloaded / loaded / unavailable). See the <a href="models.html">model catalog</a> for the full list.</p>
+
+  <h2>Filters tab</h2>
+  <p>15 camera-style presets that can be applied either as live CSS overlay (no re-transcode, 60fps) or as server-side FFmpeg filter chain (persists in the output file).</p>
+  <div class="two-col">
+    <ul>
+      <li>Cinematic · vintage film look</li>
+      <li>Vintage · low saturation + warm</li>
+      <li>Vivid · saturated + contrast boost</li>
+      <li>Sepia · monochrome warm</li>
+      <li>Cyberpunk · neon teal/magenta</li>
+      <li>Teal &amp; Orange · Hollywood colour-grade</li>
+      <li>Drama · high contrast desaturate</li>
+      <li>Soft Glow · bloom on highlights</li>
+    </ul>
+    <ul>
+      <li>Sharp HD · edge enhance + clarity</li>
+      <li>Retro Game · slight scanline</li>
+      <li>Pastel · low saturation pastel</li>
+      <li>Noir · grayscale high-contrast</li>
+      <li>Night Vision · green-channel</li>
+      <li>Thermal · false-colour</li>
+      <li>Custom · 6 FFmpeg params exposed</li>
+    </ul>
+  </div>
+
+  <h3>Advanced filter params</h3>
+  <p>Under <em>Advanced</em> you get 6 FFmpeg filter knobs that persist across sessions via <code>POST /Upscaler/filter-config</code>:</p>
+  <table>
+    <thead><tr><th>Param</th><th>Range</th><th>FFmpeg filter</th></tr></thead>
+    <tbody>
+      <tr><td>Gamma</td><td>0.5 – 2.0</td><td><code>eq=gamma=...</code></td></tr>
+      <tr><td>Sharpness</td><td>0 – 5</td><td><code>unsharp=5:5:...</code></td></tr>
+      <tr><td>Colour Temperature</td><td>-100 – +100 K</td><td><code>colortemperature</code></td></tr>
+      <tr><td>Vignette</td><td>0 – 1</td><td><code>vignette</code></td></tr>
+      <tr><td>Film Grain</td><td>0 – 30</td><td><code>noise=alls=...</code></td></tr>
+      <tr><td>Denoise</td><td>0 – 10</td><td><code>hqdn3d=...</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Face Restoration tab</h2>
+  <p>New in v1.6.1.7. GFPGAN / CodeFormer passes for restoring faces in low-res footage.</p>
+  <table>
+    <tbody>
+      <tr><td><code>Enable Face Restoration</code></td><td>off</td></tr>
+      <tr><td><code>Model</code></td><td><code>gfpgan-v1.4</code> or <code>codeformer</code></td></tr>
+      <tr><td><code>Max Faces Per Frame</code></td><td>5 (guard rail)</td></tr>
+      <tr><td><code>Min Face Size (px)</code></td><td>48</td></tr>
+      <tr><td><code>Alpha Feather (px)</code></td><td>12</td></tr>
+    </tbody>
+  </table>
+  <div class="callout warn"><strong>Compute cost:</strong> face restoration is a second model pass on top of upscaling. Budget ~2× the frame time per face.</div>
+
+  <h2>Hardware tab</h2>
+  <p>Read-only view of what the AI service detected on the container host — useful for debugging why a model isn't loading.</p>
+  <ul>
+    <li>Execution providers (CUDA / OpenVINO / DirectML / ROCm / CPU) with version strings</li>
+    <li>GPU list with VRAM, driver, CUDA/compute capability</li>
+    <li>Last benchmark timestamp + FPS per model</li>
+    <li>Onnxruntime version + build flags</li>
+  </ul>
+
+  <h2>Advanced tab</h2>
+  <table>
+    <thead><tr><th>Field</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>Max Concurrent Streams</code></td><td>Cap on parallel AI jobs. 1 for single-GPU, 2+ only if you have VRAM headroom.</td></tr>
+      <tr><td><code>Enable Pre-Processing Cache</code></td><td>Stores upscaled frames on disk so a replay doesn't re-run inference.</td></tr>
+      <tr><td><code>Enable Remote Transcoding</code></td><td>Lets Jellyfin hand off transcoding to the AI service host over SSH (see <a href="deployment.html">Deployment</a>).</td></tr>
+      <tr><td><code>Enable Performance Metrics</code></td><td>Collect per-frame timing; visible on Hardware tab.</td></tr>
+      <tr><td><code>Log Level</code></td><td>Information / Debug / Trace. Affects plugin logs in <code>jellyfin.log</code>.</td></tr>
+    </tbody>
+  </table>
+</main>
+
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.16</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<script src="assets/nav.js"></script>
+</body>
+</html>

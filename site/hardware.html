@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hardware guide — Jellyfin AI Upscaler</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.16</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+
+<main class="container-narrow">
+  <h1>Hardware guide</h1>
+  <p class="lead" style="color: var(--text-dim);">Which GPU + how much VRAM + which execution provider you actually need. No marketing fluff.</p>
+
+  <h2>The four providers, ranked</h2>
+  <table>
+    <thead><tr><th>Tier</th><th>Provider</th><th>What it looks like</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag success">1</span></td><td>NVIDIA CUDA + TensorRT</td><td>RTX 2060 and up, ≥6 GB VRAM. Best latency, widest model support, TensorRT FP16 paths on Ampere+.</td></tr>
+      <tr><td><span class="tag accent">2</span></td><td>Intel OpenVINO</td><td>Arc A-series discrete, Iris Xe iGPU, N100/N305 mini-PCs. Great power/perf for home-lab, needs <code>/dev/dri</code> in container.</td></tr>
+      <tr><td><span class="tag warn">3</span></td><td>AMD ROCm</td><td>RDNA2+ (6600/6700/7000 series) on Linux hosts with <code>/dev/kfd</code>. Works, but fewer models have official ROCm kernels.</td></tr>
+      <tr><td><span class="tag">4</span></td><td>CPU (ONNX)</td><td>AVX2-capable modern x86. Works for FSRCNN/ESPCN real-time, anything ESRGAN+ will be minutes-per-frame.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>VRAM budget by model</h2>
+  <p>These numbers are measured on CUDA at FP16 with a single 1080p→4K pass. Double them for 4K→8K.</p>
+  <table>
+    <thead><tr><th>Model family</th><th>Min VRAM (FP16)</th><th>Comfort VRAM</th></tr></thead>
+    <tbody>
+      <tr><td>FSRCNN / ESPCN</td><td>500 MB</td><td>1 GB</td></tr>
+      <tr><td>Waifu2x</td><td>1.5 GB</td><td>3 GB</td></tr>
+      <tr><td>Real-ESRGAN / RealESRGAN-Anime</td><td>3 GB</td><td>6 GB</td></tr>
+      <tr><td>SwinIR-M / HAT-S</td><td>4 GB</td><td>8 GB</td></tr>
+      <tr><td>SwinIR-L / HAT-L / AnimeSR-v2</td><td>7 GB</td><td>12 GB</td></tr>
+      <tr><td>EDVR-M / RealBasicVSR (multi-frame)</td><td>8 GB</td><td>16 GB</td></tr>
+      <tr><td>GFPGAN + Upscaler (face restore pipeline)</td><td>+1 GB on top</td><td>+2 GB on top</td></tr>
+    </tbody>
+  </table>
+  <div class="callout warn"><strong>Headroom matters:</strong> if your GPU also serves Jellyfin transcoding (NVENC/QSV), keep ~2 GB free for the transcode session or you will see OOM kills on simultaneous playback.</div>
+
+  <h2>Recommended setups</h2>
+
+  <h3>Budget home lab (Intel N100 / Arc A380)</h3>
+  <ul>
+    <li><strong>Provider:</strong> OpenVINO (<code>:latest-openvino</code> image)</li>
+    <li><strong>Good for:</strong> FSRCNN real-time, Waifu2x 2×, Real-ESRGAN-anime-x4 batch</li>
+    <li><strong>Config:</strong> Max Concurrent Streams = 1, cache enabled</li>
+    <li><strong>Expect:</strong> ~15 fps at 720p → 1440p with anime-compact-x4</li>
+  </ul>
+
+  <h3>Mid-range (RTX 3060 12GB / RTX 4060)</h3>
+  <ul>
+    <li><strong>Provider:</strong> CUDA (<code>:latest-cuda</code> image)</li>
+    <li><strong>Good for:</strong> Everything in the catalogue except EDVR-M and HAT-L comfortably</li>
+    <li><strong>Config:</strong> Max Concurrent Streams = 1, Auto-Mode on</li>
+    <li><strong>Expect:</strong> 4×-realesrgan at ~20 fps on 720p source, 3× on 1080p source</li>
+  </ul>
+
+  <h3>High-end (RTX 4090 / A100)</h3>
+  <ul>
+    <li><strong>Provider:</strong> CUDA + TensorRT conversion</li>
+    <li><strong>Good for:</strong> SwinIR-L, HAT-L, EDVR-M temporal, GFPGAN pipeline</li>
+    <li><strong>Config:</strong> Max Concurrent Streams = 2, pre-processing cache on NVMe</li>
+    <li><strong>Expect:</strong> Near real-time 4× on any model</li>
+  </ul>
+
+  <h3>CPU-only NAS (e.g. Synology DS920+)</h3>
+  <ul>
+    <li><strong>Provider:</strong> CPU (<code>:latest-cpu</code> image)</li>
+    <li><strong>Good for:</strong> Overnight batch upscales of an anime library with <code>fsrcnn-x2</code>/<code>espcn-x4</code></li>
+    <li><strong>Config:</strong> <code>Scan &amp; Upscale Library</code> scheduled at 3 AM, pre-processing cache on the biggest pool you have</li>
+    <li><strong>Expect:</strong> Hours per feature-length file. This is batch, not live.</li>
+  </ul>
+
+  <h2>Jellyfin-side hardware acceleration</h2>
+  <p>Orthogonal to the AI upscaler — Jellyfin still handles decoding the source file and encoding the final MP4 itself.</p>
+  <ul>
+    <li><strong>Decoders:</strong> NVDEC, QSV, VAAPI all work unchanged.</li>
+    <li><strong>Encoders:</strong> the plugin exposes 12 codec options with tuned defaults (see <a href="configuration.html">Config → Output Codec</a>).</li>
+    <li><strong>Tonemap:</strong> HDR→SDR via <code>tonemap_cuda</code> / <code>tonemap_opencl</code> handled by Jellyfin's stream path, runs before the upscale filter.</li>
+  </ul>
+
+  <h2>Remote transcoding (optional)</h2>
+  <p>Set <code>Enable Remote Transcoding</code> and the plugin installs a wrapper script that redirects Jellyfin's FFmpeg invocations to the AI service host over SSH. Use this when your Jellyfin server has no GPU but a separate desktop on the LAN does.</p>
+  <pre><code>POST /Upscaler/wrapper/install
+# generates on-disk next to the plugin DLL:
+#   Linux : upscale-wrapper.sh
+#   Win   : upscale-wrapper.bat + upscale-logic.ps1</code></pre>
+  <div class="callout"><strong>Prereq:</strong> password-less SSH from Jellyfin host to the GPU host, with <code>ffmpeg</code> on the <code>$PATH</code> at the remote end.</div>
+</main>
+
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.16</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<script src="assets/nav.js"></script>
+</body>
+</html>

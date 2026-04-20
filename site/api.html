@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>REST API — Jellyfin AI Upscaler</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.16</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+
+<main class="container-narrow">
+  <h1>REST API reference</h1>
+  <p class="lead" style="color: var(--text-dim);">Two API surfaces: the <strong>plugin controller</strong> (proxied behind Jellyfin auth at <code>/Upscaler/*</code>) and the <strong>AI service</strong> (direct, <code>:5000</code>).</p>
+
+  <h2>Auth</h2>
+  <ul>
+    <li><strong>Plugin controller:</strong> Jellyfin's standard <code>X-Emby-Token</code> access-token header. Elevated endpoints additionally require admin role (<code>RequiresElevation</code>).</li>
+    <li><strong>AI service:</strong> shared-secret <code>X-Api-Token</code> header when <code>API_TOKEN</code> env var is set on the container. Plain HTTP with no token if unset (homelab-friendly default).</li>
+  </ul>
+
+  <h2>Plugin controller endpoints (<code>/Upscaler/*</code>)</h2>
+  <table>
+    <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>GET</code></td><td><code>/Upscaler/health</code></td><td>Proxies AI service <code>/health</code>; returns online/offline + auth posture.</td></tr>
+      <tr><td><code>GET</code></td><td><code>/Upscaler/libraries</code></td><td>Enumerates Jellyfin virtual folders (ID, name, collectionType, paths). Used by the Select-Libraries chip picker.</td></tr>
+      <tr><td><code>GET</code></td><td><code>/Upscaler/models</code></td><td>Model catalog proxied from service, merged with per-user preference marks.</td></tr>
+      <tr><td><code>POST</code></td><td><code>/Upscaler/models/{id}/load</code></td><td>Warms the model in GPU memory via service. Admin only.</td></tr>
+      <tr><td><code>POST</code></td><td><code>/Upscaler/models/{id}/download</code></td><td>Pulls ONNX weights. Admin only.</td></tr>
+      <tr><td><code>GET</code></td><td><code>/Upscaler/jobs</code></td><td>Active jobs list. <strong>Admin only</strong> — previously leaked paths to any authenticated user, fixed in v1.6.1.11.</td></tr>
+      <tr><td><code>POST</code></td><td><code>/Upscaler/upscale-frame</code></td><td>Base64-encoded frame in, upscaled frame out. Uses currently-loaded model.</td></tr>
+      <tr><td><code>POST</code></td><td><code>/Upscaler/benchmark-frame</code></td><td>Single-frame benchmark pass; returns ms + provider used.</td></tr>
+      <tr><td><code>GET</code></td><td><code>/Upscaler/filter-preview/frame/{itemId}</code></td><td>Extracts a real frame from a Jellyfin library item, applies the selected preset, returns before/after PNGs.</td></tr>
+      <tr><td><code>POST</code></td><td><code>/Upscaler/filter-config</code></td><td>Persists the 6 advanced filter params (gamma/sharpness/temp/vignette/grain/denoise).</td></tr>
+      <tr><td><code>GET</code></td><td><code>/Upscaler/recommend-model</code></td><td>Given an item ID, returns the best model + filter preset based on genre. Used by Auto-Mode.</td></tr>
+      <tr><td><code>POST</code></td><td><code>/Upscaler/wrapper/install</code></td><td>Generates the FFmpeg-wrapper script for remote transcoding. Admin only.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>AI service endpoints (<code>:5000</code>)</h2>
+
+  <h3>System</h3>
+  <table>
+    <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>GET</code></td><td><code>/health</code></td><td>Basic liveness — returns 200 once the FastAPI app is up.</td></tr>
+      <tr><td><code>GET</code></td><td><code>/status</code></td><td>Detailed: service version, provider, <code>api_token_configured</code>, <code>auth_enabled</code>.</td></tr>
+      <tr><td><code>GET</code></td><td><code>/features</code></td><td>Feature capability matrix (face-restore, rife, tensorrt, etc).</td></tr>
+      <tr><td><code>GET</code></td><td><code>/metrics</code></td><td>Prometheus-compatible — per-model latency, queue depth, VRAM, request counts.</td></tr>
+      <tr><td><code>GET</code></td><td><code>/openapi.json</code></td><td>Full OpenAPI 3.1 schema. Feed it to any generator.</td></tr>
+      <tr><td><code>GET</code></td><td><code>/logs-stream</code></td><td>Server-Sent Events stream of service logs. Powers the in-UI Console tab.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Hardware</h3>
+  <table>
+    <tbody>
+      <tr><td><code>GET</code></td><td><code>/hardware</code></td><td>Providers with version strings, ONNX runtime version, build flags.</td></tr>
+      <tr><td><code>GET</code></td><td><code>/gpus</code></td><td>Per-GPU: name, VRAM total/free, driver, compute capability.</td></tr>
+      <tr><td><code>POST</code></td><td><code>/benchmark/run</code></td><td>Triggers a full benchmark sweep across all loaded models; async, poll <code>/benchmark/status</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Models</h3>
+  <table>
+    <tbody>
+      <tr><td><code>GET</code></td><td><code>/models</code></td><td>Full catalog with per-model state.</td></tr>
+      <tr><td><code>GET</code></td><td><code>/models/{id}</code></td><td>Single model details — scale, input shape, provider compat, SHA.</td></tr>
+      <tr><td><code>POST</code></td><td><code>/models/{id}/download</code></td><td>Fetch ONNX weights. Streams progress via <code>/models/{id}/progress</code>.</td></tr>
+      <tr><td><code>POST</code></td><td><code>/models/{id}/load</code></td><td>Create inference session, preallocate tensors, optional TensorRT conversion.</td></tr>
+      <tr><td><code>POST</code></td><td><code>/models/{id}/unload</code></td><td>Dispose session, free VRAM.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Inference</h3>
+  <table>
+    <tbody>
+      <tr><td><code>POST</code></td><td><code>/upscale-frame</code></td><td>Single-frame inference. Body: <code>{ image, model, scale }</code>.</td></tr>
+      <tr><td><code>POST</code></td><td><code>/upscale-batch</code></td><td>Multi-frame batched inference; better throughput than per-frame.</td></tr>
+      <tr><td><code>POST</code></td><td><code>/face-restore/detect</code></td><td>Returns face bounding boxes (Haar cascade).</td></tr>
+      <tr><td><code>POST</code></td><td><code>/face-restore/restore</code></td><td>Applies GFPGAN or CodeFormer to a face crop.</td></tr>
+      <tr><td><code>POST</code></td><td><code>/face-restore/pipeline</code></td><td>End-to-end: detect → upscale → feathered paste-back.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Example: load a model + upscale a frame</h2>
+  <pre><code>TOKEN=your-api-token
+BASE=http://localhost:5000
+
+# 1. Load model
+curl -X POST -H "X-Api-Token: $TOKEN" $BASE/models/realesrgan-x4plus/load
+
+# 2. Upscale a PNG (base64 in, base64 out)
+IMG=$(base64 -w 0 input.png)
+curl -X POST -H "X-Api-Token: $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"image\":\"$IMG\",\"model\":\"realesrgan-x4plus\",\"scale\":4}" \
+  $BASE/upscale-frame | jq -r .image | base64 -d &gt; output.png</code></pre>
+
+  <h2>Rate limiting &amp; concurrency</h2>
+  <p>The service has a single GPU serialiser — concurrent <code>/upscale-frame</code> requests queue behind one active inference. The <code>MaxConcurrentStreams</code> plugin config gates how many requests the plugin will have in-flight at once; tune this based on VRAM headroom.</p>
+
+  <h2>ID validation regex</h2>
+  <p>Model IDs and filter preset IDs are validated against <code>^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*$</code> — dot-separated segments are allowed (for <code>rife-v4.9</code> etc) but traversal patterns (<code>..</code>, leading/trailing dots) are blocked.</p>
+</main>
+
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.16</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<script src="assets/nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security — Jellyfin AI Upscaler</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.16</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+
+<main class="container-narrow">
+  <h1>Security model</h1>
+  <p class="lead" style="color: var(--text-dim);">Threat model, hardening defaults, and the audit trail of fixes that shaped the current posture.</p>
+
+  <h2>Threat model</h2>
+  <p>The plugin + service combo sits inside your home LAN by default. We assume:</p>
+  <ul>
+    <li><strong>Trusted:</strong> the Jellyfin server itself, the host OS, the Docker daemon.</li>
+    <li><strong>Semi-trusted:</strong> authenticated non-admin Jellyfin users. They can play media but should not be able to read server paths, manipulate the service, or enumerate other users' jobs.</li>
+    <li><strong>Untrusted:</strong> everything outside the LAN. If you expose Jellyfin via reverse proxy, assume the attacker can hit every plugin endpoint with a valid user token.</li>
+  </ul>
+
+  <h2>Authentication</h2>
+  <h3>Plugin controller (<code>/Upscaler/*</code>)</h3>
+  <ul>
+    <li>Standard Jellyfin auth — every endpoint requires a valid <code>X-Emby-Token</code>.</li>
+    <li>Mutating / privileged endpoints additionally require the admin role via <code>[Authorize(Policy = "RequiresElevation")]</code>: model download, model load/unload, wrapper install, active-jobs list.</li>
+    <li>Read-only endpoints used by the in-player menu (libraries, models, recommend-model) allow any authenticated user.</li>
+  </ul>
+
+  <h3>AI service (<code>:5000</code>)</h3>
+  <ul>
+    <li>Shared-secret token in <code>X-Api-Token</code>, configured via the <code>API_TOKEN</code> environment variable.</li>
+    <li>If <code>API_TOKEN</code> is unset, the service runs with <em>no</em> auth — fine inside a closed LAN, unacceptable if the port is reachable from the internet.</li>
+    <li><code>/health</code> is intentionally public (for container orchestrator probes).</li>
+  </ul>
+
+  <div class="callout warn">
+    <strong>Never expose <code>:5000</code> directly to the internet</strong> even with a token. Put it behind a reverse proxy that enforces the token at the edge and rate-limits — see <a href="deployment.html">Deployment → Reverse proxy</a>.
+  </div>
+
+  <h2>Input validation</h2>
+  <ul>
+    <li><strong>Model IDs + preset IDs:</strong> validated against <code>^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*$</code> on both sides. Traversal patterns (<code>..</code>, leading or trailing dots) are rejected before any filesystem access.</li>
+    <li><strong>Item IDs:</strong> parsed as Jellyfin <code>Guid</code>. Malformed input returns 400 before hitting the library.</li>
+    <li><strong>Base64 frames:</strong> size-limited server-side; oversized payloads return 413.</li>
+    <li><strong>Filter sliders:</strong> clamped server-side to their documented ranges; the client's clamping is not trusted.</li>
+  </ul>
+
+  <h2>Audit history</h2>
+  <p>Notable security-relevant fixes from the changelog:</p>
+  <table>
+    <thead><tr><th>Version</th><th>Finding</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>v1.6.1.11</code></td>
+        <td><code>/Upscaler/jobs</code> leaked absolute file paths to any authenticated user, not just admins.</td>
+        <td>Endpoint gated with <code>[Authorize(Policy = "RequiresElevation")]</code>. Path strings additionally filtered to show relative segments only.</td>
+      </tr>
+      <tr>
+        <td><code>v1.6.1.9</code></td>
+        <td>Model ID regex was permissive, allowed dot-segments without constraints — theoretical path escape.</td>
+        <td>Tightened regex to explicit dot-separated segments: <code>^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*$</code>.</td>
+      </tr>
+      <tr>
+        <td><code>v1.6.1.7</code></td>
+        <td>Wrapper-install endpoint accepted arbitrary command strings from the request body.</td>
+        <td>Rewritten to generate a fixed template on the server; request body is ignored.</td>
+      </tr>
+      <tr>
+        <td><code>v1.6.1.4</code></td>
+        <td>Service-side <code>/logs-stream</code> SSE exposed full log content without auth when the shared token wasn't set.</td>
+        <td>Moved behind the same token as every other endpoint; health probe remains the only anonymous route.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Hardening checklist (public / semi-public deploys)</h2>
+  <ol>
+    <li>Set <code>API_TOKEN</code> to a long random value. Rotate on any suspected leak.</li>
+    <li>Do not port-forward <code>:5000</code>. Put it behind a reverse proxy and enforce the token at the proxy as well.</li>
+    <li>Disable FFmpeg Remote Transcoding if you don't use it; the SSH path is a potential sharp edge.</li>
+    <li>Run the AI service container with <code>read_only: true</code> except for <code>/app/models</code>.</li>
+    <li>Pin an explicit image tag (<code>kuscheltier/jellyfin-ai-upscaler:v1.6.1.16-cuda</code>), not <code>latest-cuda</code>.</li>
+    <li>Keep Jellyfin on 10.11.x — older LTS lines don't receive the auth-policy fixes the plugin depends on.</li>
+    <li>Review the weekly container digest against the published SHA before updating.</li>
+  </ol>
+
+  <h2>Reporting vulnerabilities</h2>
+  <p>For a security issue (not a functionality bug), <strong>do not open a public GitHub issue.</strong> Instead:</p>
+  <ul>
+    <li>Use GitHub's <em>Private vulnerability reporting</em> on the repository Security tab.</li>
+    <li>Alternatively, email the maintainer as listed on the GitHub profile with <code>[security]</code> in the subject.</li>
+    <li>Expect acknowledgement within 72 hours and a patch timeline within 10 days for reproducible, in-scope issues.</li>
+  </ul>
+
+  <h2>Out of scope</h2>
+  <ul>
+    <li>Jellyfin core vulnerabilities — report to <a href="https://github.com/jellyfin/jellyfin/security">jellyfin/jellyfin</a>.</li>
+    <li>Docker / container-runtime escapes — upstream Docker/Moby issue.</li>
+    <li>Social engineering, physical access, or any scenario requiring prior root on the host.</li>
+    <li>Findings in deliberately-public info (weights on HuggingFace mirrors, public schema).</li>
+  </ul>
+</main>
+
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.16</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<script src="assets/nav.js"></script>
+</body>
+</html>

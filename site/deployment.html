@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deployment scenarios — Jellyfin AI Upscaler</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.16</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+
+<main class="container-narrow">
+  <h1>Deployment scenarios</h1>
+  <p class="lead" style="color: var(--text-dim);">Copy-pasteable recipes for the four platforms this plugin is used on most.</p>
+
+  <h2>TrueNAS SCALE (25.x)</h2>
+  <p>Runs Jellyfin as a custom app. The AI service goes in a second app.</p>
+  <ol>
+    <li><strong>Jellyfin plugin:</strong> upload <code>JellyfinUpscalerPlugin-v1.6.1.16.zip</code> contents to <code>/mnt/&lt;pool&gt;/Jellyfin/Config/plugins/AI Upscaler Plugin_1.6.1.4/</code> via <em>Datasets → Edit ACL</em> or Shell. <code>chown 568:568 -R</code> the folder.</li>
+    <li><strong>AI service app:</strong> <em>Apps → Discover Apps → Custom App</em>. Minimal compose:</li>
+  </ol>
+  <pre><code>services:
+  ai-upscaler:
+    image: kuscheltier/jellyfin-ai-upscaler:latest-cuda
+    runtime: nvidia
+    environment:
+      - API_TOKEN=your-secret-here
+      - NVIDIA_VISIBLE_DEVICES=all
+    ports:
+      - 5000:5000
+    volumes:
+      - /mnt/Addon/AI/models:/app/models
+    restart: unless-stopped</code></pre>
+  <ol start="3">
+    <li><strong>Jellyfin plugin config:</strong> <em>AI Service URL</em> = <code>http://&lt;truenas-ip&gt;:5000</code>, token matches.</li>
+  </ol>
+  <div class="callout warn">
+    <strong>TrueNAS 25.x gotcha:</strong> when editing a catalog app (Jellyfin), the <code>values</code> block is a <em>destructive merge</em> — if you only send one sub-block, TrueNAS replaces entire blocks. Always read the current config with <code>POST /app/config "jellyfin"</code>, merge deltas, then PUT the full block.
+  </div>
+
+  <h2>Unraid (6.12+)</h2>
+  <p>Install Jellyfin via Community Applications, then the AI service as a separate container.</p>
+  <ol>
+    <li><em>Apps → Search "AI Upscaler"</em> — or add a manual container template.</li>
+    <li>Template fields:
+      <ul>
+        <li><strong>Repository:</strong> <code>kuscheltier/jellyfin-ai-upscaler:latest-cuda</code></li>
+        <li><strong>Network:</strong> <code>bridge</code></li>
+        <li><strong>Port:</strong> <code>5000:5000</code></li>
+        <li><strong>Path:</strong> <code>/mnt/user/appdata/ai-upscaler/models</code> → <code>/app/models</code></li>
+        <li><strong>Variable:</strong> <code>API_TOKEN</code> = your secret</li>
+        <li><strong>Extra params:</strong> <code>--gpus all</code> (requires the nvidia-driver plugin)</li>
+      </ul>
+    </li>
+    <li>Install the plugin DLL in <code>/mnt/user/appdata/jellyfin/plugins/AI Upscaler Plugin_1.6.1.4/</code> (matches the LinuxServer.io container's plugin path).</li>
+    <li><code>chown 99:100 -R</code> the plugin folder (Unraid's standard <code>nobody/users</code> UID).</li>
+  </ol>
+
+  <h2>Synology DSM 7.x (CPU-only path)</h2>
+  <p>Container Manager (formerly Docker). Use the CPU image — no GPU passthrough on consumer NAS.</p>
+  <pre><code>docker run -d --name ai-upscaler \
+  --restart unless-stopped \
+  -p 5000:5000 \
+  -v /volume1/docker/ai-upscaler/models:/app/models \
+  -e API_TOKEN=your-secret \
+  kuscheltier/jellyfin-ai-upscaler:latest-cpu</code></pre>
+  <ul>
+    <li>Jellyfin plugin folder: <code>/var/packages/Jellyfin/var/plugins/AI Upscaler Plugin_1.6.1.4/</code> (location varies by DSM version).</li>
+    <li>Scheduled <em>Scan &amp; Upscale Library</em> at 3 AM only — CPU mode is batch-overnight territory.</li>
+    <li>Use the lightest models: <code>fsrcnn-x2</code>, <code>espcn-x4</code>, <code>waifu2x-upconv-x2</code>.</li>
+  </ul>
+
+  <h2>Bare Docker + docker-compose</h2>
+  <p>Full stack on a Linux box. Both Jellyfin and the AI service in one compose file.</p>
+  <pre><code>version: "3.9"
+
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:10.11.8
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./jellyfin-config:/config
+      - ./jellyfin-cache:/cache
+      - /path/to/media:/media:ro
+    environment:
+      - JELLYFIN_PublishedServerUrl=http://192.168.1.10:8096
+
+  ai-upscaler:
+    image: kuscheltier/jellyfin-ai-upscaler:latest-cuda
+    restart: unless-stopped
+    runtime: nvidia
+    ports:
+      - 5000:5000
+    environment:
+      - API_TOKEN=${API_TOKEN}
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ./ai-models:/app/models
+    depends_on:
+      - jellyfin</code></pre>
+  <p>After <code>docker compose up -d</code>, copy the plugin DLL into <code>./jellyfin-config/plugins/AI Upscaler Plugin_1.6.1.4/</code> and restart the Jellyfin container.</p>
+
+  <h2>Kubernetes</h2>
+  <p>There's no official Helm chart yet (see <a href="roadmap.html">Roadmap</a>), but the service image runs fine as a standard <code>Deployment</code> with the <code>nvidia.com/gpu</code> device plugin. Minimal manifest:</p>
+  <pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-upscaler
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: ai-upscaler }
+  template:
+    metadata:
+      labels: { app: ai-upscaler }
+    spec:
+      containers:
+      - name: service
+        image: kuscheltier/jellyfin-ai-upscaler:latest-cuda
+        ports: [{ containerPort: 5000 }]
+        env:
+        - name: API_TOKEN
+          valueFrom: { secretKeyRef: { name: ai-upscaler, key: token } }
+        resources:
+          limits: { nvidia.com/gpu: 1 }
+        volumeMounts:
+        - { name: models, mountPath: /app/models }
+      volumes:
+      - name: models
+        persistentVolumeClaim: { claimName: ai-upscaler-models }</code></pre>
+
+  <h2>Windows host</h2>
+  <p>If Jellyfin itself runs on Windows and you have an NVIDIA GPU locally, the AI service can run in WSL 2 with the CUDA-enabled runtime, or via Docker Desktop with GPU passthrough enabled.</p>
+  <ul>
+    <li>Enable WSL 2 GPU passthrough (Windows 11 + current NVIDIA driver auto-enables this).</li>
+    <li><code>wsl --install -d Ubuntu</code>, then <code>docker run ... --gpus all kuscheltier/jellyfin-ai-upscaler:latest-cuda</code>.</li>
+    <li>Point the plugin at <code>http://localhost:5000</code>.</li>
+    <li>Plugin DLL lives at <code>%ProgramData%\Jellyfin\Server\plugins\AI Upscaler Plugin_1.6.1.4\</code>.</li>
+  </ul>
+
+  <h2>Reverse proxy (optional)</h2>
+  <p>Expose the AI service's operator dashboard via Traefik / Caddy / nginx if you want browser access without mapping <code>:5000</code> on the host. Always enforce the <code>X-Api-Token</code> header at the proxy for internet-facing setups.</p>
+  <pre><code># Caddyfile fragment
+ai.example.com {
+  @has_token header X-Api-Token change-me-please
+  handle @has_token {
+    reverse_proxy ai-upscaler:5000
+  }
+  respond 401
+}</code></pre>
+</main>
+
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.16</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<script src="assets/nav.js"></script>
+</body>
+</html>

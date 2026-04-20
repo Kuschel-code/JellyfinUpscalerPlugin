@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Changelog — Jellyfin AI Upscaler</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.16</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+
+<main class="container-narrow">
+  <h1>Changelog</h1>
+  <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
+
+  <h2>v1.6.1.16 — Three singletons, not one <span class="tag success">latest</span></h2>
+  <p><em>Released April 2026.</em> Issue #64 fix: <code>LibraryUpscaleScanTask</code> failing with <code>Cannot start process because a file name has not been provided</code>.</p>
+  <ul>
+    <li><strong>Root cause:</strong> three service singletons (<code>VideoAnalyzer</code>, <code>VideoFrameProcessor</code>, <code>ProcessingMethodExecutor</code>) each captured <code>MediaEncoder.EncoderPath</code>/<code>ProbePath</code> as <code>readonly</code> strings at construction. When Jellyfin constructed the plugin before <code>MediaEncoder</code> finished resolving paths, those strings were empty — forever.</li>
+    <li><strong>Fix:</strong> made the cached paths mutable, added <code>UpdateFFmpegPath()</code> / <code>UpdateFFprobePath()</code> entry points, and introduced <code>EnsureFFmpegReady()</code> in <code>VideoProcessor</code> that re-queries <code>MediaEncoder</code> and propagates to every sub-service on every job entry.</li>
+    <li><strong>Verification:</strong> Pre-fix: nightly scan failed at 0/70 files. Post-fix (live-tested on Jellyfin 10.11.8): scan reached 31% with per-file <code>Video analysis: 1280x720 @ 30.0fps</code> log lines and <code>FFmpeg ready: ffmpeg=/usr/lib/jellyfin-ffmpeg/ffmpeg</code>.</li>
+  </ul>
+
+  <h2>v1.6.1.14 — Admin gates for jobs endpoint</h2>
+  <ul>
+    <li>Security fix: <code>/Upscaler/jobs</code> no longer returns absolute file paths to non-admin authenticated users. Gated with <code>RequiresElevation</code>.</li>
+    <li>Improved Test Connection diagnostics — now reports whether the failure was network-level, auth-level, or token-mismatch.</li>
+  </ul>
+
+  <h2>v1.6.1.12 — RIFE v4.7/v4.8/v4.9</h2>
+  <ul>
+    <li>New RIFE frame-interpolation catalog: v4.9 (quality), v4.8 (balanced), v4.7 (fast).</li>
+    <li>Old references to <code>rife-v4.6</code> and <code>rife-v4.6-lite</code> in saved configs are auto-mapped via <code>MODEL_ALIASES</code>; no user action needed.</li>
+    <li>Scene cut detection toggle on the Motion tab — avoids ghosting across hard cuts.</li>
+  </ul>
+
+  <h2>v1.6.1.10 — HAT family</h2>
+  <ul>
+    <li>Added <code>hat-s-x4</code>, <code>hat-m-x4</code>, <code>hat-l-x4</code> to the catalog for live-action at higher quality than Real-ESRGAN.</li>
+    <li>Nomos8k-trained HAT variant (<code>nomos8k-hat-x4</code>) as <em>[self-host required]</em>.</li>
+  </ul>
+
+  <h2>v1.6.1.8 — Face restoration pipeline</h2>
+  <ul>
+    <li>GFPGAN v1.4 and CodeFormer added as first-class models.</li>
+    <li>Full end-to-end pipeline <code>/face-restore/pipeline</code> — detects faces, restores them, upscales the surrounding frame, feathered paste-back.</li>
+    <li>Toggle on the player quick-menu (Face Restore tab) for opt-in per-stream use.</li>
+  </ul>
+
+  <h2>v1.6.1.5 — Filter presets + live preview</h2>
+  <ul>
+    <li>Six filter sliders (gamma, sharpness, temperature, vignette, grain, denoise) applied live via <code>&lt;video&gt;.style.filter</code>.</li>
+    <li>Filter preview endpoint <code>/Upscaler/filter-preview/frame/{itemId}</code> — extracts a real frame from your library and renders before/after PNGs for the selected preset.</li>
+    <li>Seven shipped presets: Cinema, Anime, Retro, Vivid, HDR-SDR, Soft, Documentary.</li>
+  </ul>
+
+  <h2>v1.6.1.4 — Service auth rework</h2>
+  <ul>
+    <li>All service endpoints behind a single <code>X-Api-Token</code>. Previously, <code>/logs-stream</code> was unauthenticated when the token was unset.</li>
+    <li>Dashboard shows <code>api_token_configured</code> and <code>auth_enabled</code> prominently.</li>
+    <li>Console tab in the plugin UI streams service logs via SSE, token-gated.</li>
+  </ul>
+
+  <h2>v1.6.1.0 — Split into plugin + service</h2>
+  <p>The architectural rewrite that the current generation is based on.</p>
+  <ul>
+    <li>Plugin-side: .NET 9, Jellyfin 10.11.x-targeted, HTTP-only contract with the service.</li>
+    <li>Service-side: FastAPI + ONNX Runtime in its own Docker container. CUDA / OpenVINO / ROCm / CPU images.</li>
+    <li>Twelve output codec presets with tuned ffmpeg parameters.</li>
+    <li>Three scheduled tasks: library upscale, image upscale, cache cleanup.</li>
+    <li>This is the baseline that all 1.6.1.x bugfix releases build on.</li>
+  </ul>
+
+  <h2>Older releases</h2>
+  <p>Pre-1.6.x releases bundled inference inside the plugin process. They're archived on the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page but are no longer maintained. Upgrade to the current 1.6.1.x line.</p>
+
+  <h2>Version policy</h2>
+  <table>
+    <thead><tr><th>Segment</th><th>Bumps when</th></tr></thead>
+    <tbody>
+      <tr><td><code>1.x</code> major</td><td>Jellyfin API target changes, or the plugin/service contract changes incompatibly.</td></tr>
+      <tr><td><code>6.x</code> minor</td><td>Plugin/service split generation. 1.6 = the current HTTP-split architecture.</td></tr>
+      <tr><td><code>1.x</code> feature</td><td>New features, new models, new UI tabs.</td></tr>
+      <tr><td><code>16</code> patch</td><td>Bugfix only, no feature work, no config migrations.</td></tr>
+    </tbody>
+  </table>
+</main>
+
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.16</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<script src="assets/nav.js"></script>
+</body>
+</html>

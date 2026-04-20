@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roadmap — Jellyfin AI Upscaler</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.16</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+
+<main class="container-narrow">
+  <h1>Roadmap</h1>
+  <p class="lead" style="color: var(--text-dim);">Direction, not commitments. These are the things that are queued for the next few releases and the larger tracks that follow.</p>
+
+  <h2>v1.6.2 — Stability &amp; configuration polish</h2>
+  <ul>
+    <li><span class="tag accent">queued</span> Plugin config UI: replace the 6-tab pager with a sticky sidebar so config/filters/models are visible together.</li>
+    <li><span class="tag accent">queued</span> First-run wizard that detects hardware, tests the AI service, and picks a sensible model set automatically.</li>
+    <li><span class="tag accent">queued</span> Per-library profile presets (different settings for your anime library vs. your movies library).</li>
+    <li><span class="tag">investigation</span> Harden retry policy in <code>HttpUpscalerService</code> — some users report gateway timeouts under heavy batch load.</li>
+  </ul>
+
+  <h2>v1.7 — Pre-processing pipeline expansion</h2>
+  <ul>
+    <li><span class="tag">planned</span> VapourSynth-compatible filter graph as an alternative to the current ffmpeg filter chain.</li>
+    <li><span class="tag">planned</span> Deinterlacing preset (QTGMC-equivalent ONNX model) for DVD/VHS sources.</li>
+    <li><span class="tag">planned</span> Optional pre-pass grain synthesis on top of restore, so the output doesn't look plasticky.</li>
+    <li><span class="tag">stretch</span> Multi-resolution output (generate both 1440p and 4K in one pass, share extraction).</li>
+  </ul>
+
+  <h2>v1.8 — Model ecosystem</h2>
+  <ul>
+    <li><span class="tag">planned</span> First-class "bring your own ONNX" workflow: drop a file into a well-known folder, fill a small metadata form in-UI, model appears in the catalog.</li>
+    <li><span class="tag">planned</span> Quantization-on-load (INT8) for older GPUs with 4 GB VRAM.</li>
+    <li><span class="tag">planned</span> Model-hosting plan: replace the current CDN pulls with a verifiable mirror on our side + checksum repo.</li>
+    <li><span class="tag">stretch</span> Fine-tuning UI: upload 5-10 reference stills of your content, service trains a LoRA for the selected base model.</li>
+  </ul>
+
+  <h2>Continuous tracks</h2>
+  <table>
+    <thead><tr><th>Track</th><th>State</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Kubernetes Helm chart</td><td><span class="tag accent">in-progress</span></td><td>Basic chart exists externally, needs upstreaming with value schemas.</td></tr>
+      <tr><td>Localization (i18n)</td><td><span class="tag success">stable</span></td><td>EN, DE, FR, ES, IT, JA, ZH, KO shipped. Community PRs welcome for more.</td></tr>
+      <tr><td>Benchmark telemetry opt-in</td><td><span class="tag">investigation</span></td><td>Allow optional sharing of anonymised benchmark numbers to seed the recommendation engine.</td></tr>
+      <tr><td>ARM64 images</td><td><span class="tag warn">blocked</span></td><td>ONNX Runtime on ARM lacks the provider coverage we need. Revisit once <code>onnxruntime-arm64-cuda</code> ships.</td></tr>
+      <tr><td>macOS / Metal provider</td><td><span class="tag warn">not planned</span></td><td>No Metal execution provider in ONNX Runtime; would require CoreML translation which is its own stack.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>How priorities get set</h2>
+  <ol>
+    <li>Crashes and data-loss bugs jump to the front, always.</li>
+    <li>Issues with ≥10 thumbs-up reactions on GitHub get pulled into the next minor.</li>
+    <li>Sponsor requests weigh heavily but don't override crashes or stability work.</li>
+    <li>"Shiny" model-of-the-week features wait until the surrounding plumbing (config UI, catalog) is ready to host them.</li>
+  </ol>
+
+  <h2>What's not on the roadmap</h2>
+  <ul>
+    <li><strong>Integration with closed-source upscalers</strong> (Topaz Video AI, NVIDIA VSR). Licensing and distribution don't work for an open-source plugin.</li>
+    <li><strong>Paid tiers or cloud inference.</strong> The service is designed to run on the same LAN as Jellyfin; pushing it to a cloud provider removes the privacy + latency guarantees that make this plugin useful.</li>
+    <li><strong>Supporting Jellyfin 10.8.x</strong>. We follow the current Jellyfin stable (10.11.x) and one LTS back. Older Jellyfin branches don't get new plugin versions.</li>
+  </ul>
+
+  <h2>Weigh in</h2>
+  <p>Roadmap reviews happen on the GitHub <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions">Discussions</a> page. Open a thread under <em>Ideas</em> to propose an item, or comment on an existing one to push it up the stack.</p>
+</main>
+
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.16</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<script src="assets/nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Model catalog — Jellyfin AI Upscaler</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.16</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+
+<main class="container">
+  <h1>AI model catalog</h1>
+  <p class="lead" style="color: var(--text-dim);">32 models shipped, 5 marked <em>[self-host required]</em>. Weights are pulled on demand — none of them are bundled in the Docker image.</p>
+
+  <h2>General-purpose upscalers</h2>
+  <table>
+    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>VRAM (est.)</th><th>Best for</th></tr></thead>
+    <tbody>
+      <tr><td><code>realesrgan-x4plus</code></td><td>4×</td><td>ESRGAN</td><td>~4 GB</td><td>General live-action, default</td></tr>
+      <tr><td><code>realesrgan-x2plus</code></td><td>2×</td><td>ESRGAN</td><td>~3 GB</td><td>Fast 2× pass</td></tr>
+      <tr><td><code>realesrnet-x4plus</code></td><td>4×</td><td>ESRGAN</td><td>~4 GB</td><td>Noise-heavy sources</td></tr>
+      <tr><td><code>swinir-m-x4</code></td><td>4×</td><td>SwinIR</td><td>~5 GB</td><td>Film grain preservation</td></tr>
+      <tr><td><code>swinir-l-x4</code></td><td>4×</td><td>SwinIR Large</td><td>~8 GB</td><td>Best quality, slow</td></tr>
+      <tr><td><code>hat-s-x4</code></td><td>4×</td><td>HAT Small</td><td>~4 GB</td><td>Balanced modern</td></tr>
+      <tr><td><code>hat-m-x4</code></td><td>4×</td><td>HAT Medium</td><td>~6 GB</td><td>Balanced modern</td></tr>
+      <tr><td><code>hat-l-x4</code></td><td>4×</td><td>HAT Large</td><td>~9 GB</td><td>Sharpest general</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Anime upscalers</h2>
+  <table>
+    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>VRAM (est.)</th><th>Best for</th></tr></thead>
+    <tbody>
+      <tr><td><code>realesrgan-anime-x4</code></td><td>4×</td><td>ESRGAN-anime</td><td>~3 GB</td><td>Classic anime, default</td></tr>
+      <tr><td><code>anime-compact-x4</code></td><td>4×</td><td>Compact</td><td>~2 GB</td><td>Fast anime, low-VRAM GPUs</td></tr>
+      <tr><td><code>waifu2x-cunet-x2</code></td><td>2×</td><td>CUNet</td><td>~2 GB</td><td>Line-art preservation</td></tr>
+      <tr><td><code>waifu2x-upconv-x2</code></td><td>2×</td><td>UpConv</td><td>~2 GB</td><td>Fast waifu2x variant</td></tr>
+      <tr><td><code>animesr-v2-x4 [self-host required]</code></td><td>4×</td><td>AnimeSR v2</td><td>~5 GB</td><td>Modern anime, best quality</td></tr>
+      <tr><td><code>apisr-x3 [self-host required]</code></td><td>3×</td><td>APISR</td><td>~4 GB</td><td>Anime at 3× scale</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Fast / low-VRAM</h2>
+  <table>
+    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>VRAM (est.)</th><th>Best for</th></tr></thead>
+    <tbody>
+      <tr><td><code>fsrcnn-x2</code></td><td>2×</td><td>FSRCNN</td><td>~200 MB</td><td>Real-time on iGPU</td></tr>
+      <tr><td><code>fsrcnn-x3</code></td><td>3×</td><td>FSRCNN</td><td>~250 MB</td><td>Fast 3× pass</td></tr>
+      <tr><td><code>fsrcnn-x4</code></td><td>4×</td><td>FSRCNN</td><td>~300 MB</td><td>CPU-only fallback</td></tr>
+      <tr><td><code>espcn-x2</code></td><td>2×</td><td>ESPCN</td><td>~150 MB</td><td>Lightest model</td></tr>
+      <tr><td><code>espcn-x4</code></td><td>4×</td><td>ESPCN</td><td>~200 MB</td><td>CPU real-time</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Temporal / multi-frame</h2>
+  <table>
+    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>VRAM (est.)</th><th>Best for</th></tr></thead>
+    <tbody>
+      <tr><td><code>edvr-m-x4 [self-host required]</code></td><td>4×</td><td>EDVR Medium</td><td>~8 GB</td><td>Temporal consistency</td></tr>
+      <tr><td><code>realbasicvsr-x4 [self-host required]</code></td><td>4×</td><td>BasicVSR</td><td>~7 GB</td><td>Real-world low-res video</td></tr>
+      <tr><td><code>nomos8k-hat-x4 [self-host required]</code></td><td>4×</td><td>HAT-Nomos</td><td>~9 GB</td><td>Nomos8k-trained variant</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Frame interpolation (RIFE)</h2>
+  <table>
+    <thead><tr><th>Model</th><th>Purpose</th><th>VRAM (est.)</th><th>Speed tier</th></tr></thead>
+    <tbody>
+      <tr><td><code>rife-v4.9</code></td><td>Best quality</td><td>~2 GB</td><td>Slow</td></tr>
+      <tr><td><code>rife-v4.8</code></td><td>Balanced (new in v1.6.1.12)</td><td>~2 GB</td><td>Medium</td></tr>
+      <tr><td><code>rife-v4.7</code></td><td>Fast</td><td>~1.5 GB</td><td>Fast</td></tr>
+    </tbody>
+  </table>
+  <div class="callout">
+    <strong>Migration:</strong> old <code>rife-v4.6</code> / <code>rife-v4.6-lite</code> references in saved configs are transparently mapped to the new versions via <code>MODEL_ALIASES</code>.
+  </div>
+
+  <h2>Face restoration</h2>
+  <table>
+    <tbody>
+      <tr><td><code>gfpgan-v1.4</code></td><td>Forgiving restoration, works on very blurry faces, less sharp</td><td>~1 GB</td></tr>
+      <tr><td><code>codeformer</code></td><td>Sharper restoration, needs reasonably recognisable face input</td><td>~1.5 GB</td></tr>
+    </tbody>
+  </table>
+
+  <h2>About <em>[self-host required]</em></h2>
+  <p>Five models do not have a public ONNX mirror available at a URL the plugin can hit directly. You have to export them yourself.</p>
+  <ul>
+    <li><strong>Why:</strong> the authors either published only PyTorch <code>.pth</code> weights, or published them behind a Google Drive / registration gate.</li>
+    <li><strong>Recipe:</strong> see <code>docs/MODEL-HOSTING.md</code> in the repo — PyTorch → ONNX export script.</li>
+    <li>Once exported, drop the <code>.onnx</code> file into <code>/app/models/&lt;model-id&gt;.onnx</code> on the service host and it'll appear as available.</li>
+  </ul>
+
+  <h2>Model endpoints (REST)</h2>
+  <pre><code>GET  /models                       # full catalog
+GET  /models/{id}                  # single model details
+POST /models/{id}/download         # fetch ONNX weights
+POST /models/{id}/load             # warm into GPU memory
+POST /models/{id}/unload           # free VRAM
+GET  /Upscaler/recommend-model     # plugin → service: pick per-video</code></pre>
+</main>
+
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.16</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<script src="assets/nav.js"></script>
+</body>
+</html>

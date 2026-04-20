@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contributing — Jellyfin AI Upscaler</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.16</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+
+<main class="container-narrow">
+  <h1>Contributing</h1>
+  <p class="lead" style="color: var(--text-dim);">Patches, docs, translations, model catalog entries — all welcome. Here's the short version of how to land a change cleanly.</p>
+
+  <h2>Repository layout</h2>
+  <pre><code>JellyfinUpscalerPlugin/
+├── Api/                  # ASP.NET controllers (the /Upscaler/* surface)
+├── Configuration/        # Plugin config UI (HTML/JS in one file)
+├── Services/             # VideoProcessor, VideoAnalyzer, HttpUpscalerService, ...
+├── ScheduledTasks/       # LibraryUpscaleScanTask, LibraryImageScanTask, cache cleanup
+├── Models/               # DTOs for service calls + plugin config POCOs
+├── Web/                  # player-integration.js, quick-menu assets
+├── docker-service/       # FastAPI service (mirrored into the :latest-* images)
+├── site/                 # This website (GitHub Pages)
+├── tests/                # xUnit tests
+├── docs/                 # MODEL-HOSTING.md, ARCHITECTURE.md, CHANGELOG.md
+├── JellyfinUpscalerPlugin.csproj
+├── meta.json
+├── manifest.json
+└── repository-jellyfin.json</code></pre>
+
+  <h2>Build from source</h2>
+  <pre><code>git clone https://github.com/Kuschel-code/JellyfinUpscalerPlugin.git
+cd JellyfinUpscalerPlugin
+dotnet restore
+dotnet build -c Release
+
+# Run the tests
+dotnet test
+
+# Produce a ship-ready publish folder (main DLL + all transitive NuGets)
+dotnet publish -c Release -o ./publish</code></pre>
+  <div class="callout warn">
+    <strong>Don't ship the plain <code>bin/Release</code> output.</strong> Only <code>dotnet publish</code> emits the full set of transitive NuGet DLLs the plugin needs at runtime. Shipping only the main DLL is what causes the "plugin tombstoned on restart" issue — see <a href="troubleshooting.html">Troubleshooting</a>.
+  </div>
+
+  <h2>Branch &amp; PR flow</h2>
+  <ol>
+    <li>Fork the repo, branch from <code>main</code>. Name it <code>fix/ffmpeg-path</code>, <code>feat/arm-images</code>, etc.</li>
+    <li>One logical change per PR. If you're fixing a bug and adding a feature, that's two PRs.</li>
+    <li>Include tests for bug fixes. "Write the test that fails without your fix" is the bar.</li>
+    <li>Update <code>docs/CHANGELOG.md</code> under <em>Unreleased</em>.</li>
+    <li>Open the PR against <code>main</code>. CI runs <code>dotnet build</code>, <code>dotnet test</code>, and the site linter.</li>
+  </ol>
+
+  <h2>Code style</h2>
+  <ul>
+    <li><strong>C#:</strong> follow <code>.editorconfig</code>. Allman braces, four-space indent, <code>var</code> where the type is obvious.</li>
+    <li><strong>Python (service):</strong> <code>ruff</code> + <code>black</code>. Type hints on all public functions.</li>
+    <li><strong>JS:</strong> no build step in the plugin — plain ES2020 that runs in Jellyfin's web view. Keep it that way.</li>
+    <li>Log messages use structured logging: <code>_logger.LogInformation("FFmpeg ready: path={Path}", path);</code> — not string interpolation.</li>
+    <li>No fancy abstractions "for the future". CLAUDE.md rule: three similar lines is better than a premature abstraction.</li>
+  </ul>
+
+  <h2>Good first issues</h2>
+  <ul>
+    <li>Add a translation for a language we don't yet cover — see <code>Web/i18n/</code>.</li>
+    <li>Write a deployment recipe for a platform not listed on the <a href="deployment.html">Deployment</a> page.</li>
+    <li>Contribute a ONNX export script for one of the <em>[self-host required]</em> models in the catalog.</li>
+    <li>Add a test to <code>tests/VideoAnalyzerTests.cs</code> covering a failure mode you've hit.</li>
+  </ul>
+
+  <h2>Adding a model to the catalog</h2>
+  <p>If you want a new model available to everyone, not just your local install:</p>
+  <ol>
+    <li>Export to ONNX. Verify it works standalone with <code>onnxruntime-gpu</code>.</li>
+    <li>Add an entry to <code>docker-service/catalog.json</code>:
+      <pre><code>{
+  "id": "my-model-x4",
+  "name": "My Model 4x",
+  "scale": 4,
+  "type": "ESRGAN",
+  "vram_mb": 4000,
+  "url": "https://example.com/my-model-x4.onnx",
+  "sha256": "..."
+}</code></pre>
+    </li>
+    <li>Open a PR. Include one before/after still from a test clip so we can eyeball the output.</li>
+    <li>If the weights can't be hosted at a stable URL, add <code>[self-host required]</code> to the display name and document the export recipe in <code>docs/MODEL-HOSTING.md</code>.</li>
+  </ol>
+
+  <h2>Reporting bugs</h2>
+  <p>A good bug report includes:</p>
+  <ul>
+    <li>Plugin version, Jellyfin version, AI service image tag.</li>
+    <li>Host OS and GPU model.</li>
+    <li>Exact steps to reproduce, including what model/preset is selected.</li>
+    <li>The last 200 lines of the Jellyfin log containing the failure, and the corresponding AI service log.</li>
+    <li>What you expected to happen vs. what actually happened.</li>
+  </ul>
+  <p>"It doesn't work" without the above will get a polite bot comment asking for them, and then usually bit-rot. Front-load the info.</p>
+
+  <h2>Non-code contributions</h2>
+  <ul>
+    <li><strong>Docs:</strong> every page on this site is in <code>site/</code>. PRs fixing typos, expanding examples, or adding a new recipe are genuinely appreciated.</li>
+    <li><strong>Testing:</strong> running the plugin on a platform the maintainer doesn't have (specific NAS, unusual GPU) and reporting what works counts as a contribution.</li>
+    <li><strong>Translations:</strong> see i18n notes above.</li>
+    <li><strong>Sponsorship:</strong> GitHub Sponsors link is in the README. Funds go to hosting the CDN that backs the model catalog.</li>
+  </ul>
+
+  <h2>Code of conduct</h2>
+  <p>The short version: be kind. We accept contributions from all skill levels — assume good faith, ask clarifying questions, and don't pile-on new contributors for small mistakes. The full <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/CODE_OF_CONDUCT.md">Code of Conduct</a> lives in the repo.</p>
+</main>
+
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.16</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<script src="assets/nav.js"></script>
+</body>
+</html>

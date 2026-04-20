@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture — Jellyfin AI Upscaler</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.16</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+
+<main class="container-narrow">
+  <h1>Architecture</h1>
+  <p class="lead" style="color: var(--text-dim);">How the plugin and the AI service are separated, what talks to what, and why it's designed this way.</p>
+
+  <h2>Two processes, one contract</h2>
+  <pre><code>┌─────────────────────────────────────┐          ┌───────────────────────────────────┐
+│  Jellyfin (dotnet / net9.0)         │          │  Docker AI Service (python/fastapi)│
+│                                     │          │                                    │
+│  ┌───────────────────────────────┐  │   HTTP   │  ┌──────────────────────────────┐ │
+│  │ JellyfinUpscalerPlugin.dll    │──┼─────────→┼──│ /Upscaler/ controller-like   │ │
+│  │   ├─ VideoProcessor           │  │  :5000   │  │ /models, /hardware, /metrics │ │
+│  │   ├─ VideoAnalyzer (ffprobe)  │  │          │  │ /openapi.json, /health       │ │
+│  │   ├─ VideoFrameProcessor      │  │          │  └──────────────────────────────┘ │
+│  │   ├─ ProcessingMethodExecutor │  │          │  ┌──────────────────────────────┐ │
+│  │   ├─ HttpUpscalerService ─────┼──┘          │  │ ONNX Runtime (CUDA/OV/ROCm)  │ │
+│  │   └─ 3 ScheduledTasks         │             │  │ + TensorRT FP16 path         │ │
+│  └───────────────────────────────┘             │  └──────────────────────────────┘ │
+│  ┌───────────────────────────────┐             │  ┌──────────────────────────────┐ │
+│  │ Jellyfin MediaEncoder         │             │  │ /app/models/*.onnx volume    │ │
+│  │  ffmpeg / ffprobe binaries    │             │  │ (pulled on demand)           │ │
+│  └───────────────────────────────┘             │  └──────────────────────────────┘ │
+└─────────────────────────────────────┘          └───────────────────────────────────┘</code></pre>
+
+  <h2>Why two processes?</h2>
+  <ul>
+    <li><strong>Native ABI isolation.</strong> ONNX Runtime + CUDA + cuDNN bring in a stack of native libraries that don't play well with the tightly-pinned native set inside Jellyfin's process. By running inference in a sibling container we never touch Jellyfin's memory space.</li>
+    <li><strong>Independent upgrade cadence.</strong> Bump CUDA / OpenVINO / ONNX independently from Jellyfin's ABI. The plugin targets Jellyfin 10.11.x and speaks HTTP to <em>any</em> service version with a compatible API surface.</li>
+    <li><strong>GPU portability.</strong> Same plugin DLL works against CUDA, OpenVINO, ROCm, and CPU service images. Pick the image that matches your host.</li>
+    <li><strong>Restart safety.</strong> Hot-reload models or upgrade the AI service without restarting Jellyfin. Jellyfin will see <code>/health</code> as degraded, then recover.</li>
+  </ul>
+
+  <h2>Jellyfin-side components</h2>
+  <h3>VideoProcessor (core orchestrator)</h3>
+  <p>The plugin singleton. Holds references to <code>MediaEncoder</code> (for ffmpeg/ffprobe paths), <code>HttpUpscalerService</code> (HTTP client), and three sub-services described below. Processes jobs via <code>ProcessVideoAsync</code>.</p>
+
+  <h3>VideoAnalyzer · VideoFrameProcessor · ProcessingMethodExecutor</h3>
+  <p>Three specialised helpers that cache ffmpeg/ffprobe paths. All three had a cold-start bug (fixed in <a href="changelog.html">v1.6.1.16</a>) where the captured paths were empty if Jellyfin constructed the plugin before <code>MediaEncoder.EncoderPath</code>/<code>ProbePath</code> finished resolving. The fix: new <code>EnsureFFmpegReady()</code> in <code>VideoProcessor</code> late-resolves and propagates updated paths via new <code>Update*Path()</code> methods.</p>
+
+  <h3>HttpUpscalerService</h3>
+  <p>Thin wrapper around <code>IHttpClientFactory</code>. Attaches <code>X-Api-Token</code> header when configured. Handles retries, transparent decompression, and per-call timeouts.</p>
+
+  <h3>ScheduledTasks</h3>
+  <ul>
+    <li><strong>LibraryUpscaleScanTask</strong> — nightly scan, fires on Jellyfin's daily trigger (default 03:00).</li>
+    <li><strong>LibraryImageScanTask</strong> — optional pass for cover/poster upscaling.</li>
+    <li><strong>Cache cleanup</strong> — prunes the pre-processing cache according to retention config.</li>
+  </ul>
+
+  <h2>Service-side components</h2>
+  <h3>FastAPI application (<code>/app/main.py</code>)</h3>
+  <p>Routes: <code>/health</code>, <code>/status</code>, <code>/metrics</code>, <code>/features</code>, <code>/hardware</code>, <code>/gpus</code>, <code>/models</code>, <code>/models/{id}</code>, <code>/models/{id}/download</code>, <code>/models/{id}/load</code>, <code>/models/{id}/unload</code>, <code>/upscale-frame</code>, <code>/benchmark-frame</code>, <code>/face-restore/*</code>, <code>/logs-stream</code> (SSE).</p>
+
+  <h3>ONNX Runtime wrapper</h3>
+  <p>Single-process Python wrapping <code>onnxruntime-{gpu,openvino,rocm,cpu}</code>. Hardware-detection at startup picks the execution provider. Each loaded model holds a session + preallocated input/output tensors.</p>
+
+  <h3>TensorRT path (CUDA only)</h3>
+  <p>On first load of a given (model, resolution) combo on an Ampere+ GPU, the service emits a <code>.plan</code> file for TensorRT FP16. Subsequent sessions pick this up for ~2× speedup.</p>
+
+  <h3>Model catalog</h3>
+  <p>Declarative manifest at <code>/app/models/catalog.json</code> with each model's download URL, SHA256, scale factor, provider compatibility, and hot-reloadable at runtime.</p>
+
+  <h2>Data flow: nightly library scan</h2>
+  <ol>
+    <li>Jellyfin scheduler fires <code>LibraryUpscaleScanTask.ExecuteAsync</code>.</li>
+    <li>Plugin calls <code>HttpUpscalerService.GetHealthAsync</code> — aborts if service is offline.</li>
+    <li>Plugin enumerates Jellyfin virtual folders, filters to those in <code>EnabledLibraryIds</code> (or all if empty).</li>
+    <li>For each item: <code>VideoAnalyzer.AnalyzeVideoAsync</code> → resolution, fps, codec, HDR, interlaced.</li>
+    <li>If below threshold: <code>VideoProcessor.ProcessVideoAsync</code> → <code>ProcessingMethodExecutor</code> picks pipeline → <code>VideoFrameProcessor.ExtractFramesAsync</code> dumps PNGs to a temp dir.</li>
+    <li>Plugin POSTs each frame to <code>/upscale-frame</code> → receives upscaled PNG → caches to disk.</li>
+    <li><code>VideoFrameProcessor.ReassembleAsync</code> pipes frames + original audio back through ffmpeg with the selected codec.</li>
+    <li>Output lands alongside the source as <code>&lt;basename&gt;_upscaled.mp4</code>. Jellyfin library watcher picks it up naturally.</li>
+  </ol>
+
+  <h2>Data flow: live quick-menu</h2>
+  <ol>
+    <li>User opens a video; Jellyfin web client loads <code>player-integration.js</code> from the plugin.</li>
+    <li>Script injects the <em>Upscaler</em> button into the player toolbar.</li>
+    <li>On click, the tabbed overlay renders — fetches <code>/Upscaler/models</code> and <code>/Upscaler/filter-presets</code> in parallel.</li>
+    <li><strong>Filters tab</strong> sliders write directly to <code>&lt;video&gt;.style.filter</code> — 60fps, no round-trip.</li>
+    <li><strong>Models tab</strong> calls <code>POST /Upscaler/models/{id}/load</code> which forwards to the AI service's <code>/models/{id}/load</code>. Service warms the model in GPU memory.</li>
+    <li>Subsequent frames rendered by Jellyfin go through the loaded model when playback seeks (requires Real-Time AI processing mode).</li>
+  </ol>
+
+  <h2>Failure modes &amp; recovery</h2>
+  <table>
+    <thead><tr><th>Failure</th><th>Plugin behaviour</th></tr></thead>
+    <tbody>
+      <tr><td>Service offline</td><td>Test Connection shows red; scheduled task logs and skips cleanly; quick-menu shows "Standalone" badge.</td></tr>
+      <tr><td>Model download fails</td><td>Model row flips to <code>error</code> state with the HTTP status message. Retry button re-issues the download.</td></tr>
+      <tr><td>GPU OOM during load</td><td>Service returns <code>507 Insufficient Storage</code>; plugin surfaces the service-provided hint verbatim.</td></tr>
+      <tr><td>ffmpeg/ffprobe paths unresolved</td><td>v1.6.1.16 <code>EnsureFFmpegReady()</code> re-queries MediaEncoder on every entry point. Logs warn if still unresolved instead of silently failing.</td></tr>
+      <tr><td>Plugin DLL missing transitive NuGet</td><td>Jellyfin tombstones the plugin. Recovery: add the missing DLL, call <code>POST /Plugins/{id}/{version}/Enable</code>.</td></tr>
+    </tbody>
+  </table>
+</main>
+
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.16</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<script src="assets/nav.js"></script>
+</body>
+</html>

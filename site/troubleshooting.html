@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troubleshooting — Jellyfin AI Upscaler</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.16</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+
+<main class="container-narrow">
+  <h1>Troubleshooting</h1>
+  <p class="lead" style="color: var(--text-dim);">Symptom-first. Scan the headings for what you're seeing, follow the steps in order.</p>
+
+  <h2>Plugin disappears after restart ("tombstoned")</h2>
+  <p><strong>Symptom:</strong> Plugin appears in the list for a second, then vanishes. Jellyfin log shows <code>NotSupportedException</code> or <code>FileNotFoundException</code> for a DLL like <code>FFMpegCore</code>, <code>CliWrap</code>, <code>Instances</code>, or <code>SixLabors.ImageSharp</code>.</p>
+  <p><strong>Cause:</strong> <code>dotnet build</code> only emits the main plugin DLL — transitive NuGet dependencies must ship inside the ZIP alongside it.</p>
+  <p><strong>Fix:</strong></p>
+  <ol>
+    <li>Verify the plugin folder contains <em>all</em> DLLs shipped in the official release ZIP (~15 files, not just one).</li>
+    <li>If you built from source, use <code>dotnet publish -c Release</code> and ship the full <code>bin/Release/net9.0/publish</code> contents.</li>
+    <li>Re-enable via REST: <code>POST /Plugins/{id}/{version}/Enable</code> with an admin <code>X-Emby-Token</code>.</li>
+    <li>Restart Jellyfin. The plugin should stay loaded.</li>
+  </ol>
+
+  <h2>Ffprobe/FFmpeg: "Cannot start process because a file name has not been provided"</h2>
+  <p><strong>Symptom:</strong> Scheduled task fails at 0% with <code>InvalidOperationException: Cannot start process because a file name has not been provided.</code></p>
+  <p><strong>Cause:</strong> Pre-v1.6.1.16 plugins captured <code>MediaEncoder.EncoderPath</code>/<code>ProbePath</code> at construction time. If the plugin was constructed before Jellyfin finished resolving these paths, the capture was an empty string — permanently.</p>
+  <p><strong>Fix:</strong> Upgrade to v1.6.1.16+. The fix applies to all three singletons (<code>VideoAnalyzer</code>, <code>VideoFrameProcessor</code>, <code>ProcessingMethodExecutor</code>) and late-resolves on every entry point.</p>
+
+  <h2>AI service test connection fails</h2>
+  <p><strong>Symptom:</strong> The Test Connection button in plugin config shows red.</p>
+  <ol>
+    <li><strong>Check the URL:</strong> it must be reachable <em>from the Jellyfin container</em>, not from your browser. If Jellyfin runs in Docker, <code>localhost</code> means the Jellyfin container — use the LAN IP or Docker service name.</li>
+    <li><strong>Check the token:</strong> if <code>API_TOKEN</code> is set on the AI container, the plugin must send the same value. Mismatched token → <code>401</code>.</li>
+    <li><strong>Check that port 5000 is exposed:</strong> <code>curl -f http://ai-host:5000/health</code> from the Jellyfin host.</li>
+    <li><strong>CORS / proxy:</strong> if there's a reverse proxy in front, it must not strip the <code>X-Api-Token</code> header.</li>
+  </ol>
+
+  <h2>GPU not detected in the service</h2>
+  <p><strong>Symptom:</strong> <code>/hardware</code> shows only CPU providers, or the dashboard "Detected Hardware" row is empty.</p>
+  <ul>
+    <li><strong>NVIDIA:</strong> container must have <code>runtime: nvidia</code> (compose) or <code>--gpus all</code> (docker run). Run <code>docker exec ai-upscaler nvidia-smi</code> — if this fails, the NVIDIA Container Toolkit isn't installed on the host.</li>
+    <li><strong>Intel (OpenVINO):</strong> container needs <code>--device /dev/dri</code>. On Unraid, the Intel GPU Plugin must be installed.</li>
+    <li><strong>AMD (ROCm):</strong> needs <code>--device /dev/kfd</code> <em>and</em> <code>--device /dev/dri</code>, plus <code>--group-add video</code>.</li>
+    <li><strong>Wrong image tag:</strong> make sure you're pulling <code>:latest-cuda</code> / <code>-openvino</code> / <code>-rocm</code>, not <code>:latest-cpu</code>.</li>
+  </ul>
+
+  <h2>GPU OOM during model load</h2>
+  <p><strong>Symptom:</strong> HTTP <code>507</code> or logs with <code>CUDA out of memory</code> / <code>cl_mem: CL_MEM_OBJECT_ALLOCATION_FAILURE</code>.</p>
+  <ul>
+    <li>Unload any other loaded model first (<code>POST /models/{other-id}/unload</code>).</li>
+    <li>Lower Max Concurrent Streams to 1.</li>
+    <li>Switch to a smaller model family (see <a href="hardware.html">Hardware → VRAM budget</a>).</li>
+    <li>Disable TensorRT FP16 temporarily if the <code>.plan</code> generation itself OOMs.</li>
+  </ul>
+
+  <h2>Nightly task is very slow / eats CPU on a CUDA system</h2>
+  <p><strong>Symptom:</strong> <code>LibraryUpscaleScanTask</code> runs for hours; GPU utilization is near-zero; CPU is pinned.</p>
+  <ul>
+    <li>The service is running the CPU image. Check <code>GET /status</code> for <code>provider</code>.</li>
+    <li>ffmpeg-side hardware decoding isn't enabled in Jellyfin → frame extraction is CPU-bound even if inference is GPU. Turn on Jellyfin's hardware acceleration.</li>
+    <li>Source files are being transcoded (e.g. HEVC 10-bit to 8-bit) before extraction. Set the plugin's output codec to match source where possible.</li>
+  </ul>
+
+  <h2>Upscaled output exists but Jellyfin doesn't pick it up</h2>
+  <p><strong>Symptom:</strong> <code>&lt;file&gt;_upscaled.mp4</code> is on disk but the Jellyfin library doesn't show a new version.</p>
+  <ul>
+    <li>File system watcher disabled: trigger a manual library scan from Jellyfin.</li>
+    <li>Output landed outside the library root (e.g. in a cache folder). Check Plugin config <em>Output Directory</em>.</li>
+    <li>Wrong owner: on TrueNAS SCALE, output must be <code>568:568</code>; on Unraid, <code>99:100</code>.</li>
+  </ul>
+
+  <h2>Comparison view is blank</h2>
+  <p><strong>Symptom:</strong> Compare tab shows "No processed videos" even though upscaled files exist.</p>
+  <ul>
+    <li>The comparison view only lists files named exactly <code>&lt;basename&gt;_upscaled.&lt;ext&gt;</code> sitting next to the source. Renamed files won't show.</li>
+    <li>Pre-processing cache is off — enable it so previous passes are tracked.</li>
+  </ul>
+
+  <h2>Frame interpolation has visual artifacts</h2>
+  <ul>
+    <li>Source has hard scene cuts: enable <em>Scene Cut Detection</em> in the Motion tab.</li>
+    <li>Anime with limited animation: try <code>rife-v4.7</code> (more conservative) instead of <code>v4.9</code>.</li>
+    <li>Framerate doubling on a 24fps → 48fps source with judder: your display may not handle 48Hz well — target 60fps instead.</li>
+  </ul>
+
+  <h2>Reading logs</h2>
+  <ul>
+    <li><strong>Jellyfin:</strong> <code>/config/log/jellyfin*.log</code>, or Admin → Dashboard → Logs.</li>
+    <li><strong>AI service:</strong> <code>docker logs -f ai-upscaler</code>, or the plugin's Console tab (server-sent events).</li>
+    <li><strong>In-browser:</strong> DevTools → Network → filter for <code>/Upscaler</code> to see every plugin API call and response.</li>
+  </ul>
+
+  <h2>Still stuck?</h2>
+  <p>Collect <code>GET /status</code>, <code>GET /hardware</code>, the last 500 lines of the Jellyfin log, the last 500 lines of the AI service log, and the plugin config (redact the API token). Open an issue at <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues">GitHub Issues</a> with all four attached.</p>
+</main>
+
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.16</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<script src="assets/nav.js"></script>
+</body>
+</html>
