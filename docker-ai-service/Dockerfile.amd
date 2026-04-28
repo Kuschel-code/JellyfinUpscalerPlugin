@@ -9,8 +9,8 @@
 # GPU inference works via ROCm + ONNX Runtime ≤1.22.x; CPU fallback otherwise.
 FROM rocm/pytorch:rocm6.2_ubuntu22.04_py3.10_pytorch_release_2.3.0
 
-# Build-time metadata — pass via: --build-arg APP_VERSION=1.6.1.15 --build-arg APP_COMMIT=$(git rev-parse --short HEAD)
-ARG APP_VERSION=1.6.1.15
+# Build-time metadata — pass via: --build-arg APP_VERSION=1.6.1.16 --build-arg APP_COMMIT=$(git rev-parse --short HEAD)
+ARG APP_VERSION=1.6.1.16
 ARG APP_COMMIT=unknown
 ENV APP_VERSION=${APP_VERSION} \
     APP_COMMIT=${APP_COMMIT}

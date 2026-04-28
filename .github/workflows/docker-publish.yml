@@ -19,9 +19,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Plugin semver (e.g. 1.6.1.13)'
-        required: true
-        default: '1.6.1.13'
+        description: 'Plugin semver — leave empty to use version.json'
+        required: false
+        default: ''
       push:
         description: 'Push to Docker Hub? (false = build-only dry run)'
         required: true
@@ -77,13 +77,16 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
+      - name: Verify version sync
+        run: bash Scripts/verify-version-sync.sh
+
       - name: Resolve version
         id: version
         run: |
           if [ -n "${{ github.event.inputs.version }}" ]; then
             VERSION="${{ github.event.inputs.version }}"
           else
-            VERSION=$(grep -oP '<AssemblyVersion>\K[^<]+' JellyfinUpscalerPlugin.csproj)
+            VERSION=$(jq -r .version version.json)
           fi
           SHORT_SHA=$(git rev-parse --short HEAD)
           echo "version=$VERSION"       >> "$GITHUB_OUTPUT"

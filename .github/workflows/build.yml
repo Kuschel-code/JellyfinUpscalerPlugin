@@ -24,10 +24,13 @@ jobs:
       with:
         dotnet-version: 9.0.x
 
-    - name: Extract version from csproj
+    - name: Verify version sync
+      run: bash Scripts/verify-version-sync.sh
+
+    - name: Read version from version.json
       id: version
       run: |
-        VERSION=$(grep -oP '<AssemblyVersion>\K[^<]+' JellyfinUpscalerPlugin.csproj)
+        VERSION=$(jq -r .version version.json)
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "Plugin version: $VERSION"
 
