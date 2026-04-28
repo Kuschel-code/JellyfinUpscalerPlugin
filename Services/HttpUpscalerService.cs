@@ -1,396 +1,94 @@
 using System;
-using System.IO;
 using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace JellyfinUpscalerPlugin.Services
 {
     /// <summary>
-    /// HTTP-based upscaler service that communicates with the AI Upscaler Docker container.
-    /// v1.5.5.7 - Health caching, retry logic for all endpoints, multi-GPU support.
+    /// Thin facade composing four single-responsibility services:
+    /// <see cref="IServiceUrlProvider"/>, <see cref="IUpscalerHttpClient"/>,
+    /// <see cref="IServiceHealthMonitor"/>, and <see cref="IModelLifecycleManager"/>.
+    /// Public API is preserved so existing callers (VideoProcessor, UpscalerCore,
+    /// HardwareBenchmarkService, scheduled tasks, ModelManager) keep compiling.
     /// </summary>
     public class HttpUpscalerService : IDisposable
     {
-        private readonly IHttpClientFactory? _httpClientFactory;
-        private readonly HttpClient _fallbackClient;
-        private readonly ILogger<HttpUpscalerService> _logger;
+        private readonly IServiceUrlProvider _urls;
+        private readonly IUpscalerHttpClient _http;
+        private readonly IServiceHealthMonitor _health;
+        private readonly IModelLifecycleManager _lifecycle;
+        private readonly UpscalerHttpClient? _ownedHttpClient;
         private volatile bool _disposed;
 
-        // Health check cache (30 seconds) with thread-safety lock
-        private bool? _cachedHealthResult;
-        private DateTime _healthCacheExpiry = DateTime.MinValue;
-        private static readonly TimeSpan HealthCacheDuration = TimeSpan.FromSeconds(30);
-        private readonly object _healthLock = new();
-
         /// <summary>
-        /// Invalidate the health check cache so the next call does a fresh check.
-        /// Call this when the AI Service URL changes or before explicit Test Connection.
+        /// Backward-compatible constructor used by tests and historical DI bootstrap.
+        /// Internally builds the four collaborators; safe to keep using.
         /// </summary>
-        public void InvalidateHealthCache()
-        {
-            lock (_healthLock)
-            {
-                _cachedHealthResult = null;
-                _healthCacheExpiry = DateTime.MinValue;
-            }
-            _logger.LogDebug("Health cache invalidated");
-        }
-
         public HttpUpscalerService(ILogger<HttpUpscalerService> logger, IHttpClientFactory? httpClientFactory = null)
         {
-            _logger = logger;
-            _httpClientFactory = httpClientFactory;
+            var urlProvider = new ConfigUrlProvider(NullLogger<ConfigUrlProvider>.Instance);
+            var httpClient = new UpscalerHttpClient(NullLogger<UpscalerHttpClient>.Instance, httpClientFactory);
+            var monitor = new CachedHealthMonitor(NullLogger<CachedHealthMonitor>.Instance, httpClient, urlProvider);
+            var lifecycle = new SingleModelLifecycleManager(NullLogger<SingleModelLifecycleManager>.Instance, httpClient, urlProvider);
 
-            // Fallback HttpClient if IHttpClientFactory is not available
-            _fallbackClient = new HttpClient(new SocketsHttpHandler
-            {
-                PooledConnectionLifetime = TimeSpan.FromMinutes(5), // DNS refresh
-                MaxConnectionsPerServer = 10
-            })
-            {
-                Timeout = TimeSpan.FromMinutes(5)
-            };
+            _urls = urlProvider;
+            _http = httpClient;
+            _ownedHttpClient = httpClient;
+            _health = monitor;
+            _lifecycle = lifecycle;
 
-            _logger.LogInformation("HttpUpscalerService v1.5.5.7 initialized");
-        }
-
-        private HttpClient GetClient()
-        {
-            if (_httpClientFactory != null)
-            {
-                return _httpClientFactory.CreateClient("AiUpscaler");
-            }
-            return _fallbackClient;
-        }
-
-        private string GetServiceUrl()
-        {
-            var config = Plugin.Instance?.Configuration;
-            var url = config?.AiServiceUrl ?? "http://localhost:5000";
-            if (url.Contains('\n') || url.Contains('\r') || url.Contains('\t') ||
-                !Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
-                (uri.Scheme != "http" && uri.Scheme != "https"))
-            {
-                _logger.LogWarning("Invalid AiServiceUrl in config, falling back to default");
-                return "http://localhost:5000";
-            }
-
-            // Note: localhost/private IPs are intentionally ALLOWED for AiServiceUrl
-            // because the Docker AI service typically runs on the same host or LAN.
-            // This is different from webhooks which are user-supplied external URLs.
-            return url.TrimEnd('/');
+            logger.LogInformation("HttpUpscalerService initialized (composed)");
         }
 
         /// <summary>
-        /// Check if the AI service is available and healthy.
+        /// DI-friendly constructor. Used by <see cref="PluginServiceRegistrator"/>
+        /// when all four collaborators are registered separately.
         /// </summary>
-        public async Task<bool> IsServiceAvailableAsync(CancellationToken cancellationToken = default)
+        public HttpUpscalerService(ILogger<HttpUpscalerService> logger,
+                                   IServiceUrlProvider urls,
+                                   IUpscalerHttpClient http,
+                                   IServiceHealthMonitor health,
+                                   IModelLifecycleManager lifecycle)
         {
-            // Return cached result if still valid (thread-safe read)
-            lock (_healthLock)
-            {
-                if (_cachedHealthResult.HasValue && DateTime.UtcNow < _healthCacheExpiry)
-                {
-                    return _cachedHealthResult.Value;
-                }
-            }
+            _urls = urls;
+            _http = http;
+            _health = health;
+            _lifecycle = lifecycle;
+            _ownedHttpClient = null;
 
-            var baseUrl = GetServiceUrl();
-            bool result = false;
-            try
-            {
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                cts.CancelAfter(TimeSpan.FromSeconds(10));
-                using var response = await GetClient().GetAsync($"{baseUrl}/health", cts.Token);
-                if (response.IsSuccessStatusCode)
-                {
-                    _logger.LogDebug("AI Service health check OK at {Url}", baseUrl);
-                    result = true;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug("AI Service health check failed at {Url}: {Message}", baseUrl, ex.Message);
-            }
-
-            lock (_healthLock)
-            {
-                _cachedHealthResult = result;
-                _healthCacheExpiry = DateTime.UtcNow + HealthCacheDuration;
-            }
-            return result;
+            logger.LogInformation("HttpUpscalerService initialized (DI-injected)");
         }
 
-        /// <summary>
-        /// Get the current status of the AI service.
-        /// </summary>
-        public async Task<ServiceStatus?> GetServiceStatusAsync(CancellationToken cancellationToken = default)
-        {
-            var baseUrl = GetServiceUrl();
-            try
-            {
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                cts.CancelAfter(TimeSpan.FromSeconds(10));
-                using var response = await GetClient().GetAsync($"{baseUrl}/status", cts.Token);
-                if (response.IsSuccessStatusCode)
-                {
-                    var content = await response.Content.ReadAsStringAsync(cts.Token);
-                    return JsonSerializer.Deserialize<ServiceStatus>(content, new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get AI service status from {Url}", baseUrl);
-            }
-            return null;
-        }
+        public Task<bool> IsServiceAvailableAsync(CancellationToken ct = default)
+            => _health.IsServiceAvailableAsync(ct);
 
-        // Track which model is currently loaded on the AI service to avoid redundant load calls
-        private volatile string? _currentlyLoadedModel;
-        private readonly SemaphoreSlim _modelLoadSemaphore = new(1, 1);
+        public void InvalidateHealthCache()
+            => _health.InvalidateCache();
 
-        /// <summary>
-        /// Ensure the specified model is downloaded and loaded on the AI service.
-        /// Skips if the model is already the active model. Thread-safe via SemaphoreSlim.
-        /// </summary>
-        public async Task<bool> EnsureModelLoadedAsync(string modelName, CancellationToken cancellationToken = default)
-        {
-            // Quick volatile read: skip if already loaded (no lock needed)
-            if (string.Equals(_currentlyLoadedModel, modelName, StringComparison.Ordinal))
-            {
-                return true;
-            }
+        public Task<ServiceStatus?> GetServiceStatusAsync(CancellationToken ct = default)
+            => _http.GetServiceStatusAsync(_urls.GetServiceUrl(), ct);
 
-            // Serialize model loading to prevent concurrent load races
-            await _modelLoadSemaphore.WaitAsync(cancellationToken);
-            try
-            {
-                // Double-check after acquiring semaphore
-                if (string.Equals(_currentlyLoadedModel, modelName, StringComparison.Ordinal))
-                {
-                    return true;
-                }
+        public Task<bool> EnsureModelLoadedAsync(string modelName, CancellationToken ct = default)
+            => _lifecycle.EnsureModelLoadedAsync(modelName, ct);
 
-                // Check service status to see what's actually loaded
-                try
-                {
-                    var status = await GetServiceStatusAsync(cancellationToken);
-                    if (status?.CurrentModel == modelName)
-                    {
-                        _currentlyLoadedModel = modelName;
-                        return true;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogDebug(ex, "Could not check service status, proceeding to load model");
-                }
+        public Task<byte[]?> UpscaleImageAsync(byte[] imageData, int scale = 2, CancellationToken ct = default)
+            => _http.UpscaleImageAsync(_urls.GetServiceUrl(), imageData, scale, ct);
 
-                _logger.LogInformation("Switching AI model to: {Model}", modelName);
+        public Task<bool> DownloadModelAsync(string modelName, CancellationToken ct = default)
+            => _http.DownloadModelAsync(_urls.GetServiceUrl(), modelName, ct);
 
-                // Download model if needed (idempotent — skips if already downloaded)
-                var downloaded = await DownloadModelAsync(modelName, cancellationToken);
-                if (!downloaded)
-                {
-                    _logger.LogWarning("Failed to download model {Model}, attempting load anyway", modelName);
-                }
-
-                // Load the model
-                var config = Plugin.Instance?.Configuration;
-                var useGpu = config?.HardwareAcceleration ?? true;
-                var gpuDeviceId = config?.GpuDeviceIndex ?? 0;
-
-                var loaded = await LoadModelAsync(modelName, useGpu, gpuDeviceId, cancellationToken);
-                if (loaded)
-                {
-                    _currentlyLoadedModel = modelName;
-                    _logger.LogInformation("Model {Model} loaded successfully", modelName);
-                }
-                else
-                {
-                    _logger.LogError("Failed to load model {Model}", modelName);
-                }
-
-                return loaded;
-            }
-            finally
-            {
-                _modelLoadSemaphore.Release();
-            }
-        }
-
-        /// <summary>
-        /// Upscale an image using the AI service.
-        /// </summary>
-        public async Task<byte[]?> UpscaleImageAsync(byte[] imageData, int scale = 2, CancellationToken cancellationToken = default)
-        {
-            if (imageData == null || imageData.Length == 0)
-            {
-                _logger.LogWarning("UpscaleImageAsync called with empty image data");
-                return null;
-            }
-
-            var baseUrl = GetServiceUrl();
-            const int maxRetries = 2;
-
-            for (int attempt = 0; attempt <= maxRetries; attempt++)
-            {
-                try
-                {
-                    using var content = new MultipartFormDataContent();
-
-                    using var imageContent = new ByteArrayContent(imageData);
-                    imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
-                    content.Add(imageContent, "file", "frame.png");
-                    content.Add(new StringContent(scale.ToString()), "scale");
-
-                    if (attempt == 0)
-                    {
-                        _logger.LogDebug("Sending image ({Size} bytes) to AI service for {Scale}x upscaling", imageData.Length, scale);
-                    }
-                    else
-                    {
-                        _logger.LogDebug("Retry {Attempt}/{MaxRetries} for upscaling", attempt, maxRetries);
-                    }
-
-                    using var response = await GetClient().PostAsync($"{baseUrl}/upscale", content, cancellationToken);
-
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var result = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-                        _logger.LogDebug("Received upscaled image ({Size} bytes)", result.Length);
-                        return result;
-                    }
-                    else
-                    {
-                        var error = await response.Content.ReadAsStringAsync(cancellationToken);
-                        _logger.LogError("AI service upscaling failed: {StatusCode} - {Error}", response.StatusCode, error);
-                        // Don't retry on 4xx client errors
-                        if ((int)response.StatusCode < 500) break;
-                    }
-                }
-                catch (TaskCanceledException)
-                {
-                    _logger.LogWarning("Upscaling request was cancelled");
-                    break; // Don't retry on cancellation
-                }
-                catch (HttpRequestException ex)
-                {
-                    _logger.LogError(ex, "HTTP error communicating with AI service at {Url} (attempt {Attempt})", baseUrl, attempt + 1);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Unexpected error during upscaling");
-                    break;
-                }
-
-                if (attempt < maxRetries)
-                {
-                    // Exponential backoff: 1s, 2s
-                    await Task.Delay(TimeSpan.FromSeconds(1 << attempt), cancellationToken);
-                }
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// Request the AI service to download a model.
-        /// Retries once on transient network errors with a 2-second back-off.
-        /// </summary>
-        public async Task<bool> DownloadModelAsync(string modelName, CancellationToken cancellationToken = default)
-        {
-            var baseUrl = GetServiceUrl();
-            const int maxRetries = 1;
-            for (int attempt = 0; attempt <= maxRetries; attempt++)
-            {
-                try
-                {
-                    using var content = new MultipartFormDataContent();
-                    content.Add(new StringContent(modelName), "model_name");
-                    using var response = await GetClient().PostAsync($"{baseUrl}/models/download", content, cancellationToken);
-                    if (response.IsSuccessStatusCode) return true;
-                    // Don't retry on 4xx client errors
-                    if ((int)response.StatusCode < 500) return false;
-                }
-                catch (TaskCanceledException)
-                {
-                    break;
-                }
-                catch (HttpRequestException ex)
-                {
-                    _logger.LogWarning(ex, "Transient error downloading model {Model} (attempt {Attempt})", modelName, attempt + 1);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to download model {Model}", modelName);
-                    return false;
-                }
-
-                if (attempt < maxRetries)
-                    await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
-            }
-
-            _logger.LogError("All attempts to download model {Model} failed", modelName);
-            return false;
-        }
-
-        /// <summary>
-        /// Request the AI service to load a model.
-        /// Retries once on transient network errors with a 2-second back-off.
-        /// </summary>
-        public async Task<bool> LoadModelAsync(string modelName, bool useGpu = true, int gpuDeviceId = 0, CancellationToken cancellationToken = default)
-        {
-            var baseUrl = GetServiceUrl();
-            const int maxRetries = 1;
-            for (int attempt = 0; attempt <= maxRetries; attempt++)
-            {
-                try
-                {
-                    using var content = new MultipartFormDataContent();
-                    content.Add(new StringContent(modelName), "model_name");
-                    content.Add(new StringContent(useGpu.ToString().ToLower()), "use_gpu");
-                    content.Add(new StringContent(gpuDeviceId.ToString()), "gpu_device_id");
-                    using var response = await GetClient().PostAsync($"{baseUrl}/models/load", content, cancellationToken);
-                    if (response.IsSuccessStatusCode) return true;
-                    if ((int)response.StatusCode < 500) return false;
-                }
-                catch (TaskCanceledException)
-                {
-                    break;
-                }
-                catch (HttpRequestException ex)
-                {
-                    _logger.LogWarning(ex, "Transient error loading model {Model} (attempt {Attempt})", modelName, attempt + 1);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to load model {Model}", modelName);
-                    return false;
-                }
-
-                if (attempt < maxRetries)
-                    await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
-            }
-
-            _logger.LogError("All attempts to load model {Model} failed", modelName);
-            return false;
-        }
+        public Task<bool> LoadModelAsync(string modelName, bool useGpu = true, int gpuDeviceId = 0, CancellationToken ct = default)
+            => _http.LoadModelAsync(_urls.GetServiceUrl(), modelName, useGpu, gpuDeviceId, ct);
 
         public void Dispose()
         {
             if (!_disposed)
             {
-                _fallbackClient?.Dispose();
-                _modelLoadSemaphore?.Dispose();
+                _ownedHttpClient?.Dispose();
                 _disposed = true;
             }
             GC.SuppressFinalize(this);

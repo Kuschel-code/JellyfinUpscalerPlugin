@@ -23,7 +23,12 @@ namespace JellyfinUpscalerPlugin
             serviceCollection.AddSingleton<UpscalerProgressHub>();
             serviceCollection.AddSingleton<LibraryScanHelper>();
 
-            // HTTP-based AI Service (Docker)
+            // HTTP-based AI Service (Docker) — composed of 4 SRP collaborators
+            // exposed for direct injection where helpful, plus the legacy facade.
+            serviceCollection.AddSingleton<IServiceUrlProvider, ConfigUrlProvider>();
+            serviceCollection.AddSingleton<IUpscalerHttpClient, UpscalerHttpClient>();
+            serviceCollection.AddSingleton<IServiceHealthMonitor, CachedHealthMonitor>();
+            serviceCollection.AddSingleton<IModelLifecycleManager, SingleModelLifecycleManager>();
             serviceCollection.AddSingleton<HttpUpscalerService>();
 
             // Auth handler (injects X-Api-Token on every AI service call)
