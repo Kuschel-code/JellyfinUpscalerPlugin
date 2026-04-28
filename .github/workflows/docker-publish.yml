@@ -12,7 +12,8 @@ name: Docker Publish (docker7)
 #   DOCKERHUB_USERNAME   — Docker Hub account name
 #   DOCKERHUB_TOKEN      — Docker Hub access token with write:packages scope
 #
-# Actions below use version tags; pin to SHAs via Dependabot before first merge.
+# All third-party actions are SHA-pinned (with a tag comment) to defend
+# against tag-swap supply-chain attacks. Bump via Dependabot.
 
 on:
   workflow_dispatch:
@@ -74,7 +75,7 @@ jobs:
             platforms: 'linux/amd64,linux/arm64'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Resolve version
         id: version
@@ -90,14 +91,14 @@ jobs:
           echo "Plugin version: $VERSION ($SHORT_SHA)"
 
       - name: Set up QEMU (enables arm64 emulation for multi-arch builds)
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
 
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
 
       - name: Log in to Docker Hub
         if: github.event.inputs.push != 'false'
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -122,7 +123,7 @@ jobs:
           printf '  %s\n' $(echo "$TAGS" | tr ',' '\n')
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
         with:
           context: ./docker-ai-service
           file: ./docker-ai-service/${{ matrix.dockerfile }}
@@ -142,7 +143,7 @@ jobs:
       # ---------------------------------------------------------------
       - name: Trivy scan
         if: github.event.inputs.push != 'false'
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # master @ 2026-04 (no current release tag)
         with:
           image-ref: ${{ steps.tags.outputs.primary }}
           format: sarif
@@ -153,7 +154,7 @@ jobs:
 
       - name: Upload Trivy SARIF
         if: github.event.inputs.push != 'false'
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@b2f9ef845756500b97acbdaf5c1dd4e9c1d15734 # v3.35.2
         with:
           sarif_file: trivy-${{ matrix.backend }}.sarif
           category: trivy-${{ matrix.backend }}
