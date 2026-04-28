@@ -41,6 +41,8 @@ except ImportError:
     ONNX_AVAILABLE = False
     ort = None
 
+from .trt_engine_cache import trt_provider_options
+
 # ncnn-Vulkan for GPU super-resolution on AMD pre-RDNA2, Intel, etc.
 try:
     from realsr_ncnn_vulkan_python import RealSR
@@ -1826,11 +1828,17 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
                 try:
                     trt_opts = ort.SessionOptions()
                     trt_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+                    trt_opts_dict = trt_provider_options(int(device_id), MODELS_DIR)
+                    if "trt_engine_cache_enable" in trt_opts_dict:
+                        logger.info(
+                            f"TensorRT engine cache enabled at {trt_opts_dict.get('trt_engine_cache_path')} "
+                            f"(FP16={trt_opts_dict.get('trt_fp16_enable')}, opt-level={trt_opts_dict.get('trt_builder_optimization_level')})"
+                        )
                     trt_session = ort.InferenceSession(
                         str(model_path), trt_opts,
                         providers=['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider'],
                         provider_options=[
-                            {'device_id': int(device_id), 'trt_max_workspace_size': 2147483648},
+                            trt_opts_dict,
                             {'device_id': int(device_id)},
                             {}
                         ]
