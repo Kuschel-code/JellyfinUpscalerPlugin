@@ -148,6 +148,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpGet("models")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult> GetAvailableModels()
         {
