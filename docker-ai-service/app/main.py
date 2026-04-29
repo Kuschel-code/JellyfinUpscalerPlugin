@@ -42,6 +42,7 @@ except ImportError:
     ort = None
 
 from .trt_engine_cache import trt_provider_options
+from .url_safety import UnsafeUrlError, assert_safe_outbound_url
 
 # ncnn-Vulkan for GPU super-resolution on AMD pre-RDNA2, Intel, etc.
 try:
@@ -3201,38 +3202,13 @@ async def register_connection(
 ):
     """Register a plugin connection."""
     _require_api_token(request)
-    # Validate jellyfin_url scheme
-    parsed = urllib.parse.urlparse(jellyfin_url)
-    if parsed.scheme not in ("http", "https"):
-        raise HTTPException(status_code=400, detail="Invalid URL scheme. Only http:// and https:// are allowed.")
-
-    # Block SSRF: reject private/loopback IP addresses
-    import ipaddress
-    hostname = parsed.hostname
-    if hostname:
-        # Reject well-known loopback/private hostnames
-        _blocked_hosts = {"localhost", "localhost.localdomain", "ip6-localhost", "ip6-loopback"}
-        if hostname.lower() in _blocked_hosts:
-            raise HTTPException(status_code=400, detail="Private/loopback URLs are not allowed.")
-        try:
-            addr = ipaddress.ip_address(hostname)
-            if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
-                raise HTTPException(status_code=400, detail="Private/loopback URLs are not allowed.")
-        except ValueError:
-            # hostname is a DNS name — resolve it and check each IP against private ranges
-            try:
-                addrinfos = socket.getaddrinfo(hostname, None)
-                for family, _type, _proto, _canonname, sockaddr in addrinfos:
-                    resolved_ip = ipaddress.ip_address(sockaddr[0])
-                    if resolved_ip.is_private or resolved_ip.is_loopback or resolved_ip.is_link_local or resolved_ip.is_reserved:
-                        raise HTTPException(
-                            status_code=400,
-                            detail="Private/loopback URLs are not allowed (DNS resolves to private IP)."
-                        )
-            except socket.gaierror:
-                raise HTTPException(status_code=400, detail="Could not resolve hostname.")
-            except HTTPException:
-                raise
+    # SSRF guard via shared helper: scheme allowlist + globally-routable
+    # IP allowlist (catches CGNAT 100.64/10 which the older blocklist missed),
+    # plus DNS-resolution-based check for hostname inputs.
+    try:
+        assert_safe_outbound_url(jellyfin_url)
+    except UnsafeUrlError as e:
+        raise HTTPException(status_code=400, detail=f"jellyfin_url rejected: {e}")
 
     connection = {
         "plugin_id": plugin_id,
