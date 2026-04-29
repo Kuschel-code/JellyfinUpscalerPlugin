@@ -231,6 +231,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// a library picker for the scheduled-scan scope filter (issue #64).
         /// </summary>
         [HttpGet("libraries")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetLibraries()
         {
@@ -258,6 +259,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpGet("status")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetStatus()
         {
