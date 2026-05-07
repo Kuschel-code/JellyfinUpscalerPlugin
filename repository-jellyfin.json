@@ -13,7 +13,7 @@
         "changelog": "v1.6.1.17: FIX Auto-Mode broken for multi-frame VSR (returned 3 self-host models unconditionally). New PickAvailable() helper falls back to single-frame equivalents. FIX Controller fallback list 12 → 43 models via embedded models-fallback.json. FIX site/models.html drift (8 fictional models removed, auto-generated from registry). FIX Anime default → anime-compact-x4. CLEANUP ModelManager.cs removed (dead code). NEW MODELS: Real-CUGAN x2/x4, DRCT-L x4, BHI-RealPLKSR x4, RIFE v4.25 (catalog 43 → 48). Docker service VERSION 1.6.1.15 → 1.6.1.17 (was missed in v1.6.1.16).",
         "targetAbi": "10.11.8.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.17/JellyfinUpscalerPlugin-v1.6.1.17.zip",
-        "checksum": "PENDING_FILL_AFTER_BUILD",
+        "checksum": "2ecc89b4c973d48620b2eb6c925ac476",
         "timestamp": "2026-05-07T12:00:00.000Z"
       },
       {
