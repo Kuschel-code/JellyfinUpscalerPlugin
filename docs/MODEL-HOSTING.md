@@ -1,6 +1,12 @@
 # Self-Hosting Models Flagged `[self-host required]`
 
-Five models in the v1.6.1.12 catalog show `[self-host required]` in their name and remain `available: False` because no public ONNX mirror exists. They are real models with official PyTorch / checkpoint releases — but no maintainer has published a publicly-downloadable ONNX export. To turn them on for your own instance, you need to (1) export the weights to ONNX yourself, (2) host the file somewhere your AI service can reach, and (3) edit the URL in `docker-ai-service/app/main.py`.
+Five models in the catalog (as of v1.6.1.18, registry size 48) show `[self-host required]` in their name and remain `available: False` because no public ONNX mirror exists, or the only public mirror has an execution-provider compatibility issue. They are real models with official PyTorch / checkpoint releases — but no maintainer has published a publicly-downloadable ONNX export. To turn them on for your own instance, you need to (1) export the weights to ONNX yourself, (2) host the file somewhere your AI service can reach, and (3) edit the URL in `docker-ai-service/app/main.py`.
+
+**Before you self-host any of these — consider the v1.6.1.17 alternatives first:**
+
+- For HAT photo-restoration → **`drct-l-x4`** is publicly available (mirror: `aaronespasa/drct-super-resolution`) and covers the same use-case as `nomos8k-hat-x4` with comparable quality. No self-host needed.
+- For anime upscaling that previously needed `apisr-x3` → **`real-cugan-x4`** is publicly available (mirror: `mayhug/Real-CUGAN`) and is often cleaner on linework anyway.
+- Multi-frame VSR (`edvr-m-x4`, `realbasicvsr-x4`, `animesr-v2-x4`) still has no public single-frame substitute — those genuinely need self-hosting if you want temporal consistency on top of single-frame quality.
 
 ## Affected models
 

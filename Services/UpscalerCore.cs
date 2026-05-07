@@ -396,6 +396,18 @@ namespace JellyfinUpscalerPlugin.Services
                 return "anime-compact-x4";
             }
 
+            // v1.6.1.18 - honor user's PreferredLiveActionModel override before falling through
+            // to heuristic. Symmetric to the PreferredAnimeModel hook above (caught in v1.6.1.17 by
+            // Verifier-B for Anime; the live-action twin was missed and was Dead-Config until now).
+            // Default is "" (let heuristic pick). User may set to e.g. "drct-l-x4" for SOTA photo
+            // quality or "bhi-realplksr-x4" for the speed champion.
+            var liveActionOverride = Config.PreferredLiveActionModel;
+            if (!string.IsNullOrWhiteSpace(liveActionOverride))
+            {
+                _logger.LogDebug("Auto-model: live-action + PreferredLiveActionModel override → {Model}", liveActionOverride);
+                return PickAvailable(liveActionOverride, "ultrasharp-v2-x4", "nomos2-realplksr-x4", "realesrgan-x4");
+            }
+
             if (!isBatch)
             {
                 // Real-time: prioritize speed. Use 2x models for lower VRAM/compute cost.

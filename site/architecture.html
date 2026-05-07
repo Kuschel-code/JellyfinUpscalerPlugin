@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.17</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.18</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Architecture</h1>
@@ -45,7 +45,7 @@
   <p>The plugin singleton. Holds references to <code>MediaEncoder</code> (for ffmpeg/ffprobe paths), <code>HttpUpscalerService</code> (HTTP client), and three sub-services described below. Processes jobs via <code>ProcessVideoAsync</code>.</p>
 
   <h3>VideoAnalyzer · VideoFrameProcessor · ProcessingMethodExecutor</h3>
-  <p>Three specialised helpers that cache ffmpeg/ffprobe paths. All three had a cold-start bug (fixed in <a href="changelog.html">v1.6.1.17</a>) where the captured paths were empty if Jellyfin constructed the plugin before <code>MediaEncoder.EncoderPath</code>/<code>ProbePath</code> finished resolving. The fix: new <code>EnsureFFmpegReady()</code> in <code>VideoProcessor</code> late-resolves and propagates updated paths via new <code>Update*Path()</code> methods.</p>
+  <p>Three specialised helpers that cache ffmpeg/ffprobe paths. All three had a cold-start bug (fixed in <a href="changelog.html">v1.6.1.18</a>) where the captured paths were empty if Jellyfin constructed the plugin before <code>MediaEncoder.EncoderPath</code>/<code>ProbePath</code> finished resolving. The fix: new <code>EnsureFFmpegReady()</code> in <code>VideoProcessor</code> late-resolves and propagates updated paths via new <code>Update*Path()</code> methods.</p>
 
   <h3>HttpUpscalerService</h3>
   <p>Thin wrapper around <code>IHttpClientFactory</code>. Attaches <code>X-Api-Token</code> header when configured. Handles retries, transparent decompression, and per-call timeouts.</p>
@@ -99,13 +99,13 @@
       <tr><td>Service offline</td><td>Test Connection shows red; scheduled task logs and skips cleanly; quick-menu shows "Standalone" badge.</td></tr>
       <tr><td>Model download fails</td><td>Model row flips to <code>error</code> state with the HTTP status message. Retry button re-issues the download.</td></tr>
       <tr><td>GPU OOM during load</td><td>Service returns <code>507 Insufficient Storage</code>; plugin surfaces the service-provided hint verbatim.</td></tr>
-      <tr><td>ffmpeg/ffprobe paths unresolved</td><td>v1.6.1.17 <code>EnsureFFmpegReady()</code> re-queries MediaEncoder on every entry point. Logs warn if still unresolved instead of silently failing.</td></tr>
+      <tr><td>ffmpeg/ffprobe paths unresolved</td><td>v1.6.1.18 <code>EnsureFFmpegReady()</code> re-queries MediaEncoder on every entry point. Logs warn if still unresolved instead of silently failing.</td></tr>
       <tr><td>Plugin DLL missing transitive NuGet</td><td>Jellyfin tombstones the plugin. Recovery: add the missing DLL, call <code>POST /Plugins/{id}/{version}/Enable</code>.</td></tr>
     </tbody>
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.17</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.18</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

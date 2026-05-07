@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.6.1.18",
+        "changelog": "v1.6.1.18: Follow-up patch fixing 3 sibling bugs from v1.6.1.17 external audit. FIX PreferredLiveActionModel was Dead-Config (UI saved it, resolver never read it) — symmetric twin of v1.6.1.17 anime fix. New non-anime override hook with PickAvailable fallback chain. FIX RealTime-AI fastModels HashSet drifted from registry — expanded 9 → 14 entries, now includes bhi-realplksr-x4 (Speed Champion was being silently rejected) + compact family + swinir-small. FIX docs/MODEL-HOSTING.md outdated (still 'v1.6.1.12 catalog'); now recommends drct-l-x4 over self-host HAT and real-cugan-x4 over gated apisr-x3. NEW TEST: LiveAction non-anime drift-protection [Theory]. dotnet test 37/37 (was 33). No model changes, no breaking config.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.18/JellyfinUpscalerPlugin-v1.6.1.18.zip",
+        "checksum": "PENDING_FILL_AFTER_BUILD",
+        "timestamp": "2026-05-07T22:00:00.000Z"
+      },
+      {
         "version": "1.6.1.17",
         "changelog": "v1.6.1.17: FIX Auto-Mode broken for multi-frame VSR (returned 3 self-host models unconditionally). New PickAvailable() helper falls back to single-frame equivalents. FIX Controller fallback list 12 → 43 models via embedded models-fallback.json. FIX site/models.html drift (8 fictional models removed, auto-generated from registry). FIX Anime default → anime-compact-x4. CLEANUP ModelManager.cs removed (dead code). NEW MODELS: Real-CUGAN x2/x4, DRCT-L x4, BHI-RealPLKSR x4, RIFE v4.25 (catalog 43 → 48). Docker service VERSION 1.6.1.15 → 1.6.1.17 (was missed in v1.6.1.16).",
         "targetAbi": "10.11.8.0",

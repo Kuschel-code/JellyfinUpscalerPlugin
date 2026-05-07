@@ -1,6 +1,6 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
 <style>
-    /* ===== AI Upscaler v1.6.1.17 — Jellyfin-compatible dark theme ===== */
+    /* ===== AI Upscaler v1.6.1.18 — Jellyfin-compatible dark theme ===== */
     #UpscalerConfigurationPage {
         --accent: #00d4ff;
         --accent-bg: rgba(0, 212, 255, 0.12);
@@ -361,7 +361,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.6.1.17 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.6.1.18 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -1406,7 +1406,7 @@
                 // Docker service returns { models: [...] }, fallback returns plain array
                 modelsData = (data && data.models) ? data.models : (Array.isArray(data) ? data : []);
 
-                // v1.6.1.17 - Categories that DON'T belong in the upscale-model dropdown:
+                // v1.6.1.18 - Categories that DON'T belong in the upscale-model dropdown:
                 //   interpolation = RIFE (frame interp, takes 2 frames as input -> /upscale call returns 500)
                 //   face_restore  = GFPGAN/CodeFormer (operate on 512x512 face crops, not full frames)
                 var UPSCALE_EXCLUDED = ['interpolation', 'face_restore'];
@@ -1441,7 +1441,7 @@
 
                 select.addEventListener('change', function() { updateScaleOptions(page); });
 
-                // v1.6.1.17 - Populate PreferredAnimeModel + PreferredLiveActionModel dropdowns.
+                // v1.6.1.18 - Populate PreferredAnimeModel + PreferredLiveActionModel dropdowns.
                 // Anime: only category="anime" entries. Live-action: any upscale-eligible non-anime entry.
                 populatePreferredModelDropdown(page, '#PreferredAnimeModel',
                     upscaleModels.filter(function(m) { return m.category === 'anime'; }));
@@ -1453,7 +1453,7 @@
             });
         }
 
-        // v1.6.1.17 - Populate a "Preferred X Model" dropdown while preserving the saved value.
+        // v1.6.1.18 - Populate a "Preferred X Model" dropdown while preserving the saved value.
         // Always keeps the "Auto (use heuristic)" option at the top with value="".
         function populatePreferredModelDropdown(page, selector, models) {
             var sel = page.querySelector(selector);
@@ -1756,7 +1756,7 @@
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.6.1.17';
+                config.PluginVersion = '1.6.1.18';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');

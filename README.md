@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.6.1.17
+# Jellyfin AI Upscaler Plugin v1.6.1.18
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.7-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.6.1.17):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.6.1.18):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.6.1.17     │  │
+│  │  AI Upscaler Plugin v1.6.1.18     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -289,12 +289,23 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.6.1.17` — pinned to a specific plugin release
-- `:v1.6.1.17-<backend>` — full semver (e.g. `:v1.6.1.17-cpu`)
+- `:docker7-v1.6.1.18` — pinned to a specific plugin release
+- `:v1.6.1.18-<backend>` — full semver (e.g. `:v1.6.1.18-cpu`)
 
 ---
 
 ## Changelog
+
+### v1.6.1.18 (Live-Action Resolver + RealTime-AI Whitelist + Docs Sync)
+
+Follow-up patch to v1.6.1.17 — fixes 3 sibling bugs an external audit caught after release. The v1.6.1.17 review fixed the anime-side of these bugs but missed the symmetric live-action twin and the compact-family RealTime-AI rejection. No new models, no schema changes.
+
+- **`PreferredLiveActionModel` was Dead-Config** — exact symmetric twin of the v1.6.1.17 PreferredAnimeModel fix. Field was defined, UI dropdown rendered + populated + persisted by Controller — but `ResolveModelForVideo()` never read it. Symmetric hook added: if user sets "Preferred Live-Action Model" to e.g. `drct-l-x4`, the resolver now actually uses it (with `PickAvailable(override → ultrasharp-v2-x4 → nomos2-realplksr-x4 → realesrgan-x4)` fallback chain).
+- **RealTime-AI rejected the v1.6.1.17 "Speed Champion"** — `Services/ProcessingStrategySelector.IsRealTimeAIFeasible()` had a hardcoded 9-entry HashSet that drifted from the 14-entry registry. `bhi-realplksr-x4` (advertised as 2× DAT2 throughput), `nomosuni-compact-x2`, `lsdir-compact-x4`, `swinir-small-x2/x4` were all silently rejected with `RealTimeAI skipped: not in fast model list`. HashSet expanded to 14 + new substring safety-net (`compact`, `realplksr`).
+- **`docs/MODEL-HOSTING.md` was 5 releases out of date** — still said "v1.6.1.12 catalog". Now points to v1.6.1.17's `drct-l-x4` as a HAT alternative and `real-cugan-x4` as APISR alternative for users who don't want to self-host.
+- **+1 new drift-protection [Theory]** in `UpscalerCoreAutoModelTests` — locks down the live-action path so a future contributor can't re-introduce the same class of bug.
+
+**Verification:** `dotnet build -c Release` — 0 warnings, 0 errors. `dotnet test` — 37/37 passing (was 33). No config breaking changes — v1.6.1.17 saved configs are bit-for-bit compatible.
 
 ### v1.6.1.17 (Auto-Mode Drift Fix + 5 New SOTA Models + UI Polish)
 

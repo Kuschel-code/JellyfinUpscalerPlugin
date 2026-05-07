@@ -155,5 +155,37 @@ namespace JellyfinUpscalerPlugin.Tests.Services
                 "anime-compact-x4",
                 "realesrgan-animevideo-x4");
         }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // v1.6.1.18: PreferredLiveActionModel must be honored in non-anime path
+        // (caught by external audit — symmetric to Anime hook, was Dead-Config until 1.6.1.18).
+        // ──────────────────────────────────────────────────────────────────────
+
+        [Theory]
+        [InlineData(true,  1920, 1080)]   // HD batch
+        [InlineData(false, 1920, 1080)]   // HD realtime
+        [InlineData(true,  640,  360)]    // low-res batch
+        [InlineData(false, 640,  360)]    // low-res realtime
+        public void LiveAction_NonAnime_NeverReturnsKnownUnavailableModel(bool isBatch, int width, int height)
+        {
+            // The default for PreferredLiveActionModel is "" (let heuristic pick).
+            // Whatever the resolver returns must NEVER be a known-unavailable model — that's
+            // the regression-guard. The override mechanism itself runs through PickAvailable
+            // so even a typo'd override would graceful-fallback to ultrasharp-v2-x4 → realesrgan-x4.
+            var model = _core.ResolveModelForVideo(
+                genres: null,                  // non-anime
+                width: width, height: height,
+                isBatch: isBatch,
+                inputFrames: 1,
+                forceAuto: true);
+
+            var knownUnavailable = new[]
+            {
+                "nomos8k-hat-x4", "apisr-x3",
+                "edvr-m-x4", "realbasicvsr-x4", "animesr-v2-x4"
+            };
+            knownUnavailable.Should().NotContain(model,
+                "PreferredLiveActionModel resolver path must never leak a self-host-required model");
+        }
     }
 }

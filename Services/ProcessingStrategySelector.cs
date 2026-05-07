@@ -167,17 +167,38 @@ namespace JellyfinUpscalerPlugin.Services
                 return false;
             }
 
-            // Only fast models are suitable for real-time
+            // Only fast / video-fast category models are suitable for real-time.
+            // v1.6.1.18 - HashSet expanded to cover all category=video-fast entries (compact family
+            // + bhi-realplksr-x4 - the v1.6.1.17 "Speed Champion" was being silently rejected here).
+            // Source of truth: Resources/models-fallback.json (category in {fast, video-fast}).
+            // If you add a new fast/video-fast model to AVAILABLE_MODELS, add the ID here too.
             var fastModels = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                "span-x2", "span-x4",
-                "clearreality-x4",
+                // category=fast (CPU-friendly OpenCV)
                 "fsrcnn-x2", "fsrcnn-x3", "fsrcnn-x4",
-                "espcn-x2", "espcn-x3", "espcn-x4"
+                "espcn-x2", "espcn-x3", "espcn-x4",
+                // category=nextgen but realtime-eligible (SPAN family)
+                "span-x2", "span-x4",
+                // category=video-fast (compact ONNX, <10 MB, designed for realtime video)
+                "clearreality-x4",
+                "nomosuni-compact-x2",
+                "lsdir-compact-x4",
+                "swinir-small-x2", "swinir-small-x4",
+                "bhi-realplksr-x4",
             };
 
             var modelName = options.Model?.ToLowerInvariant() ?? "";
-            if (!fastModels.Contains(modelName) && !modelName.Contains("fsrcnn") && !modelName.Contains("espcn") && !modelName.Contains("span"))
+            // Substring matchers as a forgiving safety net: any future model whose ID contains
+            // fsrcnn / espcn / span / compact / realplksr is treated as fast even before the
+            // exact ID lands in the HashSet above.
+            bool isFast = fastModels.Contains(modelName)
+                || modelName.Contains("fsrcnn")
+                || modelName.Contains("espcn")
+                || modelName.Contains("span")
+                || modelName.Contains("compact")
+                || modelName.Contains("realplksr");
+
+            if (!isFast)
             {
                 _logger.LogDebug("RealTimeAI skipped: model '{Model}' is not in the fast model list", options.Model);
                 return false;
