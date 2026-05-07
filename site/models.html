@@ -7,87 +7,153 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.16</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.17</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container">
   <h1>AI model catalog</h1>
-  <p class="lead" style="color: var(--text-dim);">32 models shipped, 5 marked <em>[self-host required]</em>. Weights are pulled on demand — none of them are bundled in the Docker image.</p>
+  <p class="lead" style="color: var(--text-dim);">48 models registered, 5 marked <em>[self-host required]</em>. Weights are pulled on demand — none of them are bundled in the Docker image.</p>
 
-  <h2>General-purpose upscalers</h2>
+  <!-- AUTO-GENERATED FROM docker-ai-service/app/main.py:AVAILABLE_MODELS -->
+  <!-- Generator: Scripts/sync-fallback-models.ps1 -->
+  <!-- DO NOT EDIT BY HAND. Regenerate the JSON, then re-render this section. -->
+  <p style="color: var(--text-dim); font-size: 0.9em;">Last regenerated: <code>2026-05-07</code> from <code>docker-ai-service/app/main.py:AVAILABLE_MODELS</code></p>
+
+  <h2>Real-ESRGAN <small>(2)</small></h2>
   <table>
-    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>VRAM (est.)</th><th>Best for</th></tr></thead>
+    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td><code>realesrgan-x4plus</code></td><td>4×</td><td>ESRGAN</td><td>~4 GB</td><td>General live-action, default</td></tr>
-      <tr><td><code>realesrgan-x2plus</code></td><td>2×</td><td>ESRGAN</td><td>~3 GB</td><td>Fast 2× pass</td></tr>
-      <tr><td><code>realesrnet-x4plus</code></td><td>4×</td><td>ESRGAN</td><td>~4 GB</td><td>Noise-heavy sources</td></tr>
-      <tr><td><code>swinir-m-x4</code></td><td>4×</td><td>SwinIR</td><td>~5 GB</td><td>Film grain preservation</td></tr>
-      <tr><td><code>swinir-l-x4</code></td><td>4×</td><td>SwinIR Large</td><td>~8 GB</td><td>Best quality, slow</td></tr>
-      <tr><td><code>hat-s-x4</code></td><td>4×</td><td>HAT Small</td><td>~4 GB</td><td>Balanced modern</td></tr>
-      <tr><td><code>hat-m-x4</code></td><td>4×</td><td>HAT Medium</td><td>~6 GB</td><td>Balanced modern</td></tr>
-      <tr><td><code>hat-l-x4</code></td><td>4×</td><td>HAT Large</td><td>~9 GB</td><td>Sharpest general</td></tr>
+      <tr><td><code>realesrgan-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Best quality 4x for photos & anime (67MB ONNX)</td></tr>
+      <tr><td><code>realesrgan-x4-256</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Optimized for 256px tiles, better for low VRAM</td></tr>
     </tbody>
   </table>
 
-  <h2>Anime upscalers</h2>
+  <h2>Fast (OpenCV) <small>(6)</small></h2>
   <table>
-    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>VRAM (est.)</th><th>Best for</th></tr></thead>
+    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td><code>realesrgan-anime-x4</code></td><td>4×</td><td>ESRGAN-anime</td><td>~3 GB</td><td>Classic anime, default</td></tr>
-      <tr><td><code>anime-compact-x4</code></td><td>4×</td><td>Compact</td><td>~2 GB</td><td>Fast anime, low-VRAM GPUs</td></tr>
-      <tr><td><code>waifu2x-cunet-x2</code></td><td>2×</td><td>CUNet</td><td>~2 GB</td><td>Line-art preservation</td></tr>
-      <tr><td><code>waifu2x-upconv-x2</code></td><td>2×</td><td>UpConv</td><td>~2 GB</td><td>Fast waifu2x variant</td></tr>
-      <tr><td><code>animesr-v2-x4 [self-host required]</code></td><td>4×</td><td>AnimeSR v2</td><td>~5 GB</td><td>Modern anime, best quality</td></tr>
-      <tr><td><code>apisr-x3 [self-host required]</code></td><td>3×</td><td>APISR</td><td>~4 GB</td><td>Anime at 3× scale</td></tr>
+      <tr><td><code>fsrcnn-x2</code></td><td>x2</td><td>pb</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Very fast 2x upscaling, good for real-time</td></tr>
+      <tr><td><code>fsrcnn-x3</code></td><td>x3</td><td>pb</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Fast 3x upscaling</td></tr>
+      <tr><td><code>fsrcnn-x4</code></td><td>x4</td><td>pb</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Fast 4x upscaling, lower quality but quick</td></tr>
+      <tr><td><code>espcn-x2</code></td><td>x2</td><td>pb</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Fastest model, minimal quality improvement</td></tr>
+      <tr><td><code>espcn-x3</code></td><td>x3</td><td>pb</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Fastest 3x model</td></tr>
+      <tr><td><code>espcn-x4</code></td><td>x4</td><td>pb</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Fastest 4x model</td></tr>
     </tbody>
   </table>
 
-  <h2>Fast / low-VRAM</h2>
+  <h2>Quality (OpenCV) <small>(6)</small></h2>
   <table>
-    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>VRAM (est.)</th><th>Best for</th></tr></thead>
+    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td><code>fsrcnn-x2</code></td><td>2×</td><td>FSRCNN</td><td>~200 MB</td><td>Real-time on iGPU</td></tr>
-      <tr><td><code>fsrcnn-x3</code></td><td>3×</td><td>FSRCNN</td><td>~250 MB</td><td>Fast 3× pass</td></tr>
-      <tr><td><code>fsrcnn-x4</code></td><td>4×</td><td>FSRCNN</td><td>~300 MB</td><td>CPU-only fallback</td></tr>
-      <tr><td><code>espcn-x2</code></td><td>2×</td><td>ESPCN</td><td>~150 MB</td><td>Lightest model</td></tr>
-      <tr><td><code>espcn-x4</code></td><td>4×</td><td>ESPCN</td><td>~200 MB</td><td>CPU real-time</td></tr>
+      <tr><td><code>lapsrn-x2</code></td><td>x2</td><td>pb</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Good quality 2x upscaling</td></tr>
+      <tr><td><code>lapsrn-x4</code></td><td>x4</td><td>pb</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Good quality 4x upscaling</td></tr>
+      <tr><td><code>lapsrn-x8</code></td><td>x8</td><td>pb</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Extreme 8x upscaling</td></tr>
+      <tr><td><code>edsr-x2</code></td><td>x2</td><td>pb</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Best quality 2x with OpenCV, requires more compute</td></tr>
+      <tr><td><code>edsr-x3</code></td><td>x3</td><td>pb</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Best quality 3x with OpenCV</td></tr>
+      <tr><td><code>edsr-x4</code></td><td>x4</td><td>pb</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Best quality 4x with OpenCV, slowest but best</td></tr>
     </tbody>
   </table>
 
-  <h2>Temporal / multi-frame</h2>
+  <h2>Next-Gen (SPAN/SwinIR/APISR) <small>(6)</small></h2>
   <table>
-    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>VRAM (est.)</th><th>Best for</th></tr></thead>
+    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td><code>edvr-m-x4 [self-host required]</code></td><td>4×</td><td>EDVR Medium</td><td>~8 GB</td><td>Temporal consistency</td></tr>
-      <tr><td><code>realbasicvsr-x4 [self-host required]</code></td><td>4×</td><td>BasicVSR</td><td>~7 GB</td><td>Real-world low-res video</td></tr>
-      <tr><td><code>nomos8k-hat-x4 [self-host required]</code></td><td>4×</td><td>HAT-Nomos</td><td>~9 GB</td><td>Nomos8k-trained variant</td></tr>
+      <tr><td><code>span-x2</code></td><td>x2</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">SPAN — fastest quality model, NTIRE 2023 winner. Best for real-time video.</td></tr>
+      <tr><td><code>span-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">SPAN 4x — fast quality upscaling, great speed/quality balance.</td></tr>
+      <tr><td><code>realesrgan-x2-plus</code></td><td>x2</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Real-ESRGAN x2 Plus — high quality 2x for photos and live-action.</td></tr>
+      <tr><td><code>realesrgan-animevideo-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Real-ESRGAN trained specifically for anime video. Optimized for temporal consistency.</td></tr>
+      <tr><td><code>swinir-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">SwinIR — Swin Transformer for image restoration. Best quality for photos & live-action.</td></tr>
+      <tr><td><code>apisr-x3</code></td><td>x3</td><td>onnx</td><td><span style="color: #d3a35c;">self-host</span></td><td style="font-size: 0.85em; color: var(--text-dim);">CVPR 2024 — general 3x for photos & video. Ideal for 720p to 1080p. ~25MB. [Upstream Xenova repo gat…</td></tr>
     </tbody>
   </table>
 
-  <h2>Frame interpolation (RIFE)</h2>
+  <h2>Video Fast (Compact / Speed) <small>(6)</small></h2>
   <table>
-    <thead><tr><th>Model</th><th>Purpose</th><th>VRAM (est.)</th><th>Speed tier</th></tr></thead>
+    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td><code>rife-v4.9</code></td><td>Best quality</td><td>~2 GB</td><td>Slow</td></tr>
-      <tr><td><code>rife-v4.8</code></td><td>Balanced (new in v1.6.1.12)</td><td>~2 GB</td><td>Medium</td></tr>
-      <tr><td><code>rife-v4.7</code></td><td>Fast</td><td>~1.5 GB</td><td>Fast</td></tr>
+      <tr><td><code>clearreality-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">SPAN architecture, only 1.7MB. Real-time 4x for clean video. Best for faces, nature, hair.</td></tr>
+      <tr><td><code>nomosuni-compact-x2</code></td><td>x2</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Compact 2x with medium degradation handling. 2.4MB, ideal for real-time video playback.</td></tr>
+      <tr><td><code>lsdir-compact-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Compact 4x trained on 85k images. 2.5MB, fast enough for near-real-time video.</td></tr>
+      <tr><td><code>swinir-small-x2</code></td><td>x2</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Lightweight SwinIR 2x, only 7.9MB. Good quality/speed balance for video.</td></tr>
+      <tr><td><code>swinir-small-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Lightweight SwinIR 4x, only 8MB. Best quality in the fast category.</td></tr>
+      <tr><td><code>bhi-realplksr-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">BHI-RealPLKSR x4 - 2x faster than DAT2 at comparable quality. ~5fps@256 on RTX 3060. New default for…</td></tr>
     </tbody>
   </table>
-  <div class="callout">
-    <strong>Migration:</strong> old <code>rife-v4.6</code> / <code>rife-v4.6-lite</code> references in saved configs are transparently mapped to the new versions via <code>MODEL_ALIASES</code>.
-  </div>
 
-  <h2>Face restoration</h2>
+  <h2>Video Quality (DAT2 / DRCT-L / RealPLKSR) <small>(4)</small></h2>
   <table>
+    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td><code>gfpgan-v1.4</code></td><td>Forgiving restoration, works on very blurry faces, less sharp</td><td>~1 GB</td></tr>
-      <tr><td><code>codeformer</code></td><td>Sharper restoration, needs reasonably recognisable face input</td><td>~1.5 GB</td></tr>
+      <tr><td><code>ultrasharp-v2-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">DAT2 Transformer — best overall quality for photos and video. 49MB.</td></tr>
+      <tr><td><code>nomos2-dat2-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">DAT2 trained on Nomos v2 dataset. Fixes noise, compression, blur. 53MB.</td></tr>
+      <tr><td><code>nomos2-realplksr-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Modern RealPLKSR architecture. 30MB — best quality-to-size ratio for video.</td></tr>
+      <tr><td><code>drct-l-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">DRCT-L x4 - Dense-Residual Connected Transformer. Sharper than DAT2 on photo content, ~3GB VRAM for …</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Film Restoration <small>(2)</small></h2>
+  <table>
+    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>fsdedither-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Removes dithering artifacts from old DVDs and digitized VHS tapes. 67MB.</td></tr>
+      <tr><td><code>nomos8k-hat-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #d3a35c;">self-host</span></td><td style="font-size: 0.85em; color: var(--text-dim);">HAT Transformer trained on 8k dataset. Handles JPG compression + blur. 57MB.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Anime (Real-CUGAN / APISR / Compact) <small>(4)</small></h2>
+  <table>
+    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>anime-compact-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Ultra-lightweight anime 4x, only 5MB. Perfect for anime real-time playback.</td></tr>
+      <tr><td><code>apisr-anime-x2</code></td><td>x2</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">CVPR 2024 — trained on anime production pipeline. Best anime 2x quality. 18MB.</td></tr>
+      <tr><td><code>real-cugan-x2</code></td><td>x2</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Real-CUGAN x2 - Bilibili AI Lab. Cascaded U-Net, conservative variant preserves linework. Best gener…</td></tr>
+      <tr><td><code>real-cugan-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Real-CUGAN x4 - Bilibili AI Lab. Cleaner than realesrgan-animevideo-x4 on linework, slower than anim…</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Multi-Frame VSR (self-host) <small>(3)</small></h2>
+  <table>
+    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>edvr-m-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #d3a35c;">self-host</span></td><td style="font-size: 0.85em; color: var(--text-dim);">EDVR-M — Multi-frame video super-resolution. Uses 5 frames for temporal consistency. Best batch qual…</td></tr>
+      <tr><td><code>realbasicvsr-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #d3a35c;">self-host</span></td><td style="font-size: 0.85em; color: var(--text-dim);">RealBasicVSR — Recurrent VSR with optical flow (CVPR 2022). Best for real-world degraded video (VHS,…</td></tr>
+      <tr><td><code>animesr-v2-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #d3a35c;">self-host</span></td><td style="font-size: 0.85em; color: var(--text-dim);">AnimeSR v2 — Anime-specialized multi-frame VSR (NeurIPS 2022). Preserves line art and flat colors. ~…</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Vulkan / ncnn <small>(3)</small></h2>
+  <table>
+    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>ncnn-realesrgan-x4</code></td><td>x4</td><td>ncnn</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Real-ESRGAN x4 via ncnn-Vulkan. Works on any Vulkan GPU (AMD RX 5700, Intel Arc, etc.). Bundled with…</td></tr>
+      <tr><td><code>ncnn-realesrgan-anime-x4</code></td><td>x4</td><td>ncnn</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Real-ESRGAN Anime optimized via ncnn-Vulkan. Best for anime content on Vulkan GPUs.</td></tr>
+      <tr><td><code>ncnn-realsr-x4</code></td><td>x4</td><td>ncnn</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">RealSR DF2K x4 via ncnn-Vulkan. Photo-realistic super-resolution on Vulkan GPUs.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Frame Interpolation (RIFE) <small>(4)</small></h2>
+  <table>
+    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>rife-v4.7</code></td><td>—</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">RIFE v4.7 — Faster Frame Interpolation (2x FPS). Ensemble enabled, scale=1. Lighter model for real-t…</td></tr>
+      <tr><td><code>rife-v4.8</code></td><td>—</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">RIFE v4.8 — Balanced Frame Interpolation (2x FPS). Middle ground between v4.7 (fast) and v4.9 (quali…</td></tr>
+      <tr><td><code>rife-v4.9</code></td><td>—</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">RIFE v4.9 — Best-quality Real-Time Frame Interpolation (2x FPS). Ensemble enabled, scale=1. Recommen…</td></tr>
+      <tr><td><code>rife-v4.25</code></td><td>—</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">RIFE v4.25 - current SOTA frame interpolation, better scene-bleeding handling than v4.7-4.9. Recomme…</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Face Restoration <small>(2)</small></h2>
+  <table>
+    <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>gfpgan-v1.4</code></td><td>—</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">GFPGAN v1.4 — Tencent ARC's face restoration GAN. Restores heavily degraded faces. 512x512 crops. Ap…</td></tr>
+      <tr><td><code>codeformer</code></td><td>—</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">CodeFormer - Robust face restoration with transformer codebook. Good for severely degraded faces. 51…</td></tr>
     </tbody>
   </table>
 
   <h2>About <em>[self-host required]</em></h2>
-  <p>Five models do not have a public ONNX mirror available at a URL the plugin can hit directly. You have to export them yourself.</p>
+  <p>5 models do not have a public ONNX mirror available at a URL the plugin can hit directly. You have to export them yourself.</p>
   <ul>
-    <li><strong>Why:</strong> the authors either published only PyTorch <code>.pth</code> weights, or published them behind a Google Drive / registration gate.</li>
+    <li><strong>Why:</strong> the authors either published only PyTorch <code>.pth</code> weights, or the upstream repo is gated (e.g. Xenova HF returns 401), or the model uses ops (HAT LayerNorm) that fail on CPUExecutionProvider.</li>
     <li><strong>Recipe:</strong> see <code>docs/MODEL-HOSTING.md</code> in the repo — PyTorch → ONNX export script.</li>
     <li>Once exported, drop the <code>.onnx</code> file into <code>/app/models/&lt;model-id&gt;.onnx</code> on the service host and it'll appear as available.</li>
   </ul>
@@ -101,7 +167,7 @@ POST /models/{id}/unload           # free VRAM
 GET  /Upscaler/recommend-model     # plugin → service: pick per-video</code></pre>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.16</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.17</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

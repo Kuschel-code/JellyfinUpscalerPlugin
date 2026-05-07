@@ -248,8 +248,10 @@ namespace JellyfinUpscalerPlugin
         /// <summary>Comma-separated fallback models if primary fails (e.g. "realesrgan-x4,span-x4").</summary>
         public string ModelFallbackChain { get; set; } = "";
 
-        /// <summary>Override model for anime content (empty = auto-select).</summary>
-        public string PreferredAnimeModel { get; set; } = "";
+        /// <summary>Override model for anime content. Defaults to anime-compact-x4 (5MB, available=true)
+        /// to avoid the auto-mode falling through to animesr-v2-x4 (self-host required).
+        /// Set to empty string to opt out of the override and let auto-selection pick.</summary>
+        public string PreferredAnimeModel { get; set; } = "anime-compact-x4";
 
         /// <summary>Override model for live-action content (empty = auto-select).</summary>
         public string PreferredLiveActionModel { get; set; } = "";
@@ -517,6 +519,6 @@ namespace JellyfinUpscalerPlugin
         // ── Version Tracking ─────────────────────────────────────────────
 
         /// <summary>Current plugin version string for webhook payloads and diagnostics.</summary>
-        public string PluginVersion { get; set; } = "1.6.1.16";
+        public string PluginVersion { get; set; } = "1.6.1.17";
     }
 }

@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.6.1.16
+# Jellyfin AI Upscaler Plugin v1.6.1.17
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.7-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.6.1.16):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.6.1.17):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.6.1.16     │  │
+│  │  AI Upscaler Plugin v1.6.1.17     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -289,12 +289,50 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.6.1.16` — pinned to a specific plugin release
-- `:v1.6.1.16-<backend>` — full semver (e.g. `:v1.6.1.16-cpu`)
+- `:docker7-v1.6.1.17` — pinned to a specific plugin release
+- `:v1.6.1.17-<backend>` — full semver (e.g. `:v1.6.1.17-cpu`)
 
 ---
 
 ## Changelog
+
+### v1.6.1.17 (Auto-Mode Drift Fix + 5 New SOTA Models + UI Polish)
+
+The big v1.6.1.17 release fixes a critical Auto-Mode bug, eliminates 4 separate cases of model-catalog drift, and adds 5 new SOTA upscaler models.
+
+**Critical fixes:**
+
+- **Auto-Mode multi-frame VSR was silently broken.** `ResolveModelForVideo()` returned `animesr-v2-x4` / `realbasicvsr-x4` / `edvr-m-x4` unconditionally for multi-frame batch jobs — but all three are `available: False` upstream (no public ONNX mirror). Users with `EnableAutoModelSelection=true` got 500 errors with no clear "self-host required" hint.
+- **Fix:** New `PickAvailable()` helper in `UpscalerCore.cs` consults a `_knownUnavailable` HashSet and walks a fallback chain. Anime+multi-frame now resolves to `realesrgan-animevideo-x4`. VeryLowRes+multi-frame falls back to `ultrasharp-v2-x4` (DAT2). General multi-frame falls through `ultrasharp-v2-x4` → `nomos2-realplksr-x4` → `realesrgan-x4`.
+- **PreferredAnimeModel was Dead-Config.** The default was `""`, and `ResolveModelForVideo` never read the field. Two-part fix: (a) default changed to `anime-compact-x4`, (b) the resolver now actually reads `Config.PreferredAnimeModel` and routes through `PickAvailable`.
+
+**Drift cleanups:**
+
+- **`UpscalerController.cs` fallback list** went from a hardcoded 12 models (used when Docker is briefly unreachable) to all 48 via embedded `Resources/models-fallback.json`. Auto-generated from `app/main.py:AVAILABLE_MODELS` via new `Scripts/sync-fallback-models.ps1`.
+- **`site/models.html` listed 8 fictional models** (`waifu2x-cunet-x2`, `hat-l-x4`, `swinir-l-x4`, `realesrnet-x4plus`, `realesrgan-x4plus`, `realesrgan-x2plus`, `realesrgan-anime-x4`, `waifu2x-upconv-x2`) that never existed in the registry. Page now auto-generated from the registry, lists all 48 models in 12 categories.
+- **`Services/ModelManager.cs` removed.** 200 LoC dead code — registered as DI singleton in `PluginServiceRegistrator` but never consumed. Header still claimed v1.5.5.4. DLL size dropped 200 KB (1.60 MB → 1.41 MB).
+- **Docker service VERSION bumped 1.6.1.15 → 1.6.1.17** — the bump was missed during the v1.6.1.16 release (caught while syncing).
+
+**5 new SOTA models (catalog 43 → 48):**
+
+| ID | Use-Case | Source |
+|---|---|---|
+| `real-cugan-x2` / `real-cugan-x4` | Anime — cleaner linework than Real-ESRGAN-anime, sharper than waifu2x | `mayhug/Real-CUGAN` |
+| `drct-l-x4` | SOTA photo — sharper than DAT2/UltraSharp on real-world photo content | `aaronespasa/drct-super-resolution` |
+| `bhi-realplksr-x4` | Speed champion — 2× throughput vs DAT2 at comparable quality | `Phhofm/models` |
+| `rife-v4.25` | Frame interpolation — current SOTA, better scene-bleeding handling than v4.7-4.9 | `yuvraj108c/rife-onnx` |
+
+**UI polish:**
+
+- **Upscale-Model dropdown** now filters out `category=interpolation` (RIFE) and `category=face_restore` (GFPGAN/CodeFormer). RIFE takes 2 frames as input — selecting it via the upscale path returned 500. Frame-interpolation has a separate `/interpolate` endpoint, face-restoration runs as a post-processing step, neither belongs in the main "pick a model" picker.
+- **`PreferredAnimeModel` + `PreferredLiveActionModel`** are now proper dropdowns (was free-text, prone to typos like `realcugan-x4` vs `real-cugan-x4`). Anime dropdown lists only `category=anime` entries; live-action lists everything else upscale-eligible. Self-host models are filtered out.
+
+**Drift-protection (new):**
+
+- New `JellyfinUpscalerPlugin.Tests/Services/UpscalerCoreAutoModelTests.cs` — 11 unit tests that lock down all multi-frame fallback chains AND a `[Theory]` that asserts `ResolveModelForVideo` never returns a known-unavailable model across 6 input combinations. Future contributors who flip `realbasicvsr-x4` to `available: True` without updating `_knownUnavailable` will get a red CI build instead of a silent regression.
+- New `Scripts/sync-fallback-models.ps1` — regenerates `Resources/models-fallback.json` from `app/main.py:AVAILABLE_MODELS`. Recommended CI step: run + `git diff --exit-code` to block PRs that drift the C# fallback from the Python source-of-truth.
+
+**Verification:** `dotnet build -c Release` — 0 warnings, 0 errors. `dotnet test` — 33/33 passing (was 22). DLL embedded resource verified: `JellyfinUpscalerPlugin.Resources.models-fallback.json` present, contains 48-model JSON with all 5 new models.
 
 ### v1.6.1.16 (Hotfix: FFprobe Late-Resolution)
 

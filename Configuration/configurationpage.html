@@ -1,6 +1,6 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
 <style>
-    /* ===== AI Upscaler v1.6.1.16 — Jellyfin-compatible dark theme ===== */
+    /* ===== AI Upscaler v1.6.1.17 — Jellyfin-compatible dark theme ===== */
     #UpscalerConfigurationPage {
         --accent: #00d4ff;
         --accent-bg: rgba(0, 212, 255, 0.12);
@@ -361,7 +361,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.6.1.16 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.6.1.17 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -563,8 +563,8 @@
                             <div class="fieldDescription" style="margin-bottom:0.5rem;"><b>Default: off.</b> When enabled, the plugin picks the best AI model and color-filter preset for each video on playback start — using genre (anime/horror/sci-fi/documentary), source resolution, and multi-frame capability. Overrides your chosen model only for the current video; your saved preferences remain unchanged. Batch library scans follow the same heuristic when active.</div>
                             <div class="inputContainer"><label class="inputLabel" for="ModelFallbackChain">Model Fallback Chain</label><input type="text" id="ModelFallbackChain" placeholder="realesrgan-x4,span-x4,edsr-x4" /><div class="fieldDescription">Comma-separated model names. If primary fails, tries next in chain.</div></div>
                             <div class="form-row" style="margin-top:0.5rem;">
-                                <div class="form-col inputContainer"><label class="inputLabel" for="PreferredAnimeModel">Preferred Anime Model</label><input type="text" id="PreferredAnimeModel" placeholder="auto" /><div class="fieldDescription">Override for anime content (empty = auto)</div></div>
-                                <div class="form-col inputContainer"><label class="inputLabel" for="PreferredLiveActionModel">Preferred Live-Action Model</label><input type="text" id="PreferredLiveActionModel" placeholder="auto" /><div class="fieldDescription">Override for live-action (empty = auto)</div></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="PreferredAnimeModel">Preferred Anime Model</label><select id="PreferredAnimeModel" is="emby-select"><option value="">Auto (use heuristic)</option></select><div class="fieldDescription">Override for anime content. Default: anime-compact-x4. Populated from /Upscaler/models on page load (anime category only).</div></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="PreferredLiveActionModel">Preferred Live-Action Model</label><select id="PreferredLiveActionModel" is="emby-select"><option value="">Auto (use heuristic)</option></select><div class="fieldDescription">Override for live-action content (empty = auto-select per heuristic).</div></div>
                             </div>
                         </div>
                     </details>
@@ -1405,18 +1405,27 @@
             return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/models'), dataType: 'json' }).then(function(data) {
                 // Docker service returns { models: [...] }, fallback returns plain array
                 modelsData = (data && data.models) ? data.models : (Array.isArray(data) ? data : []);
-                var select = page.querySelector('#Model');
-                select.innerHTML = '';
 
-                // Group models by category for optgroups
+                // v1.6.1.17 - Categories that DON'T belong in the upscale-model dropdown:
+                //   interpolation = RIFE (frame interp, takes 2 frames as input -> /upscale call returns 500)
+                //   face_restore  = GFPGAN/CodeFormer (operate on 512x512 face crops, not full frames)
+                var UPSCALE_EXCLUDED = ['interpolation', 'face_restore'];
+                var upscaleModels = modelsData.filter(function(m) {
+                    return UPSCALE_EXCLUDED.indexOf(m.category) === -1;
+                });
+
+                var select = page.querySelector('#Model');
+                while (select.firstChild) select.removeChild(select.firstChild);
+
+                // Group upscale-eligible models by category for optgroups
                 var categories = {};
-                modelsData.forEach(function(m) {
+                upscaleModels.forEach(function(m) {
                     var cat = m.category || 'other';
                     if (!categories[cat]) categories[cat] = [];
                     categories[cat].push(m);
                 });
 
-                var catNames = { realesrgan: 'Real-ESRGAN', fast: 'Fast (OpenCV)', quality: 'Quality (OpenCV)', nextgen: 'Next-Gen (SPAN/SwinIR)', community: 'Community Models', vsr: 'Video SR (Multi-Frame)', 'video-sr': 'Video SR (Multi-Frame)', 'video-fast': 'Video Real-Time', 'video-quality': 'Video Quality', anime: 'Anime', film: 'Film Restoration', 'film-restore': 'Film Restoration', other: 'Other' };
+                var catNames = { realesrgan: 'Real-ESRGAN', fast: 'Fast (OpenCV)', quality: 'Quality (OpenCV)', nextgen: 'Next-Gen (SPAN/SwinIR)', community: 'Community Models', vsr: 'Video SR (Multi-Frame)', 'video-sr': 'Video SR (Multi-Frame)', 'video-fast': 'Video Real-Time', 'video-quality': 'Video Quality', anime: 'Anime', film: 'Film Restoration', 'film-restore': 'Film Restoration', vulkan: 'Vulkan / ncnn', other: 'Other' };
                 Object.keys(categories).forEach(function(cat) {
                     var group = document.createElement('optgroup');
                     group.label = catNames[cat] || cat;
@@ -1432,9 +1441,36 @@
 
                 select.addEventListener('change', function() { updateScaleOptions(page); });
 
+                // v1.6.1.17 - Populate PreferredAnimeModel + PreferredLiveActionModel dropdowns.
+                // Anime: only category="anime" entries. Live-action: any upscale-eligible non-anime entry.
+                populatePreferredModelDropdown(page, '#PreferredAnimeModel',
+                    upscaleModels.filter(function(m) { return m.category === 'anime'; }));
+                populatePreferredModelDropdown(page, '#PreferredLiveActionModel',
+                    upscaleModels.filter(function(m) { return m.category !== 'anime' && m.category !== 'video-sr'; }));
+
                 // Store for benchmark table
                 page._allModels = modelsData;
             });
+        }
+
+        // v1.6.1.17 - Populate a "Preferred X Model" dropdown while preserving the saved value.
+        // Always keeps the "Auto (use heuristic)" option at the top with value="".
+        function populatePreferredModelDropdown(page, selector, models) {
+            var sel = page.querySelector(selector);
+            if (!sel) return;
+            var savedValue = sel.value || '';
+            // Wipe everything except the first <option value=""> placeholder
+            while (sel.options.length > 1) sel.remove(1);
+            models.forEach(function(m) {
+                if (m.available === false) return; // skip self-host models
+                var opt = document.createElement('option');
+                opt.value = m.id;
+                opt.textContent = m.name + (m.scale ? ' (x' + (Array.isArray(m.scale) ? m.scale[0] : m.scale) + ')' : '');
+                sel.appendChild(opt);
+            });
+            // Restore saved value if it still exists in the new option list, else keep "" (Auto)
+            var hasSaved = Array.from(sel.options).some(function(o) { return o.value === savedValue; });
+            sel.value = hasSaved ? savedValue : '';
         }
 
         function updateScaleOptions(page) {
@@ -1720,7 +1756,7 @@
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.6.1.16';
+                config.PluginVersion = '1.6.1.17';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');

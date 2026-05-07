@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.16</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.17</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Security model</h1>
@@ -82,7 +82,7 @@
     <li>Do not port-forward <code>:5000</code>. Put it behind a reverse proxy and enforce the token at the proxy as well.</li>
     <li>Disable FFmpeg Remote Transcoding if you don't use it; the SSH path is a potential sharp edge.</li>
     <li>Run the AI service container with <code>read_only: true</code> except for <code>/app/models</code>.</li>
-    <li>Pin an explicit image tag (<code>kuscheltier/jellyfin-ai-upscaler:v1.6.1.16-cuda</code>), not <code>latest-cuda</code>.</li>
+    <li>Pin an explicit image tag (<code>kuscheltier/jellyfin-ai-upscaler:v1.6.1.17-cuda</code>), not <code>latest-cuda</code>.</li>
     <li>Keep Jellyfin on 10.11.x — older LTS lines don't receive the auth-policy fixes the plugin depends on.</li>
     <li>Review the weekly container digest against the published SHA before updating.</li>
   </ol>
@@ -104,7 +104,7 @@
   </ul>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.16</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.17</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

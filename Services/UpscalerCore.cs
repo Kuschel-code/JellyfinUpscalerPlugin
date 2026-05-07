@@ -273,6 +273,53 @@ namespace JellyfinUpscalerPlugin.Services
         }
 
         /// <summary>
+        /// Models the Docker AI service has marked as <c>available: False</c> (require self-hosting
+        /// or have execution-provider issues). The auto-selection heuristic must never return one
+        /// of these — they would 404 on download or 500 on inference. Source of truth:
+        /// <c>docker-ai-service/app/main.py</c> AVAILABLE_MODELS dict.
+        /// </summary>
+        /// <remarks>
+        /// Keep in sync with main.py. As of v1.6.1.17:
+        ///   nomos8k-hat-x4    — HAT LayerNorm dynamic-shape ops fail on CPUExecutionProvider
+        ///   apisr-x3          — Xenova HF repo returns 401 anonymously (gated)
+        ///   edvr-m-x4         — Multi-frame VSR, no public ONNX mirror (self-host)
+        ///   realbasicvsr-x4   — Multi-frame VSR, no public ONNX mirror (self-host)
+        ///   animesr-v2-x4     — Multi-frame Anime VSR, no public ONNX mirror (self-host)
+        /// </remarks>
+        private static readonly HashSet<string> _knownUnavailable = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "nomos8k-hat-x4",
+            "apisr-x3",
+            "edvr-m-x4",
+            "realbasicvsr-x4",
+            "animesr-v2-x4"
+        };
+
+        /// <summary>
+        /// Pick the first available model from a preferred → fallback chain.
+        /// Skips any model in <see cref="_knownUnavailable"/>; falls back to <c>realesrgan-x4</c>
+        /// (Plugin default, always available) when every candidate is unavailable.
+        /// </summary>
+        private string PickAvailable(string preferred, params string[] fallbacks)
+        {
+            if (!_knownUnavailable.Contains(preferred))
+                return preferred;
+
+            foreach (var fb in fallbacks)
+            {
+                if (string.IsNullOrWhiteSpace(fb)) continue;
+                if (!_knownUnavailable.Contains(fb))
+                {
+                    _logger.LogInformation("Auto-model: {Preferred} is unavailable (self-host required), falling back to {Fallback}", preferred, fb);
+                    return fb;
+                }
+            }
+
+            _logger.LogWarning("Auto-model: {Preferred} and all fallbacks are unavailable, defaulting to realesrgan-x4", preferred);
+            return "realesrgan-x4";
+        }
+
+        /// <summary>
         /// Resolve the best model for video content based on metadata.
         /// Considers: anime vs live-action, resolution, batch vs real-time.
         /// </summary>
@@ -303,28 +350,42 @@ namespace JellyfinUpscalerPlugin.Services
             bool isLowRes = width > 0 && height > 0 && (width < 720 || height < 480);
             bool isVeryLowRes = width > 0 && height > 0 && (width < 480 || height < 360);
 
-            // Multi-frame VSR: best quality for batch processing
+            // Multi-frame VSR: best quality for batch processing.
+            // All three preferred multi-frame models are currently `available: False` upstream
+            // (no public ONNX mirror), so we route through PickAvailable which falls back to
+            // a single-frame equivalent when the multi-frame model is not self-hosted.
             if (isBatch && inputFrames > 1)
             {
                 if (isAnime)
                 {
-                    _logger.LogDebug("Auto-model: anime content + multi-frame batch → animesr-v2-x4");
-                    return "animesr-v2-x4";
+                    _logger.LogDebug("Auto-model: anime content + multi-frame batch → animesr-v2-x4 (with fallback)");
+                    return PickAvailable("animesr-v2-x4", "realesrgan-animevideo-x4", "anime-compact-x4");
                 }
                 if (isVeryLowRes)
                 {
-                    // Very low res (VHS/DVD quality) → RealBasicVSR handles degradation best
-                    _logger.LogDebug("Auto-model: very low-res ({W}x{H}) + multi-frame batch → realbasicvsr-x4", width, height);
-                    return "realbasicvsr-x4";
+                    // Very low res (VHS/DVD quality) → RealBasicVSR handles degradation best.
+                    // Fallback: ultrasharp-v2-x4 (DAT2) has the best single-frame restore quality.
+                    _logger.LogDebug("Auto-model: very low-res ({W}x{H}) + multi-frame batch → realbasicvsr-x4 (with fallback)", width, height);
+                    return PickAvailable("realbasicvsr-x4", "ultrasharp-v2-x4", "realesrgan-x4");
                 }
-                // General multi-frame: EDVR-M is the safe default
-                _logger.LogDebug("Auto-model: multi-frame batch → edvr-m-x4");
-                return "edvr-m-x4";
+                // General multi-frame: EDVR-M is the safe default.
+                // Fallback chain: ultrasharp-v2-x4 (quality) → nomos2-realplksr-x4 (efficient) → realesrgan-x4.
+                _logger.LogDebug("Auto-model: multi-frame batch → edvr-m-x4 (with fallback)");
+                return PickAvailable("edvr-m-x4", "ultrasharp-v2-x4", "nomos2-realplksr-x4", "realesrgan-x4");
             }
 
             // Single-frame models
             if (isAnime)
             {
+                // v1.6.1.17 - honor user's PreferredAnimeModel override before falling through to heuristic.
+                // Default is "anime-compact-x4". User may set to e.g. "real-cugan-x4" for higher quality.
+                var animeOverride = Config.PreferredAnimeModel;
+                if (!string.IsNullOrWhiteSpace(animeOverride))
+                {
+                    _logger.LogDebug("Auto-model: anime content + PreferredAnimeModel override → {Model}", animeOverride);
+                    return PickAvailable(animeOverride, "realesrgan-animevideo-x4", "anime-compact-x4");
+                }
+
                 if (isBatch)
                 {
                     _logger.LogDebug("Auto-model: anime content + batch → realesrgan-animevideo-x4");

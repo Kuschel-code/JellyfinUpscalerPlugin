@@ -19,7 +19,8 @@ namespace JellyfinUpscalerPlugin
             serviceCollection.AddSingleton<UpscalerCore>();
             serviceCollection.AddSingleton<VideoProcessor>();
             serviceCollection.AddSingleton<CacheManager>();
-            serviceCollection.AddSingleton<ModelManager>();
+            // ModelManager removed in v1.6.1.17 - was registered but never consumed (dead code).
+            // Live model catalog is fetched dynamically via HttpUpscalerService.GetModelsAsync().
             serviceCollection.AddSingleton<UpscalerProgressHub>();
             serviceCollection.AddSingleton<LibraryScanHelper>();
 

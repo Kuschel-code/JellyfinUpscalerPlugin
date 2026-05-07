@@ -116,7 +116,7 @@ CACHE_DIR = Path(os.getenv("CACHE_DIR", "/app/cache"))
 STATIC_DIR = Path(os.getenv("STATIC_DIR", "/app/static"))
 
 # Version
-VERSION = "1.6.1.15"
+VERSION = "1.6.1.17"
 
 # Global state
 class AppState:
@@ -911,11 +911,80 @@ AVAILABLE_MODELS = {
         "name": "CodeFormer (Face Restore)",
         "url": "https://huggingface.co/facefusion/models-3.0.0/resolve/main/codeformer.onnx",
         "scale": 1,
-        "description": "CodeFormer — Robust face restoration with transformer codebook. Good for severely degraded faces. 512x512. S-Lab License. Mirrored via facefusion/models-3.0.0. ~377MB.",
+        "description": "CodeFormer - Robust face restoration with transformer codebook. Good for severely degraded faces. 512x512. S-Lab License. Mirrored via facefusion/models-3.0.0. ~377MB.",
         "type": "onnx",
         "category": "face_restore",
         "model_type": "face_restore",
         "input_size": 512,
+        "available": True
+    },
+
+    # ============================================================
+    # v1.6.1.17 - New SOTA models (2025/2026 releases)
+    # ============================================================
+
+    # Real-CUGAN-Pro (Bilibili AI Lab) - Cascaded U-Net.
+    # Cleaner anime line-art than Real-ESRGAN-AnimeVideo, sharper than waifu2x.
+    # ONNX mirror: mayhug/Real-CUGAN. Closes the long-standing gap users complained about.
+    "real-cugan-x2": {
+        "name": "Real-CUGAN x2 (Anime Quality)",
+        "url": "https://huggingface.co/mayhug/Real-CUGAN/resolve/main/up2x-latest-conservative.onnx",
+        "scale": 2,
+        "description": "Real-CUGAN x2 - Bilibili AI Lab. Cascaded U-Net, conservative variant preserves linework. Best general-purpose anime 2x. ~12MB.",
+        "type": "onnx",
+        "category": "anime",
+        "model_type": "cugan",
+        "available": True
+    },
+    "real-cugan-x4": {
+        "name": "Real-CUGAN x4 (Anime Quality)",
+        "url": "https://huggingface.co/mayhug/Real-CUGAN/resolve/main/up4x-latest-conservative.onnx",
+        "scale": 4,
+        "description": "Real-CUGAN x4 - Bilibili AI Lab. Cleaner than realesrgan-animevideo-x4 on linework, slower than anime-compact-x4 but higher quality. ~12MB.",
+        "type": "onnx",
+        "category": "anime",
+        "model_type": "cugan",
+        "available": True
+    },
+
+    # DRCT-L (Phips/aaronespasa) - Dense-Residual Connected Transformer.
+    # Sharper than DAT2/UltraSharp on real-world photo content, same VRAM class.
+    # Trained on 4xRealWebPhoto_v4 dataset - robust against streaming JPG/WebP artefacts.
+    "drct-l-x4": {
+        "name": "DRCT-L x4 (SOTA Photo)",
+        "url": "https://huggingface.co/aaronespasa/drct-super-resolution/resolve/main/4xDRCT_L.onnx",
+        "scale": 4,
+        "description": "DRCT-L x4 - Dense-Residual Connected Transformer. Sharper than DAT2 on photo content, ~3GB VRAM for 1080p input. Recommended for poster/backdrop refresh. ~80MB.",
+        "type": "onnx",
+        "category": "video-quality",
+        "model_type": "drct",
+        "available": True
+    },
+
+    # BHI-RealPLKSR (Phhofm) - RealPLKSR architecture trained on BHI dataset.
+    # ~2x throughput vs DAT2 at comparable quality. Sweet spot for mid-tier GPU
+    # library batch processing. Fast enough for near-realtime on RTX 3060+.
+    "bhi-realplksr-x4": {
+        "name": "BHI-RealPLKSR x4 (Speed Champion)",
+        "url": "https://github.com/Phhofm/models/releases/download/4xbhi_realplksr/4xBHI_realplksr.onnx",
+        "scale": 4,
+        "description": "BHI-RealPLKSR x4 - 2x faster than DAT2 at comparable quality. ~5fps@256 on RTX 3060. New default for mid-tier batch. ~30MB.",
+        "type": "onnx",
+        "category": "video-fast",
+        "model_type": "realplksr",
+        "available": True
+    },
+
+    # RIFE 4.25 (hzwer/Practical-RIFE) - current SOTA real-life frame interpolation.
+    # Replaces v4.7-4.9 as Auto-Mode default. Better scene-cut detection (less ghosting).
+    "rife-v4.25": {
+        "name": "RIFE v4.25 (Frame Interpolation - Latest)",
+        "url": "https://huggingface.co/yuvraj108c/rife-onnx/resolve/main/rife425.onnx",
+        "scale": 1,
+        "description": "RIFE v4.25 - current SOTA frame interpolation, better scene-bleeding handling than v4.7-4.9. Recommended new default for 24-60fps. ~22MB.",
+        "type": "onnx",
+        "category": "interpolation",
+        "model_type": "rife",
         "available": True
     },
 

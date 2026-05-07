@@ -7,13 +7,25 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.16</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.17</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.6.1.16 — Three singletons, not one <span class="tag success">latest</span></h2>
+  <h2>v1.6.1.17 — Auto-Mode Drift Fix + 5 New SOTA Models <span class="tag success">latest</span></h2>
+  <p><em>Released May 2026.</em> Fixes a critical Auto-Mode bug, eliminates 4 cases of model-catalog drift, and adds 5 new SOTA upscaler models. Catalog grew 43 → 48 models.</p>
+  <ul>
+    <li><strong>Auto-Mode multi-frame VSR was silently broken:</strong> <code>ResolveModelForVideo()</code> returned <code>animesr-v2-x4</code> / <code>realbasicvsr-x4</code> / <code>edvr-m-x4</code> unconditionally for multi-frame batch jobs — but all three are <code>available: False</code> upstream (no public ONNX mirror). New <code>PickAvailable()</code> helper consults a <code>_knownUnavailable</code> HashSet and walks fallback chains. Anime+multi-frame → <code>realesrgan-animevideo-x4</code>; very-low-res → <code>ultrasharp-v2-x4</code>; general → <code>ultrasharp-v2-x4</code> → <code>nomos2-realplksr-x4</code> → <code>realesrgan-x4</code>.</li>
+    <li><strong>PreferredAnimeModel was Dead-Config:</strong> default was <code>""</code>, and the resolver never read the field. Fixed in two parts: default → <code>anime-compact-x4</code>, plus the resolver now actually reads <code>Config.PreferredAnimeModel</code> and routes through <code>PickAvailable</code>.</li>
+    <li><strong>4 catalog drifts cleaned up:</strong> Controller fallback list 12 → 48 models via embedded <code>Resources/models-fallback.json</code>; <code>site/models.html</code> auto-generated from registry (removed 8 fictional models like <code>waifu2x-cunet-x2</code>, <code>hat-l-x4</code>, <code>swinir-l-x4</code>); <code>Services/ModelManager.cs</code> removed (200 LoC dead code, header still claimed v1.5.5.4); Docker service VERSION bumped 1.6.1.15 → 1.6.1.17 (was missed in v1.6.1.16).</li>
+    <li><strong>5 new SOTA models:</strong> <code>real-cugan-x2</code>/<code>real-cugan-x4</code> (Bilibili anime, cleaner linework than Real-ESRGAN-anime), <code>drct-l-x4</code> (Phips/aaronespasa, sharper than DAT2 on photo content), <code>bhi-realplksr-x4</code> (Phhofm, 2× throughput vs DAT2), <code>rife-v4.25</code> (yuvraj108c, current SOTA frame interpolation).</li>
+    <li><strong>UI polish:</strong> Upscale-Model dropdown filters out <code>category=interpolation</code> (RIFE) and <code>category=face_restore</code> (GFPGAN/CodeFormer) — these have separate endpoints. <code>PreferredAnimeModel</code> + <code>PreferredLiveActionModel</code> are now proper dropdowns (was free-text, prone to typos).</li>
+    <li><strong>Drift-protection:</strong> 11 new unit tests in <code>UpscalerCoreAutoModelTests</code> lock down all multi-frame fallback chains. Future contributors who flip <code>realbasicvsr-x4</code> to <code>available: True</code> without updating <code>_knownUnavailable</code> get a red CI build instead of a silent regression. New <code>Scripts/sync-fallback-models.ps1</code> regenerates the JSON resource from <code>app/main.py</code>.</li>
+    <li><strong>Verification:</strong> <code>dotnet build -c Release</code> — 0 warnings, 0 errors. <code>dotnet test</code> — 33/33 passing (was 22). DLL size dropped 1.60 MB → 1.41 MB.</li>
+  </ul>
+
+  <h2>v1.6.1.16 — Three singletons, not one</h2>
   <p><em>Released April 2026.</em> Issue #64 fix: <code>LibraryUpscaleScanTask</code> failing with <code>Cannot start process because a file name has not been provided</code>.</p>
   <ul>
     <li><strong>Root cause:</strong> three service singletons (<code>VideoAnalyzer</code>, <code>VideoFrameProcessor</code>, <code>ProcessingMethodExecutor</code>) each captured <code>MediaEncoder.EncoderPath</code>/<code>ProbePath</code> as <code>readonly</code> strings at construction. When Jellyfin constructed the plugin before <code>MediaEncoder</code> finished resolving paths, those strings were empty — forever.</li>

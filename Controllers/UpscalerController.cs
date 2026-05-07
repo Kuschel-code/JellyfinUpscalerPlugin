@@ -171,25 +171,42 @@ namespace JellyfinUpscalerPlugin.Controllers
                 _logger.LogWarning("Could not reach Docker AI service at {Url}/models: {Error}", baseUrl, ex.Message);
             }
 
-            // Fallback: return hardcoded base models if Docker service is unavailable
-            // Format matches Docker's {"models": [...], "total": N} response
-            var fallbackModels = new List<object>
+            // Fallback: load the embedded models-fallback.json resource (auto-generated from
+            // docker-ai-service/app/main.py via Scripts/sync-fallback-models.ps1).
+            // v1.6.1.17 — replaces a hardcoded 12-model list that drifted from the registry by 24 models.
+            return GetEmbeddedFallbackModels();
+        }
+
+        /// <summary>
+        /// Embedded copy of the model registry, loaded once and cached for the lifetime of the
+        /// process. Source: Resources/models-fallback.json (auto-generated from
+        /// docker-ai-service/app/main.py:AVAILABLE_MODELS).
+        /// </summary>
+        private static readonly Lazy<string> _fallbackModelsJson = new(() =>
+        {
+            var asm = typeof(UpscalerController).Assembly;
+            const string resourceName = "JellyfinUpscalerPlugin.Resources.models-fallback.json";
+            using var stream = asm.GetManifestResourceStream(resourceName);
+            if (stream == null) return "{\"models\":[],\"total\":0}";
+            using var reader = new System.IO.StreamReader(stream);
+            return reader.ReadToEnd();
+        });
+
+        /// <summary>
+        /// Return the embedded fallback model list (used when the Docker AI service is unreachable).
+        /// </summary>
+        private ActionResult GetEmbeddedFallbackModels()
+        {
+            try
             {
-                new { id = "realesrgan-x4", name = "Real-ESRGAN x4 (Best Quality)", description = "Best quality 4x (67MB ONNX)", scale = new[] { 4 }, category = "realesrgan", type = "onnx", downloaded = false, loaded = false, available = true },
-                new { id = "realesrgan-x4-256", name = "Real-ESRGAN x4 (256px optimized)", description = "Optimized for 256px tiles, low VRAM", scale = new[] { 4 }, category = "realesrgan", type = "onnx", downloaded = false, loaded = false, available = true },
-                new { id = "span-x2", name = "SPAN x2 (Fast Quality)", description = "NTIRE 2023 winner 2x", scale = new[] { 2 }, category = "nextgen", type = "onnx", downloaded = false, loaded = false, available = true },
-                new { id = "span-x4", name = "SPAN x4 (Fast Quality)", description = "NTIRE 2023 winner 4x", scale = new[] { 4 }, category = "nextgen", type = "onnx", downloaded = false, loaded = false, available = true },
-                new { id = "fsrcnn-x2", name = "FSRCNN x2 (Fast)", description = "Very fast 2x upscaling", scale = new[] { 2 }, category = "fast", type = "pb", downloaded = false, loaded = false, available = true },
-                new { id = "fsrcnn-x3", name = "FSRCNN x3 (Fast)", description = "Fast 3x upscaling", scale = new[] { 3 }, category = "fast", type = "pb", downloaded = false, loaded = false, available = true },
-                new { id = "fsrcnn-x4", name = "FSRCNN x4 (Fast)", description = "Fast 4x, lower quality", scale = new[] { 4 }, category = "fast", type = "pb", downloaded = false, loaded = false, available = true },
-                new { id = "espcn-x2", name = "ESPCN x2 (Fastest)", description = "Fastest model", scale = new[] { 2 }, category = "fast", type = "pb", downloaded = false, loaded = false, available = true },
-                new { id = "espcn-x4", name = "ESPCN x4 (Fastest)", description = "Fastest 4x", scale = new[] { 4 }, category = "fast", type = "pb", downloaded = false, loaded = false, available = true },
-                new { id = "edsr-x4", name = "EDSR x4 (Best OpenCV)", description = "Best quality 4x OpenCV", scale = new[] { 4 }, category = "quality", type = "pb", downloaded = false, loaded = false, available = true },
-                // v1.6.1.7 — Face restoration models (GFPGAN / CodeFormer)
-                new { id = "gfpgan-v1.4", name = "GFPGAN v1.4 (Face Restore)", description = "Tencent ARC face restoration GAN — 512x512 crops", scale = new[] { 1 }, category = "face_restore", type = "onnx", downloaded = false, loaded = false, available = true },
-                new { id = "codeformer", name = "CodeFormer (Face Restore)", description = "Transformer-codebook face restoration — 512x512 crops", scale = new[] { 1 }, category = "face_restore", type = "onnx", downloaded = false, loaded = false, available = true }
-            };
-            return Ok(new { models = fallbackModels, total = fallbackModels.Count });
+                _logger.LogDebug("Returning embedded fallback model list (Docker service unreachable)");
+                return Content(_fallbackModelsJson.Value, "application/json");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load embedded models-fallback.json");
+                return Ok(new { models = Array.Empty<object>(), total = 0 });
+            }
         }
 
         [HttpGet("js/{name}")]

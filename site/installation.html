@@ -13,7 +13,7 @@
     <a href="index.html" class="brand">
       <span class="brand-logo">AI</span>
       <span>Jellyfin AI Upscaler</span>
-      <span class="brand-version">v1.6.1.16</span>
+      <span class="brand-version">v1.6.1.17</span>
     </a>
     <nav class="nav" data-nav></nav>
     <div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank" rel="noopener">GitHub →</a></div>
@@ -50,7 +50,7 @@
     </li>
     <li>Click <em>Save</em>, then go to <em>Plugins → Catalog</em>. The <strong>AI Upscaler Plugin</strong> entry appears under <em>Video Enhancement</em>.</li>
     <li>Click <em>Install</em>, then restart Jellyfin when prompted.</li>
-    <li>Confirm under <em>Plugins → My Plugins</em> the version reads <code>1.6.1.16</code>.</li>
+    <li>Confirm under <em>Plugins → My Plugins</em> the version reads <code>1.6.1.17</code>.</li>
   </ol>
   <div class="callout">
     <strong>Note:</strong> the plugin uses MD5 checksums (required by Jellyfin's legacy manifest spec) — don't be alarmed that SHA isn't used for the manifest entry.
@@ -59,7 +59,7 @@
   <h2>3 · Install the plugin (manual ZIP)</h2>
   <p>Use this if your Jellyfin host can't reach GitHub, or you want to pin a specific version.</p>
   <ol>
-    <li>Download <code>JellyfinUpscalerPlugin-v1.6.1.16.zip</code> from <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases" target="_blank">GitHub Releases</a>.</li>
+    <li>Download <code>JellyfinUpscalerPlugin-v1.6.1.17.zip</code> from <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases" target="_blank">GitHub Releases</a>.</li>
     <li>Extract into Jellyfin's plugin folder: <code>&lt;config&gt;/plugins/AI Upscaler Plugin_1.6.1.4/</code>. The folder name is historical — don't rename it.</li>
     <li><code>chown</code> the extracted files to Jellyfin's UID/GID (typically <code>568:568</code> on TrueNAS SCALE, <code>105:108</code> on LinuxServer.io images).</li>
     <li>Restart Jellyfin. The plugin will load the DLL + shipped transitive NuGet dependencies (<code>CliWrap.dll</code>, <code>FFMpegCore.dll</code>, <code>Instances.dll</code>, <code>SixLabors.ImageSharp.dll</code>).</li>
@@ -135,7 +135,7 @@ docker run -d --name jellyfin-ai-upscaler \
 
 <footer class="footer">
   <div class="footer-inner">
-    <div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.16</div>
+    <div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.17</div>
     <div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div>
   </div>
 </footer>
