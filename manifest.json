@@ -13,7 +13,7 @@
         "changelog": "v1.6.1.19: Structural fix release closing the drift class that v1.6.1.17 and v1.6.1.18 patched point-by-point. (1) NEW Services/ModelAvailability.cs - single source of truth (HashSet + IsKnownUnavailable + PickAvailable) consumed by both UpscalerCore (refactored, kept logging-wrapper) and HardwareBenchmarkService (new EnsureModelAvailable helper hardens 7 previously-unguarded hardcoded model assignments). (2) FIX Face-Restore dropdown was hardcoded HTML <option>s for gfpgan-v1.4 / codeformer. Now auto-populated from /Upscaler/models category=face_restore — symmetric to the v1.6.1.17/18 main + anime/live-action dropdowns. (3) FIX Homepage card on site/index.html showed the v1.6.1.16 FFmpeg-fix text under a v1.6.1.18 header (pauschal version-bump bumped <h3> title without rewriting body); rewrote card with actual release content. (4) NEW <InternalsVisibleTo Include='JellyfinUpscalerPlugin.Tests' /> grant in csproj so tests directly assert on the internal ModelAvailability contract. (5) NEW JellyfinUpscalerPlugin.Tests/Services/ModelAvailabilityTests.cs +28 tests with explicit drift-locks (HaveCount(5), NotContain('realesrgan-x4')) + case-insensitivity + null/empty handling + PickAvailable semantics. dotnet build 0/0 errors, dotnet test 65/65 (was 37). No model changes, no schema changes, no breaking config — v1.6.1.18 saved configs are bit-for-bit compatible.",
         "targetAbi": "10.11.8.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.19/JellyfinUpscalerPlugin-v1.6.1.19.zip",
-        "checksum": "PENDING_FILL_AFTER_BUILD",
+        "checksum": "7a3bfeaff11859f638addc1b15bc7619",
         "timestamp": "2026-05-08T12:00:00.000Z"
       },
       {
