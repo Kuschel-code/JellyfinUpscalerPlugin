@@ -3,7 +3,7 @@
     "name": "AI Upscaler Plugin",
     "overview": "AI-Powered Video Upscaling Plugin with Docker Microservice Architecture",
     "description": "Revolutionary AI upscaling plugin with Docker-based AI processing. Supports NVIDIA CUDA/TensorRT, Intel OpenVINO, AMD ROCm, and CPU. Features automated hardware benchmarking, intelligent fallback system, pre-processing cache, sidebar integration, camera-style video filters with live preview, and AI face restoration (GFPGAN / CodeFormer).",
-    "version": "1.6.1.20",
+    "version": "1.6.1.21",
     "targetAbi": "10.11.8",
     "framework": "net9.0",
     "owner": "Kuschel-code",

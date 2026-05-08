@@ -13,7 +13,21 @@
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.6.1.20 — Adoption Completion + Cancellation + Async-IO <span class="tag success">latest</span></h2>
+  <h2>v1.6.1.21 — Adoption v2 + Compute-Waste Fixes + Honest Dead-Config <span class="tag success">latest</span></h2>
+  <p><em>Released May 2026.</em> Follow-up patch closing 8 findings of the v1.6.1.20 external audit.</p>
+  <ul>
+    <li><strong><code>RestrictToUnwatchedContent</code> + <code>SkipUpscaledOnRescan</code> finally wired</strong> — both toggles existed since v1.6.1.14 with 0 consumers. <code>LibraryUpscaleScanTask</code> now consults a new <code>IsAnyUserPlayed(BaseItem)</code> helper (DI extended with <code>IUserManager</code> + <code>IUserDataManager</code>). User compute-waste-protection finally honored.</li>
+    <li><strong>6 remaining HttpClient calls now use <code>HttpContext.RequestAborted</code></strong> — 16/16 coverage including hot-path <code>/upscale-frame</code> and <code>/upscale-video-chunk</code>. No more 120s server hangs when client disconnects mid-playback.</li>
+    <li><strong>ProcessingStrategySelector substring-matcher tightened</strong> — v1.6.1.18 <code>compact</code> and <code>realplksr</code> matchers were too broad. <code>anime-compact-x4</code> (anime-category) and <code>nomos2-realplksr-x4</code> (video-quality DAT2-class) no longer falsely accepted for RealTime — no more frame drops mid-playback.</li>
+    <li><strong>4 frame-loop <code>File.Copy</code> → async streaming</strong> — <code>VideoFrameProcessor</code> + <code>ProcessingMethodExecutor</code> error-fallback paths now use <code>FileStream + CopyToAsync</code> with <code>useAsync:true</code>. NAS-mount thread-block eliminated.</li>
+    <li><strong>FaceRestore backend allowlist symmetric to frontend</strong> — backend <code>FaceRestoreLoad</code> reads <code>category="face_restore"</code> from same embedded JSON as the v1.6.1.19 frontend dropdown. New face-restore models won't get HTTP 400 from backend anymore.</li>
+    <li><strong>Filter-preset list deduplicated 4× → 1×</strong> — new <code>_validFilterPresets</code> static readonly in <code>UpscalerController</code>.</li>
+    <li><strong>Honest XML-doc disclosure of 6 dead-config toggles</strong> — <code>EnableModelPreloading</code>, <code>EnableHealthMonitoring</code>, <code>EnableModelAutoCleanup</code>, <code>EnableQualityMetrics</code>, <code>EnableFaceEnhancement</code>, <code>EnableGrainManagement</code> now flagged as "no-op pending v1.7.0 pipeline implementation". No silent UI-lying.</li>
+    <li><strong>+13 regression tests</strong> — new <code>ProcessingStrategySelectorTests.cs</code>. Tests grew 72 → 85.</li>
+    <li><strong>Verification:</strong> <code>dotnet build -c Release</code> — 0 warnings, 0 errors. <code>dotnet test</code> — 85/85 passing. v1.6.1.20 saved configs are bit-for-bit compatible.</li>
+  </ul>
+
+  <h2>v1.6.1.20 — Adoption Completion + Cancellation + Async-IO</h2>
   <p><em>Released May 2026.</em> Follow-up patch closing the gaps the v1.6.1.19 post-release self-audit found. The v1.6.1.19 refactor introduced the <code>ModelAvailability</code> source-of-truth class but didn't adopt it everywhere. Plus 3 new bug classes (Cancellation, Sync-IO, csproj Self-Reference) that surfaced during the deep-scan.</p>
   <ul>
     <li><strong>Adoption: HardwareBenchmarkService.cs:123</strong> — <code>status.CurrentModel ?? "realesrgan-x4"</code> was bypassing <code>EnsureModelAvailable</code>. Now wrapped. If the Docker service ever reports a self-host model as <code>current_model</code>, it falls back to plugin default instead of being silently propagated.</li>

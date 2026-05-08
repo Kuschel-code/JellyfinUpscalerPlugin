@@ -303,7 +303,9 @@ namespace JellyfinUpscalerPlugin
 
         // ── Model Management ─────────────────────────────────────────────
 
-        /// <summary>Preload the preferred model into VRAM on service startup.</summary>
+        /// <summary>Preload the preferred model into VRAM on service startup.
+        /// v1.6.1.21 - currently no-op (no consumer pipeline). Marked for v1.7.0 pipeline
+        /// implementation. Setting this has no effect today.</summary>
         public bool EnableModelPreloading { get; set; } = false;
 
         /// <summary>Maximum disk space for downloaded models in MB (0 = unlimited).</summary>
@@ -313,7 +315,9 @@ namespace JellyfinUpscalerPlugin
             set => _modelDiskQuotaMB = Math.Max(value, 0);
         }
 
-        /// <summary>Automatically delete models not used within ModelCleanupDays.</summary>
+        /// <summary>Automatically delete models not used within ModelCleanupDays.
+        /// v1.6.1.21 - currently no-op (no consumer cleanup task). Marked for v1.7.0 pipeline
+        /// implementation. Setting this has no effect today; manual cleanup via /Upscaler/cache/clear.</summary>
         public bool EnableModelAutoCleanup { get; set; } = true;
 
         /// <summary>Days before unused models are cleaned up (minimum 1).</summary>
@@ -325,7 +329,9 @@ namespace JellyfinUpscalerPlugin
 
         // ── Health and Monitoring ────────────────────────────────────────
 
-        /// <summary>Periodically check Docker AI service health.</summary>
+        /// <summary>Periodically check Docker AI service health.
+        /// v1.6.1.21 - currently no-op (no periodic health-check timer; only on-demand
+        /// InvalidateHealthCache exists). Marked for v1.7.0 pipeline implementation.</summary>
         public bool EnableHealthMonitoring { get; set; } = true;
 
         /// <summary>Health check polling interval in seconds (minimum 5).</summary>
@@ -362,12 +368,18 @@ namespace JellyfinUpscalerPlugin
 
         // ── Quality Metrics ───────────────────────────────────────────────
 
-        /// <summary>Enable PSNR/SSIM quality metrics computation after upscaling.</summary>
+        /// <summary>Enable PSNR/SSIM quality metrics computation after upscaling.
+        /// v1.6.1.21 - currently no-op (no metric computation pipeline). Marked for v1.7.0
+        /// pipeline implementation. Setting this has no effect today; the per-job
+        /// VideoProcessingOptions.EnableQualityMetrics is also unconsumed.</summary>
         public bool EnableQualityMetrics { get; set; } = true;
 
         // ── Face Enhancement ─────────────────────────────────────────────
 
-        /// <summary>Enable AI face enhancement (GFPGAN/CodeFormer) post-processing.</summary>
+        /// <summary>Enable AI face enhancement (GFPGAN/CodeFormer) post-processing.
+        /// v1.6.1.21 - currently no-op for the global toggle (no auto-pipeline). Face restore is
+        /// available via the dedicated /face-restore/{load,status,unload} endpoints (manual opt-in
+        /// per session). Marked for v1.7.0 auto-pipeline implementation.</summary>
         public bool EnableFaceEnhancement { get; set; } = true;
 
         /// <summary>Face enhancement blend strength (0.0 = off, 1.0 = full). Default 0.7.</summary>
@@ -380,7 +392,11 @@ namespace JellyfinUpscalerPlugin
 
         // ── Film Grain Management ────────────────────────────────────────
 
-        /// <summary>Enable film grain removal before upscaling and optional re-addition after.</summary>
+        /// <summary>Enable film grain removal before upscaling and optional re-addition after.
+        /// v1.6.1.21 - the toggle itself is currently no-op (no consumer guards on the grain
+        /// pipeline); GrainDenoiseStrength + GrainReaddIntensity ARE wired to the Docker service
+        /// via /Upscaler/settings/export at L1281-1282. Marked for v1.7.0 to gate the actual
+        /// grain pipeline behind this toggle.</summary>
         public bool EnableGrainManagement { get; set; } = true;
 
         /// <summary>Denoise strength for grain removal (1-30). Higher = more smoothing.</summary>
@@ -519,6 +535,6 @@ namespace JellyfinUpscalerPlugin
         // ── Version Tracking ─────────────────────────────────────────────
 
         /// <summary>Current plugin version string for webhook payloads and diagnostics.</summary>
-        public string PluginVersion { get; set; } = "1.6.1.20";
+        public string PluginVersion { get; set; } = "1.6.1.21";
     }
 }

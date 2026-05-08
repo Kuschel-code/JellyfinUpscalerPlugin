@@ -209,6 +209,55 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
+        /// <summary>
+        /// Set of model IDs registered with category="face_restore" in the embedded fallback
+        /// registry. Derived once from <see cref="_fallbackModelsJson"/> and used by
+        /// <see cref="FaceRestoreLoad"/> to validate the model_name parameter.
+        /// </summary>
+        /// <remarks>
+        /// v1.6.1.21 (P1b) - the FaceRestore backend allowlist used to be hardcoded as
+        /// <c>{ "gfpgan-v1.4", "codeformer" }</c>. v1.6.1.19 made the FRONTEND dropdown
+        /// auto-populated from the registry, but the backend kept its hardcoded list — meaning
+        /// any future face-restore model (e.g. RestoreFormer++) added to AVAILABLE_MODELS
+        /// would appear in the UI but get rejected with HTTP 400 from the backend. Asymmetric
+        /// drift. This Lazy parses the same embedded JSON the frontend uses, so both sides
+        /// stay in sync automatically.
+        ///
+        /// On parse failure: falls back to the hardcoded {gfpgan-v1.4, codeformer} pair so a
+        /// corrupted/missing JSON resource doesn't break face-restore entirely.
+        /// </remarks>
+        private static readonly Lazy<HashSet<string>> _faceRestoreModelIds = new(() =>
+        {
+            var fallback = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "gfpgan-v1.4", "codeformer" };
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(_fallbackModelsJson.Value);
+                if (!doc.RootElement.TryGetProperty("models", out var modelsArray) ||
+                    modelsArray.ValueKind != System.Text.Json.JsonValueKind.Array)
+                {
+                    return fallback;
+                }
+                var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var m in modelsArray.EnumerateArray())
+                {
+                    if (m.TryGetProperty("category", out var cat) &&
+                        cat.ValueKind == System.Text.Json.JsonValueKind.String &&
+                        string.Equals(cat.GetString(), "face_restore", StringComparison.OrdinalIgnoreCase) &&
+                        m.TryGetProperty("id", out var id) &&
+                        id.ValueKind == System.Text.Json.JsonValueKind.String)
+                    {
+                        var idStr = id.GetString();
+                        if (!string.IsNullOrWhiteSpace(idStr)) ids.Add(idStr);
+                    }
+                }
+                return ids.Count > 0 ? ids : fallback;
+            }
+            catch
+            {
+                return fallback;
+            }
+        });
+
         [HttpGet("js/{name}")]
         [Produces("text/javascript")]
         public ActionResult GetJavaScript(string name)
@@ -1638,9 +1687,11 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
-                // Allowlist — match IDs registered in Docker MODELS
-                var allowed = new[] { "gfpgan-v1.4", "codeformer" };
-                if (!allowed.Contains(model_name))
+                // v1.6.1.21 (P1b) - allowlist now derived from the embedded registry (category="face_restore"),
+                // symmetric to the frontend dropdown that v1.6.1.19 auto-populated. Was hardcoded
+                // {gfpgan-v1.4, codeformer} — caused FrontendBackend asymmetric drift any time a new
+                // face-restore model was added (UI showed it, backend 400ed). See _faceRestoreModelIds.
+                if (!_faceRestoreModelIds.Value.Contains(model_name))
                     return BadRequest(new { message = "Invalid face-restore model" });
 
                 var serviceUrl = GetValidatedServiceUrl();
@@ -1787,7 +1838,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 if (gpu_device_id.HasValue) formData.Add(new("gpu_device_id", gpu_device_id.Value.ToString()));
 
                 using var content = new FormUrlEncodedContent(formData);
-                using var response = await GetAiServiceClient().PostAsync($"{serviceUrl}/config", content);
+                using var response = await GetAiServiceClient().PostAsync($"{serviceUrl}/config", content, HttpContext.RequestAborted);
                 var result = await response.Content.ReadAsStringAsync();
                 return Content(result, "application/json");
             }
@@ -1809,7 +1860,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             try
             {
                 var serviceUrl = GetValidatedServiceUrl();
-                using var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/models/disk-usage");
+                using var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/models/disk-usage", HttpContext.RequestAborted);
                 var content = await response.Content.ReadAsStringAsync();
                 return Content(content, "application/json");
             }
@@ -1833,7 +1884,8 @@ namespace JellyfinUpscalerPlugin.Controllers
                 var serviceUrl = GetValidatedServiceUrl();
                 using var response = await GetAiServiceClient().PostAsync(
                     $"{serviceUrl}/models/cleanup?max_age_days={max_age_days}&dry_run={dry_run.ToString().ToLower()}",
-                    null);
+                    null,
+                    HttpContext.RequestAborted);
                 var content = await response.Content.ReadAsStringAsync();
                 return Content(content, "application/json");
             }
@@ -1870,7 +1922,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 using var content = new ByteArrayContent(body);
                 content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
 
-                using var response = await GetAiServiceClient().PostAsync($"{serviceUrl}/upscale-frame", content);
+                using var response = await GetAiServiceClient().PostAsync($"{serviceUrl}/upscale-frame", content, HttpContext.RequestAborted);
 
                 if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
                     return StatusCode(503, "AI service busy");
@@ -1929,7 +1981,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                     content.Add(byteContent, safeName, safeFileName);
                 }
 
-                using var response = await GetMultiFrameClient().PostAsync($"{serviceUrl}/upscale-video-chunk", content);
+                using var response = await GetMultiFrameClient().PostAsync($"{serviceUrl}/upscale-video-chunk", content, HttpContext.RequestAborted);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -1967,7 +2019,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             {
                 var serviceUrl = GetValidatedServiceUrl();
 
-                using var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/benchmark-frame?width={width}&height={height}");
+                using var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/benchmark-frame?width={width}&height={height}", HttpContext.RequestAborted);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -2084,6 +2136,18 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
+        /// Canonical list of valid video-filter preset names. v1.6.1.21 (P2) - extracted from 4
+        /// duplicate inline arrays scattered across this controller (was at L2163/L2179/L2232/L2254
+        /// before this dedupe). Adding a new preset now requires editing one place instead of four.
+        /// Preset semantics live on the Docker service side (see VideoFilterService.GetPresetFilters).
+        /// </summary>
+        private static readonly string[] _validFilterPresets = {
+            "none", "cinematic", "vintage", "vivid", "noir", "warm", "cool",
+            "hdr-pop", "sepia", "pastel", "cyberpunk", "drama", "soft-glow",
+            "sharp-hd", "retrogame", "teal-orange", "custom"
+        };
+
+        /// <summary>
         /// Read the current video-filter configuration for the player quick-menu.
         /// Any authenticated user — the filter state is exposed so the quick-menu can seed
         /// its live CSS filter preview without admin privileges. Modifications still require
@@ -2108,7 +2172,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 vignette = c.FilterVignette,
                 filmGrain = c.FilterFilmGrain,
                 denoise = c.FilterDenoise,
-                availablePresets = new[] { "none", "cinematic", "vintage", "vivid", "noir", "warm", "cool", "hdr-pop", "sepia", "pastel", "cyberpunk", "drama", "soft-glow", "sharp-hd", "retrogame", "teal-orange", "custom" }
+                availablePresets = _validFilterPresets
             });
         }
 
@@ -2124,8 +2188,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         public ActionResult<object> UpdateFilterConfig([FromBody] FilterConfigUpdate body)
         {
             if (body == null) return BadRequest(new { message = "Missing request body" });
-            var validPresets = new[] { "none", "cinematic", "vintage", "vivid", "noir", "warm", "cool", "hdr-pop", "sepia", "pastel", "cyberpunk", "drama", "soft-glow", "sharp-hd", "retrogame", "teal-orange", "custom" };
-            if (body.Preset != null && !validPresets.Contains(body.Preset))
+            if (body.Preset != null && !_validFilterPresets.Contains(body.Preset))
                 return BadRequest(new { message = "Invalid preset name" });
 
             var plugin = Plugin.Instance;
@@ -2177,7 +2240,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 enabled = config.EnableVideoFilters,
                 preset = preset ?? config.ActiveFilterPreset,
                 filterChain = filterChain ?? "(no filters active)",
-                availablePresets = new[] { "none", "cinematic", "vintage", "vivid", "noir", "warm", "cool", "hdr-pop", "sepia", "pastel", "cyberpunk", "drama", "soft-glow", "sharp-hd", "retrogame", "teal-orange", "custom" }
+                availablePresets = _validFilterPresets
             });
         }
 
@@ -2199,8 +2262,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 if (!Guid.TryParse(itemId, out var itemGuid) || itemGuid == Guid.Empty)
                     return BadRequest(new { message = "Invalid item ID format" });
 
-                var validPresets = new[] { "none", "cinematic", "vintage", "vivid", "noir", "warm", "cool", "hdr-pop", "sepia", "pastel", "cyberpunk", "drama", "soft-glow", "sharp-hd", "retrogame", "teal-orange", "custom" };
-                if (!validPresets.Contains(preset))
+                if (!_validFilterPresets.Contains(preset))
                     return BadRequest(new { message = "Invalid preset name" });
                 // 'custom' isn't useful for filter-preview (would need full config round-trip) — treat as none
                 if (preset == "custom") preset = "none";

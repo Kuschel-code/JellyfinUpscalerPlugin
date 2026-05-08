@@ -188,15 +188,17 @@ namespace JellyfinUpscalerPlugin.Services
             };
 
             var modelName = options.Model?.ToLowerInvariant() ?? "";
-            // Substring matchers as a forgiving safety net: any future model whose ID contains
-            // fsrcnn / espcn / span / compact / realplksr is treated as fast even before the
-            // exact ID lands in the HashSet above.
+            // v1.6.1.21 - the v1.6.1.18 substring matchers (compact, realplksr) were too broad:
+            //   - "compact" matched anime-compact-x4 (category=anime, NOT video-fast - dropped frames)
+            //   - "realplksr" matched nomos2-realplksr-x4 (category=video-quality, 30 MB DAT2-class)
+            // Both led to RealTime-AI accepting them and frames dropping mid-playback. Tightened
+            // to only architecture-prefix matchers (fsrcnn/espcn/span) which are unambiguous
+            // CPU-friendly architectures by name. New compact/realplksr entries that ARE realtime
+            // eligible must be added to the fastModels HashSet explicitly (e.g. bhi-realplksr-x4).
             bool isFast = fastModels.Contains(modelName)
                 || modelName.Contains("fsrcnn")
                 || modelName.Contains("espcn")
-                || modelName.Contains("span")
-                || modelName.Contains("compact")
-                || modelName.Contains("realplksr");
+                || modelName.Contains("span");
 
             if (!isFast)
             {

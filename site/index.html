@@ -15,7 +15,7 @@
     <a href="index.html" class="brand">
       <span class="brand-logo">AI</span>
       <span>Jellyfin AI Upscaler</span>
-      <span class="brand-version">v1.6.1.20</span>
+      <span class="brand-version">v1.6.1.21</span>
     </a>
     <nav class="nav" data-nav></nav>
     <div class="nav-cta">
@@ -73,10 +73,10 @@
 
   <h2>Latest release</h2>
   <div class="card">
-    <h3>v1.6.1.20 · Adoption Completion + Cancellation + Async-IO</h3>
-    <p style="color: var(--text-dim); margin-bottom: 12px;">Follow-up patch closing the gaps the v1.6.1.19 post-release self-audit found. v1.6.1.19's <code>ModelAvailability</code> source-of-truth class wasn't adopted everywhere — fixed here (HardwareBenchmark null-coalesce bypass, 7 single-frame returns now use PickAvailable). Plus 3 new bug classes: 9× <code>HttpContext.RequestAborted</code> propagation in UpscalerController (no more 120s timeout hangs on client disconnect), <code>CacheManager</code> async streaming replaces synchronous <code>File.Copy</code> (was blocking thread-pool 5-30s per cached frame on NAS-mounted disks), and timeless csproj-Comments (no more drift-prone version-strings in build-config text). +7 regression-guard tests; tests grew 65 → 72.</p>
+    <h3>v1.6.1.21 · Adoption v2 + Compute-Waste Fixes + Honest Dead-Config</h3>
+    <p style="color: var(--text-dim); margin-bottom: 12px;">Follow-up patch closing 8 findings of the v1.6.1.20 external audit. Wires the long-broken <code>RestrictToUnwatchedContent</code> + <code>SkipUpscaledOnRescan</code> toggles in <code>LibraryUpscaleScanTask</code> (compute-waste eliminated). Completes <code>HttpContext.RequestAborted</code> coverage to 16/16 HttpClient calls (incl. hot-path <code>/upscale-frame</code> + <code>/upscale-video-chunk</code>). Tightens the leaky <code>ProcessingStrategySelector</code> substring-matcher (<code>anime-compact-x4</code> + <code>nomos2-realplksr-x4</code> no longer falsely accepted for RealTime). 4 frame-loop <code>File.Copy</code> → async streaming. <code>FaceRestore</code> backend allowlist now derived from registry (frontend↔backend symmetric). Filter-preset list 4× → 1× deduplicated. Plus honest XML-doc disclosure of 6 unimplemented dead-config toggles ("Marked for v1.7.0 pipeline implementation"). +13 regression-guard tests; tests grew 72 → 85.</p>
     <a href="changelog.html" class="btn btn-ghost">Full changelog →</a>
-    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.6.1.20" target="_blank" class="btn btn-ghost" style="margin-left: 8px;">Release on GitHub →</a>
+    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.6.1.21" target="_blank" class="btn btn-ghost" style="margin-left: 8px;">Release on GitHub →</a>
   </div>
 
   <h2>Who it's for</h2>
@@ -105,7 +105,7 @@ docker run -d --name jellyfin-ai-upscaler \
 <footer class="footer">
   <div class="footer-inner">
     <div>
-      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.6.1.20 · not affiliated with the Jellyfin project
+      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.6.1.21 · not affiliated with the Jellyfin project
       <div style="margin-top: 4px;"><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a> · <a href="https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler">Docker Hub</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues">Issues</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">Releases</a></div>
     </div>
     <div>Co-engineered with <a href="https://claude.com/claude-code">Claude Opus 4.7</a></div>

@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.6.1.20
+# Jellyfin AI Upscaler Plugin v1.6.1.21
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.7-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.6.1.20):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.6.1.21):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.6.1.20     │  │
+│  │  AI Upscaler Plugin v1.6.1.21     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -289,12 +289,27 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.6.1.20` — pinned to a specific plugin release
-- `:v1.6.1.20-<backend>` — full semver (e.g. `:v1.6.1.20-cpu`)
+- `:docker7-v1.6.1.21` — pinned to a specific plugin release
+- `:v1.6.1.21-<backend>` — full semver (e.g. `:v1.6.1.21-cpu`)
 
 ---
 
 ## Changelog
+
+### v1.6.1.21 (Adoption v2 + Compute-Waste Fixes + Honest Dead-Config)
+
+Follow-up patch closing 8 findings of the v1.6.1.20 external audit.
+
+- **`RestrictToUnwatchedContent` + `SkipUpscaledOnRescan` finally wired** — both toggles existed since v1.6.1.14 with 0 consumers. `LibraryUpscaleScanTask` now consults a new `IsAnyUserPlayed(BaseItem)` helper (DI extended with `IUserManager` + `IUserDataManager`). User compute-waste-protection finally honored.
+- **6 remaining HttpClient calls now use `HttpContext.RequestAborted`** — 16/16 coverage in UpscalerController, including the hot-path `/upscale-frame` and `/upscale-video-chunk` (no more 120s server hangs when client disconnects mid-playback).
+- **`ProcessingStrategySelector` substring-matcher tightened** — the v1.6.1.18 `compact` and `realplksr` substrings were too broad: `anime-compact-x4` (anime-category) and `nomos2-realplksr-x4` (video-quality, 30 MB DAT2) were falsely accepted for RealTime, causing frame drops. Removed those substrings; only unambiguous `fsrcnn`/`espcn`/`span` prefixes remain.
+- **4 frame-loop `File.Copy` → async streaming** — `VideoFrameProcessor` (2 sites) + `ProcessingMethodExecutor` (2 sites). Pattern from v1.6.1.20 `CacheManager:307` extended to all hot-paths. NAS-mount block-IO eliminated.
+- **FaceRestore backend allowlist symmetric to frontend** — backend `FaceRestoreLoad` no longer hardcodes `{gfpgan-v1.4, codeformer}`; reads `category="face_restore"` from the same embedded JSON the frontend dropdown uses. New face-restore models (e.g. RestoreFormer++) won't get rejected with HTTP 400 anymore.
+- **Filter-preset list deduplicated 4× → 1×** — new `_validFilterPresets` static readonly. Single-source.
+- **Honest XML-doc disclosure of 6 dead-config toggles** — `EnableModelPreloading` / `EnableHealthMonitoring` / `EnableModelAutoCleanup` / `EnableQualityMetrics` / `EnableFaceEnhancement` / `EnableGrainManagement` flagged as `currently no-op pending v1.7.0 pipeline implementation`. No silent UI-lying.
+- **+13 new regression tests** — `ProcessingStrategySelectorTests.cs` covers HashSet acceptance, prefix acceptance, and the 2 substring-matcher rejections. Tests grew 72 → 85 passing.
+
+**Verification:** `dotnet build -c Release` — 0 warnings, 0 errors. `dotnet test` — 85/85 passing. No new models, no schema changes — v1.6.1.20 saved configs are bit-for-bit compatible.
 
 ### v1.6.1.20 (Adoption Completion + Cancellation + Async-IO)
 

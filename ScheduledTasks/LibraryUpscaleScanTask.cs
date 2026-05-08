@@ -27,19 +27,55 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
         private readonly HttpUpscalerService _httpUpscalerService;
         private readonly VideoProcessor _videoProcessor;
         private readonly UpscalerCore _upscalerCore;
+        // v1.6.1.21 - injected for the RestrictToUnwatchedContent toggle wiring (P0b).
+        // Both are first-class Jellyfin services; the DI container resolves them automatically
+        // without needing a PluginServiceRegistrator entry (same as ILibraryManager above).
+        private readonly IUserManager _userManager;
+        private readonly IUserDataManager _userDataManager;
 
         public LibraryUpscaleScanTask(
             ILogger<LibraryUpscaleScanTask> logger,
             ILibraryManager libraryManager,
             HttpUpscalerService httpUpscalerService,
             VideoProcessor videoProcessor,
-            UpscalerCore upscalerCore)
+            UpscalerCore upscalerCore,
+            IUserManager userManager,
+            IUserDataManager userDataManager)
         {
             _logger = logger;
             _libraryManager = libraryManager;
             _httpUpscalerService = httpUpscalerService;
             _videoProcessor = videoProcessor;
             _upscalerCore = upscalerCore;
+            _userManager = userManager;
+            _userDataManager = userDataManager;
+        }
+
+        /// <summary>
+        /// True if any user (admin or not) has marked the item as played at least once.
+        /// Used to honor the <c>PluginConfiguration.RestrictToUnwatchedContent</c> toggle.
+        /// Conservative semantics: any single user playing it counts as "watched" - protects
+        /// against compute-waste on shared libraries even if just one family member saw it.
+        /// Fail-open: lookup errors return false (treat as unwatched) so the scan keeps going.
+        /// </summary>
+        private bool IsAnyUserPlayed(BaseItem item)
+        {
+            try
+            {
+                foreach (var user in _userManager.Users)
+                {
+                    var data = _userDataManager.GetUserData(user, item);
+                    if (data != null && (data.Played || data.PlayCount > 0))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "AI Upscaler: IsAnyUserPlayed lookup failed for {Path}, treating as unwatched", item?.Path);
+            }
+            return false;
         }
 
         public string Name => "Scan & Upscale Library";
@@ -170,9 +206,23 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                     continue;
                 }
 
+                // v1.6.1.21 - RestrictToUnwatchedContent toggle (P0b). Default: false. When true,
+                // skip items any user has already played — avoids compute-waste on shared family
+                // libraries where some movies are already seen. Counted under alreadyUpscaledCount
+                // for telemetry simplicity (treat "watched" as "no point re-processing").
+                if (config.RestrictToUnwatchedContent && IsAnyUserPlayed(video))
+                {
+                    alreadyUpscaledCount++;
+                    continue;
+                }
+
                 // Skip if already upscaled (file has _upscaled suffix)
+                // v1.6.1.21 - SkipUpscaledOnRescan toggle (P0b). Default: true. When false, the
+                // user has explicitly opted in to re-processing existing _upscaled files (e.g. to
+                // upgrade from realesrgan-x4 to drct-l-x4). Both check-paths (filename suffix and
+                // sibling-file-exists) are gated by the same toggle for symmetric behavior.
                 var fileName = Path.GetFileNameWithoutExtension(video.Path);
-                if (fileName.EndsWith("_upscaled", StringComparison.OrdinalIgnoreCase))
+                if (config.SkipUpscaledOnRescan && fileName.EndsWith("_upscaled", StringComparison.OrdinalIgnoreCase))
                 {
                     alreadyUpscaledCount++;
                     continue;
@@ -182,7 +232,7 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                 var dir = Path.GetDirectoryName(video.Path);
                 var ext = Path.GetExtension(video.Path);
                 var upscaledPath = Path.Combine(dir ?? "", fileName + "_upscaled" + ext);
-                if (File.Exists(upscaledPath))
+                if (config.SkipUpscaledOnRescan && File.Exists(upscaledPath))
                 {
                     alreadyUpscaledCount++;
                     continue;

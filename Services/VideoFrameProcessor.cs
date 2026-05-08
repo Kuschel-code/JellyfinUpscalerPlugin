@@ -260,7 +260,14 @@ namespace JellyfinUpscalerPlugin.Services
                         else
                         {
                             _logger.LogWarning("AI service returned null for frame {Frame}, using original", Path.GetFileName(frameFile));
-                            File.Copy(frameFile, outputFile, true);
+                            // v1.6.1.21 - async streaming (P1a). Was sync File.Copy on frame-loop hot-path:
+                            // blocked the thread-pool thread for 5-30s per frame on NAS-mounted disks.
+                            // Symmetric to the CacheManager:307 fix in v1.6.1.20.
+                            await using (var src = new FileStream(frameFile, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 81920, useAsync: true))
+                            await using (var dst = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920, useAsync: true))
+                            {
+                                await src.CopyToAsync(dst, cancellationToken);
+                            }
                         }
 
                         Interlocked.Increment(ref processedFrames);
@@ -292,7 +299,12 @@ namespace JellyfinUpscalerPlugin.Services
                         Interlocked.Increment(ref failedFrames);
                         _logger.LogWarning(ex, "Failed to upscale frame {Frame}, using original", frameFile);
                         var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFile));
-                        File.Copy(frameFile, outputFile, true);
+                        // v1.6.1.21 - async streaming (P1a, catch-block twin of the else-branch above).
+                        await using (var src = new FileStream(frameFile, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 81920, useAsync: true))
+                        await using (var dst = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920, useAsync: true))
+                        {
+                            await src.CopyToAsync(dst, cancellationToken);
+                        }
                         // Fail the entire job if >50% of frames fail (service likely down)
                         if (failedFrames > totalFrames / 2)
                         {
