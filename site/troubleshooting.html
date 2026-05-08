@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.18</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.19</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Troubleshooting</h1>
@@ -26,8 +26,8 @@
 
   <h2>Ffprobe/FFmpeg: "Cannot start process because a file name has not been provided"</h2>
   <p><strong>Symptom:</strong> Scheduled task fails at 0% with <code>InvalidOperationException: Cannot start process because a file name has not been provided.</code></p>
-  <p><strong>Cause:</strong> Pre-v1.6.1.18 plugins captured <code>MediaEncoder.EncoderPath</code>/<code>ProbePath</code> at construction time. If the plugin was constructed before Jellyfin finished resolving these paths, the capture was an empty string — permanently.</p>
-  <p><strong>Fix:</strong> Upgrade to v1.6.1.18+. The fix applies to all three singletons (<code>VideoAnalyzer</code>, <code>VideoFrameProcessor</code>, <code>ProcessingMethodExecutor</code>) and late-resolves on every entry point.</p>
+  <p><strong>Cause:</strong> Pre-v1.6.1.19 plugins captured <code>MediaEncoder.EncoderPath</code>/<code>ProbePath</code> at construction time. If the plugin was constructed before Jellyfin finished resolving these paths, the capture was an empty string — permanently.</p>
+  <p><strong>Fix:</strong> Upgrade to v1.6.1.19+. The fix applies to all three singletons (<code>VideoAnalyzer</code>, <code>VideoFrameProcessor</code>, <code>ProcessingMethodExecutor</code>) and late-resolves on every entry point.</p>
 
   <h2>AI service test connection fails</h2>
   <p><strong>Symptom:</strong> The Test Connection button in plugin config shows red.</p>
@@ -97,7 +97,7 @@
   <p>Collect <code>GET /status</code>, <code>GET /hardware</code>, the last 500 lines of the Jellyfin log, the last 500 lines of the AI service log, and the plugin config (redact the API token). Open an issue at <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues">GitHub Issues</a> with all four attached.</p>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.18</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.19</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

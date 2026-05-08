@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-07",
+  "generated_at": "2026-05-08",
   "source": "docker-ai-service/app/main.py:AVAILABLE_MODELS",
   "generator": "Scripts/sync-fallback-models.ps1",
   "notice": "AUTO-GENERATED - DO NOT EDIT BY HAND. Regenerate via the script when main.py changes.",

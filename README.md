@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.6.1.18
+# Jellyfin AI Upscaler Plugin v1.6.1.19
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.7-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.6.1.18):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.6.1.19):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.6.1.18     │  │
+│  │  AI Upscaler Plugin v1.6.1.19     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -289,12 +289,25 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.6.1.18` — pinned to a specific plugin release
-- `:v1.6.1.18-<backend>` — full semver (e.g. `:v1.6.1.18-cpu`)
+- `:docker7-v1.6.1.19` — pinned to a specific plugin release
+- `:v1.6.1.19-<backend>` — full semver (e.g. `:v1.6.1.19-cpu`)
 
 ---
 
 ## Changelog
+
+### v1.6.1.19 (Single-Source-of-Truth for Model Availability)
+
+Structural fix release that closes the drift class v1.6.1.17 and v1.6.1.18 patched point-by-point. New `Services/ModelAvailability` static class centralises the `KnownUnavailable` set across all C# resolvers — `UpscalerCore` and `HardwareBenchmarkService` now consult one source of truth.
+
+- **`Services/ModelAvailability.cs` extracted** — 5-entry HashSet + `IsKnownUnavailable()` + `PickAvailable()`. Marked `internal`; `<InternalsVisibleTo>` grant added so test assembly can directly assert on contract.
+- **`UpscalerCore` refactored** — removed private `_knownUnavailable` HashSet and bespoke `PickAvailable()` logic, replaced with a thin wrapper that adds `_logger` telemetry on top of the static class. Public behavior unchanged.
+- **`HardwareBenchmarkService` hardened** — 7 hardcoded `RecommendedModel`/`FallbackModel` assignments now route through new `EnsureModelAvailable()` helper. Today both `realesrgan-x4` and `fsrcnn-x2` are always-available so this is a regression-guard, not a behavior fix. If either is ever flipped to self-host, the helper warns + falls back to plugin default.
+- **Face-Restore dropdown auto-populated** — `#FaceRestoreModel` was hardcoded HTML `<option>`s for `gfpgan-v1.4` / `codeformer`. Now `loadModels()` populates from `category="face_restore"` on Settings page open. Symmetric to the v1.6.1.18 anime/live-action dropdown auto-populate.
+- **Homepage card content fix** — `site/index.html` v1.6.1.18 card was incorrectly showing the v1.6.1.16 FFmpeg-fix description because the pauschal version-bump regex bumped the `<h3>` title without rewriting the body. Card now shows actual v1.6.1.19 content.
+- **+28 new tests** — `JellyfinUpscalerPlugin.Tests/Services/ModelAvailabilityTests.cs` covers contract assertions, case-insensitivity, fallback-chain semantics, and explicit drift-locks (`HaveCount(5)`, `NotContain("realesrgan-x4")`). Tests grew 37 → 65 passing.
+
+**Verification:** `dotnet build -c Release` — 0 warnings, 0 errors. `dotnet test` — 65/65 passing. No new models, no schema changes — v1.6.1.18 saved configs are bit-for-bit compatible.
 
 ### v1.6.1.18 (Live-Action Resolver + RealTime-AI Whitelist + Docs Sync)
 

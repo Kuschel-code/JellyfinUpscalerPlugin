@@ -1,6 +1,6 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
 <style>
-    /* ===== AI Upscaler v1.6.1.18 — Jellyfin-compatible dark theme ===== */
+    /* ===== AI Upscaler v1.6.1.19 — Jellyfin-compatible dark theme ===== */
     #UpscalerConfigurationPage {
         --accent: #00d4ff;
         --accent-bg: rgba(0, 212, 255, 0.12);
@@ -361,7 +361,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.6.1.18 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.6.1.19 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -1088,6 +1088,7 @@
                         <div class="form-row" style="margin-bottom:0.7rem;gap:0.8rem;">
                             <div class="form-col selectContainer" style="flex:1;">
                                 <label class="selectLabel" for="FaceRestoreModel">Model</label>
+                                <!-- v1.6.1.19 - populated from /Upscaler/models (category=face_restore) by loadModels(). Hardcoded options below are bootstrap defaults shown briefly until /Upscaler/models resolves; once loadModels() runs they're replaced with the live registry list (preserving the saved value). -->
                                 <select id="FaceRestoreModel" style="width:100%;padding:0.4rem;background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;">
                                     <option value="gfpgan-v1.4">GFPGAN v1.4 (Apache 2.0)</option>
                                     <option value="codeformer">CodeFormer (S-Lab License)</option>
@@ -1406,7 +1407,7 @@
                 // Docker service returns { models: [...] }, fallback returns plain array
                 modelsData = (data && data.models) ? data.models : (Array.isArray(data) ? data : []);
 
-                // v1.6.1.18 - Categories that DON'T belong in the upscale-model dropdown:
+                // v1.6.1.19 - Categories that DON'T belong in the upscale-model dropdown:
                 //   interpolation = RIFE (frame interp, takes 2 frames as input -> /upscale call returns 500)
                 //   face_restore  = GFPGAN/CodeFormer (operate on 512x512 face crops, not full frames)
                 var UPSCALE_EXCLUDED = ['interpolation', 'face_restore'];
@@ -1441,19 +1442,26 @@
 
                 select.addEventListener('change', function() { updateScaleOptions(page); });
 
-                // v1.6.1.18 - Populate PreferredAnimeModel + PreferredLiveActionModel dropdowns.
+                // v1.6.1.19 - Populate PreferredAnimeModel + PreferredLiveActionModel dropdowns.
                 // Anime: only category="anime" entries. Live-action: any upscale-eligible non-anime entry.
                 populatePreferredModelDropdown(page, '#PreferredAnimeModel',
                     upscaleModels.filter(function(m) { return m.category === 'anime'; }));
                 populatePreferredModelDropdown(page, '#PreferredLiveActionModel',
                     upscaleModels.filter(function(m) { return m.category !== 'anime' && m.category !== 'video-sr'; }));
 
+                // v1.6.1.19 - Populate FaceRestoreModel dropdown from category=face_restore.
+                // Was hardcoded HTML <option>s before — would silently miss any new face-restore
+                // model added to the registry (e.g. RestoreFormer++ or GPEN in future releases).
+                // Same drift class the v1.6.1.17/18 audits caught for resolvers.
+                populateFaceRestoreDropdown(page,
+                    modelsData.filter(function(m) { return m.category === 'face_restore' && m.available !== false; }));
+
                 // Store for benchmark table
                 page._allModels = modelsData;
             });
         }
 
-        // v1.6.1.18 - Populate a "Preferred X Model" dropdown while preserving the saved value.
+        // v1.6.1.19 - Populate a "Preferred X Model" dropdown while preserving the saved value.
         // Always keeps the "Auto (use heuristic)" option at the top with value="".
         function populatePreferredModelDropdown(page, selector, models) {
             var sel = page.querySelector(selector);
@@ -1471,6 +1479,27 @@
             // Restore saved value if it still exists in the new option list, else keep "" (Auto)
             var hasSaved = Array.from(sel.options).some(function(o) { return o.value === savedValue; });
             sel.value = hasSaved ? savedValue : '';
+        }
+
+        // v1.6.1.19 - Populate the FaceRestoreModel dropdown from the live registry.
+        // Different from populatePreferredModelDropdown: no leading "Auto" placeholder — face-restore
+        // is opt-in feature that requires picking a specific model when enabled. If the registry has
+        // 0 face_restore entries (extremely unlikely; gfpgan-v1.4 + codeformer are stable), the
+        // hardcoded fallback options stay (defensive: never leave the dropdown empty).
+        function populateFaceRestoreDropdown(page, models) {
+            var sel = page.querySelector('#FaceRestoreModel');
+            if (!sel || models.length === 0) return;
+            var savedValue = sel.value || '';
+            while (sel.options.length > 0) sel.remove(0);
+            models.forEach(function(m) {
+                var opt = document.createElement('option');
+                opt.value = m.id;
+                opt.textContent = m.name || m.id;
+                sel.appendChild(opt);
+            });
+            // Restore saved value if it still exists, else fall back to first option (gfpgan-v1.4 by convention)
+            var hasSaved = Array.from(sel.options).some(function(o) { return o.value === savedValue; });
+            sel.value = hasSaved ? savedValue : sel.options[0].value;
         }
 
         function updateScaleOptions(page) {
@@ -1756,7 +1785,7 @@
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.6.1.18';
+                config.PluginVersion = '1.6.1.19';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');

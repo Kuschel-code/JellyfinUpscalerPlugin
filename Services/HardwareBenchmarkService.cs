@@ -212,6 +212,26 @@ namespace JellyfinUpscalerPlugin.Services
             };
         }
 
+        /// <summary>
+        /// v1.6.1.19 - validate a hardcoded model ID against <see cref="ModelAvailability"/> before
+        /// emitting it to the user. Today both <c>realesrgan-x4</c> and <c>fsrcnn-x2</c> are
+        /// always-available so this is a regression-guard, not a behavior fix. If a future change
+        /// flips one of them to <c>available: False</c> upstream, this helper logs a warning and
+        /// returns the plugin default instead of recommending an unreachable model.
+        /// </summary>
+        private string EnsureModelAvailable(string preferred)
+        {
+            if (!ModelAvailability.IsKnownUnavailable(preferred))
+            {
+                return preferred;
+            }
+            _logger.LogWarning(
+                "HardwareBenchmark: hardcoded model '{Preferred}' is now in KnownUnavailable, " +
+                "falling back to realesrgan-x4. Update HardwareBenchmarkService to pick a different default.",
+                preferred);
+            return "realesrgan-x4";
+        }
+
         private HardwareProfile CreateDefaultHardwareProfile()
         {
             return new HardwareProfile
@@ -219,7 +239,7 @@ namespace JellyfinUpscalerPlugin.Services
                 ServiceAvailable = false,
                 CpuCores = Environment.ProcessorCount,
                 DetectionTime = DateTime.UtcNow,
-                RecommendedModel = "fsrcnn-x2",
+                RecommendedModel = EnsureModelAvailable("fsrcnn-x2"),
                 RecommendedScale = 2,
                 MaxConcurrentStreams = 1
             };
@@ -235,24 +255,24 @@ namespace JellyfinUpscalerPlugin.Services
 
             if (hw.CudaAvailable)
             {
-                settings.RecommendedModel = "realesrgan-x4";
+                settings.RecommendedModel = EnsureModelAvailable("realesrgan-x4");
                 settings.RecommendedQuality = "high";
                 settings.MaxConcurrentStreams = Math.Min(4, hw.CpuCores / 2);
-                settings.FallbackModel = "fsrcnn-x2";
+                settings.FallbackModel = EnsureModelAvailable("fsrcnn-x2");
             }
             else if (hw.DirectMlAvailable)
             {
-                settings.RecommendedModel = "realesrgan-x4";
+                settings.RecommendedModel = EnsureModelAvailable("realesrgan-x4");
                 settings.RecommendedQuality = "medium";
                 settings.MaxConcurrentStreams = 2;
-                settings.FallbackModel = "fsrcnn-x2";
+                settings.FallbackModel = EnsureModelAvailable("fsrcnn-x2");
             }
             else
             {
-                settings.RecommendedModel = "fsrcnn-x2";
+                settings.RecommendedModel = EnsureModelAvailable("fsrcnn-x2");
                 settings.RecommendedQuality = "low";
                 settings.MaxConcurrentStreams = 1;
-                settings.FallbackModel = "fsrcnn-x2";
+                settings.FallbackModel = EnsureModelAvailable("fsrcnn-x2");
             }
 
             // Resolution recommendation based on hardware

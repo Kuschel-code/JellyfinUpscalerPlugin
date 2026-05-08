@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.6.1.19",
+        "changelog": "v1.6.1.19: Structural fix closing the drift class v1.6.1.17/18 patched point-by-point. NEW Services/ModelAvailability.cs - single source of truth (HashSet + IsKnownUnavailable + PickAvailable) consumed by UpscalerCore (refactored) and HardwareBenchmarkService (new EnsureModelAvailable wrapper hardens 7 hardcoded model assignments). FIX Face-Restore dropdown auto-populated from registry (was hardcoded HTML). FIX Homepage card on site/index.html showed v1.6.1.16 content under v1.6.1.18 header (pauschal version-bump bumped title without rewriting body). NEW <InternalsVisibleTo> grant + ModelAvailabilityTests.cs (+28 tests, drift-locks). dotnet test 65/65 (was 37). No model changes, no breaking config.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.19/JellyfinUpscalerPlugin-v1.6.1.19.zip",
+        "checksum": "PENDING_FILL_AFTER_BUILD",
+        "timestamp": "2026-05-08T12:00:00.000Z"
+      },
+      {
         "version": "1.6.1.18",
         "changelog": "v1.6.1.18: Follow-up patch fixing 3 sibling bugs from v1.6.1.17 external audit. FIX PreferredLiveActionModel was Dead-Config (UI saved it, resolver never read it) — symmetric twin of v1.6.1.17 anime fix. New non-anime override hook with PickAvailable fallback chain. FIX RealTime-AI fastModels HashSet drifted from registry — expanded 9 → 14 entries, now includes bhi-realplksr-x4 (Speed Champion was being silently rejected) + compact family + swinir-small. FIX docs/MODEL-HOSTING.md outdated (still 'v1.6.1.12 catalog'); now recommends drct-l-x4 over self-host HAT and real-cugan-x4 over gated apisr-x3. NEW TEST: LiveAction non-anime drift-protection [Theory]. dotnet test 37/37 (was 33). No model changes, no breaking config.",
         "targetAbi": "10.11.8.0",

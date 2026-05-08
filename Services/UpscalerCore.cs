@@ -273,50 +273,44 @@ namespace JellyfinUpscalerPlugin.Services
         }
 
         /// <summary>
-        /// Models the Docker AI service has marked as <c>available: False</c> (require self-hosting
-        /// or have execution-provider issues). The auto-selection heuristic must never return one
-        /// of these — they would 404 on download or 500 on inference. Source of truth:
-        /// <c>docker-ai-service/app/main.py</c> AVAILABLE_MODELS dict.
+        /// Pick the first available model from a preferred → fallback chain. Logs the fallback
+        /// decision (the underlying <see cref="ModelAvailability.PickAvailable"/> is pure; this
+        /// wrapper adds telemetry).
         /// </summary>
         /// <remarks>
-        /// Keep in sync with main.py. As of v1.6.1.17:
-        ///   nomos8k-hat-x4    — HAT LayerNorm dynamic-shape ops fail on CPUExecutionProvider
-        ///   apisr-x3          — Xenova HF repo returns 401 anonymously (gated)
-        ///   edvr-m-x4         — Multi-frame VSR, no public ONNX mirror (self-host)
-        ///   realbasicvsr-x4   — Multi-frame VSR, no public ONNX mirror (self-host)
-        ///   animesr-v2-x4     — Multi-frame Anime VSR, no public ONNX mirror (self-host)
+        /// v1.6.1.19 - the underlying <c>KnownUnavailable</c> set + pure picker live in
+        /// <see cref="ModelAvailability"/> so <see cref="HardwareBenchmarkService"/> and any
+        /// future resolver can use the same source of truth. Before v1.6.1.19 this was a private
+        /// HashSet inside UpscalerCore which led to v1.6.1.18's audit catching the same bug
+        /// pattern duplicated in HardwareBenchmarkService.
         /// </remarks>
-        private static readonly HashSet<string> _knownUnavailable = new(StringComparer.OrdinalIgnoreCase)
-        {
-            "nomos8k-hat-x4",
-            "apisr-x3",
-            "edvr-m-x4",
-            "realbasicvsr-x4",
-            "animesr-v2-x4"
-        };
-
-        /// <summary>
-        /// Pick the first available model from a preferred → fallback chain.
-        /// Skips any model in <see cref="_knownUnavailable"/>; falls back to <c>realesrgan-x4</c>
-        /// (Plugin default, always available) when every candidate is unavailable.
-        /// </summary>
         private string PickAvailable(string preferred, params string[] fallbacks)
         {
-            if (!_knownUnavailable.Contains(preferred))
-                return preferred;
+            var picked = ModelAvailability.PickAvailable(preferred, fallbacks);
+            if (picked == preferred)
+            {
+                return picked;
+            }
 
+            // Did we land on the ultimate fallback (realesrgan-x4) only because every explicit
+            // candidate was unavailable? That deserves a Warning. Otherwise this is a normal
+            // one-step fallback and Information is enough.
+            bool everyCandidateUnavailable = ModelAvailability.IsKnownUnavailable(preferred);
             foreach (var fb in fallbacks)
             {
                 if (string.IsNullOrWhiteSpace(fb)) continue;
-                if (!_knownUnavailable.Contains(fb))
-                {
-                    _logger.LogInformation("Auto-model: {Preferred} is unavailable (self-host required), falling back to {Fallback}", preferred, fb);
-                    return fb;
-                }
+                if (!ModelAvailability.IsKnownUnavailable(fb)) { everyCandidateUnavailable = false; break; }
             }
 
-            _logger.LogWarning("Auto-model: {Preferred} and all fallbacks are unavailable, defaulting to realesrgan-x4", preferred);
-            return "realesrgan-x4";
+            if (everyCandidateUnavailable && picked == "realesrgan-x4")
+            {
+                _logger.LogWarning("Auto-model: {Preferred} and all fallbacks are unavailable, defaulting to realesrgan-x4", preferred);
+            }
+            else
+            {
+                _logger.LogInformation("Auto-model: {Preferred} is unavailable (self-host required), falling back to {Fallback}", preferred, picked);
+            }
+            return picked;
         }
 
         /// <summary>
