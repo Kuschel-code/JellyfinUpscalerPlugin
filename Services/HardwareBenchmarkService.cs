@@ -120,7 +120,11 @@ namespace JellyfinUpscalerPlugin.Services
                         SupportsCUDA = HasProvider(status.AvailableProviders, "CUDA", "Tensorrt"),
                         SupportsDirectML = HasProvider(status.AvailableProviders, "DirectML"),
                         DetectionTime = DateTime.UtcNow,
-                        RecommendedModel = status.CurrentModel ?? "realesrgan-x4",
+                        // v1.6.1.20 - route status.CurrentModel through EnsureModelAvailable.
+                        // Was bypassed in v1.6.1.19 - if the Docker service reports a self-host
+                        // model as current_model (e.g. user manually self-hosted realbasicvsr-x4),
+                        // it would be silently propagated as RecommendedModel without validation.
+                        RecommendedModel = EnsureModelAvailable(status.CurrentModel ?? "realesrgan-x4"),
                         RecommendedScale = 2,
                         MaxConcurrentStreams = status.MaxConcurrent
                     };

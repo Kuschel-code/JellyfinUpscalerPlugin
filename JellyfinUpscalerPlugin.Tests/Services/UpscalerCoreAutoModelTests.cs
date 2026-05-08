@@ -187,5 +187,44 @@ namespace JellyfinUpscalerPlugin.Tests.Services
             knownUnavailable.Should().NotContain(model,
                 "PreferredLiveActionModel resolver path must never leak a self-host-required model");
         }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // v1.6.1.20: All single-frame paths route through PickAvailable
+        // (latent-drift adoption complete — caught by the v1.6.1.19 post-release
+        // self-audit. Before v1.6.1.20 these returns bypassed PickAvailable;
+        // were correct today but vulnerable to future KnownUnavailable additions.)
+        // ──────────────────────────────────────────────────────────────────────
+
+        [Theory]
+        [InlineData(true,   true,  1920, 1080)]  // anime + batch  → realesrgan-animevideo-x4 chain
+        [InlineData(true,   false, 1920, 1080)]  // anime + realtime → anime-compact-x4 chain
+        [InlineData(false,  false, 640,  360)]   // non-anime low-res realtime → span-x2 chain
+        [InlineData(false,  false, 1920, 1080)]  // non-anime HD realtime → nomosuni-compact-x2 chain
+        [InlineData(false,  true,  320,  240)]   // non-anime very-low-res batch → ultrasharp-v2-x4 chain
+        [InlineData(false,  true,  640,  360)]   // non-anime low-res batch → realesrgan-x4
+        [InlineData(false,  true,  1920, 1080)]  // non-anime HD batch (default) → realesrgan-x4
+        public void SingleFramePaths_AlwaysRouteThroughPickAvailable(bool isAnime, bool isBatch, int width, int height)
+        {
+            // v1.6.1.20 closed the latent-drift adoption gap: every return in ResolveModelForVideo
+            // single-frame paths now calls PickAvailable. This [Theory] is a regression-guard:
+            // the resolver output must always be outside KnownUnavailable, regardless of input
+            // combo. If a future maintainer re-introduces a bare `return "some-model";` and that
+            // ID lands in KnownUnavailable, this test goes red.
+            var genres = isAnime ? new[] { "Animation" } : null;
+            var model = _core.ResolveModelForVideo(
+                genres: genres,
+                width: width, height: height,
+                isBatch: isBatch,
+                inputFrames: 1,
+                forceAuto: true);
+
+            var knownUnavailable = new[]
+            {
+                "nomos8k-hat-x4", "apisr-x3",
+                "edvr-m-x4", "realbasicvsr-x4", "animesr-v2-x4"
+            };
+            knownUnavailable.Should().NotContain(model,
+                "every single-frame path must go through PickAvailable as of v1.6.1.20");
+        }
     }
 }

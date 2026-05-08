@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.6.1.19
+# Jellyfin AI Upscaler Plugin v1.6.1.20
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.7-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.6.1.19):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.6.1.20):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.6.1.19     │  │
+│  │  AI Upscaler Plugin v1.6.1.20     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -289,12 +289,25 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.6.1.19` — pinned to a specific plugin release
-- `:v1.6.1.19-<backend>` — full semver (e.g. `:v1.6.1.19-cpu`)
+- `:docker7-v1.6.1.20` — pinned to a specific plugin release
+- `:v1.6.1.20-<backend>` — full semver (e.g. `:v1.6.1.20-cpu`)
 
 ---
 
 ## Changelog
+
+### v1.6.1.20 (Adoption Completion + Cancellation + Async-IO)
+
+Follow-up patch closing the gaps the v1.6.1.19 post-release self-audit found. The v1.6.1.19 refactor introduced the `ModelAvailability` source-of-truth class but didn't adopt it everywhere. Plus 3 new bug classes that surfaced during the deep-scan.
+
+- **Adoption: `HardwareBenchmarkService.cs:123`** — `status.CurrentModel ?? "realesrgan-x4"` was bypassing `EnsureModelAvailable`. Now wrapped — if the Docker service ever reports a self-host model as `current_model`, it falls back to plugin default instead of being silently propagated.
+- **Adoption: `UpscalerCore.cs` Single-Frame returns** — 7 hardcoded returns (anime+batch, anime+realtime, low-res realtime, HD realtime, very-low-res batch, low-res batch, default batch) now route through `PickAvailable`. Today no behavior change — regression-guard for future `KnownUnavailable` additions.
+- **NEW: 9× `HttpContext.RequestAborted`** added to `UpscalerController` HttpClient calls (`/gpus`, `/models/load`, `/benchmark`, `/face-restore/{load,status,unload}`, `/metrics`, `/gpu-verify`, `/health/detailed`). Prevents 120s server-side hangs when client disconnects.
+- **NEW: `CacheManager.cs:307`** — synchronous `File.Copy` replaced with async streaming (`FileStream + CopyToAsync` with `useAsync:true`). Was blocking thread-pool thread 5-30s on NAS-mounted disks per cached frame.
+- **NEW: csproj-Comments** — removed explicit `v1.6.1.19` version-strings from comments. Pauschal version-bump regex would have falsely re-attributed v1.6.1.19 features to v1.6.1.20 otherwise.
+- **+7 new tests** — `SingleFramePaths_AlwaysRouteThroughPickAvailable [Theory]` with 7 InlineData cases. Tests grew 65 → 72 passing.
+
+**Verification:** `dotnet build -c Release` — 0 warnings, 0 errors. `dotnet test` — 72/72 passing. No new models, no schema changes — v1.6.1.19 saved configs are bit-for-bit compatible.
 
 ### v1.6.1.19 (Single-Source-of-Truth for Model Availability)
 

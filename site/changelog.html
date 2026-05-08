@@ -13,7 +13,19 @@
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.6.1.19 — Single-Source-of-Truth for Model Availability <span class="tag success">latest</span></h2>
+  <h2>v1.6.1.20 — Adoption Completion + Cancellation + Async-IO <span class="tag success">latest</span></h2>
+  <p><em>Released May 2026.</em> Follow-up patch closing the gaps the v1.6.1.19 post-release self-audit found. The v1.6.1.19 refactor introduced the <code>ModelAvailability</code> source-of-truth class but didn't adopt it everywhere. Plus 3 new bug classes (Cancellation, Sync-IO, csproj Self-Reference) that surfaced during the deep-scan.</p>
+  <ul>
+    <li><strong>Adoption: HardwareBenchmarkService.cs:123</strong> — <code>status.CurrentModel ?? "realesrgan-x4"</code> was bypassing <code>EnsureModelAvailable</code>. Now wrapped. If the Docker service ever reports a self-host model as <code>current_model</code>, it falls back to plugin default instead of being silently propagated.</li>
+    <li><strong>Adoption: UpscalerCore.cs Single-Frame returns</strong> — 7 hardcoded returns now route through <code>PickAvailable</code>. Today no behavior change (none of these IDs are in KnownUnavailable); regression-guard for future additions, symmetric to multi-frame paths gated since v1.6.1.17.</li>
+    <li><strong>NEW BUG CLASS: 9× HttpContext.RequestAborted</strong> added to UpscalerController HttpClient calls (<code>/gpus</code>, <code>/models/load</code>, <code>/benchmark</code>, <code>/face-restore/{load,status,unload}</code>, <code>/metrics</code>, <code>/gpu-verify</code>, <code>/health/detailed</code>). Prevents 120s server-side hangs when client disconnects.</li>
+    <li><strong>NEW BUG CLASS: CacheManager.cs:307 async streaming</strong> — synchronous <code>File.Copy</code> replaced with <code>FileStream + CopyToAsync</code> (<code>useAsync:true</code>). Was blocking thread-pool thread 5-30s on NAS-mounted disks per cached frame.</li>
+    <li><strong>NEW BUG CLASS: csproj-Comments timeless</strong> — removed explicit <code>v1.6.1.19</code> version-strings from <code>JellyfinUpscalerPlugin.csproj</code> comments. Pauschal version-bump regex would have falsely re-attributed v1.6.1.19 features to v1.6.1.20.</li>
+    <li><strong>+7 new tests</strong> — <code>SingleFramePaths_AlwaysRouteThroughPickAvailable [Theory]</code> with 7 InlineData cases. Tests grew 65 → 72 passing.</li>
+    <li><strong>Verification:</strong> <code>dotnet build -c Release</code> — 0 warnings, 0 errors. <code>dotnet test</code> — 72/72 passing. No model changes, no schema changes — v1.6.1.19 saved configs are bit-for-bit compatible.</li>
+  </ul>
+
+  <h2>v1.6.1.19 — Single-Source-of-Truth for Model Availability</h2>
   <p><em>Released May 2026.</em> Structural fix for the drift class that v1.6.1.17 and v1.6.1.18 patched point-by-point. Three audit-driven cleanups, plus a refactor that collapses 3+ duplicate hardcoded model-availability lists into one source-of-truth.</p>
   <ul>
     <li><strong>New <code>ModelAvailability</code> static class</strong> — extracted the <code>KnownUnavailable</code> HashSet (5 self-host model IDs) and <code>PickAvailable()</code> picker out of <code>UpscalerCore</code> into <code>Services/ModelAvailability.cs</code>. <code>UpscalerCore</code> now wraps with logging, <code>HardwareBenchmarkService</code> consults the same source via a new <code>EnsureModelAvailable()</code> helper. Closes the sibling-bug class the v1.6.1.18 audit identified.</li>

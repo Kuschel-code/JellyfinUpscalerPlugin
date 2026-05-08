@@ -303,8 +303,17 @@ namespace JellyfinUpscalerPlugin.Services
                 // Copy file to cache
                 var fileName = $"{cacheKey}_{Path.GetFileName(outputPath)}";
                 var cacheFilePath = Path.Combine(_cacheDirectory, "videos", fileName);
-                
-                File.Copy(outputPath, cacheFilePath, true);
+
+                // v1.6.1.20 - replaced synchronous File.Copy with async streaming.
+                // Frame outputs can be tens of MB; on a network-mounted disk (NAS) the sync
+                // call was blocking the thread-pool thread for 5-30s. Async streaming
+                // releases the thread back to the pool while disk I/O is in flight.
+                // useAsync:true enables real overlapped IO on Windows / aio on Linux.
+                await using (var src = new FileStream(outputPath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 81920, useAsync: true))
+                await using (var dst = new FileStream(cacheFilePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920, useAsync: true))
+                {
+                    await src.CopyToAsync(dst);
+                }
                 
                 // Create cache entry
                 var entry = new CacheEntry

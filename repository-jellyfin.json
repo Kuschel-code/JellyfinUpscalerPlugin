@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.6.1.20",
+        "changelog": "v1.6.1.20: Adoption Completion + Cancellation + Async-IO. Follow-up to v1.6.1.19 closing audit-found gaps. FIX HardwareBenchmarkService.cs:123 status.CurrentModel ?? bypass routed through EnsureModelAvailable. FIX UpscalerCore single-frame returns (7 sites) now use PickAvailable. NEW BUG CLASS: 9x HttpContext.RequestAborted in UpscalerController prevents 120s timeout hangs. NEW BUG CLASS: CacheManager async File.Copy replaces sync block-IO. FIX csproj timeless comments. +7 SingleFramePaths regression tests. dotnet test 72/72 (was 65). No model changes, no breaking config.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.20/JellyfinUpscalerPlugin-v1.6.1.20.zip",
+        "checksum": "PENDING_FILL_AFTER_BUILD",
+        "timestamp": "2026-05-08T22:00:00.000Z"
+      },
+      {
         "version": "1.6.1.19",
         "changelog": "v1.6.1.19: Structural fix closing the drift class v1.6.1.17/18 patched point-by-point. NEW Services/ModelAvailability.cs - single source of truth (HashSet + IsKnownUnavailable + PickAvailable) consumed by UpscalerCore (refactored) and HardwareBenchmarkService (new EnsureModelAvailable wrapper hardens 7 hardcoded model assignments). FIX Face-Restore dropdown auto-populated from registry (was hardcoded HTML). FIX Homepage card on site/index.html showed v1.6.1.16 content under v1.6.1.18 header (pauschal version-bump bumped title without rewriting body). NEW <InternalsVisibleTo> grant + ModelAvailabilityTests.cs (+28 tests, drift-locks). dotnet test 65/65 (was 37). No model changes, no breaking config.",
         "targetAbi": "10.11.8.0",

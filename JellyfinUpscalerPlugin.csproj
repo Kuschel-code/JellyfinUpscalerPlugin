@@ -7,16 +7,16 @@
     <TreatWarningsAsErrors Condition="'$(Configuration)'=='Release'">true</TreatWarningsAsErrors>
     <TreatWarningsAsErrors Condition="'$(Configuration)'!='Release'">false</TreatWarningsAsErrors>
     <AssemblyTitle>AI Upscaler Plugin</AssemblyTitle>
-    <Version>1.6.1.19</Version>
-    <AssemblyVersion>1.6.1.19</AssemblyVersion>
-    <FileVersion>1.6.1.19</FileVersion>
+    <Version>1.6.1.20</Version>
+    <AssemblyVersion>1.6.1.20</AssemblyVersion>
+    <FileVersion>1.6.1.20</FileVersion>
     <NoWarn>CS8632</NoWarn>
     <Nullable>enable</Nullable>
     <!-- AI processing now handled by external Docker service - minimal dependencies -->
   </PropertyGroup>
 
-  <!-- v1.6.1.19 - Grant the test assembly access to internal types (e.g. ModelAvailability)
-       so tests can directly assert on internal contracts without reflection or making the API public. -->
+  <!-- Grant the test assembly access to internal types (e.g. ModelAvailability) so tests can
+       directly assert on internal contracts without reflection or making the API public. -->
   <ItemGroup>
     <InternalsVisibleTo Include="JellyfinUpscalerPlugin.Tests" />
   </ItemGroup>
@@ -40,7 +40,7 @@
     <EmbeddedResource Include="Configuration\player-integration.js" />
     <EmbeddedResource Include="Configuration\sidebar-upscaler.js" />
     <EmbeddedResource Include="Configuration\webgl-upscaler.js" />
-    <!-- v1.6.1.19 - Auto-generated fallback model list, regenerate via Scripts/sync-fallback-models.ps1 -->
+    <!-- Auto-generated fallback model list, regenerate via Scripts/sync-fallback-models.ps1 -->
     <EmbeddedResource Include="Resources\models-fallback.json" />
     <EmbeddedResource Include="thumb.png" />
   </ItemGroup>

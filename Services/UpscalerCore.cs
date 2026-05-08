@@ -383,11 +383,14 @@ namespace JellyfinUpscalerPlugin.Services
                 if (isBatch)
                 {
                     _logger.LogDebug("Auto-model: anime content + batch → realesrgan-animevideo-x4");
-                    return "realesrgan-animevideo-x4";
+                    // v1.6.1.20 - route through PickAvailable defensively. realesrgan-animevideo-x4
+                    // is currently always-available, but a future change could flip it to self-host
+                    // (the model is ~67MB and depends on a HF mirror that has changed before).
+                    return PickAvailable("realesrgan-animevideo-x4", "anime-compact-x4", "realesrgan-x4");
                 }
                 // Real-time anime: use the lightweight compact model
                 _logger.LogDebug("Auto-model: anime content + real-time → anime-compact-x4");
-                return "anime-compact-x4";
+                return PickAvailable("anime-compact-x4", "realesrgan-animevideo-x4", "realesrgan-x4");
             }
 
             // v1.6.1.18 - honor user's PreferredLiveActionModel override before falling through
@@ -402,6 +405,11 @@ namespace JellyfinUpscalerPlugin.Services
                 return PickAvailable(liveActionOverride, "ultrasharp-v2-x4", "nomos2-realplksr-x4", "realesrgan-x4");
             }
 
+            // v1.6.1.20 - all single-frame returns now route through PickAvailable for defensive
+            // symmetry with the Multi-Frame path (which has been gated since v1.6.1.17). Today none
+            // of these IDs are in KnownUnavailable, so the wrapper short-circuits to the preferred
+            // value with no behavior change. If a future maintainer flips e.g. nomosuni-compact-x2
+            // to self-host, the resolver gracefully falls back instead of returning a 500-prone ID.
             if (!isBatch)
             {
                 // Real-time: prioritize speed. Use 2x models for lower VRAM/compute cost.
@@ -409,28 +417,28 @@ namespace JellyfinUpscalerPlugin.Services
                 if (isLowRes)
                 {
                     _logger.LogDebug("Auto-model: low-res real-time → span-x2 (fast 2x, manageable output)");
-                    return "span-x2";
+                    return PickAvailable("span-x2", "nomosuni-compact-x2", "realesrgan-x4");
                 }
                 // HD content: already high-res, use lightweight 2x for mild enhancement
                 _logger.LogDebug("Auto-model: HD real-time → nomosuni-compact-x2 (ultra-fast 2x)");
-                return "nomosuni-compact-x2";
+                return PickAvailable("nomosuni-compact-x2", "span-x2", "realesrgan-x4");
             }
 
             // Batch single-frame: prioritize quality
             if (isVeryLowRes)
             {
                 _logger.LogDebug("Auto-model: very low-res batch → ultrasharp-v2-x4 (best quality)");
-                return "ultrasharp-v2-x4";
+                return PickAvailable("ultrasharp-v2-x4", "nomos2-realplksr-x4", "realesrgan-x4");
             }
             if (isLowRes)
             {
                 _logger.LogDebug("Auto-model: low-res batch → realesrgan-x4");
-                return "realesrgan-x4";
+                return PickAvailable("realesrgan-x4");
             }
 
             // Default batch: good balance
             _logger.LogDebug("Auto-model: general batch → realesrgan-x4");
-            return "realesrgan-x4";
+            return PickAvailable("realesrgan-x4");
         }
 
         /// <summary>

@@ -15,7 +15,7 @@
     <a href="index.html" class="brand">
       <span class="brand-logo">AI</span>
       <span>Jellyfin AI Upscaler</span>
-      <span class="brand-version">v1.6.1.19</span>
+      <span class="brand-version">v1.6.1.20</span>
     </a>
     <nav class="nav" data-nav></nav>
     <div class="nav-cta">
@@ -73,10 +73,10 @@
 
   <h2>Latest release</h2>
   <div class="card">
-    <h3>v1.6.1.19 · Single-Source-of-Truth for Model Availability</h3>
-    <p style="color: var(--text-dim); margin-bottom: 12px;">Structural fix for the drift class that <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.6.1.17" target="_blank">v1.6.1.17</a> and <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.6.1.18" target="_blank">v1.6.1.18</a> patched point-by-point. New <code>ModelAvailability</code> static class centralises the <em>known-unavailable</em> set across all resolvers (<code>UpscalerCore</code> + <code>HardwareBenchmarkService</code>) — collapses 3+ duplicate hardcoded lists into 1 source-of-truth. Plus: Face-Restore dropdown auto-populated from the live registry (was hardcoded HTML), and a homepage-card content fix (this card used to show the v1.6.1.16 FFmpeg-fix text because the pauschal version-replace from the v17/v18 bump scripts bumped the <code>&lt;h3&gt;</code> title without rewriting the body).</p>
+    <h3>v1.6.1.20 · Adoption Completion + Cancellation + Async-IO</h3>
+    <p style="color: var(--text-dim); margin-bottom: 12px;">Follow-up patch closing the gaps the v1.6.1.19 post-release self-audit found. v1.6.1.19's <code>ModelAvailability</code> source-of-truth class wasn't adopted everywhere — fixed here (HardwareBenchmark null-coalesce bypass, 7 single-frame returns now use PickAvailable). Plus 3 new bug classes: 9× <code>HttpContext.RequestAborted</code> propagation in UpscalerController (no more 120s timeout hangs on client disconnect), <code>CacheManager</code> async streaming replaces synchronous <code>File.Copy</code> (was blocking thread-pool 5-30s per cached frame on NAS-mounted disks), and timeless csproj-Comments (no more drift-prone version-strings in build-config text). +7 regression-guard tests; tests grew 65 → 72.</p>
     <a href="changelog.html" class="btn btn-ghost">Full changelog →</a>
-    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.6.1.19" target="_blank" class="btn btn-ghost" style="margin-left: 8px;">Release on GitHub →</a>
+    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.6.1.20" target="_blank" class="btn btn-ghost" style="margin-left: 8px;">Release on GitHub →</a>
   </div>
 
   <h2>Who it's for</h2>
@@ -105,7 +105,7 @@ docker run -d --name jellyfin-ai-upscaler \
 <footer class="footer">
   <div class="footer-inner">
     <div>
-      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.6.1.19 · not affiliated with the Jellyfin project
+      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.6.1.20 · not affiliated with the Jellyfin project
       <div style="margin-top: 4px;"><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a> · <a href="https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler">Docker Hub</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues">Issues</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">Releases</a></div>
     </div>
     <div>Co-engineered with <a href="https://claude.com/claude-code">Claude Opus 4.7</a></div>
