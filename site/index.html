@@ -15,7 +15,7 @@
     <a href="index.html" class="brand">
       <span class="brand-logo">AI</span>
       <span>Jellyfin AI Upscaler</span>
-      <span class="brand-version">v1.6.1.21</span>
+      <span class="brand-version">v1.6.1.23</span>
     </a>
     <nav class="nav" data-nav></nav>
     <div class="nav-cta">
@@ -73,10 +73,10 @@
 
   <h2>Latest release</h2>
   <div class="card">
-    <h3>v1.6.1.22 · UI Honesty Cleanup (No-Op Toggles Removed)</h3>
-    <p style="color: var(--text-dim); margin-bottom: 12px;">Follow-through release on the v1.6.1.21 honest-disclosure principle: <strong>30 dead-backend config controls</strong> are removed from the settings page. The user no longer sees toggles, sliders, and inputs that had no effect anywhere in C#/JS/Python. Discovered via a triple-pass over all <strong>88 properties</strong> (v21's scan only enumerated 54 because the regex missed property-bodies like <code>{ get =&gt; _x; set =&gt; _x = Math.Clamp(...); }</code>). 5 entirely-dead <code>&lt;details&gt;</code> sections removed (Quality Metrics, Face Enhancement, Film Grain Management, Health &amp; Circuit Breaker, Model Management). 18 individual fields removed from mixed-live sections + 3 orphan slider listeners. JS <code>fields/nums/floats/checks/sliderMap/longs</code> arrays pruned in lockstep. Properties + Controller <code>TryApply</code> stay (backwards-compat: saved configs continue to load without crash). Deliberately preserved: <code>ButtonPosition</code>, <code>EnableRealtimeUpscaling</code>, <code>RealtimeMode</code>, <code>RealtimeCaptureWidth</code> (player-integration.js consumers, false-positive in algo's first pass), <code>EnableFaceRestore</code> + <code>FaceRestoreModel</code> (UI-direct-to-<code>/face-restore/load</code> REST consumers). <code>configurationpage.html</code> 2807 → 2680 lines. <code>dotnet build</code> 0/0 errors, <code>dotnet test</code> 85/85 unchanged. Zero behavior change, zero new code paths.</p>
+    <h3>v1.6.1.23 · OutputCodec Save-Validation Fix (P0 User-Impact Bug)</h3>
+    <p style="color: var(--text-dim); margin-bottom: 12px;">Hotfix for a high-impact silent bug found in the v22 deep-audit. The Settings <code>#OutputCodec</code> dropdown advertised <strong>12 codec options</strong> across 4 optgroups (Software / NVIDIA / Intel / Stream-Copy), but four code paths each had their own inline allowlist of different sizes — most critically the <code>UpscalerController</code> save endpoint accepted <strong>only 3</strong> (libx264, libx265, copy). Picking AV1, NVENC, or QSV in the dropdown silently fell back to libx264 on save. <strong>On NVIDIA hardware that's a 5-20× encoding-speed regression</strong> the user couldn't see (no error, no toast). v23 introduces <code>Services/CodecRegistry.cs</code> as single source of truth: <code>OutputCodecs</code> (all 12) for save/reconstruct/batch and <code>RealtimeOutputCodecs</code> (HW-encoders + libx264/265, no copy/software-AV1) for the realtime pipe path. All four sites now reference one of these sets — no more drift. New <code>CodecRegistryTests</code> (+17 tests) parses the embedded HTML and asserts set-equality against <code>CodecRegistry.OutputCodecs</code> at build time, so adding a UI option without updating the registry (or vice versa) fails tests. <code>dotnet test</code> 85 → <strong>102 passing</strong>. <code>dotnet build</code> 0/0 errors. Zero deletions, only consolidation: existing inline allowlists replaced with <code>CodecRegistry.*</code> references.</p>
     <a href="changelog.html" class="btn btn-ghost">Full changelog →</a>
-    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.6.1.22" target="_blank" class="btn btn-ghost" style="margin-left: 8px;">Release on GitHub →</a>
+    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.6.1.23" target="_blank" class="btn btn-ghost" style="margin-left: 8px;">Release on GitHub →</a>
   </div>
 
   <h2>Who it's for</h2>
@@ -105,7 +105,7 @@ docker run -d --name jellyfin-ai-upscaler \
 <footer class="footer">
   <div class="footer-inner">
     <div>
-      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.6.1.21 · not affiliated with the Jellyfin project
+      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.6.1.23 · not affiliated with the Jellyfin project
       <div style="margin-top: 4px;"><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a> · <a href="https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler">Docker Hub</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues">Issues</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">Releases</a></div>
     </div>
     <div>Co-engineered with <a href="https://claude.com/claude-code">Claude Opus 4.7</a></div>

@@ -473,9 +473,11 @@ namespace JellyfinUpscalerPlugin.Services
                 decoderProcess.StartInfo.ArgumentList.Add("quiet");
                 decoderProcess.StartInfo.ArgumentList.Add("-");
 
+                // v1.6.1.23 - realtime allowlist sourced from CodecRegistry. Excludes "copy"
+                // and software-AV1/VP9 (too slow for frame-by-frame pipe encoding); see
+                // CodecRegistry.RealtimeOutputCodecs XML doc for rationale.
                 var outputCodec = Config.OutputCodec ?? "libx264";
-                var allowedCodecs = new HashSet<string> { "libx264", "libx265", "hevc_nvenc", "h264_nvenc", "h264_qsv", "hevc_qsv" };
-                if (!allowedCodecs.Contains(outputCodec))
+                if (!CodecRegistry.RealtimeOutputCodecs.Contains(outputCodec))
                 {
                     outputCodec = "libx264";
                 }
@@ -797,15 +799,10 @@ namespace JellyfinUpscalerPlugin.Services
             }
             else
             {
+                // v1.6.1.23 - batch allowlist sourced from CodecRegistry (was already a correct
+                // 12-entry inline list; refactored to single source of truth).
                 var outputCodec = Config.OutputCodec ?? "libx264";
-                var allowedCodecs = new HashSet<string>
-                {
-                    "libx264", "libx265", "libsvtav1", "libaom-av1", "libvpx-vp9",
-                    "hevc_nvenc", "h264_nvenc", "av1_nvenc",
-                    "h264_qsv", "hevc_qsv", "av1_qsv",
-                    "copy"
-                };
-                if (!allowedCodecs.Contains(outputCodec))
+                if (!CodecRegistry.OutputCodecs.Contains(outputCodec))
                 {
                     _logger.LogWarning("Invalid output codec '{Codec}', falling back to libx264", outputCodec);
                     outputCodec = "libx264";

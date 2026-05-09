@@ -13,7 +13,18 @@
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.6.1.22 — UI Honesty Cleanup (No-Op Toggles Removed) <span class="tag success">latest</span></h2>
+  <h2>v1.6.1.23 — OutputCodec Save-Validation Fix <span class="tag success">latest</span></h2>
+  <p><em>Released May 2026.</em> Hotfix for a P0 user-impact bug surfaced in the v22 deep-audit: the <code>#OutputCodec</code> dropdown offered 12 codec choices but the save endpoint accepted only 3 — picking AV1/NVENC/QSV silently fell back to libx264.</p>
+  <ul>
+    <li><strong>Bug class:</strong> four codec allowlists drifting across <code>UpscalerController.cs:1437</code> (3 entries), <code>VideoFrameProcessor.cs:400</code> (7), <code>ProcessingMethodExecutor.cs:477</code> realtime (6, no copy), <code>ProcessingMethodExecutor.cs:803</code> batch (12). User-impact worst case: NVIDIA RTX 40 user picks <code>av1_nvenc</code>, gets libx264 silently — 5-20× slower encoding.</li>
+    <li><strong>Fix:</strong> new <code>Services/CodecRegistry.cs</code> with two HashSets — <code>OutputCodecs</code> (all 12, used by save + reconstruct + batch) and <code>RealtimeOutputCodecs</code> (HW-encoders + libx264/265, used by the realtime pipe path). All 4 sites now reference one of these sets.</li>
+    <li><strong>Drift-lock:</strong> new <code>CodecRegistryTests.cs</code> parses the embedded <code>configurationpage.html</code> at test time, extracts every <code>&lt;option value="X"&gt;</code> inside <code>#OutputCodec</code>, and asserts set-equality against <code>CodecRegistry.OutputCodecs</code>. Adding a UI codec without bumping the registry (or vice versa) fails the build.</li>
+    <li><strong>+17 new tests</strong> — 12 codec InlineData + 5 facts (HaveCount, case-insensitive, subset, exclusions, HTML-parse). Tests grew 85 → 102.</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> — 0 warnings, 0 errors. <code>dotnet test</code> — 102/102 passing. Zero deletions: existing inline lists replaced with <code>CodecRegistry.*</code> references.</li>
+    <li><strong>Methodical lesson:</strong> the v22 deep-audit identified the bug class — TryApply lambdas with non-trivial bodies can contain validation that silently discards user choices. Future audits should grep for multi-line <code>TryApply</code> blocks specifically and review their decision logic against the corresponding UI surface.</li>
+  </ul>
+
+  <h2>v1.6.1.22 — UI Honesty Cleanup (No-Op Toggles Removed)</h2>
   <p><em>Released May 2026.</em> Follow-through on the v1.6.1.21 honest-disclosure principle: <strong>30 dead-backend config controls removed from the settings page</strong> after a triple-pass over all <strong>88 properties</strong> (v21's audit only enumerated 54 — the regex missed property-bodies).</p>
   <ul>
     <li><strong>5 entirely-dead <code>&lt;details&gt;</code> sections removed</strong> — Quality Metrics, Face Enhancement, Film Grain Management, Health &amp; Circuit Breaker, Model Management.</li>

@@ -1434,11 +1434,13 @@ namespace JellyfinUpscalerPlugin.Controllers
                 TryApply("EnableModelAutoCleanup", val => config.EnableModelAutoCleanup = val.GetBoolean());
                 TryApply("ModelCleanupDays", val => config.ModelCleanupDays = val.GetInt32());
                 // Output & Processing
+                // v1.6.1.23 (P0) - was a 3-entry inline list silently rejecting 9 of 12 UI options.
+                // CodecRegistry.OutputCodecs is the single source of truth, kept in lockstep with
+                // the #OutputCodec dropdown in configurationpage.html via CodecRegistryTests.
                 TryApply("OutputCodec", val =>
                 {
                     var codec = val.GetString() ?? "libx264";
-                    var validCodecs = new[] { "libx264", "libx265", "copy" };
-                    if (validCodecs.Contains(codec)) config.OutputCodec = codec;
+                    if (CodecRegistry.OutputCodecs.Contains(codec)) config.OutputCodec = codec;
                 });
                 TryApply("MaxUpscaledFileSizeMB", val => config.MaxUpscaledFileSizeMB = Math.Max(0, val.GetInt64()));
                 TryApply("EnableProcessingQueue", val => config.EnableProcessingQueue = val.GetBoolean());

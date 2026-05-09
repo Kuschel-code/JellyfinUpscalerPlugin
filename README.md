@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.6.1.22
+# Jellyfin AI Upscaler Plugin v1.6.1.23
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.7-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.6.1.22):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.6.1.23):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.6.1.22     │  │
+│  │  AI Upscaler Plugin v1.6.1.23     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -289,12 +289,25 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.6.1.22` — pinned to a specific plugin release
-- `:v1.6.1.22-<backend>` — full semver (e.g. `:v1.6.1.22-cpu`)
+- `:docker7-v1.6.1.23` — pinned to a specific plugin release
+- `:v1.6.1.23-<backend>` — full semver (e.g. `:v1.6.1.23-cpu`)
 
 ---
 
 ## Changelog
+
+### v1.6.1.23 (OutputCodec Save-Validation Fix)
+
+Hotfix for a P0 user-impact bug surfaced in the v22 deep-audit: the Settings `#OutputCodec` dropdown offered **12 codec choices** but four code paths each had their own inline allowlist with sizes 3 / 6 / 7 / 12. The Save endpoint accepted only 3 (libx264, libx265, copy) — picking AV1, NVENC, or QSV in the dropdown silently fell back to libx264.
+
+- **User-impact:** on NVIDIA RTX 40 hardware, picking `av1_nvenc` and clicking Save resulted in libx264 (CPU) — a 5-20× encoding-speed regression with no error, no toast, no log.
+- **Fix:** new `Services/CodecRegistry.cs` with two HashSets:
+  - `OutputCodecs` (all 12) — for save validation, frame-reconstruction, and batch FFmpeg
+  - `RealtimeOutputCodecs` (HW-encoders + libx264/265) — for the realtime pipe path; excludes "copy" (meaningless when re-encoding) and software AV1/VP9 (too slow for frame-by-frame)
+- **All 4 sites now reference CodecRegistry** — `UpscalerController.cs:1437`, `VideoFrameProcessor.cs:400`, `ProcessingMethodExecutor.cs:477`, `ProcessingMethodExecutor.cs:803`. No more inline allowlists.
+- **Drift-lock test:** new `CodecRegistryTests.cs` parses embedded `configurationpage.html`, extracts every `<option value="X">` inside `#OutputCodec`, asserts set-equality against `CodecRegistry.OutputCodecs`. Adding a UI codec without bumping the registry (or vice versa) fails the build.
+- **+17 new tests** — 12 codec InlineData + 5 facts. Tests grew 85 → 102.
+- **Verification:** `dotnet build` 0/0, `dotnet test` 102/102. Zero deletions, only consolidation.
 
 ### v1.6.1.22 (UI Honesty Cleanup)
 

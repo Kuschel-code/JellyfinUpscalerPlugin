@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.6.1.23",
+        "changelog": "v1.6.1.23: OutputCodec Save-Validation Fix (P0). Settings #OutputCodec dropdown offered 12 codecs but 4 code paths each had their own inline allowlist (sizes 3/6/7/12). Save accepted only 3 - picking AV1/NVENC/QSV silently fell back to libx264 (5-20x slower on NVIDIA HW, no error). New Services/CodecRegistry.cs single source of truth. All 4 sites use CodecRegistry.OutputCodecs (12, save+reconstruct+batch) or RealtimeOutputCodecs (6, realtime pipe path). Drift-lock test parses embedded HTML and asserts set-equality with registry. +17 tests (102/102 was 85). Zero schema changes - v22 saved configs bit-compatible.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.23/JellyfinUpscalerPlugin-v1.6.1.23.zip",
+        "checksum": "917f88c9b180f777f54c7893a42ff88f",
+        "timestamp": "2026-05-09T03:00:00.000Z"
+      },
+      {
         "version": "1.6.1.22",
         "changelog": "v1.6.1.22: UI Honesty Cleanup. Removes 30 dead-backend config controls from configurationpage.html that had no C#/JS/Python consumers. Triple-pass over all 88 properties (v21 found only 54 - regex missed property-bodies). 5 entire <details> sections removed (Quality Metrics, Face Enhancement, Film Grain, Health & Circuit Breaker, Model Management). 18 individual fields removed from mixed-live sections + 3 orphan slider listeners. JS load/save arrays pruned in lockstep. Properties + Controller TryApply stay (backwards-compat). Preserved: ButtonPosition, RealtimeMode/CaptureWidth, EnableRealtimeUpscaling, EnableFaceRestore, FaceRestoreModel (verified live in JS pass 3). HTML 2807 -> 2680 lines. dotnet test 85/85. Zero behavior change, zero new code paths.",
         "targetAbi": "10.11.8.0",

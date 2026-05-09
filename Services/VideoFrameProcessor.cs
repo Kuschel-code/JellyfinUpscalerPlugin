@@ -396,9 +396,10 @@ namespace JellyfinUpscalerPlugin.Services
                 hasAudio = false;
             }
 
+            // v1.6.1.23 - allowlist sourced from CodecRegistry (was inline 7-entry list missing
+            // libsvtav1, libaom-av1, libvpx-vp9, av1_nvenc, av1_qsv).
             var outputCodec = Config.OutputCodec ?? "libx264";
-            var allowedCodecs = new HashSet<string> { "libx264", "libx265", "hevc_nvenc", "h264_nvenc", "h264_qsv", "hevc_qsv", "copy" };
-            if (!allowedCodecs.Contains(outputCodec))
+            if (!CodecRegistry.OutputCodecs.Contains(outputCodec))
             {
                 _logger.LogWarning("Invalid output codec '{Codec}' in ReconstructVideoAsync, falling back to libx264", outputCodec);
                 outputCodec = "libx264";
