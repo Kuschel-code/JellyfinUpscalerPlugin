@@ -85,39 +85,7 @@ namespace JellyfinUpscalerPlugin.Tests.Services
             CodecRegistry.RealtimeOutputCodecs.Should().NotContain("libvpx-vp9");
         }
 
-        /// <summary>
-        /// THE drift-lock test: parses the embedded configurationpage.html, extracts every
-        /// &lt;option value="X"&gt; inside the &lt;select id="OutputCodec"&gt;, and asserts
-        /// the resulting set is equal to <see cref="CodecRegistry.OutputCodecs"/>. Adding a
-        /// codec to the UI without updating the registry (or vice versa) fails this test.
-        /// </summary>
-        [Fact]
-        public void HtmlDropdown_ListsExactlyTheCodecsInRegistry()
-        {
-            var html = ReadEmbeddedHtml();
-
-            var selectMatch = Regex.Match(html,
-                @"<select\s+id=""OutputCodec""[^>]*>(.*?)</select>",
-                RegexOptions.Singleline);
-            selectMatch.Success.Should().BeTrue("the #OutputCodec select must exist in the embedded HTML");
-
-            var optionValues = Regex.Matches(selectMatch.Groups[1].Value, @"<option\s+value=""([^""]+)""")
-                .Select(m => m.Groups[1].Value)
-                .ToHashSet();
-
-            optionValues.Should().BeEquivalentTo(CodecRegistry.OutputCodecs,
-                "every UI <option> value must be in CodecRegistry.OutputCodecs and vice versa");
-        }
-
-        private static string ReadEmbeddedHtml()
-        {
-            var asm = typeof(CodecRegistry).Assembly;
-            var resourceName = "JellyfinUpscalerPlugin.Configuration.configurationpage.html";
-            using var stream = asm.GetManifestResourceStream(resourceName)
-                ?? throw new FileNotFoundException(
-                    $"Embedded resource '{resourceName}' not found. Available: {string.Join(", ", asm.GetManifestResourceNames())}");
-            using var reader = new StreamReader(stream);
-            return reader.ReadToEnd();
-        }
+        // v1.7.1 - HtmlDropdown_ListsExactlyTheCodecsInRegistry was moved to
+        // RegistryDriftLockTests.HtmlDropdown_MatchesRegistry [Theory] for DRY across registries.
     }
 }

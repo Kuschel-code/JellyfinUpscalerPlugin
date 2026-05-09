@@ -1,0 +1,94 @@
+# v1.7.1 - Pre-release audit checks. Catches three drift-bug-classes that escaped 9 prior releases.
+name: v1.7.1 Audit Checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify-fallback-sync:
+    name: fallback-models sync with docker registry
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Diff fallback JSON keys vs Docker AVAILABLE_MODELS keys
+        run: |
+          python3 - <<'PY'
+          import re, json, sys
+          src = open('docker-ai-service/app/main.py').read()
+          m = re.search(r'AVAILABLE_MODELS\s*=\s*\{(.+?)^\}', src, re.DOTALL | re.MULTILINE)
+          if not m:
+              print('ERROR: could not locate AVAILABLE_MODELS in main.py'); sys.exit(1)
+          block = m.group(1)
+          keys = []
+          depth = 0
+          for line in block.split('\n'):
+              if depth == 0:
+                  km = re.match(r'\s*"([\w\-.]+)"\s*:\s*\{', line)
+                  if km: keys.append(km.group(1))
+              depth += line.count('{') - line.count('}')
+          docker_keys = set(keys)
+
+          fb = json.load(open('Resources/models-fallback.json'))
+          fb_keys = set(m['id'] for m in fb['models'])
+
+          missing_in_fallback = docker_keys - fb_keys
+          extra_in_fallback   = fb_keys - docker_keys
+          if missing_in_fallback or extra_in_fallback:
+              print('FAIL: fallback JSON drift')
+              if missing_in_fallback:
+                  print('  Models in main.py but missing from fallback JSON:', sorted(missing_in_fallback))
+              if extra_in_fallback:
+                  print('  Models in fallback JSON but not in main.py:', sorted(extra_in_fallback))
+              print('  Fix: regenerate Resources/models-fallback.json via Scripts/sync-fallback-models.ps1')
+              sys.exit(1)
+          if fb['total'] != len(fb_keys):
+              print(f'FAIL: fallback JSON "total" field is {fb["total"]} but models[] has {len(fb_keys)} entries')
+              sys.exit(1)
+          print(f'PASS: {len(docker_keys)} models in sync')
+          PY
+
+  audit-tryapply-lambdas:
+    name: Surface multi-line TryApply lambdas (advisory)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: List multi-line TryApply blocks for human review
+        run: |
+          # The QualityLevel/ButtonPosition/OutputCodec bug class is "TryApply lambda
+          # body contains a hidden allowlist that drifts from the UI". Advisory only.
+          awk '
+            /TryApply\(/ { flag=1; line=NR; buf=$0; next }
+            flag         { buf = buf "\n" $0 }
+            flag && /\}\)/ {
+              if (NR-line >= 2) print "L" line ":\n" buf "\n----"
+              flag=0
+            }
+          ' Controllers/UpscalerController.cs
+
+  zip-version-check:
+    name: meta.json in built ZIP must match manifest.json
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Build + extract meta.json + compare with manifest
+        run: |
+          set -euo pipefail
+          dotnet publish JellyfinUpscalerPlugin.csproj -c Release -o publish/ --nologo
+          PUB_VERSION=$(jq -r .version publish/meta.json)
+          MAN_VERSION=$(jq -r '.[0].versions[0].version' manifest.json)
+          if [ "$PUB_VERSION" != "$MAN_VERSION" ]; then
+              echo "FAIL: meta.json version ($PUB_VERSION) does not match manifest.json version ($MAN_VERSION)"
+              echo "Fix: update meta.json + JellyfinUpscalerPlugin.csproj + PluginConfiguration.cs in lockstep."
+              exit 1
+          fi
+          echo "PASS: meta.json $PUB_VERSION matches manifest $MAN_VERSION"

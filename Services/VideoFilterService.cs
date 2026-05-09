@@ -13,6 +13,19 @@ namespace JellyfinUpscalerPlugin.Services
         private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
         /// <summary>
+        /// v1.7.1 - Single source of truth for the supported camera-style filter presets.
+        /// Mirrors the &lt;option value="..."&gt; values in &lt;select id="ActiveFilterPreset"&gt;
+        /// (configurationpage.html). Replaces the previously-duplicated _validFilterPresets array
+        /// that lived inside UpscalerController and shipped 5 inline references.
+        /// </summary>
+        public static readonly IReadOnlySet<string> SupportedPresets = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "none", "cinematic", "vintage", "vivid", "noir", "warm", "cool",
+            "hdr-pop", "sepia", "pastel", "cyberpunk", "drama", "soft-glow",
+            "sharp-hd", "retrogame", "teal-orange", "custom"
+        };
+
+        /// <summary>
         /// Builds the complete FFmpeg filter chain string from plugin configuration.
         /// Returns null when no filters are active.
         /// </summary>

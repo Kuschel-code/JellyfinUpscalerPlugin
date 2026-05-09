@@ -191,6 +191,13 @@ namespace JellyfinUpscalerPlugin
                 {
                     Name = "UPSCALERWebGLShader",
                     EmbeddedResourcePath = GetType().Namespace + ".Configuration.webgl-upscaler.js"
+                },
+                // v1.7.1 - WebGPU + ONNX Runtime Web realtime AI upscaler page.
+                // Loaded lazily by player-integration.js when RealtimeMode === 'ai-webgpu'.
+                new PluginPageInfo
+                {
+                    Name = "UPSCALERWebGPUAI",
+                    EmbeddedResourcePath = GetType().Namespace + ".Configuration.webgpu-ai-realtime.js"
                 }
             };
         }

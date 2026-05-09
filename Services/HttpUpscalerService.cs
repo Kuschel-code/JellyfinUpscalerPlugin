@@ -191,7 +191,11 @@ namespace JellyfinUpscalerPlugin.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogDebug(ex, "Could not check service status, proceeding to load model");
+                    // v1.7.1 - elevated from LogDebug to LogWarning. Pre-load status check
+                    // failures often indicate the AI service is offline, which is the root
+                    // cause of cascading downstream failures. Surface it at Warning level
+                    // so it appears in the operator console without enabling debug logs.
+                    _logger.LogWarning(ex, "Could not check service status before model load, proceeding anyway");
                 }
 
                 _logger.LogInformation("Switching AI model to: {Model}", modelName);

@@ -223,6 +223,8 @@
                 this._startServer();
             } else if (mode === 'anime4k') {
                 this._startAnime4K();
+            } else if (mode === 'ai-webgpu') {
+                this._startWebGPUAI();
             } else {
                 // Default: Lanczos+Sharpen WebGL shader (existing fast non-AI path).
                 this._startWebGL();
@@ -238,6 +240,7 @@
             this._stopServer();
             this._stopWebGL();
             this._stopAnime4K();
+            this._stopWebGPUAI();
             this._removeFpsOverlay();
             this._updateButtonIndicator(null);
             console.log('AI Upscaler RT: Stopped');
@@ -415,6 +418,71 @@
                 this._anime4kCanvas.parentElement.removeChild(this._anime4kCanvas);
             }
             this._anime4kCanvas = null;
+        },
+
+        // --- WebGPU AI Tier (v1.7.1) ---
+        // Real-ESRGAN compact via onnxruntime-web @WebGPU. Loaded lazily via embedded
+        // resource (UPSCALERWebGPUAI page) which then loads onnxruntime-web from jsdelivr.
+        // Three-stage fallback: WebGPU missing -> ORT load fail -> model fetch fail = Lanczos.
+        _startWebGPUAI: function() {
+            var self = this;
+            this._loadWebGPUAIScript(function(loaded) {
+                if (!loaded || !window.WebGPUAIUpscaler) {
+                    console.warn('AI Upscaler RT: WebGPU AI script load failed, falling back to Lanczos');
+                    self._mode = 'lanczos';
+                    self._updateButtonIndicator('lanczos');
+                    self._startWebGL();
+                    return;
+                }
+                window.WebGPUAIUpscaler.start(self._videoElement, {
+                    fpsCallback: function(fps) {
+                        RealtimeUpscaler._currentFps = fps;
+                        RealtimeUpscaler._updateFpsDisplay();
+                    },
+                    onFatal: function(reason) {
+                        console.warn('AI Upscaler RT: WebGPU AI fatal:', reason, '- falling back to Lanczos');
+                        self._mode = 'lanczos';
+                        self._updateButtonIndicator('lanczos');
+                        self._startWebGL();
+                    }
+                }).then(function(ok) {
+                    if (!ok) {
+                        // Returned false (e.g. no WebGPU adapter) - fall back to Lanczos.
+                        self._mode = 'lanczos';
+                        self._updateButtonIndicator('lanczos');
+                        self._startWebGL();
+                    }
+                });
+            });
+        },
+
+        _loadWebGPUAIScript: function(callback) {
+            if (window.WebGPUAIUpscaler) { callback(true); return; }
+            if (document.querySelector('script[data-upscaler-webgpu-ai]')) {
+                // Already loading - poll briefly.
+                var attempts = 0;
+                var poll = setInterval(function() {
+                    attempts++;
+                    if (window.WebGPUAIUpscaler) { clearInterval(poll); callback(true); }
+                    else if (attempts >= 50) { clearInterval(poll); callback(false); }
+                }, 100);
+                return;
+            }
+            var script = document.createElement('script');
+            script.src = '/web/configurationpage?name=UPSCALERWebGPUAI';
+            script.setAttribute('data-upscaler-webgpu-ai', '1');
+            script.onload = function() { setTimeout(function() { callback(!!window.WebGPUAIUpscaler); }, 50); };
+            script.onerror = function() {
+                console.warn('AI Upscaler RT: Failed to load WebGPU AI script from', script.src);
+                callback(false);
+            };
+            document.head.appendChild(script);
+        },
+
+        _stopWebGPUAI: function() {
+            if (window.WebGPUAIUpscaler && typeof window.WebGPUAIUpscaler.stop === 'function') {
+                try { window.WebGPUAIUpscaler.stop(); } catch (e) { /* best effort */ }
+            }
         },
 
         // --- Server AI Tier ---

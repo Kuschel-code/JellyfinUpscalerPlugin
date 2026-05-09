@@ -988,6 +988,66 @@ AVAILABLE_MODELS = {
         "available": True
     },
 
+    # ============================================================
+    # === v1.7.1 Wishlist Models (first catalog additions in 9 releases) ===
+    # ============================================================
+
+    # OmniSR (CVPR 2023) - omni-axis self-attention for compact-but-strong SR.
+    "omnisr-x2": {
+        "name": "OmniSR x2 (Compact SOTA)",
+        "url": "https://huggingface.co/Phhofm/models-omnisr/resolve/main/omnisr-x2.onnx",
+        "scale": 2,
+        "description": "OmniSR x2 - CVPR 2023, omni-axis self-attention. ~10MB, faster than SwinIR at comparable PSNR. Good for 720p->1440p.",
+        "type": "onnx",
+        "category": "nextgen",
+        "model_type": "omnisr",
+        "available": True
+    },
+    "omnisr-x4": {
+        "name": "OmniSR x4 (Compact SOTA)",
+        "url": "https://huggingface.co/Phhofm/models-omnisr/resolve/main/omnisr-x4.onnx",
+        "scale": 4,
+        "description": "OmniSR x4 - CVPR 2023. ~10MB. Sweet spot between SwinIR and FSRCNN for 480p->1920p.",
+        "type": "onnx",
+        "category": "nextgen",
+        "model_type": "omnisr",
+        "available": True
+    },
+
+    # DAT-light (2023) - smaller and faster than DAT2 at slightly lower PSNR.
+    "dat-light-x2": {
+        "name": "DAT-light x2 (Production Transformer)",
+        "url": "https://huggingface.co/zhengchen1999/DAT/resolve/main/dat-light-x2.onnx",
+        "scale": 2,
+        "description": "DAT-light x2 - smaller/faster sibling of DAT2. ~15MB. Good general-purpose model.",
+        "type": "onnx",
+        "category": "nextgen",
+        "model_type": "dat",
+        "available": True
+    },
+    "dat-light-x4": {
+        "name": "DAT-light x4 (Production Transformer)",
+        "url": "https://huggingface.co/zhengchen1999/DAT/resolve/main/dat-light-x4.onnx",
+        "scale": 4,
+        "description": "DAT-light x4 - smaller/faster sibling of DAT2. ~15MB.",
+        "type": "onnx",
+        "category": "nextgen",
+        "model_type": "dat",
+        "available": True
+    },
+
+    # RestoreFormer++ (MM 2023) - face restore for severely degraded faces.
+    "restoreformer-plus-plus": {
+        "name": "RestoreFormer++ (Face Restoration)",
+        "url": "https://huggingface.co/wzhouxiff/RestoreFormerPlusPlus/resolve/main/restoreformer-plus-plus.onnx",
+        "scale": 1,
+        "description": "RestoreFormer++ - state-of-the-art face restoration, better than GFPGAN/CodeFormer for severely degraded faces. ~50MB.",
+        "type": "onnx",
+        "category": "face_restore",
+        "model_type": "face_restore",
+        "available": True
+    },
+
 }
 
 

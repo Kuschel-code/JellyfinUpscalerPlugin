@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-05-08",
+  "generated_at": "2026-05-09",
   "source": "docker-ai-service/app/main.py:AVAILABLE_MODELS",
   "generator": "Scripts/sync-fallback-models.ps1",
   "notice": "AUTO-GENERATED - DO NOT EDIT BY HAND. Regenerate via the script when main.py changes.",
-  "total": 48,
+  "total": 53,
   "models": [
     {
       "id": "realesrgan-x4",
@@ -624,6 +624,61 @@
         1
       ],
       "category": "interpolation",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "omnisr-x2",
+      "name": "OmniSR x2 (Compact SOTA)",
+      "description": "OmniSR x2 - CVPR 2023, omni-axis self-attention. ~10MB, faster than SwinIR at comparable PSNR. Good for 720p->1440p.",
+      "scale": [ 2 ],
+      "category": "nextgen",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "omnisr-x4",
+      "name": "OmniSR x4 (Compact SOTA)",
+      "description": "OmniSR x4 - CVPR 2023. ~10MB. Sweet spot between SwinIR and FSRCNN for 480p->1920p.",
+      "scale": [ 4 ],
+      "category": "nextgen",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "dat-light-x2",
+      "name": "DAT-light x2 (Production Transformer)",
+      "description": "DAT-light x2 - smaller/faster sibling of DAT2. ~15MB. Good general-purpose model.",
+      "scale": [ 2 ],
+      "category": "nextgen",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "dat-light-x4",
+      "name": "DAT-light x4 (Production Transformer)",
+      "description": "DAT-light x4 - smaller/faster sibling of DAT2. ~15MB.",
+      "scale": [ 4 ],
+      "category": "nextgen",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "restoreformer-plus-plus",
+      "name": "RestoreFormer++ (Face Restoration)",
+      "description": "RestoreFormer++ - state-of-the-art face restoration, better than GFPGAN/CodeFormer for severely degraded faces. ~50MB.",
+      "scale": [ 1 ],
+      "category": "face_restore",
       "type": "onnx",
       "available": true,
       "downloaded": false,

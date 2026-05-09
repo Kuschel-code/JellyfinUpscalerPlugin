@@ -1456,15 +1456,14 @@ namespace JellyfinUpscalerPlugin.Controllers
                 TryApply("PersistQueueAcrossRestarts", val => config.PersistQueueAcrossRestarts = val.GetBoolean());
                 // Real-Time Upscaling
                 TryApply("EnableRealtimeUpscaling", val => config.EnableRealtimeUpscaling = val.GetBoolean());
+                // v1.7.1 - RealtimeModeRegistry single source of truth.
+                // UI exposes {auto, lanczos, anime4k, ai-webgpu, server}. Import additionally
+                // accepts {webgl} as backwards-compat alias for v1.6.x saved configs;
+                // player-integration.js re-maps webgl -> lanczos at runtime.
                 TryApply("RealtimeMode", val =>
                 {
-                    // v1.7.0 - 'webgl' rebrand to 'lanczos' (honesty: it's Lanczos+Sharpen, no AI),
-                    // 'anime4k' added (real AI shader via Anime4K.js library). 'webgl' stays in
-                    // the allowlist for backwards-compat with v1.6.x saved configs; player-integration.js
-                    // aliases 'webgl' to 'lanczos' at runtime.
                     var mode = val.GetString() ?? "auto";
-                    var validModes = new[] { "auto", "lanczos", "anime4k", "server", "webgl" };
-                    if (validModes.Contains(mode)) config.RealtimeMode = mode;
+                    if (RealtimeModeRegistry.AcceptedAtImport.Contains(mode)) config.RealtimeMode = mode;
                 });
                 TryApply("RealtimeTargetFps", val => config.RealtimeTargetFps = val.GetInt32());
                 TryApply("RealtimeCaptureWidth", val => config.RealtimeCaptureWidth = val.GetInt32());
@@ -1511,7 +1510,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 TryApply("ActiveFilterPreset", val =>
                 {
                     var preset = val.GetString() ?? "none";
-                    if (_validFilterPresets.Contains(preset)) config.ActiveFilterPreset = preset;
+                    if (VideoFilterService.SupportedPresets.Contains(preset)) config.ActiveFilterPreset = preset;
                 });
                 TryApply("FilterLutPath", val => { var p = val.GetString() ?? ""; if (!p.Contains("..")) config.FilterLutPath = p; });
                 TryApply("FilterBrightness", val => config.FilterBrightness = val.GetDouble());
@@ -2179,17 +2178,9 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
-        /// <summary>
-        /// Canonical list of valid video-filter preset names. v1.6.1.21 (P2) - extracted from 4
-        /// duplicate inline arrays scattered across this controller (was at L2163/L2179/L2232/L2254
-        /// before this dedupe). Adding a new preset now requires editing one place instead of four.
-        /// Preset semantics live on the Docker service side (see VideoFilterService.GetPresetFilters).
-        /// </summary>
-        private static readonly string[] _validFilterPresets = {
-            "none", "cinematic", "vintage", "vivid", "noir", "warm", "cool",
-            "hdr-pop", "sepia", "pastel", "cyberpunk", "drama", "soft-glow",
-            "sharp-hd", "retrogame", "teal-orange", "custom"
-        };
+        // v1.7.1 - The local _validFilterPresets array previously here moved to
+        // VideoFilterService.SupportedPresets (single source of truth, semantically lives where
+        // the preset implementations live). 5 inline references in this file now go through there.
 
         /// <summary>
         /// Read the current video-filter configuration for the player quick-menu.
@@ -2216,7 +2207,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 vignette = c.FilterVignette,
                 filmGrain = c.FilterFilmGrain,
                 denoise = c.FilterDenoise,
-                availablePresets = _validFilterPresets
+                availablePresets = VideoFilterService.SupportedPresets
             });
         }
 
@@ -2232,7 +2223,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         public ActionResult<object> UpdateFilterConfig([FromBody] FilterConfigUpdate body)
         {
             if (body == null) return BadRequest(new { message = "Missing request body" });
-            if (body.Preset != null && !_validFilterPresets.Contains(body.Preset))
+            if (body.Preset != null && !VideoFilterService.SupportedPresets.Contains(body.Preset))
                 return BadRequest(new { message = "Invalid preset name" });
 
             var plugin = Plugin.Instance;
@@ -2284,7 +2275,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 enabled = config.EnableVideoFilters,
                 preset = preset ?? config.ActiveFilterPreset,
                 filterChain = filterChain ?? "(no filters active)",
-                availablePresets = _validFilterPresets
+                availablePresets = VideoFilterService.SupportedPresets
             });
         }
 
@@ -2306,7 +2297,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 if (!Guid.TryParse(itemId, out var itemGuid) || itemGuid == Guid.Empty)
                     return BadRequest(new { message = "Invalid item ID format" });
 
-                if (!_validFilterPresets.Contains(preset))
+                if (!VideoFilterService.SupportedPresets.Contains(preset))
                     return BadRequest(new { message = "Invalid preset name" });
                 // 'custom' isn't useful for filter-preview (would need full config round-trip) — treat as none
                 if (preset == "custom") preset = "none";

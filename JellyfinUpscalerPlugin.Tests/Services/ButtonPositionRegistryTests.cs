@@ -37,32 +37,6 @@ namespace JellyfinUpscalerPlugin.Tests.Services
             ButtonPositionRegistry.Positions.Contains("CENTER").Should().BeTrue();
         }
 
-        [Fact]
-        public void HtmlDropdown_ListsExactlyThePositionsInRegistry()
-        {
-            var html = ReadEmbeddedHtml();
-            var selectMatch = Regex.Match(html,
-                @"<select\s+id=""ButtonPosition""[^>]*>(.*?)</select>",
-                RegexOptions.Singleline);
-            selectMatch.Success.Should().BeTrue("the #ButtonPosition select must exist in the embedded HTML");
-
-            var optionValues = Regex.Matches(selectMatch.Groups[1].Value, @"<option\s+value=""([^""]+)""")
-                .Select(m => m.Groups[1].Value)
-                .ToHashSet();
-
-            optionValues.Should().BeEquivalentTo(ButtonPositionRegistry.Positions,
-                "every UI <option> value must be in ButtonPositionRegistry.Positions and vice versa");
-        }
-
-        private static string ReadEmbeddedHtml()
-        {
-            var asm = typeof(ButtonPositionRegistry).Assembly;
-            var resourceName = "JellyfinUpscalerPlugin.Configuration.configurationpage.html";
-            using var stream = asm.GetManifestResourceStream(resourceName)
-                ?? throw new FileNotFoundException(
-                    $"Embedded resource '{resourceName}' not found. Available: {string.Join(", ", asm.GetManifestResourceNames())}");
-            using var reader = new StreamReader(stream);
-            return reader.ReadToEnd();
-        }
+        // v1.7.1 - HtmlDropdown drift-lock moved to RegistryDriftLockTests [Theory].
     }
 }

@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.7.1.0",
+        "changelog": "v1.7.1: WebGPU AI Realtime + 5 Wishlist Models + Cleanup Closure. NEW: 'AI WebGPU' realtime mode - real Real-ESRGAN compact inference in the browser via onnxruntime-web (Microsoft, MIT) + WebGPU compute backend. Defensive 4-stage fallback to Lanczos. NEW: 5 wishlist models (OmniSR x2/x4, DAT-light x2/x4, RestoreFormer++) - first catalog growth in 9 releases. Catalog: 48 -> 53 models. CLEANUP: RealtimeModeRegistry single source of truth (replaces inline allowlist), VideoFilterService.SupportedPresets (replaces _validFilterPresets array with 5 inline references), generic RegistryDriftLockTests [Theory] (replaces 3 separate HtmlDropdown_* methods, now covers 5 dropdowns). NEW CI: 3-job audit workflow (verify-fallback-sync, audit-tryapply-lambdas, zip-version-check) catches the drift bug classes that escaped 9 prior releases - including the v1.7.0 meta.json-in-ZIP catch. Polish: HttpUpscalerService LogDebug->LogWarning. Tests: 117/117. Build: 0/0. Saved v1.6.x/v1.7.0 configs are bit-compatible. Deferred to v1.7.2: Phase 2 mocked-async tests (need test-DI infra) + remaining polish (6 Clamp-drift, dead enum, _cleanupLock(ct)).",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.7.1/JellyfinUpscalerPlugin-v1.7.1.zip",
+        "checksum": "31da32ab8abf29513ee9de76b5c01fd0",
+        "timestamp": "2026-05-09T15:00:00.000Z"
+      },
+      {
         "version": "1.7.0.0",
         "changelog": "v1.7.0: Anime4K Realtime + Adoption Completion + Settings-Import Fix. NEW: real AI-shader realtime upscaling for anime via Anime4K.js library (MIT, jsdelivr CDN). HONESTY: existing 'WebGL' mode renamed 'Lanczos+Sharpen' (was always classical, never AI). RealtimeMode dropdown: 4 honest options - Auto / Lanczos+Sharpen / Anime4K / Server-AI. P0 BUG FIXES: (1) QualityLevel save-drift via QualityLevelRegistry. (2) ButtonPosition save-drift via ButtonPositionRegistry. (3) VideoFrameProcessor.cs:252 cancellationToken propagation closes the v20/v21 outer-loop adoption hole. (4) ProcessingMethodExecutor.cs:619-621 WaitForExitAsync(linkedCts.Token) replaces Task.Run().WaitForExit(60s). P1: 5 missing HttpContext.RequestAborted, UpscalerService.cs:119 IsServiceAvailableAsync(ct), ProcessingQueue PersistQueue debounced async (was sync inside lock). 18 missing TryApply lambdas added. +13 tests (102->115). dotnet build 0/0. WebGPU+ONNX deferred to v1.7.1. Saved v1.6.x configs bit-compatible.",
         "targetAbi": "10.11.8.0",
