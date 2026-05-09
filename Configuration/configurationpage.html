@@ -527,10 +527,6 @@
                         <summary>Hardware</summary>
                         <div class="details-body">
                             <div class="checkboxContainer"><label><input type="checkbox" id="HardwareAcceleration" /> Hardware Acceleration</label></div>
-                            <div class="form-row" style="margin-top:0.5rem;">
-                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxVRAMUsage">Max VRAM (MB)</label><input type="number" id="MaxVRAMUsage" min="512" max="32768" /></div>
-                                <div class="form-col inputContainer"><label class="inputLabel" for="CpuThreads">CPU Threads</label><input type="number" id="CpuThreads" min="1" max="64" /></div>
-                            </div>
                         </div>
                     </details>
 
@@ -541,9 +537,6 @@
                             <div style="margin-bottom:0.75rem;color:var(--text-secondary);font-size:0.85rem;line-height:1.5;">
                                 Adds an AI Upscaler button to the video player controls (similar to Intro Skipper). Click the button during playback to access quick upscaling settings, model selection, and scale factor controls. Keyboard shortcut: Alt+U to toggle, Alt+M for menu.
                             </div>
-                            <div class="checkboxContainer"><label><input type="checkbox" id="PlayerButton" /> Enable Player Button</label></div>
-                            <div class="checkboxContainer"><label><input type="checkbox" id="Notifications" /> Show Notifications</label></div>
-                            <div class="checkboxContainer"><label><input type="checkbox" id="AutoRetryButton" /> Auto-Retry on Failure</label></div>
                             <div class="selectContainer" style="margin-top:0.5rem;">
                                 <label class="selectLabel" for="ButtonPosition">Button Position</label>
                                 <select id="ButtonPosition">
@@ -590,7 +583,6 @@
                             </div>
                             <div class="form-row" style="margin-top:0.5rem;">
                                 <div class="form-col inputContainer"><label class="inputLabel" for="MaxItemsPerScan">Max Items Per Scan</label><input type="number" id="MaxItemsPerScan" min="0" /><div class="fieldDescription">0 = unlimited</div></div>
-                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxUpscaledFileSizeMB">Max Output File Size (MB)</label><input type="number" id="MaxUpscaledFileSizeMB" min="0" /><div class="fieldDescription">0 = unlimited. Skip if output would exceed.</div></div>
                             </div>
                             <div class="checkboxContainer" style="margin-top:0.5rem;"><label><input type="checkbox" id="RestrictToUnwatchedContent" /> Only upscale unwatched content</label></div>
                             <div class="checkboxContainer"><label><input type="checkbox" id="SkipUpscaledOnRescan" /> Skip already upscaled items on rescan</label></div>
@@ -624,7 +616,6 @@
                     <details>
                         <summary>Processing Queue</summary>
                         <div class="details-body">
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableProcessingQueue" /> Enable Processing Queue</label></div>
                             <div class="form-row" style="margin-top:0.5rem;">
                                 <div class="form-col inputContainer"><label class="inputLabel" for="MaxQueueSize">Max Queue Size</label><input type="number" id="MaxQueueSize" min="1" max="10000" /><div class="fieldDescription">Max pending jobs (default: 100)</div></div>
                             </div>
@@ -638,36 +629,8 @@
                         <summary>Webhook Notifications</summary>
                         <div class="details-body">
                             <div class="inputContainer"><label class="inputLabel" for="WebhookUrl">Webhook URL</label><input type="url" id="WebhookUrl" placeholder="https://example.com/webhook" /><div class="fieldDescription">HTTP POST on job complete/failure. Leave empty to disable.</div></div>
-                            <div class="checkboxContainer" style="margin-top:0.5rem;"><label><input type="checkbox" id="EnableProgressNotifications" /> Enable progress notifications</label></div>
-                            <div class="checkboxContainer"><label><input type="checkbox" id="WebhookOnComplete" /> Notify on completion</label></div>
+                            <div class="checkboxContainer" style="margin-top:0.5rem;"><label><input type="checkbox" id="WebhookOnComplete" /> Notify on completion</label></div>
                             <div class="checkboxContainer"><label><input type="checkbox" id="WebhookOnFailure" /> Notify on failure</label></div>
-                        </div>
-                    </details>
-
-                    <!-- Model Management -->
-                    <details>
-                        <summary>Model Management</summary>
-                        <div class="details-body">
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableModelPreloading" /> Preload preferred model on startup</label></div>
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableModelAutoCleanup" /> Auto-cleanup unused models</label></div>
-                            <div class="form-row" style="margin-top:0.5rem;">
-                                <div class="form-col inputContainer"><label class="inputLabel" for="ModelDiskQuotaMB">Disk Quota (MB)</label><input type="number" id="ModelDiskQuotaMB" min="0" /><div class="fieldDescription">Max disk for models. 0 = unlimited.</div></div>
-                                <div class="form-col inputContainer"><label class="inputLabel" for="ModelCleanupDays">Cleanup After (days)</label><input type="number" id="ModelCleanupDays" min="1" /><div class="fieldDescription">Remove unused models after N days.</div></div>
-                            </div>
-                        </div>
-                    </details>
-
-                    <!-- Health & Circuit Breaker -->
-                    <details>
-                        <summary>Health &amp; Circuit Breaker</summary>
-                        <div class="details-body">
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableHealthMonitoring" /> Enable health monitoring</label></div>
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableGpuFallbackToCpu" /> GPU fallback to CPU on lockup</label></div>
-                            <div class="form-row" style="margin-top:0.5rem;">
-                                <div class="form-col inputContainer"><label class="inputLabel" for="HealthCheckIntervalSeconds">Health Check Interval (s)</label><input type="number" id="HealthCheckIntervalSeconds" min="10" /><div class="fieldDescription">Seconds between health checks.</div></div>
-                                <div class="form-col inputContainer"><label class="inputLabel" for="CircuitBreakerThreshold">Circuit Breaker Threshold</label><input type="number" id="CircuitBreakerThreshold" min="1" /><div class="fieldDescription">Consecutive failures before circuit opens.</div></div>
-                            </div>
-                            <div class="inputContainer" style="margin-top:0.5rem;"><label class="inputLabel" for="CircuitBreakerResetSeconds">Circuit Breaker Reset (s)</label><input type="number" id="CircuitBreakerResetSeconds" min="10" /><div class="fieldDescription">Time before circuit half-opens and retries.</div></div>
                         </div>
                     </details>
 
@@ -681,7 +644,6 @@
                                     <label class="selectLabel" for="RealtimeMode">Mode</label>
                                     <select id="RealtimeMode"><option value="auto">Auto</option><option value="webgl">WebGL Only</option><option value="server">Server AI Only</option></select>
                                 </div>
-                                <div class="form-col inputContainer"><label class="inputLabel" for="RealtimeTargetFps">Target FPS</label><input type="number" id="RealtimeTargetFps" min="1" max="120" /></div>
                             </div>
                             <div class="inputContainer" style="margin-top:0.5rem;"><label class="inputLabel" for="RealtimeCaptureWidth">Capture Width</label><input type="number" id="RealtimeCaptureWidth" min="160" max="1920" /><div class="fieldDescription">Resolution for server-side capture (default: 480)</div></div>
                         </div>
@@ -691,55 +653,8 @@
                     <details>
                         <summary>Features</summary>
                         <div class="details-body">
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableComparisonView" /> Comparison View</label></div>
                             <div class="checkboxContainer"><label><input type="checkbox" id="EnablePerformanceMetrics" /> Performance Metrics</label></div>
                             <div class="checkboxContainer"><label><input type="checkbox" id="EnableAutoBenchmarking" /> Auto-Benchmarking</label></div>
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableCustomModelUpload" /> Allow Custom ONNX Model Upload</label></div>
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableApiDocs" /> Enable API Documentation (/docs, /redoc)</label></div>
-                        </div>
-                    </details>
-
-                    <!-- Quality Metrics -->
-                    <details>
-                        <summary>Quality Metrics (PSNR / SSIM)</summary>
-                        <div class="details-body">
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableQualityMetrics" /> Enable Quality Metrics</label></div>
-                            <div class="fieldDescription">Compute PSNR and SSIM scores after upscaling to measure quality improvement. Results are included in job metrics.</div>
-                        </div>
-                    </details>
-
-                    <!-- Face Enhancement -->
-                    <details>
-                        <summary>Face Enhancement (GFPGAN)</summary>
-                        <div class="details-body">
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableFaceEnhancement" /> Enable Face Enhancement</label></div>
-                            <div class="fieldDescription" style="margin-bottom:0.5rem;">Detect and enhance faces using GFPGAN ONNX model (if uploaded) or classical bilateral filter fallback. Applied as post-processing after upscaling.</div>
-                            <div class="inputContainer">
-                                <label class="inputLabel" for="FaceEnhanceStrength">Enhancement Strength</label>
-                                <input type="number" id="FaceEnhanceStrength" min="0" max="1" step="0.05" />
-                                <div class="fieldDescription">Blend ratio: 0.0 = no change, 1.0 = full enhancement (default: 0.7)</div>
-                            </div>
-                        </div>
-                    </details>
-
-                    <!-- Film Grain Management -->
-                    <details>
-                        <summary>Film Grain Management</summary>
-                        <div class="details-body">
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableGrainManagement" /> Enable Grain Management</label></div>
-                            <div class="fieldDescription" style="margin-bottom:0.5rem;">Remove film grain before upscaling and optionally re-add it after for a natural look. Uses NL-means denoising.</div>
-                            <div class="form-row" style="margin-top:0.5rem;">
-                                <div class="form-col inputContainer">
-                                    <label class="inputLabel" for="GrainDenoiseStrength">Denoise Strength</label>
-                                    <input type="number" id="GrainDenoiseStrength" min="1" max="30" />
-                                    <div class="fieldDescription">1-30, higher = more smoothing (default: 5)</div>
-                                </div>
-                                <div class="form-col inputContainer">
-                                    <label class="inputLabel" for="GrainReaddIntensity">Re-add Intensity</label>
-                                    <input type="number" id="GrainReaddIntensity" min="0" max="50" step="0.5" />
-                                    <div class="fieldDescription">0 = off, 1-50 = noise sigma (default: 0)</div>
-                                </div>
-                            </div>
                         </div>
                     </details>
 
@@ -831,8 +746,7 @@
 
                 <div class="upscaler-card">
                     <h3>Cache Settings</h3>
-                    <div class="checkboxContainer"><label><input type="checkbox" id="EnablePreProcessingCache" /> Cache enabled</label></div>
-                    <div class="form-row" style="margin-top:0.5rem;">
+                    <div class="form-row">
                         <div class="form-col inputContainer"><label class="inputLabel" for="MaxCacheAgeDays">Max Age (Days)</label><input type="number" id="MaxCacheAgeDays" min="1" max="365" /></div>
                         <div class="form-col inputContainer"><label class="inputLabel" for="CacheSizeMB">Max Size (MB)</label><input type="number" id="CacheSizeMB" min="128" max="1048576" /></div>
                     </div>
@@ -1093,14 +1007,6 @@
                                     <option value="gfpgan-v1.4">GFPGAN v1.4 (Apache 2.0)</option>
                                     <option value="codeformer">CodeFormer (S-Lab License)</option>
                                 </select>
-                            </div>
-                            <div class="form-col" style="flex:1;">
-                                <label style="font-size:0.8rem;">Max faces per frame <span id="val-face-max" style="color:var(--accent);">6</span></label>
-                                <input type="range" id="FaceRestoreMaxPerFrame" min="1" max="20" step="1" value="6" style="width:100%;" />
-                            </div>
-                            <div class="form-col" style="flex:1;">
-                                <label style="font-size:0.8rem;">Skip above width (px) <span id="val-face-maxw" style="color:var(--accent);">1920</span></label>
-                                <input type="range" id="FaceRestoreMaxWidth" min="0" max="3840" step="120" value="1920" style="width:100%;" />
                             </div>
                         </div>
 
@@ -1634,17 +1540,15 @@
 
                 var fields = ['AiServiceUrl','AiServiceApiToken','RemoteHost','RemoteSshPort','RemoteUser','RemoteSshKeyFile',
                     'LocalMediaMountPoint','RemoteMediaMountPoint','RemoteTranscodePath',
-                    'MaxVRAMUsage','CpuThreads','MaxConcurrentStreams','MaxCacheAgeDays','CacheSizeMB',
+                    'MaxConcurrentStreams','MaxCacheAgeDays','CacheSizeMB',
                     'ModelFallbackChain','PreferredAnimeModel','PreferredLiveActionModel','WebhookUrl',
-                    'MinResolutionWidth','MinResolutionHeight','MaxItemsPerScan','MaxUpscaledFileSizeMB',
-                    'MaxQueueSize','ModelDiskQuotaMB','ModelCleanupDays',
-                    'HealthCheckIntervalSeconds','CircuitBreakerThreshold','CircuitBreakerResetSeconds',
-                    'RealtimeTargetFps','RealtimeCaptureWidth',
-                    'FaceEnhanceStrength','GrainDenoiseStrength','GrainReaddIntensity',
+                    'MinResolutionWidth','MinResolutionHeight','MaxItemsPerScan',
+                    'MaxQueueSize',
+                    'RealtimeCaptureWidth',
                     'FilterBrightness','FilterContrast','FilterSaturation','FilterGamma',
                     'FilterSharpness','FilterColorTemperature','FilterVignette','FilterFilmGrain',
                     'FilterDenoise','FilterLutPath',
-                    'FaceRestoreModel','FaceRestoreMaxPerFrame','FaceRestoreMaxWidth',
+                    'FaceRestoreModel',
                     'EnabledLibraryIds'];
                 fields.forEach(function(f) {
                     var el = page.querySelector('#' + f);
@@ -1653,17 +1557,14 @@
 
                 _loadLibrariesPicker(page, config.EnabledLibraryIds || '');
 
-                var checks = ['EnablePlugin','PlayerButton','HardwareAcceleration','Notifications','AutoRetryButton',
-                    'EnableComparisonView','EnablePerformanceMetrics','EnableAutoBenchmarking',
-                    'EnablePreProcessingCache','EnableRemoteTranscoding',
-                    'EnableAutoModelSelection','EnableProcessingQueue','PauseQueueDuringPlayback',
-                    'PersistQueueAcrossRestarts','WebhookOnComplete','WebhookOnFailure',
-                    'EnableModelPreloading','EnableModelAutoCleanup','EnableHealthMonitoring',
-                    'EnableGpuFallbackToCpu','RestrictToUnwatchedContent','SkipUpscaledOnRescan',
-                    'EnableRealtimeUpscaling',
-                    'EnableQualityMetrics','EnableFaceEnhancement','EnableGrainManagement',
-                    'EnableCustomModelUpload','EnableApiDocs','EnableProgressNotifications',
-                    'EnableVideoFilters','EnableFaceRestore'];
+                var checks = ['EnablePlugin','HardwareAcceleration',
+                    'EnablePerformanceMetrics','EnableAutoBenchmarking',
+                    'EnableRemoteTranscoding','EnableAutoModelSelection',
+                    'PauseQueueDuringPlayback','PersistQueueAcrossRestarts',
+                    'WebhookOnComplete','WebhookOnFailure',
+                    'RestrictToUnwatchedContent','SkipUpscaledOnRescan',
+                    'EnableRealtimeUpscaling','EnableVideoFilters',
+                    'EnableFaceRestore'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) {
@@ -1695,8 +1596,7 @@
                     FilterSaturation: 'val-saturation', FilterGamma: 'val-gamma',
                     FilterSharpness: 'val-sharpness', FilterColorTemperature: 'val-colortemp',
                     FilterVignette: 'val-vignette', FilterFilmGrain: 'val-filmgrain',
-                    FilterDenoise: 'val-denoise',
-                    FaceRestoreMaxPerFrame: 'val-face-max', FaceRestoreMaxWidth: 'val-face-maxw'
+                    FilterDenoise: 'val-denoise'
                 };
                 Object.keys(sliderMap).forEach(function(k) {
                     var slider = page.querySelector('#' + k);
@@ -1726,43 +1626,30 @@
                     if (el) config[f] = el.value;
                 });
 
-                var nums = ['RemoteSshPort','MaxVRAMUsage','CpuThreads','MaxConcurrentStreams','MaxCacheAgeDays','CacheSizeMB','ScaleFactor','GpuDeviceIndex',
+                var nums = ['RemoteSshPort','MaxConcurrentStreams','MaxCacheAgeDays','CacheSizeMB','ScaleFactor','GpuDeviceIndex',
                     'MinResolutionWidth','MinResolutionHeight','MaxItemsPerScan','MaxQueueSize',
-                    'ModelDiskQuotaMB','ModelCleanupDays','HealthCheckIntervalSeconds',
-                    'CircuitBreakerThreshold','CircuitBreakerResetSeconds',
-                    'RealtimeTargetFps','RealtimeCaptureWidth','GrainDenoiseStrength',
-                    'FilterColorTemperature','FilterFilmGrain',
-                    'FaceRestoreMaxPerFrame','FaceRestoreMaxWidth'];
+                    'RealtimeCaptureWidth',
+                    'FilterColorTemperature','FilterFilmGrain'];
                 nums.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) { var parsed = parseInt(el.value, 10); if (!isNaN(parsed)) config[f] = parsed; }
                 });
 
-                var longs = ['MaxUpscaledFileSizeMB'];
-                longs.forEach(function(f) {
-                    var el = page.querySelector('#' + f);
-                    if (el) { var parsed = parseInt(el.value, 10); if (!isNaN(parsed)) config[f] = parsed; }
-                });
-
-                var floats = ['FaceEnhanceStrength','GrainReaddIntensity',
-                    'FilterBrightness','FilterContrast','FilterSaturation','FilterGamma',
+                var floats = ['FilterBrightness','FilterContrast','FilterSaturation','FilterGamma',
                     'FilterSharpness','FilterVignette','FilterDenoise'];
                 floats.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) { var parsed = parseFloat(el.value); if (!isNaN(parsed)) config[f] = parsed; }
                 });
 
-                var checks = ['EnablePlugin','PlayerButton','HardwareAcceleration','Notifications','AutoRetryButton',
-                    'EnableComparisonView','EnablePerformanceMetrics','EnableAutoBenchmarking',
-                    'EnablePreProcessingCache','EnableRemoteTranscoding',
-                    'EnableAutoModelSelection','EnableProcessingQueue','PauseQueueDuringPlayback',
-                    'PersistQueueAcrossRestarts','WebhookOnComplete','WebhookOnFailure',
-                    'EnableModelPreloading','EnableModelAutoCleanup','EnableHealthMonitoring',
-                    'EnableGpuFallbackToCpu','RestrictToUnwatchedContent','SkipUpscaledOnRescan',
-                    'EnableRealtimeUpscaling',
-                    'EnableQualityMetrics','EnableFaceEnhancement','EnableGrainManagement',
-                    'EnableCustomModelUpload','EnableApiDocs','EnableProgressNotifications',
-                    'EnableVideoFilters','EnableFaceRestore'];
+                var checks = ['EnablePlugin','HardwareAcceleration',
+                    'EnablePerformanceMetrics','EnableAutoBenchmarking',
+                    'EnableRemoteTranscoding','EnableAutoModelSelection',
+                    'PauseQueueDuringPlayback','PersistQueueAcrossRestarts',
+                    'WebhookOnComplete','WebhookOnFailure',
+                    'RestrictToUnwatchedContent','SkipUpscaledOnRescan',
+                    'EnableRealtimeUpscaling','EnableVideoFilters',
+                    'EnableFaceRestore'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) config[f] = !!el.checked;
@@ -2465,20 +2352,6 @@
             }
             page.querySelector('#EnableFaceRestore')?.addEventListener('change', updateFaceRestoreUI);
             updateFaceRestoreUI();
-
-            // Face-restore slider display updaters
-            var faceMaxSlider = page.querySelector('#FaceRestoreMaxPerFrame');
-            var faceMaxDisplay = page.querySelector('#val-face-max');
-            if (faceMaxSlider && faceMaxDisplay) {
-                faceMaxSlider.addEventListener('input', function() { faceMaxDisplay.textContent = faceMaxSlider.value; });
-            }
-            var faceMaxwSlider = page.querySelector('#FaceRestoreMaxWidth');
-            var faceMaxwDisplay = page.querySelector('#val-face-maxw');
-            if (faceMaxwSlider && faceMaxwDisplay) {
-                faceMaxwSlider.addEventListener('input', function() {
-                    faceMaxwDisplay.textContent = faceMaxwSlider.value === '0' ? 'always' : faceMaxwSlider.value;
-                });
-            }
 
             function refreshFaceRestoreStatus() {
                 var statusEl = page.querySelector('#face-restore-status');

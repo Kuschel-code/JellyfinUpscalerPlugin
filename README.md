@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.6.1.21
+# Jellyfin AI Upscaler Plugin v1.6.1.22
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.7-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.6.1.21):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.6.1.22):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.6.1.21     │  │
+│  │  AI Upscaler Plugin v1.6.1.22     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -289,12 +289,23 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.6.1.21` — pinned to a specific plugin release
-- `:v1.6.1.21-<backend>` — full semver (e.g. `:v1.6.1.21-cpu`)
+- `:docker7-v1.6.1.22` — pinned to a specific plugin release
+- `:v1.6.1.22-<backend>` — full semver (e.g. `:v1.6.1.22-cpu`)
 
 ---
 
 ## Changelog
+
+### v1.6.1.22 (UI Honesty Cleanup)
+
+Follow-through release on the v1.6.1.21 honest-disclosure principle: **30 dead-backend config controls** are removed from the settings page. Discovered via a triple-pass over all **88 properties** in `PluginConfiguration.cs` (v21's scan only enumerated 54 because the regex missed property-bodies like `{ get => _x; set => _x = Math.Clamp(...); }`).
+
+- **5 entirely-dead `<details>` sections removed** — Quality Metrics, Face Enhancement, Film Grain Management, Health & Circuit Breaker, Model Management. None of their toggles or numerics had any consumer in C#/JS/Python.
+- **18 individual fields removed from mixed-live sections** — `PlayerButton`, `Notifications`, `AutoRetryButton`, `EnableProcessingQueue`, `EnableProgressNotifications`, `EnableModelPreloading`, `EnableModelAutoCleanup`, `EnableHealthMonitoring`, `EnableGpuFallbackToCpu`, `EnableComparisonView`, `EnableCustomModelUpload`, `EnableApiDocs`, `EnablePreProcessingCache`, `MaxVRAMUsage`, `CpuThreads`, `MaxUpscaledFileSizeMB`, `RealtimeTargetFps`, plus 2 dead Face-Restore sliders.
+- **JS load/save arrays pruned in lockstep** — `fields`, `nums`, `floats`, `checks`, `sliderMap`, `longs`. 3 orphan slider event listeners removed.
+- **Properties + Controller `TryApply` kept** — saved user configs continue to load without crash. Backwards-compatible.
+- **Deliberately preserved** — `ButtonPosition`, `EnableRealtimeUpscaling`, `RealtimeMode`, `RealtimeCaptureWidth` (player-integration.js consumers, false-positive in algo's first pass), `EnableFaceRestore` + `FaceRestoreModel` (UI-direct-to-`/face-restore/load` REST consumers).
+- **Verification:** `dotnet build` — 0 warnings, 0 errors. `dotnet test` — 85/85 passing (unchanged). `configurationpage.html` 2807 → 2680 lines. Zero behavior change, zero new code paths.
 
 ### v1.6.1.21 (Adoption v2 + Compute-Waste Fixes + Honest Dead-Config)
 

@@ -13,7 +13,19 @@
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.6.1.21 — Adoption v2 + Compute-Waste Fixes + Honest Dead-Config <span class="tag success">latest</span></h2>
+  <h2>v1.6.1.22 — UI Honesty Cleanup (No-Op Toggles Removed) <span class="tag success">latest</span></h2>
+  <p><em>Released May 2026.</em> Follow-through on the v1.6.1.21 honest-disclosure principle: <strong>30 dead-backend config controls removed from the settings page</strong> after a triple-pass over all <strong>88 properties</strong> (v21's audit only enumerated 54 — the regex missed property-bodies).</p>
+  <ul>
+    <li><strong>5 entirely-dead <code>&lt;details&gt;</code> sections removed</strong> — Quality Metrics, Face Enhancement, Film Grain Management, Health &amp; Circuit Breaker, Model Management.</li>
+    <li><strong>18 individual fields removed from mixed-live sections</strong> — <code>PlayerButton</code>, <code>Notifications</code>, <code>AutoRetryButton</code>, <code>EnableProcessingQueue</code>, <code>EnableProgressNotifications</code>, <code>EnableModelPreloading</code>, <code>EnableModelAutoCleanup</code>, <code>EnableHealthMonitoring</code>, <code>EnableGpuFallbackToCpu</code>, <code>EnableComparisonView</code>, <code>EnableCustomModelUpload</code>, <code>EnableApiDocs</code>, <code>EnablePreProcessingCache</code>, <code>MaxVRAMUsage</code>, <code>CpuThreads</code>, <code>MaxUpscaledFileSizeMB</code>, <code>RealtimeTargetFps</code> + 2 dead Face-Restore sliders.</li>
+    <li><strong>JS load/save arrays pruned in lockstep</strong> — <code>fields</code>, <code>nums</code>, <code>floats</code>, <code>checks</code>, <code>sliderMap</code>, <code>longs</code>. 3 orphan slider event listeners removed.</li>
+    <li><strong>Properties + Controller <code>TryApply</code> kept</strong> — saved user configs continue to load without crash. Removed inputs simply don't get edited via the page anymore. Backwards-compatible.</li>
+    <li><strong>Deliberately preserved</strong> — <code>ButtonPosition</code>, <code>EnableRealtimeUpscaling</code>, <code>RealtimeMode</code>, <code>RealtimeCaptureWidth</code> (player-integration.js consumers — false-positive in algo's first pass), <code>EnableFaceRestore</code> + <code>FaceRestoreModel</code> (UI-direct-to-<code>/face-restore/load</code> REST consumers).</li>
+    <li><strong>Discovery methodology</strong> — pass 1: multi-line aware regex; pass 2: per-property consumer count across <code>Services/</code>, <code>ScheduledTasks/</code>, <code>Controllers/</code>, <code>Plugin.cs</code>, <code>Configuration/*.{js,html}</code>, <code>docker-ai-service/app/main.py</code>; pass 3: line-level inspection of every DEAD-CTRL-ONLY with js&gt;=1 to distinguish real consumers from save/load array entries.</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> — 0 warnings, 0 errors. <code>dotnet test</code> — 85/85 passing (unchanged). <code>configurationpage.html</code> 2807 → 2680 lines. Zero behavior change, zero new code paths.</li>
+  </ul>
+
+  <h2>v1.6.1.21 — Adoption v2 + Compute-Waste Fixes + Honest Dead-Config</h2>
   <p><em>Released May 2026.</em> Follow-up patch closing 8 findings of the v1.6.1.20 external audit.</p>
   <ul>
     <li><strong><code>RestrictToUnwatchedContent</code> + <code>SkipUpscaledOnRescan</code> finally wired</strong> — both toggles existed since v1.6.1.14 with 0 consumers. <code>LibraryUpscaleScanTask</code> now consults a new <code>IsAnyUserPlayed(BaseItem)</code> helper (DI extended with <code>IUserManager</code> + <code>IUserDataManager</code>). User compute-waste-protection finally honored.</li>
