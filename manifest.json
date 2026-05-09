@@ -13,7 +13,7 @@
         "changelog": "v1.7.0: Anime4K Realtime + Adoption Completion + Settings-Import Fix. NEW: real AI-shader realtime upscaling for anime via Anime4K.js library (MIT, jsdelivr CDN). HONESTY: existing 'WebGL' mode renamed 'Lanczos+Sharpen' (was always classical, never AI). RealtimeMode dropdown: 4 honest options - Auto / Lanczos+Sharpen / Anime4K / Server-AI. P0 BUG FIXES: (1) QualityLevel save-drift via QualityLevelRegistry. (2) ButtonPosition save-drift via ButtonPositionRegistry. (3) VideoFrameProcessor.cs:252 cancellationToken propagation closes the v20/v21 outer-loop adoption hole. (4) ProcessingMethodExecutor.cs:619-621 WaitForExitAsync(linkedCts.Token) replaces Task.Run().WaitForExit(60s). P1: 5 missing HttpContext.RequestAborted, UpscalerService.cs:119 IsServiceAvailableAsync(ct), ProcessingQueue PersistQueue debounced async (was sync inside lock). 18 missing TryApply lambdas added. +13 tests (102->115). dotnet build 0/0. WebGPU+ONNX deferred to v1.7.1. Saved v1.6.x configs bit-compatible.",
         "targetAbi": "10.11.8.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.7.0/JellyfinUpscalerPlugin-v1.7.0.zip",
-        "checksum": "db5e7cfe59879edb213f5827e0a5b131",
+        "checksum": "3f213750101014aad91e35ffce0931ba",
         "timestamp": "2026-05-09T05:00:00.000Z"
       },
       {
