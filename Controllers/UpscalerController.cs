@@ -592,7 +592,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                     originalData = ms.ToArray();
                 }
 
-                var upscaledData = await _upscalerCore.UpscaleImageAsync(originalData, model, scale);
+                var upscaledData = await _upscalerCore.UpscaleImageAsync(originalData, model, scale, HttpContext.RequestAborted);
                 if (upscaledData == null)
                     return StatusCode(503, new { message = "AI upscaling service unavailable" });
 
@@ -670,8 +670,8 @@ namespace JellyfinUpscalerPlugin.Controllers
 
                         try
                         {
-                            var originalData = await IOFile.ReadAllBytesAsync(imagePath);
-                            var upscaledData = await _upscalerCore.UpscaleImageAsync(originalData, model, scale);
+                            var originalData = await IOFile.ReadAllBytesAsync(imagePath, HttpContext.RequestAborted);
+                            var upscaledData = await _upscalerCore.UpscaleImageAsync(originalData, model, scale, HttpContext.RequestAborted);
 
                             if (upscaledData != null && upscaledData.Length > 0)
                             {
@@ -1147,15 +1147,15 @@ namespace JellyfinUpscalerPlugin.Controllers
                 }
 
                 using var memoryStream = new MemoryStream();
-                await Request.Body.CopyToAsync(memoryStream);
+                await Request.Body.CopyToAsync(memoryStream, HttpContext.RequestAborted);
 
                 if (memoryStream.Length > MaxUploadSizeBytes)
                 {
                     return BadRequest(new { error = "Image too large. Maximum size is 50MB." });
                 }
-                
+
                 var inputImage = memoryStream.ToArray();
-                var upscaledImage = await _upscalerCore.UpscaleImageAsync(inputImage, model, scale);
+                var upscaledImage = await _upscalerCore.UpscaleImageAsync(inputImage, model, scale, HttpContext.RequestAborted);
                 if (upscaledImage == null)
                 {
                     return StatusCode(503, new { error = "AI upscaling service unavailable" });
@@ -1365,11 +1365,12 @@ namespace JellyfinUpscalerPlugin.Controllers
                 TryApply("EnablePlugin", val => config.EnablePlugin = val.GetBoolean());
                 TryApply("Model", val => config.Model = val.GetString() ?? "realesrgan-x4");
                 TryApply("ScaleFactor", val => config.ScaleFactor = val.GetInt32());
+                // v1.7.0 - QualityLevelRegistry single source of truth (UI-match: low/medium/high).
+                // Was {fast, medium, high} pre-v1.7.0 -- "low" was silently dropped on import.
                 TryApply("QualityLevel", val =>
                 {
                     var ql = val.GetString() ?? "medium";
-                    var validQL = new[] { "fast", "medium", "high" };
-                    if (validQL.Contains(ql)) config.QualityLevel = ql;
+                    if (QualityLevelRegistry.Levels.Contains(ql)) config.QualityLevel = ql;
                 });
                 TryApply("HardwareAcceleration", val => config.HardwareAcceleration = val.GetBoolean());
                 TryApply("MaxConcurrentStreams", val => config.MaxConcurrentStreams = val.GetInt32());
@@ -1407,7 +1408,13 @@ namespace JellyfinUpscalerPlugin.Controllers
                 TryApply("PlayerButton", val => config.PlayerButton = val.GetBoolean());
                 TryApply("Notifications", val => config.Notifications = val.GetBoolean());
                 TryApply("AutoRetryButton", val => config.AutoRetryButton = val.GetBoolean());
-                TryApply("ButtonPosition", val => { var pos = val.GetString() ?? "right"; if (pos == "left" || pos == "right") config.ButtonPosition = pos; });
+                // v1.7.0 - ButtonPositionRegistry single source of truth (UI-match: left/right/center).
+                // Was {left, right} pre-v1.7.0 -- "center" silently dropped despite full CSS+keyframes.
+                TryApply("ButtonPosition", val =>
+                {
+                    var pos = val.GetString() ?? "right";
+                    if (ButtonPositionRegistry.Positions.Contains(pos)) config.ButtonPosition = pos;
+                });
                 TryApply("EnableComparisonView", val => config.EnableComparisonView = val.GetBoolean());
                 TryApply("EnablePerformanceMetrics", val => config.EnablePerformanceMetrics = val.GetBoolean());
                 TryApply("EnableAutoBenchmarking", val => config.EnableAutoBenchmarking = val.GetBoolean());
@@ -1451,8 +1458,12 @@ namespace JellyfinUpscalerPlugin.Controllers
                 TryApply("EnableRealtimeUpscaling", val => config.EnableRealtimeUpscaling = val.GetBoolean());
                 TryApply("RealtimeMode", val =>
                 {
+                    // v1.7.0 - 'webgl' rebrand to 'lanczos' (honesty: it's Lanczos+Sharpen, no AI),
+                    // 'anime4k' added (real AI shader via Anime4K.js library). 'webgl' stays in
+                    // the allowlist for backwards-compat with v1.6.x saved configs; player-integration.js
+                    // aliases 'webgl' to 'lanczos' at runtime.
                     var mode = val.GetString() ?? "auto";
-                    var validModes = new[] { "auto", "webgl", "server" };
+                    var validModes = new[] { "auto", "lanczos", "anime4k", "server", "webgl" };
                     if (validModes.Contains(mode)) config.RealtimeMode = mode;
                 });
                 TryApply("RealtimeTargetFps", val => config.RealtimeTargetFps = val.GetInt32());
@@ -1481,6 +1492,37 @@ namespace JellyfinUpscalerPlugin.Controllers
                 TryApply("SkipUpscaledOnRescan", val => config.SkipUpscaledOnRescan = val.GetBoolean());
                 // API
                 TryApply("EnableApiDocs", val => config.EnableApiDocs = val.GetBoolean());
+
+                // v1.7.0 - 18 properties that were silently lost on Settings-Import. Each
+                // had UI surface (or property in PluginConfiguration) but no TryApply, so a
+                // backup-restore reset them to defaults. Now imported.
+                TryApply("AiServiceApiToken", val => config.AiServiceApiToken = (val.GetString() ?? "").Trim());
+                TryApply("EnabledLibraryIds", val =>
+                {
+                    var ids = val.GetString() ?? "";
+                    if (System.Text.RegularExpressions.Regex.IsMatch(ids, @"^[a-fA-F0-9,\-]*$"))
+                        config.EnabledLibraryIds = ids;
+                });
+                TryApply("EnableFaceRestore", val => config.EnableFaceRestore = val.GetBoolean());
+                TryApply("FaceRestoreModel", val => config.FaceRestoreModel = val.GetString() ?? "gfpgan-v1.4");
+                TryApply("FaceRestoreMaxPerFrame", val => config.FaceRestoreMaxPerFrame = val.GetInt32());
+                TryApply("FaceRestoreMaxWidth", val => config.FaceRestoreMaxWidth = val.GetInt32());
+                TryApply("EnableVideoFilters", val => config.EnableVideoFilters = val.GetBoolean());
+                TryApply("ActiveFilterPreset", val =>
+                {
+                    var preset = val.GetString() ?? "none";
+                    if (_validFilterPresets.Contains(preset)) config.ActiveFilterPreset = preset;
+                });
+                TryApply("FilterLutPath", val => { var p = val.GetString() ?? ""; if (!p.Contains("..")) config.FilterLutPath = p; });
+                TryApply("FilterBrightness", val => config.FilterBrightness = val.GetDouble());
+                TryApply("FilterContrast", val => config.FilterContrast = val.GetDouble());
+                TryApply("FilterSaturation", val => config.FilterSaturation = val.GetDouble());
+                TryApply("FilterGamma", val => config.FilterGamma = val.GetDouble());
+                TryApply("FilterSharpness", val => config.FilterSharpness = val.GetDouble());
+                TryApply("FilterVignette", val => config.FilterVignette = val.GetDouble());
+                TryApply("FilterDenoise", val => config.FilterDenoise = val.GetDouble());
+                TryApply("FilterColorTemperature", val => config.FilterColorTemperature = val.GetInt32());
+                TryApply("FilterFilmGrain", val => config.FilterFilmGrain = val.GetInt32());
 
                 Plugin.Instance?.SaveConfiguration();
                 if (skipped.Count > 0)

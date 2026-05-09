@@ -616,9 +616,38 @@ namespace JellyfinUpscalerPlugin.Services
 
                 encoderStream.Close();
 
-                await Task.WhenAll(
-                    Task.Run(() => decoderProcess.WaitForExit(30000), cancellationToken),
-                    Task.Run(() => encoderProcess.WaitForExit(60000), cancellationToken));
+                // v1.7.0 - WaitForExitAsync(ct) honors cancellation mid-wait. Previously
+                // Task.Run(() => proc.WaitForExit(30000), ct) only gated SCHEDULING on ct;
+                // once running it blocked on WaitForExit until timeout regardless of cancel.
+                // Linked CTS combines user-cancel with the per-process timeout.
+                using (var decoderTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+                using (var encoderTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+                {
+                    decoderTimeoutCts.CancelAfter(TimeSpan.FromSeconds(30));
+                    encoderTimeoutCts.CancelAfter(TimeSpan.FromSeconds(60));
+                    try
+                    {
+                        await Task.WhenAll(
+                            decoderProcess.WaitForExitAsync(decoderTimeoutCts.Token),
+                            encoderProcess.WaitForExitAsync(encoderTimeoutCts.Token));
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        // User-initiated cancel - kill processes so they don't linger.
+                        try { if (!decoderProcess.HasExited) decoderProcess.Kill(); } catch { /* best effort */ }
+                        try { if (!encoderProcess.HasExited) encoderProcess.Kill(); } catch { /* best effort */ }
+                        throw;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Per-process timeout - same kill, no rethrow (preserves prior behavior:
+                        // hung processes get killed and we still return a Success=false result below
+                        // based on encoderProcess.ExitCode).
+                        try { if (!decoderProcess.HasExited) decoderProcess.Kill(); } catch { /* best effort */ }
+                        try { if (!encoderProcess.HasExited) encoderProcess.Kill(); } catch { /* best effort */ }
+                        _logger.LogWarning("RealTimeAI: process WaitForExit timed out (30s decoder / 60s encoder), killed");
+                    }
+                }
 
                 var totalElapsed = DateTime.UtcNow - processingStartTime;
                 var avgFps = totalElapsed.TotalSeconds > 0 ? framesProcessed / totalElapsed.TotalSeconds : 0;

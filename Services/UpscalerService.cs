@@ -116,7 +116,7 @@ namespace JellyfinUpscalerPlugin.Services
                     }
 
                     // Check Docker service is available
-                    if (!await _httpUpscaler.IsServiceAvailableAsync())
+                    if (!await _httpUpscaler.IsServiceAvailableAsync(ct))
                     {
                         _queue.Complete(job.JobId, false, "AI service unavailable");
                         _logger.LogWarning("Queue job {JobId} failed: AI service unavailable", job.JobId);

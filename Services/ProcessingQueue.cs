@@ -28,12 +28,25 @@ namespace JellyfinUpscalerPlugin.Services
         private int _maxQueueSize = 100;
         private string? _persistPath;
 
+        // v1.7.0 - debounced async persist. Replaces sync File.WriteAllText that ran on every
+        // Enqueue/Dequeue/Complete/Cancel/SetPriority -- worst case Dequeue: inside lock(_queueLock),
+        // serializing every dequeue behind a disk write. Now: each call resets a 500ms timer;
+        // when it fires, one async persist runs. _persistGate prevents overlapping writes.
+        private readonly System.Threading.Timer _persistTimer;
+        private readonly SemaphoreSlim _persistGate = new(1, 1);
+        private const int PERSIST_DEBOUNCE_MS = 500;
+
         private PluginConfiguration Config => Plugin.Instance?.Configuration ?? new PluginConfiguration();
 
         public ProcessingQueue(ILogger<ProcessingQueue> logger)
         {
             _logger = logger;
             _queue = new SortedSet<QueuedJob>(new JobPriorityComparer());
+            _persistTimer = new System.Threading.Timer(
+                async _ => await PersistDebouncedAsync().ConfigureAwait(false),
+                null,
+                System.Threading.Timeout.Infinite,
+                System.Threading.Timeout.Infinite);
         }
 
         /// <summary>
@@ -84,7 +97,7 @@ namespace JellyfinUpscalerPlugin.Services
             }
 
             _signal.Release();
-            PersistQueue();
+            RequestPersist();
             _logger.LogInformation("Job {JobId} enqueued: {Name} (priority={Priority}, queue size={Size})",
                 jobId, itemName, priority, QueueSize);
             return true;
@@ -127,7 +140,7 @@ namespace JellyfinUpscalerPlugin.Services
                     job.StartedAt = DateTime.UtcNow;
                     _activeJobs[job.JobId] = job;
                     _jobLookup.TryRemove(job.JobId, out _);
-                    PersistQueue();
+                    RequestPersist();
                     return job;
                 }
             }
@@ -160,7 +173,7 @@ namespace JellyfinUpscalerPlugin.Services
                     }
                 }
 
-                PersistQueue();
+                RequestPersist();
                 _logger.LogInformation("Job {JobId} completed: success={Success}", jobId, success);
             }
         }
@@ -177,7 +190,7 @@ namespace JellyfinUpscalerPlugin.Services
                     _queue.Remove(job);
                     job.Status = QueueJobStatus.Cancelled;
                     _completedJobs[jobId] = job;
-                    PersistQueue();
+                    RequestPersist();
                     _logger.LogInformation("Job {JobId} cancelled", jobId);
                     return true;
                 }
@@ -197,7 +210,7 @@ namespace JellyfinUpscalerPlugin.Services
                     _queue.Remove(job);
                     job.Priority = Math.Clamp(newPriority, 1, 10);
                     _queue.Add(job);
-                    PersistQueue();
+                    RequestPersist();
                     _logger.LogDebug("Job {JobId} priority changed to {Priority}", jobId, newPriority);
                     return true;
                 }
@@ -268,20 +281,51 @@ namespace JellyfinUpscalerPlugin.Services
             };
         }
 
-        private void PersistQueue()
+        // v1.7.0 - replaced sync PersistQueue() with debounced-async pair below.
+        // Callers now invoke RequestPersist() which is non-blocking and never holds _queueLock.
+
+        /// <summary>
+        /// Schedules a queue persist to disk after a 500ms quiet window. Multiple calls
+        /// within the window coalesce into a single write. Non-blocking: returns immediately.
+        /// </summary>
+        private void RequestPersist()
         {
             if (_persistPath == null) return;
+            try
+            {
+                _persistTimer.Change(PERSIST_DEBOUNCE_MS, System.Threading.Timeout.Infinite);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Timer disposed during shutdown - benign.
+            }
+        }
+
+        private async Task PersistDebouncedAsync()
+        {
+            if (_persistPath == null) return;
+            // Single in-flight writer at a time.
+            if (!await _persistGate.WaitAsync(0).ConfigureAwait(false))
+            {
+                // Another writer running - it will pick up the latest snapshot, our
+                // queue mutation already happened before _persistTimer was rearmed.
+                return;
+            }
             try
             {
                 List<QueuedJob> snapshot;
                 lock (_queueLock) { snapshot = _queue.ToList(); }
 
                 var json = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(_persistPath, json);
+                await File.WriteAllTextAsync(_persistPath, json).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to persist queue (non-critical)");
+            }
+            finally
+            {
+                _persistGate.Release();
             }
         }
 

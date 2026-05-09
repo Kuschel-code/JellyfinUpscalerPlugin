@@ -15,7 +15,7 @@
     <a href="index.html" class="brand">
       <span class="brand-logo">AI</span>
       <span>Jellyfin AI Upscaler</span>
-      <span class="brand-version">v1.6.1.23</span>
+      <span class="brand-version">v1.7.0</span>
     </a>
     <nav class="nav" data-nav></nav>
     <div class="nav-cta">
@@ -73,10 +73,11 @@
 
   <h2>Latest release</h2>
   <div class="card">
-    <h3>v1.6.1.23 · OutputCodec Save-Validation Fix (P0 User-Impact Bug)</h3>
+    <h3>v1.7.0 · Anime4K Realtime + Adoption Completion + Settings-Import Fix</h3>
+    <p style="color: var(--text-dim); margin-bottom: 12px;">Substantial release: <strong>NEW Anime4K realtime tier</strong> (real AI-shader upscaling for anime via the MIT-licensed <a href="https://github.com/monyone/Anime4K.js">Anime4K.js</a> library, loaded from jsdelivr CDN with Lanczos fallback). The existing "WebGL" mode is honestly rebranded to "Lanczos + Sharpen" (it was always classical, never AI). Plus all P0/P1 audit findings closed in one go: Frame-Loop cancellation token propagation (closes the v20/v21 outer-loop adoption hole), <code>WaitForExitAsync(ct)</code> with linked CTS, debounced async <code>PersistQueue</code>, 5 missing <code>HttpContext.RequestAborted</code>, 18 missing <code>TryApply</code> lambdas for Settings-Import (filter properties, face-restore, library-IDs, AI-service token), and new <code>QualityLevelRegistry</code> + <code>ButtonPositionRegistry</code> with HTML-parse drift-locks (same pattern as v23's <code>CodecRegistry</code>). +13 regression tests, 102 → 115 passing. Build 0/0. <strong>RealtimeMode dropdown:</strong> Auto / Lanczos+Sharpen / Anime4K / Server-AI. WebGPU+ONNX-Runtime-Web Real-ESRGAN realtime path is roadmap for v1.7.1 (separate test cycle). Saved v1.6.x configs are bit-for-bit compatible.</p>
     <p style="color: var(--text-dim); margin-bottom: 12px;">Hotfix for a high-impact silent bug found in the v22 deep-audit. The Settings <code>#OutputCodec</code> dropdown advertised <strong>12 codec options</strong> across 4 optgroups (Software / NVIDIA / Intel / Stream-Copy), but four code paths each had their own inline allowlist of different sizes — most critically the <code>UpscalerController</code> save endpoint accepted <strong>only 3</strong> (libx264, libx265, copy). Picking AV1, NVENC, or QSV in the dropdown silently fell back to libx264 on save. <strong>On NVIDIA hardware that's a 5-20× encoding-speed regression</strong> the user couldn't see (no error, no toast). v23 introduces <code>Services/CodecRegistry.cs</code> as single source of truth: <code>OutputCodecs</code> (all 12) for save/reconstruct/batch and <code>RealtimeOutputCodecs</code> (HW-encoders + libx264/265, no copy/software-AV1) for the realtime pipe path. All four sites now reference one of these sets — no more drift. New <code>CodecRegistryTests</code> (+17 tests) parses the embedded HTML and asserts set-equality against <code>CodecRegistry.OutputCodecs</code> at build time, so adding a UI option without updating the registry (or vice versa) fails tests. <code>dotnet test</code> 85 → <strong>102 passing</strong>. <code>dotnet build</code> 0/0 errors. Zero deletions, only consolidation: existing inline allowlists replaced with <code>CodecRegistry.*</code> references.</p>
     <a href="changelog.html" class="btn btn-ghost">Full changelog →</a>
-    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.6.1.23" target="_blank" class="btn btn-ghost" style="margin-left: 8px;">Release on GitHub →</a>
+    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.7.0" target="_blank" class="btn btn-ghost" style="margin-left: 8px;">Release on GitHub →</a>
   </div>
 
   <h2>Who it's for</h2>
@@ -105,7 +106,7 @@ docker run -d --name jellyfin-ai-upscaler \
 <footer class="footer">
   <div class="footer-inner">
     <div>
-      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.6.1.23 · not affiliated with the Jellyfin project
+      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.7.0 · not affiliated with the Jellyfin project
       <div style="margin-top: 4px;"><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a> · <a href="https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler">Docker Hub</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues">Issues</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">Releases</a></div>
     </div>
     <div>Co-engineered with <a href="https://claude.com/claude-code">Claude Opus 4.7</a></div>

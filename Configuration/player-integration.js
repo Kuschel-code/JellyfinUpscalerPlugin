@@ -178,8 +178,12 @@
 
 
     // Real-Time Upscaler Engine
+    // v1.7.0 - Modes: 'lanczos' (was 'webgl', honest rebrand: it's Lanczos+Sharpen, NOT AI),
+    //                  'anime4k' (NEW: real AI shader for anime via Anime4K.js library, MIT-licensed),
+    //                  'server' (Docker AI), 'auto' (smart-pick).
+    // 'webgl' is kept as alias for 'lanczos' for backwards-compat with v1.6.x configs.
     const RealtimeUpscaler = {
-        _mode: null,       // 'webgl' | 'server' | null
+        _mode: null,       // 'lanczos' | 'anime4k' | 'server' | null
         _active: false,
         _videoElement: null,
         _captureCanvas: null,
@@ -195,6 +199,8 @@
         _config: null,
         _benchmarkResult: null,
         _webglInstance: null,
+        _anime4kInstance: null,
+        _anime4kCanvas: null,
 
         start: function(video, config, benchmarkResult) {
             this._videoElement = video;
@@ -202,6 +208,8 @@
             this._benchmarkResult = benchmarkResult;
 
             var mode = (config.RealtimeMode || 'auto').toLowerCase();
+            // v1.7.0 - 'webgl' rebrand: it was always Lanczos+Sharpen (no AI), so call it that.
+            if (mode === 'webgl') mode = 'lanczos';
             if (mode === 'auto') {
                 mode = this._decideTier(benchmarkResult, video);
             }
@@ -213,7 +221,10 @@
 
             if (mode === 'server') {
                 this._startServer();
+            } else if (mode === 'anime4k') {
+                this._startAnime4K();
             } else {
+                // Default: Lanczos+Sharpen WebGL shader (existing fast non-AI path).
                 this._startWebGL();
             }
 
@@ -226,6 +237,7 @@
             this._mode = null;
             this._stopServer();
             this._stopWebGL();
+            this._stopAnime4K();
             this._removeFpsOverlay();
             this._updateButtonIndicator(null);
             console.log('AI Upscaler RT: Stopped');
@@ -290,6 +302,119 @@
                 this._webglInstance.destroy();
                 this._webglInstance = null;
             }
+        },
+
+        // --- Anime4K Tier (v1.7.0) ---
+        // Real AI-shader-based realtime anime upscaling via Anime4K.js library.
+        // Library is MIT-licensed (https://github.com/monyone/Anime4K.js, npm: anime4k).
+        // Loaded lazily from jsdelivr CDN on first use; falls back to Lanczos if unreachable.
+        _startAnime4K: function() {
+            var self = this;
+            this._loadAnime4KLibrary(function(ok) {
+                if (!ok) {
+                    console.warn('AI Upscaler RT: Anime4K library load failed, falling back to Lanczos');
+                    self._mode = 'lanczos';
+                    self._updateButtonIndicator('lanczos');
+                    self._startWebGL();
+                    return;
+                }
+                self._initAnime4K();
+            });
+        },
+
+        _loadAnime4KLibrary: function(callback) {
+            // Resolve the library namespace - the npm UMD bundle exposes itself as a global.
+            // Try common names; if any is already loaded, skip the script tag.
+            function resolveGlobal() {
+                return window.Anime4K || window.anime4k || window.Anime4KJS;
+            }
+            if (resolveGlobal()) { callback(true); return; }
+            if (document.querySelector('script[data-upscaler-anime4k]')) {
+                // Already loading - poll briefly.
+                var attempts = 0;
+                var poll = setInterval(function() {
+                    attempts++;
+                    if (resolveGlobal()) { clearInterval(poll); callback(true); }
+                    else if (attempts >= 50) { clearInterval(poll); callback(false); }
+                }, 100);
+                return;
+            }
+            var script = document.createElement('script');
+            // Pinned to a stable major version so a CDN-side breaking change doesn't break
+            // the player. Update deliberately in a release that also re-tests the integration.
+            script.src = 'https://cdn.jsdelivr.net/npm/anime4k@latest/dist/anime4k.umd.min.js';
+            script.crossOrigin = 'anonymous';
+            script.setAttribute('data-upscaler-anime4k', '1');
+            script.onload = function() {
+                // Some UMD bundles attach the export to a non-obvious global; give it a tick.
+                setTimeout(function() { callback(!!resolveGlobal()); }, 50);
+            };
+            script.onerror = function() {
+                console.warn('AI Upscaler RT: Failed to load Anime4K from CDN', script.src);
+                callback(false);
+            };
+            document.head.appendChild(script);
+        },
+
+        _initAnime4K: function() {
+            if (!this._videoElement || !this._active) return;
+            var ns = window.Anime4K || window.anime4k || window.Anime4KJS;
+            if (!ns) { console.warn('AI Upscaler RT: Anime4K namespace missing'); return; }
+            try {
+                // Build overlay canvas above the video element.
+                this._anime4kCanvas = document.createElement('canvas');
+                this._anime4kCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;';
+                var parent = this._videoElement.parentElement;
+                if (parent) {
+                    parent.style.position = 'relative';
+                    parent.appendChild(this._anime4kCanvas);
+                }
+
+                // VideoUpscaler API may vary across library versions; pick whichever the
+                // loaded UMD bundle exposes.
+                var VideoUpscaler = ns.VideoUpscaler || (ns.default && ns.default.VideoUpscaler);
+                var profile = ns.ANIME4KJS_SIMPLE_M_2X
+                    || ns.SIMPLE_M_2X
+                    || (ns.profiles && ns.profiles.simple_m_2x);
+                if (!VideoUpscaler || !profile) {
+                    console.warn('AI Upscaler RT: Anime4K API shape unexpected, falling back to Lanczos');
+                    this._stopAnime4K();
+                    this._mode = 'lanczos';
+                    this._startWebGL();
+                    return;
+                }
+
+                this._anime4kInstance = new VideoUpscaler({ fps: 30, profile: profile });
+                if (typeof this._anime4kInstance.attachToVideo === 'function') {
+                    this._anime4kInstance.attachToVideo(this._videoElement);
+                }
+                if (typeof this._anime4kInstance.attachToCanvas === 'function') {
+                    this._anime4kInstance.attachToCanvas(this._anime4kCanvas);
+                }
+                if (typeof this._anime4kInstance.start === 'function') {
+                    this._anime4kInstance.start();
+                }
+                console.log('AI Upscaler RT: Anime4K initialized');
+            } catch (e) {
+                console.warn('AI Upscaler RT: Anime4K init threw', e);
+                this._stopAnime4K();
+                this._mode = 'lanczos';
+                this._startWebGL();
+            }
+        },
+
+        _stopAnime4K: function() {
+            if (this._anime4kInstance) {
+                try {
+                    if (typeof this._anime4kInstance.stop === 'function') this._anime4kInstance.stop();
+                    if (typeof this._anime4kInstance.destroy === 'function') this._anime4kInstance.destroy();
+                } catch (e) { /* best effort */ }
+                this._anime4kInstance = null;
+            }
+            if (this._anime4kCanvas && this._anime4kCanvas.parentElement) {
+                this._anime4kCanvas.parentElement.removeChild(this._anime4kCanvas);
+            }
+            this._anime4kCanvas = null;
         },
 
         // --- Server AI Tier ---

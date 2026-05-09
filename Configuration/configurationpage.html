@@ -642,7 +642,12 @@
                             <div class="form-row" style="margin-top:0.5rem;">
                                 <div class="form-col selectContainer">
                                     <label class="selectLabel" for="RealtimeMode">Mode</label>
-                                    <select id="RealtimeMode"><option value="auto">Auto</option><option value="webgl">WebGL Only</option><option value="server">Server AI Only</option></select>
+                                    <select id="RealtimeMode">
+                                        <option value="auto">Auto (smart-pick based on benchmark)</option>
+                                        <option value="lanczos">Lanczos + Sharpen (classic, fast, no AI)</option>
+                                        <option value="anime4k">Anime4K (real AI shader, best for anime)</option>
+                                        <option value="server">Server AI (Docker, full Real-ESRGAN/SwinIR/etc.)</option>
+                                    </select>
                                 </div>
                             </div>
                             <div class="inputContainer" style="margin-top:0.5rem;"><label class="inputLabel" for="RealtimeCaptureWidth">Capture Width</label><input type="number" id="RealtimeCaptureWidth" min="160" max="1920" /><div class="fieldDescription">Resolution for server-side capture (default: 480)</div></div>

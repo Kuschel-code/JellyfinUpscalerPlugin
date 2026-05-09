@@ -249,7 +249,11 @@ namespace JellyfinUpscalerPlugin.Services
                         }
                         else
                         {
-                            upscaledData = await _upscalerCore.UpscaleImageAsync(frameData, options.Model, options.ScaleFactor);
+                            // v1.7.0 - cancellationToken now propagates from frame-loop to AI call.
+                            // v20/v21 added RequestAborted to 16 HttpClient sites; this is the outer
+                            // loop that feeds them. Previously dropping the token here meant cancel
+                            // had to wait for the HTTP timeout per frame instead of bailing immediately.
+                            upscaledData = await _upscalerCore.UpscaleImageAsync(frameData, options.Model, options.ScaleFactor, cancellationToken);
                         }
 
                         var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFile));
