@@ -441,9 +441,11 @@ namespace JellyfinUpscalerPlugin.Services
         /// <summary>
         /// Clean up old cache entries
         /// </summary>
-        private async Task CleanupOldEntriesAsync()
+        // v1.7.2 - accepts CancellationToken (default for backward-compat with old callers).
+        // Lock acquire honors ct so shutdown doesn't hang on a long-running cleanup.
+        private async Task CleanupOldEntriesAsync(CancellationToken ct = default)
         {
-            await _cleanupLock.WaitAsync();
+            await _cleanupLock.WaitAsync(ct);
             try
             {
                 var maxCacheSize = (long)Config.CacheSizeMB * 1024 * 1024;

@@ -1048,6 +1048,71 @@ AVAILABLE_MODELS = {
         "available": True
     },
 
+    # ============================================================
+    # === v1.7.2 Wishlist Models (Round 2: MAN, CRAFT, GPEN, NAFNet) ===
+    # ============================================================
+
+    "man-x2": {
+        "name": "MAN x2 (Multi-scale Attention)",
+        "url": "https://huggingface.co/icandle/MAN/resolve/main/man-x2.onnx",
+        "scale": 2,
+        "description": "MAN x2 - Multi-scale Attention Network, ICME 2023. Lightweight transformer, ~8MB. Competitive with SwinIR at half the cost.",
+        "type": "onnx",
+        "category": "nextgen",
+        "model_type": "man",
+        "available": True
+    },
+    "man-x4": {
+        "name": "MAN x4 (Multi-scale Attention)",
+        "url": "https://huggingface.co/icandle/MAN/resolve/main/man-x4.onnx",
+        "scale": 4,
+        "description": "MAN x4 - Multi-scale Attention Network, ICME 2023. ~8MB. Strong PSNR-per-MB ratio.",
+        "type": "onnx",
+        "category": "nextgen",
+        "model_type": "man",
+        "available": True
+    },
+    "craft-x2": {
+        "name": "CRAFT x2 (Compositional Refinement)",
+        "url": "https://huggingface.co/AVC2-UESTC/CRAFT-SR/resolve/main/craft-x2.onnx",
+        "scale": 2,
+        "description": "CRAFT x2 - Compositional Refinement texture-aware SR, 2023. ~12MB. Especially good on high-frequency detail recovery.",
+        "type": "onnx",
+        "category": "nextgen",
+        "model_type": "craft",
+        "available": True
+    },
+    "craft-x4": {
+        "name": "CRAFT x4 (Compositional Refinement)",
+        "url": "https://huggingface.co/AVC2-UESTC/CRAFT-SR/resolve/main/craft-x4.onnx",
+        "scale": 4,
+        "description": "CRAFT x4 - Compositional Refinement, 2023. ~12MB.",
+        "type": "onnx",
+        "category": "nextgen",
+        "model_type": "craft",
+        "available": True
+    },
+    "gpen-512": {
+        "name": "GPEN-512 (Face Restoration Alternative)",
+        "url": "https://huggingface.co/yangxy/GPEN/resolve/main/gpen-bfr-512.onnx",
+        "scale": 1,
+        "description": "GPEN-512 - face restoration with GAN prior. Different visual style than GFPGAN (more conservative). ~280MB.",
+        "type": "onnx",
+        "category": "face_restore",
+        "model_type": "face_restore",
+        "available": True
+    },
+    "nafnet-denoise": {
+        "name": "NAFNet (Denoising / Restoration Pre-Pass)",
+        "url": "https://huggingface.co/megvii-research/NAFNet/resolve/main/nafnet-denoise.onnx",
+        "scale": 1,
+        "description": "NAFNet - non-AI baseline for image denoising / restoration. ECCV 2022. Use as pre-pass before upscaling on noisy source material. ~17MB.",
+        "type": "onnx",
+        "category": "film-restore",
+        "model_type": "restoration",
+        "available": True
+    },
+
 }
 
 

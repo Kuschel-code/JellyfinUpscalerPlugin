@@ -84,21 +84,21 @@ namespace JellyfinUpscalerPlugin
         public int MaxVRAMUsage
         {
             get => _maxVRAMUsage;
-            set => _maxVRAMUsage = Math.Max(value, 0);
+            set => _maxVRAMUsage = Math.Clamp(value, 0, 65536); // v1.7.2 - DoS upper-clamp (64 GB cap)
         }
 
         /// <summary>Number of CPU threads for processing (minimum 1).</summary>
         public int CpuThreads
         {
             get => _cpuThreads;
-            set => _cpuThreads = Math.Max(value, 1);
+            set => _cpuThreads = Math.Clamp(value, 1, 256); // v1.7.2 - DoS upper-clamp
         }
 
         /// <summary>Maximum concurrent upscaling streams (minimum 1).</summary>
         public int MaxConcurrentStreams
         {
             get => _maxConcurrentStreams;
-            set => _maxConcurrentStreams = Math.Max(value, 1);
+            set => _maxConcurrentStreams = Math.Clamp(value, 1, 16); // v1.7.2 - DoS upper-clamp (UI max=8)
         }
 
         // ── UI Settings ──────────────────────────────────────────────────
@@ -129,14 +129,14 @@ namespace JellyfinUpscalerPlugin
         public int MaxCacheAgeDays
         {
             get => _maxCacheAgeDays;
-            set => _maxCacheAgeDays = Math.Max(value, 1);
+            set => _maxCacheAgeDays = Math.Clamp(value, 1, 3650); // v1.7.2 - DoS upper-clamp (10 years)
         }
 
         /// <summary>Maximum cache size in MB (0 = unlimited). Default 5120 (5 GB).</summary>
         public int CacheSizeMB
         {
             get => _cacheSizeMB;
-            set => _cacheSizeMB = Math.Max(value, 0);
+            set => _cacheSizeMB = Math.Clamp(value, 0, 1048576); // v1.7.2 - DoS upper-clamp (1 TB)
         }
 
         // ── AI Service Configuration (Docker) ────────────────────────────
@@ -154,7 +154,7 @@ namespace JellyfinUpscalerPlugin
         public int GpuDeviceIndex
         {
             get => _gpuDeviceIndex;
-            set => _gpuDeviceIndex = Math.Max(value, 0);
+            set => _gpuDeviceIndex = Math.Clamp(value, 0, 64); // v1.7.2 - sane upper-cap (no realistic 64+ GPU systems)
         }
 
         // ── Remote Transcoding Configuration (SSH/rffmpeg style) ─────────
@@ -193,21 +193,21 @@ namespace JellyfinUpscalerPlugin
         public int MinResolutionWidth
         {
             get => _minResolutionWidth;
-            set => _minResolutionWidth = Math.Max(value, 0);
+            set => _minResolutionWidth = Math.Clamp(value, 0, 7680); // v1.7.2 - 8K upper-cap matching UI max
         }
 
         /// <summary>Minimum video height to skip upscaling (videos taller are considered high-res).</summary>
         public int MinResolutionHeight
         {
             get => _minResolutionHeight;
-            set => _minResolutionHeight = Math.Max(value, 0);
+            set => _minResolutionHeight = Math.Clamp(value, 0, 4320); // v1.7.2 - 8K upper-cap matching UI max
         }
 
         /// <summary>Maximum items to process per scan run (0 = unlimited).</summary>
         public int MaxItemsPerScan
         {
             get => _maxItemsPerScan;
-            set => _maxItemsPerScan = Math.Max(value, 0);
+            set => _maxItemsPerScan = Math.Clamp(value, 0, 100000); // v1.7.2 - DoS upper-clamp (no library 100k+ realistic)
         }
 
         /// <summary>
@@ -228,14 +228,14 @@ namespace JellyfinUpscalerPlugin
         public int RealtimeTargetFps
         {
             get => _realtimeTargetFps;
-            set => _realtimeTargetFps = Math.Max(value, 1);
+            set => _realtimeTargetFps = Math.Clamp(value, 1, 120); // v1.7.2 - UI max=120
         }
 
         /// <summary>Capture width for real-time server-side upscaling.</summary>
         public int RealtimeCaptureWidth
         {
             get => _realtimeCaptureWidth;
-            set => _realtimeCaptureWidth = Math.Max(value, 64);
+            set => _realtimeCaptureWidth = Math.Clamp(value, 160, 1920); // v1.7.2 - fix lower-bound drift (UI min=160 max=1920)
         }
 
         // ── Auto Model Selection ─────────────────────────────────────────
@@ -265,7 +265,7 @@ namespace JellyfinUpscalerPlugin
         public long MaxUpscaledFileSizeMB
         {
             get => _maxUpscaledFileSizeMB;
-            set => _maxUpscaledFileSizeMB = Math.Max(value, 0);
+            set => _maxUpscaledFileSizeMB = Math.Clamp(value, 0L, 1099511627776L); // v1.7.2 - DoS upper-clamp (1 TB cap, long type)
         }
         private long _maxUpscaledFileSizeMB;
 
@@ -278,7 +278,7 @@ namespace JellyfinUpscalerPlugin
         public int MaxQueueSize
         {
             get => _maxQueueSize;
-            set => _maxQueueSize = Math.Max(value, 1);
+            set => _maxQueueSize = Math.Clamp(value, 1, 10000); // v1.7.2 - matches UI max
         }
 
         /// <summary>Pause batch processing when a user is actively streaming.</summary>
@@ -312,7 +312,7 @@ namespace JellyfinUpscalerPlugin
         public int ModelDiskQuotaMB
         {
             get => _modelDiskQuotaMB;
-            set => _modelDiskQuotaMB = Math.Max(value, 0);
+            set => _modelDiskQuotaMB = Math.Clamp(value, 0, 1048576); // v1.7.2 - DoS upper-clamp (1 TB)
         }
 
         /// <summary>Automatically delete models not used within ModelCleanupDays.
@@ -324,7 +324,7 @@ namespace JellyfinUpscalerPlugin
         public int ModelCleanupDays
         {
             get => _modelCleanupDays;
-            set => _modelCleanupDays = Math.Max(value, 1);
+            set => _modelCleanupDays = Math.Clamp(value, 1, 3650); // v1.7.2 - 10 year sane upper-cap
         }
 
         // ── Health and Monitoring ────────────────────────────────────────
@@ -338,7 +338,7 @@ namespace JellyfinUpscalerPlugin
         public int HealthCheckIntervalSeconds
         {
             get => _healthCheckIntervalSeconds;
-            set => _healthCheckIntervalSeconds = Math.Max(value, 5);
+            set => _healthCheckIntervalSeconds = Math.Clamp(value, 10, 3600); // v1.7.2 - fix lower-bound drift (UI min=10) + 1h upper-cap
         }
 
         /// <summary>Fall back to CPU inference if GPU becomes unavailable.</summary>
@@ -348,14 +348,14 @@ namespace JellyfinUpscalerPlugin
         public int CircuitBreakerThreshold
         {
             get => _circuitBreakerThreshold;
-            set => _circuitBreakerThreshold = Math.Max(value, 1);
+            set => _circuitBreakerThreshold = Math.Clamp(value, 1, 1000); // v1.7.2 - sane upper-cap
         }
 
         /// <summary>Seconds before a tripped circuit breaker attempts recovery (minimum 1).</summary>
         public int CircuitBreakerResetSeconds
         {
             get => _circuitBreakerResetSeconds;
-            set => _circuitBreakerResetSeconds = Math.Max(value, 1);
+            set => _circuitBreakerResetSeconds = Math.Clamp(value, 10, 3600); // v1.7.2 - fix lower-bound drift (UI min=10) + 1h upper-cap
         }
 
         // ── Scan Filtering ───────────────────────────────────────────────
@@ -535,6 +535,6 @@ namespace JellyfinUpscalerPlugin
         // ── Version Tracking ─────────────────────────────────────────────
 
         /// <summary>Current plugin version string for webhook payloads and diagnostics.</summary>
-        public string PluginVersion { get; set; } = "1.7.1.0";
+        public string PluginVersion { get; set; } = "1.7.2.0";
     }
 }

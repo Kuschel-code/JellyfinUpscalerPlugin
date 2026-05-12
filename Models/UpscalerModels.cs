@@ -285,12 +285,13 @@ namespace JellyfinUpscalerPlugin.Models
     }
 
     /// <summary>
-    /// Processing status enumeration
+    /// Processing status enumeration. v1.7.2 - removed "Analyzing" which was never assigned
+    /// anywhere in the codebase, only referenced once in ProcessingStrategySelector.cs:231
+    /// as an unreachable `|| Status == Analyzing` arm.
     /// </summary>
     public enum ProcessingStatus
     {
         Starting,
-        Analyzing,
         Processing,
         Completed,
         Failed,

@@ -228,7 +228,8 @@ namespace JellyfinUpscalerPlugin.Services
                 return 100.0;
             if (job.Status == ProcessingStatus.Cancelled || job.Status == ProcessingStatus.Failed)
                 return 0;
-            if (job.Status == ProcessingStatus.Starting || job.Status == ProcessingStatus.Analyzing)
+            // v1.7.2 - removed unreachable `|| Status == Analyzing` arm. Analyzing was never assigned.
+            if (job.Status == ProcessingStatus.Starting)
                 return ProgressStartingPercent;
 
             if (job.Status == ProcessingStatus.Processing && job.InputInfo != null && job.InputInfo.Duration.TotalSeconds > 0)

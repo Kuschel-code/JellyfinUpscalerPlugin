@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.7.2.0",
+        "changelog": "v1.7.2: DoS-Hardening + 6 Wishlist Models + Phase-2 Test Coverage Start. P0: 18 numeric properties get Math.Clamp upper-bounds (was Math.Max with no upper-cap) - closes DoS surface where Settings-Import could write arbitrarily large values. Plus 3 lower-bound drift fixes: RealtimeCaptureWidth (C#=64 vs UI=160), HealthCheckIntervalSeconds (C#=5 vs UI=10), CircuitBreakerResetSeconds (C#=1 vs UI=10). NEW: 6 wishlist models (MAN x2/x4, CRAFT x2/x4, GPEN-512, NAFNet-denoise). Catalog 53->59. NEW: ProcessingQueueTests.cs with 4 regression guards for the v1.7.0 debounce+async persist refactor. POLISH: ProcessingStatus.Analyzing enum value removed (was unreachable). CleanupOldEntriesAsync(ct=default) flows ct through to _cleanupLock.WaitAsync. Tests: 121/121. Build: 0/0. v1.6.x/v1.7.x configs bit-compatible. Deferred to v1.7.3: 3 of 4 Phase-2 mocked-async tests (LibraryUpscaleScanTask, VideoFrameProcessor, ProcessingMethodExecutor) - need IUpscalerCore + IUserManagerAdapter interface extraction first.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.7.2/JellyfinUpscalerPlugin-v1.7.2.zip",
+        "checksum": "51d69be3eeb87af36390b5f97a00f584",
+        "timestamp": "2026-05-11T20:00:00.000Z"
+      },
+      {
         "version": "1.7.1.0",
         "changelog": "v1.7.1: WebGPU AI Realtime + 5 Wishlist Models + Cleanup Closure. NEW: 'AI WebGPU' realtime mode - real Real-ESRGAN compact inference in the browser via onnxruntime-web (Microsoft, MIT) + WebGPU compute backend. Defensive 4-stage fallback to Lanczos. NEW: 5 wishlist models (OmniSR x2/x4, DAT-light x2/x4, RestoreFormer++) - first catalog growth in 9 releases. Catalog: 48 -> 53 models. CLEANUP: RealtimeModeRegistry single source of truth (replaces inline allowlist), VideoFilterService.SupportedPresets (replaces _validFilterPresets array with 5 inline references), generic RegistryDriftLockTests [Theory] (replaces 3 separate HtmlDropdown_* methods, now covers 5 dropdowns). NEW CI: 3-job audit workflow (verify-fallback-sync, audit-tryapply-lambdas, zip-version-check) catches the drift bug classes that escaped 9 prior releases - including the v1.7.0 meta.json-in-ZIP catch. Polish: HttpUpscalerService LogDebug->LogWarning. Tests: 117/117. Build: 0/0. Saved v1.6.x/v1.7.0 configs are bit-compatible. Deferred to v1.7.2: Phase 2 mocked-async tests (need test-DI infra) + remaining polish (6 Clamp-drift, dead enum, _cleanupLock(ct)).",
         "targetAbi": "10.11.8.0",

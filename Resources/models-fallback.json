@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-05-09",
+  "generated_at": "2026-05-11",
   "source": "docker-ai-service/app/main.py:AVAILABLE_MODELS",
   "generator": "Scripts/sync-fallback-models.ps1",
   "notice": "AUTO-GENERATED - DO NOT EDIT BY HAND. Regenerate via the script when main.py changes.",
-  "total": 53,
+  "total": 59,
   "models": [
     {
       "id": "realesrgan-x4",
@@ -679,6 +679,72 @@
       "description": "RestoreFormer++ - state-of-the-art face restoration, better than GFPGAN/CodeFormer for severely degraded faces. ~50MB.",
       "scale": [ 1 ],
       "category": "face_restore",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "man-x2",
+      "name": "MAN x2 (Multi-scale Attention)",
+      "description": "MAN x2 - Multi-scale Attention Network, ICME 2023. Lightweight transformer, ~8MB. Competitive with SwinIR at half the cost.",
+      "scale": [ 2 ],
+      "category": "nextgen",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "man-x4",
+      "name": "MAN x4 (Multi-scale Attention)",
+      "description": "MAN x4 - Multi-scale Attention Network, ICME 2023. ~8MB. Strong PSNR-per-MB ratio.",
+      "scale": [ 4 ],
+      "category": "nextgen",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "craft-x2",
+      "name": "CRAFT x2 (Compositional Refinement)",
+      "description": "CRAFT x2 - Compositional Refinement texture-aware SR, 2023. ~12MB. Especially good on high-frequency detail recovery.",
+      "scale": [ 2 ],
+      "category": "nextgen",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "craft-x4",
+      "name": "CRAFT x4 (Compositional Refinement)",
+      "description": "CRAFT x4 - Compositional Refinement, 2023. ~12MB.",
+      "scale": [ 4 ],
+      "category": "nextgen",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "gpen-512",
+      "name": "GPEN-512 (Face Restoration Alternative)",
+      "description": "GPEN-512 - face restoration with GAN prior. Different visual style than GFPGAN (more conservative). ~280MB.",
+      "scale": [ 1 ],
+      "category": "face_restore",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "nafnet-denoise",
+      "name": "NAFNet (Denoising / Restoration Pre-Pass)",
+      "description": "NAFNet - non-AI baseline for image denoising / restoration. ECCV 2022. Use as pre-pass before upscaling on noisy source material. ~17MB.",
+      "scale": [ 1 ],
+      "category": "film-restore",
       "type": "onnx",
       "available": true,
       "downloaded": false,
