@@ -258,38 +258,10 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         });
 
-        [HttpGet("js/{name}")]
-        [Produces("text/javascript")]
-        public ActionResult GetJavaScript(string name)
-        {
-            try
-            {
-                // Allowlist of permitted resource names to prevent resource disclosure
-                var allowedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                {
-                    "player-integration.js", "quick-menu.js", "sidebar-upscaler.js", "webgl-upscaler.js"
-                };
-                if (!allowedNames.Contains(name)) return NotFound();
-
-                var assembly = GetType().Assembly;
-                var resourceName = assembly.GetManifestResourceNames()
-                    .FirstOrDefault(r => r.EndsWith($".Configuration.{name}", StringComparison.OrdinalIgnoreCase) || 
-                                         r.EndsWith($".Configuration.{name}.js", StringComparison.OrdinalIgnoreCase));
-
-                if (resourceName == null) return NotFound();
-
-                using var stream = assembly.GetManifestResourceStream(resourceName);
-                if (stream == null) return NotFound();
-
-                using var reader = new StreamReader(stream);
-                return Content(reader.ReadToEnd(), "text/javascript");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to serve JS component: {Name}", name);
-                return StatusCode(500);
-            }
-        }
+        // v1.7.3.1 - Hotfix: removed dead endpoint `GET /Upscaler/js/{name}`. The v1.7.3
+        // release notes announced this delete but a batch-edit interrupt left the code
+        // intact (caught by external audit). 0 callers across the codebase; all JS-files
+        // load via Jellyfin's /web/configurationpage?name=UPSCALERXyz mechanism instead.
 
         /// <summary>
         /// Lists Jellyfin media libraries (virtual folders) so the config UI can render

@@ -27,11 +27,10 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
         private readonly HttpUpscalerService _httpUpscalerService;
         private readonly VideoProcessor _videoProcessor;
         private readonly UpscalerCore _upscalerCore;
-        // v1.6.1.21 - injected for the RestrictToUnwatchedContent toggle wiring (P0b).
-        // Both are first-class Jellyfin services; the DI container resolves them automatically
-        // without needing a PluginServiceRegistrator entry (same as ILibraryManager above).
-        private readonly IUserManager _userManager;
-        private readonly IUserDataManager _userDataManager;
+        // v1.7.3.1 - IUserManagerAdapter replaces the two raw Jellyfin manager refs
+        // (IUserManager + IUserDataManager). The adapter encapsulates the fail-open
+        // try/catch around the Jellyfin lookup so this class becomes mockable in tests.
+        private readonly IUserManagerAdapter _userManagerAdapter;
 
         public LibraryUpscaleScanTask(
             ILogger<LibraryUpscaleScanTask> logger,
@@ -39,43 +38,14 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
             HttpUpscalerService httpUpscalerService,
             VideoProcessor videoProcessor,
             UpscalerCore upscalerCore,
-            IUserManager userManager,
-            IUserDataManager userDataManager)
+            IUserManagerAdapter userManagerAdapter)
         {
             _logger = logger;
             _libraryManager = libraryManager;
             _httpUpscalerService = httpUpscalerService;
             _videoProcessor = videoProcessor;
             _upscalerCore = upscalerCore;
-            _userManager = userManager;
-            _userDataManager = userDataManager;
-        }
-
-        /// <summary>
-        /// True if any user (admin or not) has marked the item as played at least once.
-        /// Used to honor the <c>PluginConfiguration.RestrictToUnwatchedContent</c> toggle.
-        /// Conservative semantics: any single user playing it counts as "watched" - protects
-        /// against compute-waste on shared libraries even if just one family member saw it.
-        /// Fail-open: lookup errors return false (treat as unwatched) so the scan keeps going.
-        /// </summary>
-        private bool IsAnyUserPlayed(BaseItem item)
-        {
-            try
-            {
-                foreach (var user in _userManager.Users)
-                {
-                    var data = _userDataManager.GetUserData(user, item);
-                    if (data != null && (data.Played || data.PlayCount > 0))
-                    {
-                        return true;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "AI Upscaler: IsAnyUserPlayed lookup failed for {Path}, treating as unwatched", item?.Path);
-            }
-            return false;
+            _userManagerAdapter = userManagerAdapter;
         }
 
         public string Name => "Scan & Upscale Library";
@@ -210,7 +180,7 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                 // skip items any user has already played — avoids compute-waste on shared family
                 // libraries where some movies are already seen. Counted under alreadyUpscaledCount
                 // for telemetry simplicity (treat "watched" as "no point re-processing").
-                if (config.RestrictToUnwatchedContent && IsAnyUserPlayed(video))
+                if (config.RestrictToUnwatchedContent && _userManagerAdapter.IsAnyUserPlayed(video))
                 {
                     alreadyUpscaledCount++;
                     continue;

@@ -31,7 +31,8 @@ namespace JellyfinUpscalerPlugin.Services
             }
         }
 
-        private readonly UpscalerCore _upscalerCore;
+        // v1.7.3.1 - depends on IUpscalerCore interface (test-seam) instead of concrete.
+        private readonly IUpscalerCore _upscalerCore;
         private readonly UpscalerProgressHub _progressHub;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> _pausedJobs;
@@ -41,7 +42,7 @@ namespace JellyfinUpscalerPlugin.Services
         public VideoFrameProcessor(
             ILogger logger,
             string ffmpegPath,
-            UpscalerCore upscalerCore,
+            IUpscalerCore upscalerCore,
             UpscalerProgressHub progressHub,
             IHttpClientFactory httpClientFactory,
             System.Collections.Concurrent.ConcurrentDictionary<string, bool> pausedJobs)

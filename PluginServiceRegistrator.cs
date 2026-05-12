@@ -56,6 +56,11 @@ namespace JellyfinUpscalerPlugin
             // Platform & Interop
             serviceCollection.AddSingleton<IPlatformDetectionService, PlatformDetectionService>();
             serviceCollection.AddSingleton<IFFmpegWrapperService, FFmpegWrapperService>();
+
+            // v1.7.3.1 - test-seam adapters (extracted to make Jellyfin-API-dependent
+            // logic mockable in unit tests).
+            serviceCollection.AddSingleton<IUserManagerAdapter, UserManagerAdapter>();
+            serviceCollection.AddSingleton<IUpscalerCore>(sp => sp.GetRequiredService<UpscalerCore>());
         }
     }
 }

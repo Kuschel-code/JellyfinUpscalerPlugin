@@ -19,7 +19,7 @@ namespace JellyfinUpscalerPlugin.Services
     /// Core upscaling engine - Docker-based implementation
     /// Delegates AI processing to the external Docker AI service via HTTP.
     /// </summary>
-    public class UpscalerCore : IDisposable
+    public class UpscalerCore : IUpscalerCore, IDisposable
     {
         private readonly ILogger<UpscalerCore> _logger;
         private readonly IMediaEncoder _mediaEncoder;
