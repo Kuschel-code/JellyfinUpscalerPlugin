@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.7.3.0",
+        "changelog": "v1.7.3: Dead-Code Cleanup + Site-Doku-Sync + CI Drift-Prevention. Pure hygiene release - no functional changes. PHASE A: -540 LoC dead code removed (3 unused Service-Classes: TranscodingProfileManager, UpscalerTranscodingHelper-in-UpscalerTranscodingManager.cs, JellyfinConfigHelper + 1 dead DTO UpscalerSettings + 2 dead REST endpoints GET /Upscaler/js/{name} and POST /Upscaler/cache/config). PHASE B: Site-Doku-Sync - site/models.html extended with all 11 missing models (OmniSR/DAT-light/MAN/CRAFT/RestoreFormer++/GPEN/NAFNet), 14 site/*.html brand-version unified from {v1.6.1.17, v1.6.1.21, v1.7.0} to v1.7.3 via new Scripts/sync-site-topbar-versions.ps1. PHASE C: New verify-site-sync CI job catches future drift at PR time. CPUInfo + MemoryInfo kept (transitively reachable via BenchmarkResults). Tests 121/121 unchanged. Build 0/0. v1.7.x configs bit-compatible. Deferred to v1.7.4: Phase D+E (IUpscalerCore + IUserManagerAdapter interfaces + 3 mocked-async tests).",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.7.3/JellyfinUpscalerPlugin-v1.7.3.zip",
+        "checksum": "5855e84c432dfe8ec329c25bbec65f67",
+        "timestamp": "2026-05-12T18:00:00.000Z"
+      },
+      {
         "version": "1.7.2.0",
         "changelog": "v1.7.2: DoS-Hardening + 6 Wishlist Models + Phase-2 Test Coverage Start. P0: 18 numeric properties get Math.Clamp upper-bounds (was Math.Max with no upper-cap) - closes DoS surface where Settings-Import could write arbitrarily large values. Plus 3 lower-bound drift fixes: RealtimeCaptureWidth (C#=64 vs UI=160), HealthCheckIntervalSeconds (C#=5 vs UI=10), CircuitBreakerResetSeconds (C#=1 vs UI=10). NEW: 6 wishlist models (MAN x2/x4, CRAFT x2/x4, GPEN-512, NAFNet-denoise). Catalog 53->59. NEW: ProcessingQueueTests.cs with 4 regression guards for the v1.7.0 debounce+async persist refactor. POLISH: ProcessingStatus.Analyzing enum value removed (was unreachable). CleanupOldEntriesAsync(ct=default) flows ct through to _cleanupLock.WaitAsync. Tests: 121/121. Build: 0/0. v1.6.x/v1.7.x configs bit-compatible. Deferred to v1.7.3: 3 of 4 Phase-2 mocked-async tests (LibraryUpscaleScanTask, VideoFrameProcessor, ProcessingMethodExecutor) - need IUpscalerCore + IUserManagerAdapter interface extraction first.",
         "targetAbi": "10.11.8.0",

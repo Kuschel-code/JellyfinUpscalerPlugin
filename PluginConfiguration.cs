@@ -535,6 +535,6 @@ namespace JellyfinUpscalerPlugin
         // ── Version Tracking ─────────────────────────────────────────────
 
         /// <summary>Current plugin version string for webhook payloads and diagnostics.</summary>
-        public string PluginVersion { get; set; } = "1.7.2.0";
+        public string PluginVersion { get; set; } = "1.7.3.0";
     }
 }

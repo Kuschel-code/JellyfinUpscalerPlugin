@@ -3,22 +3,10 @@ using System.Collections.Generic;
 
 namespace JellyfinUpscalerPlugin.Models
 {
-    /// <summary>
-    /// Upscaler settings model
-    /// </summary>
-    public class UpscalerSettings
-    {
-        public string? Model { get; set; }
-        public int? ScaleFactor { get; set; }
-        public string? QualityLevel { get; set; }
-        public bool? EnablePlugin { get; set; }
-        public bool? HardwareAcceleration { get; set; }
-        public bool? PlayerButton { get; set; }
-        public int? MaxVRAMUsage { get; set; }
-        public int? CpuThreads { get; set; }
-        public bool? AutoRetryButton { get; set; }
-        public string? ButtonPosition { get; set; }
-    }
+    // v1.7.3 - removed dead type `UpscalerSettings`. Audit-Verify caught that `CPUInfo` and
+    // `MemoryInfo` are transitively reachable via BenchmarkResults.CPUInfo/MemoryInfo properties
+    // - they stay. `UpscalerSettings` was a settings-patch-DTO that had 0 consumers (the actual
+    // import flow uses JsonElement/TryApply, never DTOs).
 
     /// <summary>
     /// Video processing request model

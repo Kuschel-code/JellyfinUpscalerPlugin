@@ -7,16 +7,16 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.6.1.21</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.7.3</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container">
   <h1>AI model catalog</h1>
-  <p class="lead" style="color: var(--text-dim);">48 models registered, 5 marked <em>[self-host required]</em>. Weights are pulled on demand — none of them are bundled in the Docker image.</p>
+  <p class="lead" style="color: var(--text-dim);">59 models registered, 5 marked <em>[self-host required]</em>. Weights are pulled on demand — none of them are bundled in the Docker image.</p>
 
   <!-- AUTO-GENERATED FROM docker-ai-service/app/main.py:AVAILABLE_MODELS -->
   <!-- Generator: Scripts/sync-fallback-models.ps1 -->
   <!-- DO NOT EDIT BY HAND. Regenerate the JSON, then re-render this section. -->
-  <p style="color: var(--text-dim); font-size: 0.9em;">Last regenerated: <code>2026-05-07</code> from <code>docker-ai-service/app/main.py:AVAILABLE_MODELS</code></p>
+  <p style="color: var(--text-dim); font-size: 0.9em;">Last regenerated: <code>2026-05-12</code> from <code>docker-ai-service/app/main.py:AVAILABLE_MODELS</code></p>
 
   <h2>Real-ESRGAN <small>(2)</small></h2>
   <table>
@@ -53,7 +53,7 @@
     </tbody>
   </table>
 
-  <h2>Next-Gen (SPAN/SwinIR/APISR) <small>(6)</small></h2>
+  <h2>Next-Gen (SPAN/SwinIR/APISR/OmniSR/DAT-light/MAN/CRAFT) <small>(14)</small></h2>
   <table>
     <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
     <tbody>
@@ -62,7 +62,15 @@
       <tr><td><code>realesrgan-x2-plus</code></td><td>x2</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Real-ESRGAN x2 Plus — high quality 2x for photos and live-action.</td></tr>
       <tr><td><code>realesrgan-animevideo-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Real-ESRGAN trained specifically for anime video. Optimized for temporal consistency.</td></tr>
       <tr><td><code>swinir-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">SwinIR — Swin Transformer for image restoration. Best quality for photos & live-action.</td></tr>
-      <tr><td><code>apisr-x3</code></td><td>x3</td><td>onnx</td><td><span style="color: #d3a35c;">self-host</span></td><td style="font-size: 0.85em; color: var(--text-dim);">CVPR 2024 — general 3x for photos & video. Ideal for 720p to 1080p. ~25MB. [Upstream Xenova repo gat…</td></tr>
+      <tr><td><code>apisr-x3</code></td><td>x3</td><td>onnx</td><td><span style="color: #d3a35c;">self-host</span></td><td style="font-size: 0.85em; color: var(--text-dim);">CVPR 2024 — general 3x for photos & video. Ideal for 720p to 1080p. ~25MB.</td></tr>
+      <tr><td><code>omnisr-x2</code></td><td>x2</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">OmniSR x2 — CVPR 2023, omni-axis self-attention. ~10MB. (v1.7.1)</td></tr>
+      <tr><td><code>omnisr-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">OmniSR x4 — CVPR 2023. ~10MB. Sweet spot SwinIR↔FSRCNN for 480p→1920p. (v1.7.1)</td></tr>
+      <tr><td><code>dat-light-x2</code></td><td>x2</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">DAT-light x2 — smaller/faster sibling of DAT2. ~15MB. (v1.7.1)</td></tr>
+      <tr><td><code>dat-light-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">DAT-light x4 — smaller/faster sibling of DAT2. ~15MB. (v1.7.1)</td></tr>
+      <tr><td><code>man-x2</code></td><td>x2</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">MAN x2 — Multi-scale Attention Network, ICME 2023. ~8MB. (v1.7.2)</td></tr>
+      <tr><td><code>man-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">MAN x4 — Multi-scale Attention Network. ~8MB. (v1.7.2)</td></tr>
+      <tr><td><code>craft-x2</code></td><td>x2</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">CRAFT x2 — Compositional Refinement, 2023. Texture-aware, ~12MB. (v1.7.2)</td></tr>
+      <tr><td><code>craft-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">CRAFT x4 — Compositional Refinement. ~12MB. (v1.7.2)</td></tr>
     </tbody>
   </table>
 
@@ -90,12 +98,13 @@
     </tbody>
   </table>
 
-  <h2>Film Restoration <small>(2)</small></h2>
+  <h2>Film Restoration <small>(3)</small></h2>
   <table>
     <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
     <tbody>
       <tr><td><code>fsdedither-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Removes dithering artifacts from old DVDs and digitized VHS tapes. 67MB.</td></tr>
       <tr><td><code>nomos8k-hat-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #d3a35c;">self-host</span></td><td style="font-size: 0.85em; color: var(--text-dim);">HAT Transformer trained on 8k dataset. Handles JPG compression + blur. 57MB.</td></tr>
+      <tr><td><code>nafnet-denoise</code></td><td>—</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">NAFNet — non-AI baseline for image denoising/restoration. ECCV 2022. Use as pre-pass before upscaling. ~17MB. (v1.7.2)</td></tr>
     </tbody>
   </table>
 
@@ -141,12 +150,14 @@
     </tbody>
   </table>
 
-  <h2>Face Restoration <small>(2)</small></h2>
+  <h2>Face Restoration <small>(4)</small></h2>
   <table>
     <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td><code>gfpgan-v1.4</code></td><td>—</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">GFPGAN v1.4 — Tencent ARC's face restoration GAN. Restores heavily degraded faces. 512x512 crops. Ap…</td></tr>
-      <tr><td><code>codeformer</code></td><td>—</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">CodeFormer - Robust face restoration with transformer codebook. Good for severely degraded faces. 51…</td></tr>
+      <tr><td><code>gfpgan-v1.4</code></td><td>—</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">GFPGAN v1.4 — Tencent ARC's face restoration GAN. Restores heavily degraded faces. 512x512 crops.</td></tr>
+      <tr><td><code>codeformer</code></td><td>—</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">CodeFormer — Robust face restoration with transformer codebook. Good for severely degraded faces.</td></tr>
+      <tr><td><code>restoreformer-plus-plus</code></td><td>—</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">RestoreFormer++ — MM 2023, state-of-the-art for severely degraded faces. Better than GFPGAN/CodeFormer. ~50MB. (v1.7.1)</td></tr>
+      <tr><td><code>gpen-512</code></td><td>—</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">GPEN-512 — face restoration with GAN prior. Different visual style than GFPGAN (more conservative). ~280MB. (v1.7.2)</td></tr>
     </tbody>
   </table>
 

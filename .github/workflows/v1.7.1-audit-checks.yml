@@ -92,3 +92,22 @@ jobs:
               exit 1
           fi
           echo "PASS: meta.json $PUB_VERSION matches manifest $MAN_VERSION"
+
+  verify-site-sync:
+    name: site/*.html brand-version must match meta.json
+    # v1.7.3 - catches the brand-version drift class: pre-v1.7.3, 14 site/*.html pages
+    # showed v1.6.1.21 / v1.6.1.17 / v1.7.0 simultaneously while the actual release was
+    # v1.7.2. This job runs the sync script and fails if it produced a diff.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run sync-site-topbar-versions
+        run: pwsh Scripts/sync-site-topbar-versions.ps1
+      - name: Assert no drift remains
+        run: |
+          if ! git diff --exit-code site/; then
+              echo "FAIL: site/*.html brand-version is out of sync with meta.json"
+              echo "Fix: run 'pwsh Scripts/sync-site-topbar-versions.ps1' locally and commit."
+              exit 1
+          fi
+          echo "PASS: site/*.html brand-version in sync with meta.json"

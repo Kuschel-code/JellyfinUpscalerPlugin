@@ -1205,27 +1205,9 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
-        [HttpPost("cache/config")]
-        [Authorize(Policy = "RequiresElevation")]
-        [Produces(MediaTypeNames.Application.Json)]
-        public ActionResult<object> ConfigurePreProcessingCache([FromBody] PreProcessingCacheRequest request)
-        {
-            try
-            {
-                var config = Plugin.Instance?.Configuration;
-                if (config != null)
-                {
-                    config.EnablePreProcessingCache = request.Enabled;
-                    Plugin.Instance?.SaveConfiguration();
-                }
-                return Ok(new { success = true });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to configure pre-processing cache");
-                return StatusCode(500, new { success = false, error = "Internal server error" });
-            }
-        }
+        // v1.7.3 - removed dead endpoint `POST /Upscaler/cache/config`. It wrote
+        // `EnablePreProcessingCache` which is a Ghost-Property (removed from UI in v22,
+        // 0 service-consumers). The endpoint persisted a value that nothing read.
 
         [HttpGet("settings/export")]
         [Authorize(Policy = "RequiresElevation")]
