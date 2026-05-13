@@ -3,13 +3,134 @@
     "guid": "f87f700e-679d-43e6-9c7c-b3a410dc3f22",
     "name": "AI Upscaler Plugin",
     "description": "AI-powered video upscaling plugin with Docker microservice architecture. Features automated hardware benchmarking, intelligent fallback system, pre-processing cache, and sidebar integration.",
-    "overview": "Revolutionary AI upscaling plugin with Docker-based AI processing. Eliminates native DLL conflicts.",
+    "imageUrl": "https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/thumb.png",
+    "overview": "Revolutionary AI upscaling plugin with Docker-based AI processing. Eliminates native DLL conflicts. Features comparison view, TV remote optimization, and sidebar integration.",
     "owner": "Kuschel-code",
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.7.3.1",
+        "changelog": "v1.7.3.1: Hotfix + Interface-Extraction. HOTFIX: external audit caught GET /Upscaler/js/{name} endpoint not actually deleted in v1.7.3 (release-note inconsistency). Now deleted. PHASE D: IUpscalerCore + IUserManagerAdapter test seams extracted; VideoFrameProcessor + LibraryUpscaleScanTask refactored to use interfaces. PHASE E: NEW UserManagerAdapterTests with fail-open regression-guard (2 tests). POLISH: docs/MODEL-HOSTING.md size annotation updated. Tests 121->123. v1.7.x configs bit-compatible.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.7.3.1/JellyfinUpscalerPlugin-v1.7.3.1.zip",
+        "checksum": "186a202933ad95df7210de8604bf4b1f",
+        "timestamp": "2026-05-12T20:00:00.000Z"
+      },
+      {
+        "version": "1.7.3.0",
+        "changelog": "v1.7.3: Dead-Code Cleanup + Site-Doku-Sync + CI Drift-Prevention. -540 LoC dead code (3 services, 1 DTO, 2 endpoints). site/models.html extended with 11 missing v1.7.1+v1.7.2 models. 14 site/*.html brand-version unified to v1.7.3 via new sync script. New verify-site-sync CI job. Tests 121/121. v1.7.x configs bit-compatible. Deferred to v1.7.4: IUpscalerCore + IUserManagerAdapter interfaces + 3 mocked tests.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.7.3/JellyfinUpscalerPlugin-v1.7.3.zip",
+        "checksum": "5855e84c432dfe8ec329c25bbec65f67",
+        "timestamp": "2026-05-12T18:00:00.000Z"
+      },
+      {
+        "version": "1.7.2.0",
+        "changelog": "v1.7.2: DoS-Hardening + 6 Wishlist Models + Phase-2 Tests Start. 18 numeric properties get Math.Clamp upper-bounds (closes DoS surface in Settings-Import). 3 lower-bound drift fixes (RealtimeCaptureWidth/HealthCheck/CircuitBreakerReset matching UI min). NEW: MAN x2/x4, CRAFT x2/x4, GPEN-512, NAFNet-denoise. Catalog 53->59. NEW: ProcessingQueueTests (4 regression guards for v1.7.0 debounce+async persist). Polish: ProcessingStatus.Analyzing dead-enum removed, CleanupOldEntriesAsync(ct=default) added. 121/121 tests. v1.7.x configs bit-compatible. Deferred to v1.7.3: 3 of 4 async test files.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.7.2/JellyfinUpscalerPlugin-v1.7.2.zip",
+        "checksum": "51d69be3eeb87af36390b5f97a00f584",
+        "timestamp": "2026-05-11T20:00:00.000Z"
+      },
+      {
+        "version": "1.7.1.0",
+        "changelog": "v1.7.1: WebGPU AI Realtime + 5 Wishlist Models + Cleanup Closure. NEW 'AI WebGPU' mode (Real-ESRGAN compact via onnxruntime-web + WebGPU, browser-native AI). 5 new models: OmniSR x2/x4, DAT-light x2/x4, RestoreFormer++ (first catalog growth in 9 releases). RealtimeModeRegistry + VideoFilterService.SupportedPresets close the last 2 drift surfaces. Generic [Theory] HtmlDropdown_MatchesRegistry covers 5 dropdowns. NEW: 3-job CI audit (verify-fallback-sync, tryapply-audit, zip-version-check). HttpUpscalerService LogDebug->Warning. 117/117 tests. v1.6.x/v1.7.0 configs bit-compatible.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.7.1/JellyfinUpscalerPlugin-v1.7.1.zip",
+        "checksum": "31da32ab8abf29513ee9de76b5c01fd0",
+        "timestamp": "2026-05-09T15:00:00.000Z"
+      },
+      {
+        "version": "1.7.0.0",
+        "changelog": "v1.7.0: Anime4K Realtime + Adoption Completion + Settings-Import Fix. NEW: real AI-shader realtime upscaling for anime via Anime4K.js (MIT, jsdelivr CDN). HONESTY: 'WebGL' mode renamed 'Lanczos+Sharpen'. RealtimeMode: Auto/Lanczos/Anime4K/Server-AI. P0: QualityLevelRegistry+ButtonPositionRegistry close save-drift bugs. VideoFrameProcessor.cs:252 cancellationToken now propagates. ProcessingMethodExecutor.cs:619-621 WaitForExitAsync(ct) replaces Task.Run().WaitForExit(). P1: 5 missing HttpContext.RequestAborted, IsServiceAvailableAsync(ct), PersistQueue debounced async. 18 missing TryApply lambdas added. +13 tests (102->115). v1.6.x configs bit-compatible.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.7.0/JellyfinUpscalerPlugin-v1.7.0.zip",
+        "checksum": "3f213750101014aad91e35ffce0931ba",
+        "timestamp": "2026-05-09T05:00:00.000Z"
+      },
+      {
+        "version": "1.6.1.23",
+        "changelog": "v1.6.1.23: OutputCodec Save-Validation Fix (P0). Settings #OutputCodec dropdown offered 12 codecs but 4 code paths each had their own inline allowlist (sizes 3/6/7/12). Save accepted only 3 - picking AV1/NVENC/QSV silently fell back to libx264 (5-20x slower on NVIDIA HW, no error). New Services/CodecRegistry.cs single source of truth. All 4 sites use CodecRegistry.OutputCodecs (12, save+reconstruct+batch) or RealtimeOutputCodecs (6, realtime pipe path). Drift-lock test parses embedded HTML and asserts set-equality with registry. +17 tests (102/102 was 85). Zero schema changes - v22 saved configs bit-compatible.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.23/JellyfinUpscalerPlugin-v1.6.1.23.zip",
+        "checksum": "917f88c9b180f777f54c7893a42ff88f",
+        "timestamp": "2026-05-09T03:00:00.000Z"
+      },
+      {
+        "version": "1.6.1.22",
+        "changelog": "v1.6.1.22: UI Honesty Cleanup. Removes 30 dead-backend config controls from configurationpage.html that had no C#/JS/Python consumers. Triple-pass over all 88 properties (v21 found only 54 - regex missed property-bodies). 5 entire <details> sections removed (Quality Metrics, Face Enhancement, Film Grain, Health & Circuit Breaker, Model Management). 18 individual fields removed from mixed-live sections + 3 orphan slider listeners. JS load/save arrays pruned in lockstep. Properties + Controller TryApply stay (backwards-compat). Preserved: ButtonPosition, RealtimeMode/CaptureWidth, EnableRealtimeUpscaling, EnableFaceRestore, FaceRestoreModel (verified live in JS pass 3). HTML 2807 -> 2680 lines. dotnet test 85/85. Zero behavior change, zero new code paths.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.22/JellyfinUpscalerPlugin-v1.6.1.22.zip",
+        "checksum": "0dcc2b36e91fca7292d5eefb89148512",
+        "timestamp": "2026-05-09T00:00:00.000Z"
+      },
+      {
+        "version": "1.6.1.21",
+        "changelog": "v1.6.1.21: Adoption v2 + Compute-Waste Fixes + Honest Dead-Config. Closes 8 audit findings. WIRED RestrictToUnwatchedContent + SkipUpscaledOnRescan in LibraryUpscaleScanTask (compute-waste eliminated). FIX 6 more HttpContext.RequestAborted (16/16 coverage incl. /upscale-frame + /upscale-video-chunk hot paths). FIX ProcessingStrategySelector substring-matcher leak (anime-compact-x4 + nomos2-realplksr-x4 no longer falsely RealTime-eligible). FIX 4 frame-loop File.Copy async streaming. FIX FaceRestore backend allowlist via registry (frontend-backend symmetric). FIX filter-preset list 4x to 1x dedupe. HONEST 6 dead-config toggles flagged as no-op pending v1.7.0. +13 regression tests. dotnet test 85/85 (was 72). No model changes, no breaking config.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.21/JellyfinUpscalerPlugin-v1.6.1.21.zip",
+        "checksum": "7a2b02bdc3c24411e3e15b3fef171402",
+        "timestamp": "2026-05-08T22:00:00.000Z"
+      },
+      {
+        "version": "1.6.1.20",
+        "changelog": "v1.6.1.20: Adoption Completion + Cancellation + Async-IO. Follow-up to v1.6.1.19 closing audit-found gaps. FIX HardwareBenchmarkService.cs:123 status.CurrentModel ?? bypass routed through EnsureModelAvailable. FIX UpscalerCore single-frame returns (7 sites) now use PickAvailable. NEW BUG CLASS: 9x HttpContext.RequestAborted in UpscalerController prevents 120s timeout hangs. NEW BUG CLASS: CacheManager async File.Copy replaces sync block-IO. FIX csproj timeless comments. +7 SingleFramePaths regression tests. dotnet test 72/72 (was 65). No model changes, no breaking config.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.20/JellyfinUpscalerPlugin-v1.6.1.20.zip",
+        "checksum": "9271a085c983454c98765c4f62bece6c",
+        "timestamp": "2026-05-08T22:00:00.000Z"
+      },
+      {
+        "version": "1.6.1.19",
+        "changelog": "v1.6.1.19: Structural fix closing the drift class v1.6.1.17/18 patched point-by-point. NEW Services/ModelAvailability.cs - single source of truth (HashSet + IsKnownUnavailable + PickAvailable) consumed by UpscalerCore (refactored) and HardwareBenchmarkService (new EnsureModelAvailable wrapper hardens 7 hardcoded model assignments). FIX Face-Restore dropdown auto-populated from registry (was hardcoded HTML). FIX Homepage card on site/index.html showed v1.6.1.16 content under v1.6.1.18 header (pauschal version-bump bumped title without rewriting body). NEW <InternalsVisibleTo> grant + ModelAvailabilityTests.cs (+28 tests, drift-locks). dotnet test 65/65 (was 37). No model changes, no breaking config.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.19/JellyfinUpscalerPlugin-v1.6.1.19.zip",
+        "checksum": "7a3bfeaff11859f638addc1b15bc7619",
+        "timestamp": "2026-05-08T12:00:00.000Z"
+      },
+      {
+        "version": "1.6.1.18",
+        "changelog": "v1.6.1.18: Follow-up patch fixing 3 sibling bugs from v1.6.1.17 external audit. FIX PreferredLiveActionModel was Dead-Config (UI saved it, resolver never read it) — symmetric twin of v1.6.1.17 anime fix. New non-anime override hook with PickAvailable fallback chain. FIX RealTime-AI fastModels HashSet drifted from registry — expanded 9 → 14 entries, now includes bhi-realplksr-x4 (Speed Champion was being silently rejected) + compact family + swinir-small. FIX docs/MODEL-HOSTING.md outdated (still 'v1.6.1.12 catalog'); now recommends drct-l-x4 over self-host HAT and real-cugan-x4 over gated apisr-x3. NEW TEST: LiveAction non-anime drift-protection [Theory]. dotnet test 37/37 (was 33). No model changes, no breaking config.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.18/JellyfinUpscalerPlugin-v1.6.1.18.zip",
+        "checksum": "f2332f380cc00082b10bc6e8bc5b50af",
+        "timestamp": "2026-05-07T22:00:00.000Z"
+      },
+      {
+        "version": "1.6.1.17",
+        "changelog": "v1.6.1.17: FIX Auto-Mode broken for multi-frame VSR (returned 3 self-host models unconditionally). New PickAvailable() helper falls back to single-frame equivalents. FIX Controller fallback list 12 → 43 models via embedded models-fallback.json. FIX site/models.html drift (8 fictional models removed, auto-generated from registry). FIX Anime default → anime-compact-x4. CLEANUP ModelManager.cs removed (dead code). NEW MODELS: Real-CUGAN x2/x4, DRCT-L x4, BHI-RealPLKSR x4, RIFE v4.25 (catalog 43 → 48). Docker service VERSION 1.6.1.15 → 1.6.1.17 (was missed in v1.6.1.16).",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.17/JellyfinUpscalerPlugin-v1.6.1.17.zip",
+        "checksum": "2ecc89b4c973d48620b2eb6c925ac476",
+        "timestamp": "2026-05-07T12:00:00.000Z"
+      },
+      {
+        "version": "1.6.1.16",
+        "changelog": "v1.6.1.16: Hotfix for #64 — LibraryUpscaleScanTask failed with 'File not found: ffprobe' / 'Cannot start process because a file name has not been provided' because three singletons (VideoAnalyzer, VideoFrameProcessor, ProcessingMethodExecutor) captured empty ffmpeg/ffprobe paths at construction time. New EnsureFFmpegReady() late-resolves and propagates paths via UpdateFFprobePath/UpdateFFmpegPath. README header synced 1.6.1.14 → 1.6.1.16.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.16/JellyfinUpscalerPlugin-v1.6.1.16.zip",
+        "checksum": "e594390c6de3a0fbe180247b20651c81",
+        "timestamp": "2026-04-20T10:00:00.000Z"
+      },
+      {
+        "version": "1.6.1.15",
+        "changelog": "v1.6.1.15: In-player quick-menu redesigned (non-AI look). Docker-Dashboard palette, underline tabs, live status strip with state/mode/FPS/model polling every 500ms. Docker AI service console redesigned. NEW Auto-Mode (default OFF) — when enabled, /Upscaler/recommend-model picks model + filter per video using genres + resolution; overrides are session-only. Library-Scan codec picker expanded 3 → 12 options with per-codec encoder defaults.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.15/JellyfinUpscalerPlugin-v1.6.1.15.zip",
+        "checksum": "6492f55bbf91185460a320e423d30000",
+        "timestamp": "2026-04-20T00:00:00.000Z"
+      },
+      {
+        "version": "1.6.1.14",
+        "changelog": "v1.6.1.14: Select Library feature (issue #64) — scheduled library scan can now target specific libraries instead of always scanning everything. New chip-based library picker on Settings tab; new GET /Upscaler/libraries endpoint enumerates virtual folders; EnabledLibraryIds config field persists selection. Empty = legacy scan-all behavior. Bugfixes: saveConfig now actually writes EnabledLibraryIds; PluginVersion hardcoded string + header-meta + sidebar JS + csproj AssemblyVersion all synced 1.6.1.13→1.6.1.14. Docker AI service UI (localhost:5000): API_TOKEN-not-configured shows a single dismissible banner instead of repeat-spamming toasts; toast dedup 10s + max-3 stack + click-to-dismiss; model search + status filter. FastAPI /status exposes api_token_configured/auth_enabled.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.14/JellyfinUpscalerPlugin-v1.6.1.14.zip",
+        "checksum": "3a5374f7085db37d245bddcbcea9ca5b",
+        "timestamp": "2026-04-19T21:00:00.000Z"
+      },
+      {
         "version": "1.6.1.13",
-        "changelog": "v1.6.1.13: In-player quick-menu redesigned with tabs [Models | Filters | Realtime]. New Filters tab adds live CSS video filters (Brightness / Contrast / Saturation sliders + 15 preset looks) that update the <video> element at ~60fps — no re-transcode, no AI service needed. Advanced section persists server-side FFmpeg filter params (Gamma / Sharpness / Color Temperature / Vignette / Film Grain / Denoise) via new POST /Upscaler/filter-config endpoint. LIVE indicator while CSS overlay active. Reset/Save on both tiers.",
+        "changelog": "v1.6.1.13: In-player quick-menu redesigned + live filter controls. The overlay that pops up from the Upscaler button during playback is now a tabbed interface [Models | Filters | Realtime] instead of a flat scroll. New Filters tab lets you tune the video look WITHOUT leaving playback: pick any of 15 preset looks (Cinematic, Vintage, Vivid, Sepia, Cyberpunk, Teal&Orange, ...) or drag 3 live sliders (Brightness / Contrast / Saturation) — the <video> element's CSS filter property updates at ~60fps for instant feedback, no re-transcode. An Advanced collapsible exposes server-side params (Gamma, Sharpness, Color Temperature, Vignette, Film Grain, Denoise) that persist via new POST /Upscaler/filter-config endpoint and kick in via FFmpeg on next seek. Reset/Save on both tiers. LIVE indicator dot pulses green while the CSS overlay is applied. Live sliders work fully offline — no AI service required; only the advanced FFmpeg params need the filter chain path.",
         "targetAbi": "10.11.8.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.13/JellyfinUpscalerPlugin-v1.6.1.13.zip",
         "checksum": "053dc1a5d693c854e5f7701a58169a0f",
@@ -17,7 +138,7 @@
       },
       {
         "version": "1.6.1.12",
-        "changelog": "v1.6.1.12: Bugfix + model-catalog cleanup. Un-breaks 4 models (gfpgan-v1.4, codeformer, rife-v4.6 → rife-v4.9 alias, rife-v4.6-lite → rife-v4.7 alias). Adds rife-v4.8. 5 models without public ONNX mirrors documented in docs/MODEL-HOSTING.md. New Scripts/verify-release.ps1 prevents recurrence of v1.6.1.11 wrong-ZIP-upload bug. Net catalog: 32 available / 5 self-host.",
+        "changelog": "v1.6.1.12: Bugfix + model-catalog cleanup. (1) gfpgan-v1.4 + codeformer URLs repointed from the never-published kuscheltier/jellyfin-vsr-models repo to the public facefusion/models-3.0.0 mirror — both flipped to available:true. (2) RIFE frame-interpolation replaced: old rife-v4.6 / rife-v4.6-lite pointed at a 404 v0.0.0 placeholder tag — now rife-v4.9 (quality), rife-v4.8 (balanced, new), rife-v4.7 (fast) from yuvraj108c/rife-onnx. MODEL_ALIASES map keeps saved configs referencing the old keys working transparently. (3) Five models without public ONNX mirrors (edvr-m-x4, realbasicvsr-x4, animesr-v2-x4, apisr-x3, nomos8k-hat-x4) now carry [self-host required] suffix + link to docs/MODEL-HOSTING.md. (4) New Scripts/verify-release.ps1 runs end-to-end post-release validation: SHA against live manifest, ZIP-contents scan for forbidden patterns (Moq/Mono.Cecil/CodeCoverage/.pdb/.deps.json) that caused the v1.6.1.11 wrong-ZIP-upload bug. (5) Docker service VERSION + Dockerfile LABELs + csproj/HTML/JS version strings synced. Net catalog: 32 models available (up from 30), 5 self-host documented (down from 12 broken).",
         "targetAbi": "10.11.8.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.12/JellyfinUpscalerPlugin-v1.6.1.12.zip",
         "checksum": "d9e75cbefc6e3d8c1375ce3db89d0f23",
@@ -25,7 +146,7 @@
       },
       {
         "version": "1.6.1.11",
-        "changelog": "v1.6.1.11: Regex allows dots in model names. 9 broken models flipped to available:false. Fixed 3 silent-401 fetch() calls in player quick-menu. /Upscaler/jobs now requires elevation. SDK pin bumped 10.11.6 → 10.11.8. Bulk-load: 30/30 pass.",
+        "changelog": "v1.6.1.11: (1) Model-name regex widened to allow dots as separators (rife-v4.6, gfpgan-v1.4, rife-v4.6-lite no longer 400). Path traversal still blocked. (2) Docker catalog: 9 broken/pending models flipped to available:false so the UI filters them out instead of fast-failing. (3) Fixed 3 remaining raw fetch() calls in player-integration.js that were silently 401-ing (Upscaler/models/load, /upscale-frame, /benchmark-frame) — now use ApiClient.accessToken() bearer header. (4) GET /Upscaler/jobs now requires RequiresElevation — was leaking active-job file paths to any authenticated user. (5) Jellyfin.Controller SDK pin bumped 10.11.6 → 10.11.8 to match targetAbi. Bulk-load verified: 30/30 available models load.",
         "targetAbi": "10.11.8.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.6.1.11/JellyfinUpscalerPlugin-v1.6.1.11.zip",
         "checksum": "fe436b788789964a3cce924e3543e248",
@@ -33,7 +154,7 @@
       },
       {
         "version": "1.5.6.0",
-        "changelog": "v1.5.6.0: RequiresElevation on 8 admin endpoints, per-user rate limiting, Lanczos2 WebGL shader, Test Upscale button, Docker healthcheck, SSRF + semaphore fixes.",
+        "changelog": "v1.5.6.0: RequiresElevation on 8 admin endpoints, per-user rate limiting (10 req/min), Lanczos2 WebGL shader, Test Upscale button, Docker healthcheck, IPv4-mapped IPv6 SSRF fix, semaphore deadlock fix.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.6.0/JellyfinUpscalerPlugin-v1.5.6.0.zip",
         "checksum": "cc54d960fa74455964cc51966a78c1ece533fdd849f653b98ce4683e3aececcc",
@@ -49,7 +170,7 @@
       },
       {
         "version": "1.5.5.0",
-        "changelog": "v1.5.5.0: Critical bug fixes — circuit breaker, ncnn reshape, audio passthrough, config validation.",
+        "changelog": "v1.5.5.0: Critical bug fixes — circuit breaker half-open bypass, ncnn CHW/HWC reshape, audio passthrough, max_concurrent=0 deadlock, health endpoint accuracy.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.5.0/JellyfinUpscalerPlugin-v1.5.5.0.zip",
         "checksum": "41a31b4ee193f2eca03e1247807a6b9c",
@@ -57,7 +178,7 @@
       },
       {
         "version": "1.5.4.4",
-        "changelog": "v1.5.4.4: Docker deep scan — 20+ functional bug fixes. All 6 Dockerfiles verified.",
+        "changelog": "v1.5.4.4: Docker deep scan — 20+ functional bug fixes (thread safety, circuit breaker, tile blending, ncnn-Vulkan backend, per-model download locks). All 6 Dockerfiles verified.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.4.4/JellyfinUpscalerPlugin-v1.5.4.4.zip",
         "checksum": "953e6f80eddafbf5dc14a099a7bf9d13",
@@ -76,7 +197,7 @@
         "changelog": "v1.5.4.2: Fix CORS errors in model catalog and performance monitor. Add live video benchmark.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.4.2/JellyfinUpscalerPlugin-v1.5.4.2.zip",
-        "checksum": "cee928a1c666e15370dedc9daced5df2",
+        "checksum": "7ebe7a601ce8bc82329686d2f815794a",
         "timestamp": "2026-03-24T01:39:40.000Z"
       },
       {
@@ -140,16 +261,24 @@
         "changelog": "v1.5.2.8: Fix API route mismatch (503 errors on all buttons), config page rebuild (Jellyfin 10.11+), horizontal tabs + collapsible sections, 15+ bug fixes, dark theme. Fixes #39 #36 #48.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.2.8/JellyfinUpscalerPlugin-v1.5.2.8.zip",
-        "checksum": "66eb91f23ad74883f2138bb08c1287a0",
+        "checksum": "fafdb76b5a555ce7a719c8d4a8353a9f",
         "timestamp": "2026-03-18T20:47:43.000Z"
       },
       {
         "version": "1.5.2.7",
-        "changelog": "v1.5.2.7: Docker fixes (TensorRT/CUDA fallback, Intel OpenVINO GPU, multi-GPU selection), premium sidebar dashboard redesign, player button MutationObserver.",
+        "changelog": "v1.5.2.7: Docker fixes (TensorRT/CUDA fallback, Intel OpenVINO GPU, multi-GPU selection), premium sidebar dashboard redesign, player button MutationObserver, health caching, retry logic.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.2.7/JellyfinUpscalerPlugin-v1.5.2.7.zip",
         "checksum": "4bdd8a251311794777e3a52abac8b938",
-        "timestamp": "2026-03-19T00:00:00.000Z"
+        "timestamp": "2026-03-15T22:11:17.000Z"
+      },
+      {
+        "version": "1.5.2.6",
+        "changelog": "v1.5.2.6: Fixed notification spam, forced English UI, dark theme input fields, XSS security fixes, settings export/import visible, checkbox fix.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.5.2.6/JellyfinUpscalerPlugin-v1.5.2.6.zip",
+        "checksum": "2fb521a1a51cb6f3a6601c0f9b234134",
+        "timestamp": "2026-03-15T20:38:38.000Z"
       },
       {
         "version": "1.5.2.4",
