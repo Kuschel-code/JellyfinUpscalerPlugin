@@ -7,13 +7,22 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.7.3.1</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.7.4</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.7.3.1 — Hotfix + Interface-Extraction + Adapter Test Coverage <span class="tag success">latest</span></h2>
+  <h2>v1.7.4 — Docker-Side Fixes: FP16 Type Detection + WSL2 GPU <span class="tag success">latest</span></h2>
+  <p><em>Released May 2026.</em> Two real-world bug reports closed in a single release. C# Plugin DLL is bit-identical to v1.7.3.1 — this release ships <strong>docker-ai-service Python fixes</strong> + updated docker-compose recipe.</p>
+  <ul>
+    <li><strong>Fix #67 — ONNX FP16/FP32 type mismatch</strong> (reported by @eparrish64 on 2026-05-19, same day). NVIDIA users hit <code>ONNXRuntimeError INVALID_ARGUMENT: Unexpected input data type. Actual: (tensor(float16)), expected: (tensor(float))</code> at every model warmup. Root cause: <code>_resolve_fp16_setting()</code> auto-enables FP16 on any NVIDIA with Compute Capability >=7.0 (Volta+), but most catalog ONNX models (Real-ESRGAN, SwinIR, HAT, …) are <strong>FP32-exported</strong>. New helper <code>_session_input_is_fp16(session)</code> checks the loaded model's input dtype before the cast in <code>_onnx_infer_tile()</code> and <code>_onnx_infer_multiframe_tile()</code> — FP16 only kicks in when both global flag AND model agree.</li>
+    <li><strong>Fix #66 — Docker / WSL2 / Intel Arc on Windows 11</strong> (reported by @FrRene06 on 2026-05-17). Dashboard stuck on "No GPU detected (CPU-only mode)" no matter which image tag was tried. Root cause: Intel-detection only searched <code>/dev/dri/renderD*</code>; WSL2 uses <code>/dev/dxg</code> (DirectX bridge). New WSL2 detection branch via <code>clinfo --list</code> + new <code>_parse_clinfo_intel_name()</code> helper; new commented <code>ai-upscaler-wsl2</code> section in <code>docker-compose.yml</code> with the verified Intel Arc A380 mount/devices recipe; <code>/gpu-verify</code> endpoint exposes a <code>wsl2</code> diagnostics block.</li>
+    <li><strong>Stale issues closed:</strong> #49 (Vulkan — already supported as <code>docker7-vulkan</code> image), #64 (Select Library — implemented v1.6.1.14), #62 + #63 (v1.5.x install bugs — obsolete after repo-feed sync). Repo now has <strong>0 open issues</strong>.</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> — 0/0. <code>dotnet test</code> — 123/123 unchanged from v1.7.3.1. Python syntax check on <code>main.py</code> passed. Quad-MD5 verified post-release.</li>
+  </ul>
+
+  <h2>v1.7.3.1 — Hotfix + Interface-Extraction + Adapter Test Coverage</h2>
   <p><em>Released May 2026.</em> Audit-caught release-vs-code inconsistency: v1.7.3 release notes announced deletion of <code>GET /Upscaler/js/{name}</code>, but a batch-edit interrupt during release left it intact at <code>UpscalerController.cs:261</code>. v1.7.3.1 actually deletes it (0 callers, user-impact: zero).</p>
   <ul>
     <li><strong>Phase D — Interface Extraction.</strong> New <code>IUpscalerCore</code> (2 methods: <code>UpscaleImageAsync</code> + <code>DetectHardwareAsync</code>) as minimal-surface seam for <code>VideoFrameProcessor</code>. New <code>IUserManagerAdapter</code> (1 method: <code>IsAnyUserPlayed</code>) wraps <code>IUserManager</code> + <code>IUserDataManager</code> with fail-open semantics (DB exception → returns false → treat as unwatched). DI uses factory pattern <code>sp.GetRequiredService&lt;UpscalerCore&gt;()</code> — single shared instance, production code unchanged.</li>

@@ -15,7 +15,7 @@
     <a href="index.html" class="brand">
       <span class="brand-logo">AI</span>
       <span>Jellyfin AI Upscaler</span>
-      <span class="brand-version">v1.7.3.1</span>
+      <span class="brand-version">v1.7.4</span>
     </a>
     <nav class="nav" data-nav></nav>
     <div class="nav-cta">
@@ -73,11 +73,11 @@
 
   <h2>Latest release</h2>
   <div class="card">
-    <h3>v1.7.3.1 · Hotfix + Interface-Extraction + Adapter Test Coverage</h3>
-    <p style="color: var(--text-dim); margin-bottom: 12px;">Audit-caught release-vs-code inconsistency: v1.7.3 release notes announced deletion of <code>GET /Upscaler/js/{name}</code>, but a batch-edit interrupt left it intact. v1.7.3.1 actually deletes it (0 callers, zero user-impact). Plus Phase D of the audit roadmap: two minimal-surface test-seam interfaces — <code>IUpscalerCore</code> (2 methods: <code>UpscaleImageAsync</code> + <code>DetectHardwareAsync</code>) and <code>IUserManagerAdapter</code> (1 method: <code>IsAnyUserPlayed</code> with fail-open semantics) — extracted via DI factory pattern (<code>sp.GetRequiredService&lt;UpscalerCore&gt;()</code> keeps single instance). New <code>UserManagerAdapterTests</code> regression-guard the fail-open contract: DB exception → returns false → treats as unwatched. Tests grew 121 → <strong>123 passing</strong>. Build 0/0. Saved v1.7.x configs are bit-for-bit compatible.</p>
-    <p style="color: var(--text-dim); margin-bottom: 12px;">Recent v1.7.x trajectory: <strong>v1.7.0</strong> Anime4K + frame-loop CT propagation + debounced PersistQueue; <strong>v1.7.1</strong> <code>RealtimeModeRegistry</code> + WebGPU AI mode + generic registry drift-lock tests; <strong>v1.7.2</strong> 18 <code>Math.Clamp</code> DoS-hardening Property-setters + catalog 53 → 59 (MAN/CRAFT/GPEN/NAFNet); <strong>v1.7.3</strong> meta.json-in-ZIP verify gate + dead-code purge + site/models.html sync. Drift-prevention stack is now four layers deep: Registry (single source of truth) → Drift-Lock Test (HTML-parse [Theory]) → CI Pre-Release Gate (4 jobs) → Quad-MD5 Release Verify.</p>
+    <h3>v1.7.4 · Docker-Side Fixes — FP16 Type Detection + WSL2 GPU</h3>
+    <p style="color: var(--text-dim); margin-bottom: 12px;">Two real-world bug reports closed in a single release. <strong>Issue #67</strong> (NVIDIA users hit <code>INVALID_ARGUMENT</code> at ONNX warmup): the auto-FP16 path blindly cast inputs to <code>float16</code> regardless of the loaded model's actual dtype — most catalog models are FP32-exported. New helper <code>_session_input_is_fp16(session)</code> guards the cast in <code>_onnx_infer_tile()</code> and <code>_onnx_infer_multiframe_tile()</code>. <strong>Issue #66</strong> (Windows 11 + Docker Desktop + WSL2 + Intel Arc A380 stuck on "No GPU detected"): Intel-detection only searched <code>/dev/dri/renderD*</code> — added a new detection branch via <code>/dev/dxg</code> + <code>clinfo --list</code>, plus a commented <code>ai-upscaler-wsl2</code> section in <code>docker-compose.yml</code> with the verified setup recipe. <code>/gpu-verify</code> exposes WSL2 diagnostics so users self-debug without server logs. C# Plugin DLL bit-identical to v1.7.3.1; tests 123/123 unchanged.</p>
+    <p style="color: var(--text-dim); margin-bottom: 12px;">Plus 4 stale issues closed: <strong>#49</strong> (Vulkan — already supported as <code>docker7-vulkan</code> image), <strong>#64</strong> (Select Library — implemented in v1.6.1.14), <strong>#62 + #63</strong> (v1.5.x install bugs — obsolete after the repo-feed sync). Repo now has 0 open issues.</p>
     <a href="changelog.html" class="btn btn-ghost">Full changelog →</a>
-    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.7.3.1" target="_blank" class="btn btn-ghost" style="margin-left: 8px;">Release on GitHub →</a>
+    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.7.4" target="_blank" class="btn btn-ghost" style="margin-left: 8px;">Release on GitHub →</a>
   </div>
 
   <h2>Who it's for</h2>
@@ -106,7 +106,7 @@ docker run -d --name jellyfin-ai-upscaler \
 <footer class="footer">
   <div class="footer-inner">
     <div>
-      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.7.3.1 · not affiliated with the Jellyfin project
+      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.7.4 · not affiliated with the Jellyfin project
       <div style="margin-top: 4px;"><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a> · <a href="https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler">Docker Hub</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues">Issues</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">Releases</a></div>
     </div>
     <div>Co-engineered with <a href="https://claude.com/claude-code">Claude Opus 4.7</a></div>
