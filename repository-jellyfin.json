@@ -13,7 +13,7 @@
         "changelog": "v1.7.4: Docker-side fixes. FIX #67 (eparrish64): NVIDIA users got ONNXRuntimeError INVALID_ARGUMENT at warmup - _resolve_fp16_setting() auto-enabled FP16 but most catalog ONNX models are FP32. New _session_input_is_fp16(session) helper guards the cast paths in _onnx_infer_tile() and _onnx_infer_multiframe_tile(). FIX #66 (FrRene06): WSL2+Intel Arc A380 stuck on 'No GPU detected' because Intel-detection only checked /dev/dri/renderD*. New /dev/dxg detection branch via clinfo. New ai-upscaler-wsl2 section in docker-compose.yml. /gpu-verify exposes wsl2 diagnostics. Plus 4 stale issues closed: #49 Vulkan, #64 Select Library, #62+#63 v1.5.x install bugs. C# Plugin DLL bit-identical to v1.7.3.1. Tests 123/123. v1.7.x configs bit-compatible. 0 open issues.",
         "targetAbi": "10.11.8.0",
         "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.7.4/JellyfinUpscalerPlugin-v1.7.4.zip",
-        "checksum": "92e409f978c8707b32f00274463f542d",
+        "checksum": "e917c5744c95385bddc51856d9eb7af2",
         "timestamp": "2026-05-19T16:00:00.000Z"
       },
       {
