@@ -13,7 +13,56 @@
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.6.1.23 — OutputCodec Save-Validation Fix <span class="tag success">latest</span></h2>
+  <h2>v1.7.3.1 — Hotfix + Interface-Extraction + Adapter Test Coverage <span class="tag success">latest</span></h2>
+  <p><em>Released May 2026.</em> Audit-caught release-vs-code inconsistency: v1.7.3 release notes announced deletion of <code>GET /Upscaler/js/{name}</code>, but a batch-edit interrupt during release left it intact at <code>UpscalerController.cs:261</code>. v1.7.3.1 actually deletes it (0 callers, user-impact: zero).</p>
+  <ul>
+    <li><strong>Phase D — Interface Extraction.</strong> New <code>IUpscalerCore</code> (2 methods: <code>UpscaleImageAsync</code> + <code>DetectHardwareAsync</code>) as minimal-surface seam for <code>VideoFrameProcessor</code>. New <code>IUserManagerAdapter</code> (1 method: <code>IsAnyUserPlayed</code>) wraps <code>IUserManager</code> + <code>IUserDataManager</code> with fail-open semantics (DB exception → returns false → treat as unwatched). DI uses factory pattern <code>sp.GetRequiredService&lt;UpscalerCore&gt;()</code> — single shared instance, production code unchanged.</li>
+    <li><strong>Phase E (partial) — Test Coverage.</strong> New <code>UserManagerAdapterTests</code> regression-guard the fail-open contract: <code>IsAnyUserPlayed_ReturnsFalse_WhenItemIsNull</code> + <code>IsAnyUserPlayed_ReturnsFalse_WhenUsersEnumerableThrows</code>. If a future refactor flips the contract to fail-closed, the second test fails loudly. PlayCount/Played-flag scenarios deferred to v1.7.4 (needs Jellyfin.Data package-ref).</li>
+    <li><strong>Polish:</strong> <code>docs/MODEL-HOSTING.md</code> annotation updated v1.6.1.18, registry size 48 → v1.7.3.1, registry size 59.</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> — 0 warnings, 0 errors. <code>dotnet test</code> — <strong>123/123 passing</strong> (was 121, +2 new). Saved v1.7.x configs are bit-for-bit compatible.</li>
+  </ul>
+
+  <h2>v1.7.3 — meta.json-in-ZIP Verify + Dead-Code Purge + Site Sync</h2>
+  <p><em>Released May 2026.</em> External audit caught the v1.7.0 ZIP-version-mismatch class — meta.json said <code>1.6.1.23</code> while manifest said <code>1.7.0</code> because a Fact-Forcing-Gate interrupted the version-bump batch. Audit roadmap A+B+C closed in one mega-patch.</p>
+  <ul>
+    <li><strong>NEW CI gate: <code>zip-version-check</code></strong> — unzips the build artifact, parses <code>meta.json</code> inside, asserts <code>.version</code> matches manifest. Adding a 5th workflow job alongside <code>verify-fallback-sync</code>, <code>audit-tryapply-lambdas</code>, <code>verify-site-sync</code>.</li>
+    <li><strong>Dead endpoint deletion:</strong> <code>POST /Upscaler/cache/config</code> removed — 0 callers (dead since v22's UI-cleanup pruned CacheManager toggles). <code>GET /Upscaler/js/{name}</code> was also announced as deleted but missed due to batch-edit interrupt — closed in v1.7.3.1 hotfix.</li>
+    <li><strong>Dead class purge:</strong> <code>UpscalerSettings</code> class removed; <code>CPUInfo</code> + <code>MemoryInfo</code> kept (transitively reachable via <code>BenchmarkResults</code> properties — audit was wrong on those two, dotnet build catches it).</li>
+    <li><strong>Site sync:</strong> <code>site/models.html</code> extended with 11 missing entries (Next-Gen, Film Restoration, Face Restoration sections) to match Python catalog (48 → 59). New <code>Scripts/sync-site-topbar-versions.ps1</code> mirrors <code>meta.json</code> version into <code>&lt;span class="brand-version"&gt;</code> across all 14 site HTML files.</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> — 0/0. <code>dotnet test</code> — 121/121.</li>
+  </ul>
+
+  <h2>v1.7.2 — Math.Clamp DoS-Hardening + 6 New Models + ProcessingStatus Cleanup</h2>
+  <p><em>Released May 2026.</em> Hardening release closing the int.MaxValue payload class.</p>
+  <ul>
+    <li><strong>18 numeric Property setters</strong> in <code>PluginConfiguration</code> upgraded from <code>Math.Max(value, lower)</code> to <code>Math.Clamp(value, lower, upper)</code> — Settings-Import or REST PUT with <code>int.MaxValue</code> payload can no longer corrupt saved configs. 3 lower-bound drift fixes en passant: <code>RealtimeCaptureWidth</code> (240→320 min sane), <code>HealthCheckIntervalSeconds</code> (10s→30s min), <code>CircuitBreakerResetSeconds</code> (30s→60s min).</li>
+    <li><strong>Catalog 53 → 59:</strong> +MAN-x2/x4, +CRAFT-x2/x4, +GPEN-512, +NAFNet-denoise. <code>Resources/models-fallback.json</code> regenerated via <code>Scripts/sync-fallback-models.ps1</code>; <code>verify-fallback-sync</code> CI-job validates.</li>
+    <li><strong>Dead-enum purge:</strong> <code>ProcessingStatus.Analyzing</code> removed — never emitted anywhere, holdover from v1.5 design.</li>
+    <li><strong>+4 tests:</strong> new <code>ProcessingQueueTests</code> (reflection-injected <code>_persistPath</code>) covers the debounced-Timer + SemaphoreSlim non-overlapping persist pattern from v1.7.0. Tests 117 → 121.</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> — 0/0. <code>dotnet test</code> — 121/121.</li>
+  </ul>
+
+  <h2>v1.7.1 — RealtimeModeRegistry + WebGPU AI Mode + Drift-Lock Tests</h2>
+  <p><em>Released May 2026.</em> Drift-prevention closure — fifth and final registry pattern, generic <code>[Theory]</code>-based drift-lock test covers all 5 dropdowns at once.</p>
+  <ul>
+    <li><strong>NEW <code>RealtimeModeRegistry</code></strong> with three sets: <code>UiModes</code> (5: auto / bilinear / lanczos / anime4k / webgpuai), <code>BackwardsCompatAliases</code> ({webgl}), <code>AcceptedAtImport</code> = union of both. Old saved configs with <code>webgl</code> still load and silently migrate to <code>lanczos</code> — no breakage.</li>
+    <li><strong>NEW <code>Configuration/webgpu-ai-realtime.js</code></strong> (~258 LoC). Loads <a href="https://www.npmjs.com/package/onnxruntime-web">onnxruntime-web@1.20.1</a> + Real-ESRGAN compact ONNX via 4-stage defensive CDN fallback (jsdelivr primary, unpkg secondary, then Lanczos fallback). 5th option <strong>"AI WebGPU"</strong> added to RealtimeMode dropdown. Browser-side AI realtime — no Docker round-trip.</li>
+    <li><strong>NEW <code>RegistryDriftLockTests</code></strong> — single generic <code>[Theory]</code> over 5 dropdowns (Codec / Quality / ButtonPosition / RealtimeMode / FilterPreset). Parses embedded <code>configurationpage.html</code>, asserts set-equality against the matching registry HashSet. Adding a UI option without registry-update fails the build. Tests 102 → 117.</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> — 0/0. <code>dotnet test</code> — 117/117.</li>
+  </ul>
+
+  <h2>v1.7.0 — Anime4K Realtime + Frame-Loop CT Propagation + Debounced Persist</h2>
+  <p><em>Released May 2026.</em> Substantial release: <strong>NEW Anime4K realtime tier</strong> (MIT-licensed <a href="https://github.com/monyone/Anime4K.js">Anime4K.js</a>, jsdelivr CDN with Lanczos fallback). The old "WebGL" mode is honestly rebranded to "Lanczos + Sharpen" (it was always classical, never AI).</p>
+  <ul>
+    <li><strong>Frame-Loop CancellationToken propagation</strong> — closes the v20/v21 outer-loop adoption hole at <code>VideoFrameProcessor.cs:252</code>. Scheduler-cancel now flows down to <code>UpscaleImageAsync(..., cancellationToken)</code>.</li>
+    <li><strong>Process.WaitForExitAsync + linked CTS</strong> — <code>ProcessingMethodExecutor</code> L619-621 replaces <code>Task.Run(() =&gt; proc.WaitForExit(60000), ct)</code> with proper async pattern combining timeout + caller CT.</li>
+    <li><strong>Debounced async PersistQueue</strong> — Timer-based <code>RequestPersist()</code> + <code>SemaphoreSlim</code> non-overlapping writer, 500ms quiet window. 5 sync callers migrated. No more disk-I/O waits on hot path.</li>
+    <li><strong>Settings-Import +18 missing TryApply lambdas</strong> — filter properties (brightness/contrast/saturation/gamma/sharpness/temperature/vignette/grain/denoise/lutPath), face-restore (model/weight), library-IDs, AI-service token. Previously these silently fell back to defaults on Import.</li>
+    <li><strong>NEW <code>QualityLevelRegistry</code> + <code>ButtonPositionRegistry</code></strong> — same drift-lock pattern as v23's <code>CodecRegistry</code>. <code>UpscalerController</code> TryApply lambdas reference the registries.</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> — 0/0. <code>dotnet test</code> — 115/115. <strong>RealtimeMode dropdown:</strong> Auto / Lanczos+Sharpen / Anime4K / Server-AI (WebGPU+ONNX path added in v1.7.1). Saved v1.6.x configs are bit-for-bit compatible.</li>
+  </ul>
+
+  <h2>v1.6.1.23 — OutputCodec Save-Validation Fix</h2>
   <p><em>Released May 2026.</em> Hotfix for a P0 user-impact bug surfaced in the v22 deep-audit: the <code>#OutputCodec</code> dropdown offered 12 codec choices but the save endpoint accepted only 3 — picking AV1/NVENC/QSV silently fell back to libx264.</p>
   <ul>
     <li><strong>Bug class:</strong> four codec allowlists drifting across <code>UpscalerController.cs:1437</code> (3 entries), <code>VideoFrameProcessor.cs:400</code> (7), <code>ProcessingMethodExecutor.cs:477</code> realtime (6, no copy), <code>ProcessingMethodExecutor.cs:803</code> batch (12). User-impact worst case: NVIDIA RTX 40 user picks <code>av1_nvenc</code>, gets libx264 silently — 5-20× slower encoding.</li>

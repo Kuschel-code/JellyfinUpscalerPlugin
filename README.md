@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.7.0
+# Jellyfin AI Upscaler Plugin v1.7.3.1
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.7-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.7.0):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.7.3.1):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.7.0     │  │
+│  │  AI Upscaler Plugin v1.7.3.1   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -289,12 +289,28 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.7.0` — pinned to a specific plugin release
-- `:v1.7.0-<backend>` — full semver (e.g. `:v1.7.0-cpu`)
+- `:docker7-v1.7.3.1` — pinned to a specific plugin release
+- `:v1.7.3.1-<backend>` — full semver (e.g. `:v1.7.3.1-cpu`)
 
 ---
 
 ## Changelog
+
+### v1.7.3.1 (Hotfix + Interface-Extraction)
+
+Audit-caught release-vs-code inconsistency: v1.7.3 release notes announced deletion of `GET /Upscaler/js/{name}` endpoint, but a batch-edit interrupt during release left it intact. v1.7.3.1 actually deletes it (0 callers, user-impact: zero). Plus Phase D of the audit roadmap: two test-seam interfaces (`IUpscalerCore`, `IUserManagerAdapter`) extracted with DI-factory pattern (`sp.GetRequiredService<UpscalerCore>()` → single instance shared). New `UserManagerAdapterTests` covers the fail-open guard (DB exception → returns false → treat as unwatched). Tests grew 121 → 123. Saved v1.7.x configs are bit-for-bit compatible.
+
+### v1.7.3 (meta.json-in-ZIP Verify + Dead-Code Purge + Site Sync)
+
+External audit caught the v1.7.0 ZIP-version-mismatch class (meta.json said 1.6.1.23, manifest said 1.7.0). New CI gate `zip-version-check` parses meta.json inside the ZIP and asserts version-match. Plus `POST /Upscaler/cache/config` endpoint deleted (0 callers, dead since v22 UI-cleanup); `UpscalerSettings` class purged (`CPUInfo` + `MemoryInfo` kept — transitively reachable via `BenchmarkResults`); `site/models.html` extended with 11 missing entries to match the Python catalog (48 → 59); new `Scripts/sync-site-topbar-versions.ps1` mirrors meta.json version into all 14 site files. Build 0/0, tests 121/121.
+
+### v1.7.2 (Math.Clamp DoS-Hardening + 6 New Models + ProcessingStatus Cleanup)
+
+Hardening release. **18 numeric Property setters** in `PluginConfiguration` upgraded from `Math.Max(value, lower)` to `Math.Clamp(value, lower, upper)` — int.MaxValue payloads via Settings-Import or REST PUT can no longer corrupt saved configs. 3 lower-bound drift fixes en passant (`RealtimeCaptureWidth`, `HealthCheckIntervalSeconds`, `CircuitBreakerResetSeconds`). Catalog grew 53 → 59 (MAN x2/x4, CRAFT x2/x4, GPEN-512, NAFNet-denoise). `ProcessingStatus.Analyzing` enum value removed (never emitted). New `ProcessingQueueTests` (4 tests) covers debounced persist. Tests 117 → 121.
+
+### v1.7.1 (RealtimeModeRegistry + WebGPU AI Mode + Drift-Lock-Tests)
+
+Drift-prevention closure. New `RealtimeModeRegistry` with `UiModes` (5) + `BackwardsCompatAliases` ({webgl}) + `AcceptedAtImport` union — old saved configs with `webgl` still load and silently migrate to `lanczos`. New `Configuration/webgpu-ai-realtime.js` (~258 LoC) loads onnxruntime-web@1.20.1 + Real-ESRGAN compact ONNX via 4-stage CDN fallback for client-side AI realtime. UI gets 5th option "AI WebGPU". New `RegistryDriftLockTests` generic `[Theory]` parses embedded `configurationpage.html`, asserts set-equality across all 5 dropdowns (Codec / Quality / ButtonPosition / RealtimeMode / FilterPreset). Adding a UI option without registry update fails the build. Tests 102 → 117.
 
 ### v1.7.0 (OutputCodec Save-Validation Fix)
 
@@ -1029,7 +1045,7 @@ docker run --rm --gpus all nvidia/cuda:12.2.2-base-ubuntu22.04 nvidia-smi
   ```bash
   cd docker-ai-service && chmod +x install-native-macos.sh && ./install-native-macos.sh
   ```
-- **Windows Docker Desktop**: GPU passthrough not supported — use `:docker7-cpu`
+- **Windows Docker Desktop (WSL2)**: Intel/AMD GPUs accessible via `/dev/dxg` + WSL2-driver mount — see `docker-ai-service/docker-compose.yml` WSL2 section. NVIDIA: use NVIDIA Container Toolkit. FP16 mismatch (Issue #67) is auto-detected in v1.7.4+ based on the loaded ONNX model's input type.
 
 ### Proxmox LXC GPU Passthrough
 ```bash

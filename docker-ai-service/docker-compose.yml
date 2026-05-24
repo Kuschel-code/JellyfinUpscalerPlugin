@@ -121,3 +121,37 @@ volumes:
 #       - DEFAULT_MODEL=realesrgan-x4
 #       - LOG_LEVEL=INFO
 #     restart: unless-stopped
+
+# ============================================================
+# WSL2 / DOCKER DESKTOP VARIANT - For Windows 11 with Intel/AMD GPU
+# ============================================================
+# Uncomment below for WSL2 on Windows 11 with Intel Arc, Iris Xe, or AMD GPU.
+# Verified setup for issue #66 (Docker Desktop + Intel Arc A380).
+#
+#   ai-upscaler-wsl2:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile.intel   # use Dockerfile.amd for AMD GPUs
+#     container_name: jellyfin-ai-upscaler-wsl2
+#     ports:
+#       - "5000:5000"
+#     volumes:
+#       - ai-models:/app/models
+#       - ai-cache:/app/cache
+#       - /usr/lib/wsl:/usr/lib/wsl:ro   # WSL2 driver libraries (READ-ONLY)
+#     devices:
+#       - /dev/dxg:/dev/dxg              # WSL2 DirectX bridge (Intel/AMD GPU)
+#     environment:
+#       - USE_GPU=true
+#       - OPENVINO_DEVICE=GPU
+#       - LD_LIBRARY_PATH=/usr/lib/wsl/lib  # Required for WSL2 driver loading
+#       - LOG_LEVEL=INFO
+#     restart: unless-stopped
+#
+# Prerequisites:
+#   1. Windows 11 with WSL2 enabled
+#   2. Docker Desktop with WSL2 backend
+#   3. Latest Intel Arc / AMD GPU driver installed on Windows HOST
+#   4. Verify on host first: `wsl` then `clinfo --list` must show your Intel/AMD platform
+#   5. After container start, check http://localhost:5000/gpu-verify — the "wsl2"
+#      section reports detection status and any missing mounts/env-vars.

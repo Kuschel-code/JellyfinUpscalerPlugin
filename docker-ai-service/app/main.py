@@ -1197,6 +1197,35 @@ def _resolve_fp16_setting() -> bool:
     return False
 
 
+def _session_input_is_fp16(session) -> bool:
+    """Return True iff the ONNX session's primary input expects tensor(float16).
+
+    Guards the FP16-cast paths in _onnx_infer_tile / _onnx_infer_multiframe_tile:
+    state.use_fp16 alone is not sufficient — the loaded model must also have been
+    exported with float16 inputs, otherwise session.run() raises INVALID_ARGUMENT
+    (see issue #67).
+    """
+    try:
+        return session.get_inputs()[0].type == 'tensor(float16)'
+    except (IndexError, AttributeError):
+        return False
+
+
+def _parse_clinfo_intel_name(clinfo_output: str) -> Optional[str]:
+    """Extract an Intel GPU name (e.g. 'Intel(R) Arc(TM) A380 Graphics') from
+    `clinfo --list` output. Used by the WSL2 /dev/dxg detection branch
+    (see issue #66 — Windows 11 + Docker Desktop + Intel Arc).
+    """
+    for line in clinfo_output.splitlines():
+        line = line.strip()
+        if "Intel" in line and ("Arc" in line or "Iris" in line or "Graphics" in line):
+            # Strip leading "Device Name:" / "Platform Name:" prefixes if present
+            if ":" in line:
+                return line.split(":", 1)[-1].strip()
+            return line
+    return None
+
+
 def detect_hardware():
     """Detect GPU and CPU hardware information."""
     # Detect CPU
@@ -1387,6 +1416,40 @@ def detect_hardware():
                 gpu_detected = True
                 logger.info(f"Detected Intel GPU: {state.gpu_name} (render nodes: {[str(r) for r in render_nodes]})")
 
+            # WSL2 / Docker Desktop branch: /dev/dxg present without /dev/dri/renderD* (issue #66)
+            elif Path("/dev/dxg").exists():
+                try:
+                    wsl_clinfo = subprocess.run(
+                        ["clinfo", "--list"],
+                        capture_output=True, text=True, timeout=5
+                    )
+                    if wsl_clinfo.returncode == 0 and "Intel" in wsl_clinfo.stdout:
+                        state.gpu_name = _parse_clinfo_intel_name(wsl_clinfo.stdout) or "Intel GPU (WSL2)"
+                        state.gpu_memory = "Shared (DXG)"
+                        state.gpu_list.append({
+                            "index": 0,
+                            "name": state.gpu_name,
+                            "memory": "Shared (DXG)",
+                            "type": "intel-wsl2",
+                            "render_node": "/dev/dxg"
+                        })
+                        gpu_detected = True
+                        logger.info(f"Detected Intel GPU via WSL2 /dev/dxg: {state.gpu_name}")
+                    else:
+                        logger.warning(
+                            "Intel GPU: /dev/dxg present but clinfo shows no Intel platform. "
+                            "WSL2 setup likely missing -v /usr/lib/wsl:/usr/lib/wsl:ro mount or "
+                            "LD_LIBRARY_PATH=/usr/lib/wsl/lib env var. "
+                            "See docker-compose.yml WSL2 section."
+                        )
+                except FileNotFoundError:
+                    logger.warning(
+                        "Intel GPU: /dev/dxg detected (WSL2) but clinfo not installed in container. "
+                        "Cannot verify Intel platform. Falling back to OpenVINO/CPU."
+                    )
+                except Exception as wsl_err:
+                    logger.debug(f"Intel WSL2 detection failed: {wsl_err}")
+
             # If no render nodes but OpenVINO is available, still mark as detected
             elif ONNX_AVAILABLE and 'OpenVINOExecutionProvider' in ort.get_available_providers():
                 state.gpu_name = "Intel OpenVINO (CPU inference only)"
@@ -1395,9 +1458,10 @@ def detect_hardware():
                 logger.warning(
                     "Intel OpenVINO available but no /dev/dri render nodes found. "
                     "Models will run on CPU. To enable GPU acceleration:\n"
-                    "  1. Pass --device=/dev/dri to Docker\n"
-                    "  2. Ensure intel-compute-runtime is installed in the container\n"
-                    "  3. Add user to 'render' and 'video' groups"
+                    "  1. Pass --device=/dev/dri to Docker (Linux native)\n"
+                    "  2. OR mount /dev/dxg + /usr/lib/wsl for WSL2/Docker Desktop (see docker-compose.yml)\n"
+                    "  3. Ensure intel-compute-runtime is installed in the container\n"
+                    "  4. Add user to 'render' and 'video' groups (Linux native)"
                 )
 
         except Exception as e:
@@ -2319,10 +2383,12 @@ def _onnx_infer_tile(img_rgb_float: np.ndarray, session, input_name: str, output
     """Run ONNX inference on a single tile (HWC float32 [0,1] RGB). Returns HWC float32 RGB."""
     img_nchw = np.transpose(img_rgb_float, (2, 0, 1))  # HWC to CHW
     img_batch = np.expand_dims(img_nchw, axis=0)  # Add batch dimension
-    if state.use_fp16:
+    # FP16 only when both globally enabled AND the loaded model expects float16 (issue #67)
+    use_fp16 = state.use_fp16 and _session_input_is_fp16(session)
+    if use_fp16:
         img_batch = img_batch.astype(np.float16)
     result = session.run([output_name], {input_name: img_batch})[0]
-    if state.use_fp16:
+    if use_fp16:
         result = result.astype(np.float32)
     result = np.squeeze(result, axis=0)
     result = np.transpose(result, (1, 2, 0))  # CHW to HWC
@@ -2334,11 +2400,13 @@ def _onnx_infer_multiframe_tile(tiles: list, session, input_name: str, output_na
     stacked = np.stack(tiles, axis=0)                    # (T, H, W, 3)
     stacked = np.transpose(stacked, (0, 3, 1, 2))       # (T, 3, H, W)
     batch = np.expand_dims(stacked, axis=0).astype(np.float32)  # (1, T, 3, H, W)
-    if state.use_fp16:
+    # FP16 only when both globally enabled AND the loaded model expects float16 (issue #67)
+    use_fp16 = state.use_fp16 and _session_input_is_fp16(session)
+    if use_fp16:
         batch = batch.astype(np.float16)
 
     result = session.run([output_name], {input_name: batch})[0]
-    if state.use_fp16:
+    if use_fp16:
         result = result.astype(np.float32)
 
     # Handle models that output all T frames: (1, T, 3, H*s, W*s)
@@ -3334,6 +3402,21 @@ async def gpu_verify():
             diagnostics["dev_dri"] = {"exists": True, "error": str(e)}
     else:
         diagnostics["dev_dri"] = {"exists": False, "hint": "Pass --device=/dev/dri to Docker for Intel GPU access"}
+
+    # WSL2 / Docker Desktop diagnostics (issue #66)
+    diagnostics["wsl2"] = {
+        "is_wsl2_environment": Path("/dev/dxg").exists(),
+        "wsl_lib_mounted": Path("/usr/lib/wsl/lib").exists(),
+        "ld_library_path": os.environ.get("LD_LIBRARY_PATH", ""),
+        "hint": (
+            "WSL2 GPU passthrough requires: devices: [/dev/dxg:/dev/dxg], "
+            "volumes: [/usr/lib/wsl:/usr/lib/wsl:ro], "
+            "environment: [LD_LIBRARY_PATH=/usr/lib/wsl/lib]. "
+            "See docker-compose.yml WSL2 section."
+            if Path("/dev/dxg").exists() and not Path("/usr/lib/wsl/lib").exists()
+            else None
+        )
+    }
 
     # SKIP_TENSORRT setting
     diagnostics["skip_tensorrt"] = os.getenv("SKIP_TENSORRT", "false").lower() == "true"
