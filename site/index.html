@@ -15,7 +15,7 @@
     <a href="index.html" class="brand">
       <span class="brand-logo">AI</span>
       <span>Jellyfin AI Upscaler</span>
-      <span class="brand-version">v1.7.4</span>
+      <span class="brand-version">v1.7.5</span>
     </a>
     <nav class="nav" data-nav></nav>
     <div class="nav-cta">
@@ -73,11 +73,11 @@
 
   <h2>Latest release</h2>
   <div class="card">
-    <h3>v1.7.4 · Docker-Side Fixes — FP16 Type Detection + WSL2 GPU</h3>
-    <p style="color: var(--text-dim); margin-bottom: 12px;">Two real-world bug reports closed in a single release. <strong>Issue #67</strong> (NVIDIA users hit <code>INVALID_ARGUMENT</code> at ONNX warmup): the auto-FP16 path blindly cast inputs to <code>float16</code> regardless of the loaded model's actual dtype — most catalog models are FP32-exported. New helper <code>_session_input_is_fp16(session)</code> guards the cast in <code>_onnx_infer_tile()</code> and <code>_onnx_infer_multiframe_tile()</code>. <strong>Issue #66</strong> (Windows 11 + Docker Desktop + WSL2 + Intel Arc A380 stuck on "No GPU detected"): Intel-detection only searched <code>/dev/dri/renderD*</code> — added a new detection branch via <code>/dev/dxg</code> + <code>clinfo --list</code>, plus a commented <code>ai-upscaler-wsl2</code> section in <code>docker-compose.yml</code> with the verified setup recipe. <code>/gpu-verify</code> exposes WSL2 diagnostics so users self-debug without server logs. C# Plugin DLL bit-identical to v1.7.3.1; tests 123/123 unchanged.</p>
-    <p style="color: var(--text-dim); margin-bottom: 12px;">Plus 4 stale issues closed: <strong>#49</strong> (Vulkan — already supported as <code>docker7-vulkan</code> image), <strong>#64</strong> (Select Library — implemented in v1.6.1.14), <strong>#62 + #63</strong> (v1.5.x install bugs — obsolete after the repo-feed sync). Repo now has 0 open issues.</p>
+    <h3>v1.7.5 · Non-Admin User Support + 4:3 Aspect-Ratio Fix</h3>
+    <p style="color: var(--text-dim); margin-bottom: 12px;">Issue #69-driven release closing two bugs that <strong>blocked majority-of-users access</strong> to the plugin. <strong>Auth fix:</strong> audit found 47 of 52 endpoints in <code>UpscalerController.cs</code> were guarded with <code>RequiresElevation</code> (admin-only) — including all playback/upscale/queue operations. Normal Jellyfin users could see the model list but not load or use any model. v1.7.5 reclassifies <strong>31 endpoints to <code>[Authorize]</code></strong> (authenticated-user OK) while keeping <strong>16 admin-only</strong> for server-config, destructive, security-sensitive, and global queue ops. Class-level <code>[Authorize]</code> ensures all endpoints still require authentication. <strong>Aspect-Ratio fix:</strong> both real-time renderers (<code>webgl-upscaler.js</code> + <code>webgpu-ai-realtime.js</code>) set canvas-overlay CSS to <code>width:100% height:100%</code> without <code>object-fit</code>, stretching 4:3 source to 16:9 container. Added <code>object-fit: contain</code> to both — canvas drawbuffer already carries correct aspect, so contain letterboxes correctly without extra geometry.</p>
+    <p style="color: var(--text-dim); margin-bottom: 12px;">Plus <strong>#45</strong> closed as obsolete (same reporter as #66, original Feb-2026 thread predating v1.7.4 WSL2 fixes). Repo now has <strong>0 open issues</strong>. Security follow-up: per-user GPU-op quota deferred to v1.7.6. C# Plugin DLL has minimal surgical changes (31 authorization-policy line removals, no logic change). Tests 123/123 unchanged.</p>
     <a href="changelog.html" class="btn btn-ghost">Full changelog →</a>
-    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.7.4" target="_blank" class="btn btn-ghost" style="margin-left: 8px;">Release on GitHub →</a>
+    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.7.5" target="_blank" class="btn btn-ghost" style="margin-left: 8px;">Release on GitHub →</a>
   </div>
 
   <h2>Who it's for</h2>
@@ -106,7 +106,7 @@ docker run -d --name jellyfin-ai-upscaler \
 <footer class="footer">
   <div class="footer-inner">
     <div>
-      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.7.4 · not affiliated with the Jellyfin project
+      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.7.5 · not affiliated with the Jellyfin project
       <div style="margin-top: 4px;"><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a> · <a href="https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler">Docker Hub</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues">Issues</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">Releases</a></div>
     </div>
     <div>Co-engineered with <a href="https://claude.com/claude-code">Claude Opus 4.7</a></div>

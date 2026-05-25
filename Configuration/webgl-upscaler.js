@@ -132,6 +132,7 @@
                 this.canvas.style.left = '0';
                 this.canvas.style.width = '100%';
                 this.canvas.style.height = '100%';
+                this.canvas.style.objectFit = 'contain';  // #69: respect source aspect-ratio, no 4:3 stretch
                 this.canvas.style.pointerEvents = 'none';
                 this.canvas.style.zIndex = '1000';
                 

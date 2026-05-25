@@ -86,7 +86,7 @@
             this._session = session;
 
             this._canvas = document.createElement('canvas');
-            this._canvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;';
+            this._canvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:999;';
             this._canvas.id = 'aiWebgpuCanvas';
             this._ctx = this._canvas.getContext('2d');
             var parent = video.parentElement;

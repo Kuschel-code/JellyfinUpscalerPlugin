@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.7.5.0",
+        "changelog": "v1.7.5: Non-Admin User Support + 4:3 Aspect-Ratio Fix. Issue #69 driven release. FIX #69 (Auth): audit found 47 of 52 endpoints in UpscalerController were RequiresElevation (admin-only) - including all playback/upscale/queue ops. Normal Jellyfin users could see models but not load or use them. Reclassified 31 endpoints to [Authorize] (authenticated-user OK) while keeping 16 admin-only (server-config, destructive, security-sensitive, global queue). Class-level [Authorize] on UpscalerController ensures all endpoints still require an authenticated session. Per-user GPU-quota deferred to v1.7.6. FIX #69 (Aspect-Ratio): both webgl-upscaler.js and webgpu-ai-realtime.js set canvas-overlay to 100% width/height without object-fit, stretching 4:3 source to 16:9 container. Added object-fit:contain - canvas drawbuffer already has correct aspect, so contain letterboxes correctly. Issue #45 closed as obsolete (same reporter as #66, indirectly fixed in v1.7.4). Tests 123/123 unchanged. v1.7.x configs bit-compatible. Repo now has 0 open issues.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.7.5/JellyfinUpscalerPlugin-v1.7.5.zip",
+        "checksum": "2066d1204f71ec21369078107b3742af",
+        "timestamp": "2026-05-25T16:00:00.000Z"
+      },
+      {
         "version": "1.7.4.0",
         "changelog": "v1.7.4: Docker-side fixes for two real-world bug reports. ISSUE #67 (eparrish64, 2026-05-19): NVIDIA users hit ONNXRuntimeError INVALID_ARGUMENT at warmup because _resolve_fp16_setting() auto-enables FP16 on Compute Capability >=7.0 GPUs but most catalog ONNX models are FP32-exported. New helper _session_input_is_fp16(session) checks the loaded model's input dtype before the cast in _onnx_infer_tile() and _onnx_infer_multiframe_tile() - FP16 only kicks in when both global flag AND model agree. ISSUE #66 (FrRene06, 2026-05-17): Windows 11 + Docker Desktop + WSL2 + Intel Arc A380 stuck on 'No GPU detected' because Intel-detection only searched /dev/dri/renderD*. New WSL2 detection branch via /dev/dxg + clinfo --list, new _parse_clinfo_intel_name() helper, new commented ai-upscaler-wsl2 section in docker-compose.yml with the verified Arc setup recipe. /gpu-verify endpoint exposes a new wsl2 diagnostics section (is_wsl2_environment, wsl_lib_mounted, ld_library_path). Plus 4 stale issues closed: #49 Vulkan (already supported docker7-vulkan), #64 Select Library (already implemented v1.6.1.14), #62+#63 v1.5.x install bugs (obsolete). C# Plugin DLL bit-identical to v1.7.3.1 - version bump + docker-side patches only. Tests 123/123 unchanged. v1.7.x configs bit-compatible. Repo now has 0 open issues.",
         "targetAbi": "10.11.8.0",

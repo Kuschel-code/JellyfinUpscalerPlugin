@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.7.3.1
+# Jellyfin AI Upscaler Plugin v1.7.5
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.7-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.7.3.1):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.7.5):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.7.3.1   │  │
+│  │  AI Upscaler Plugin v1.7.5     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -289,12 +289,31 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.7.3.1` — pinned to a specific plugin release
-- `:v1.7.3.1-<backend>` — full semver (e.g. `:v1.7.3.1-cpu`)
+- `:docker7-v1.7.5` — pinned to a specific plugin release
+- `:v1.7.5-<backend>` — full semver (e.g. `:v1.7.5-cpu`)
 
 ---
 
 ## Changelog
+
+### v1.7.5 (Non-Admin User Support + 4:3 Aspect-Ratio Fix)
+
+Issue #69-driven release closing two bugs that **blocked majority-of-users access** to the plugin. C# Plugin DLL gets minimal surgical changes (31 authorization-policy downgrades, no logic change). Tests 123/123 unchanged. Build 0/0. v1.7.x configs bit-compatible. Repo now has **0 open issues**.
+
+- **Fix #69 (Auth) — Non-admin users can now use the plugin.** Audit found **47 of 52 endpoints were admin-only** — including all playback/upscale/queue endpoints. Normal Jellyfin users could see models but not load or use them, making the plugin effectively admin-only. v1.7.5 **downgrades 31 endpoints to `[Authorize]` (authenticated-user OK)** while keeping 16 admin-only (server-config, destructive ops, security-sensitive, global queue control). Class-level `[Authorize]` on `UpscalerController` ensures all endpoints still require authentication — only the elevation-requirement is removed where inappropriate. **Security note:** GPU-intensive ops are now reachable by non-admin users — existing `MaxConcurrentStreams` + `MaxQueueSize` clamps (v1.7.2) provide global DoS-cap; per-user quota deferred to v1.7.6.
+- **Fix #69 (Aspect-Ratio) — 4:3 movies no longer stretched on the upscaler overlay.** Both real-time renderers (`Configuration/webgl-upscaler.js` + `Configuration/webgpu-ai-realtime.js`) set the canvas-overlay CSS to `width:100%; height:100%` without `object-fit`, blindly stretching 4:3 source to 16:9 player container. Added `object-fit: contain` to both — the canvas drawbuffer already carries the correct `videoWidth × videoHeight` aspect, so `contain` lets the browser letterbox correctly without extra geometry code.
+- **#45 closed** as obsolete — same reporter (FrRene06) as #66, original Feb-2026 thread predating the v1.7.4 WSL2 fixes. Cross-referenced.
+- **Verification:** `dotnet build` — 0/0. Quad-MD5 verified post-release. meta.json-in-ZIP matches tag.
+
+### v1.7.4 (Docker-Side Fixes: FP16 Type Detection + WSL2 GPU Detection)
+
+Two real-world bug reports closed in a single release. **C# Plugin DLL is functionally identical to v1.7.3.1** — this release ships docker-ai-service Python fixes, version bumps, manifest/feeds/site updates, and a new commented `docker-compose.yml` WSL2 variant. Tests 123/123 unchanged. Build 0/0. v1.7.x saved configs bit-compatible. Repo now has **0 open issues**.
+
+- **Fix #67 — ONNX FP16/FP32 type-mismatch** (reported by @eparrish64 on 2026-05-19, same day). NVIDIA users hit `ONNXRuntimeError INVALID_ARGUMENT: Unexpected input data type. Actual: (tensor(float16)), expected: (tensor(float))` at every model warmup. Root cause: `_resolve_fp16_setting()` auto-enables FP16 on any NVIDIA with Compute Capability ≥7.0 (Volta+), but most catalog ONNX models (Real-ESRGAN, SwinIR, HAT, …) are FP32-exported. New helper `_session_input_is_fp16(session)` checks the loaded model's input dtype before the cast in `_onnx_infer_tile()` and `_onnx_infer_multiframe_tile()` — FP16 only kicks in when **both** the global flag AND the model agree. Symmetric guard on the output `astype(np.float32)` cast.
+- **Fix #66 — Docker / WSL2 / Intel Arc on Windows 11** (reported by @FrRene06 on 2026-05-17). Dashboard stuck on "No GPU detected (CPU-only mode)" no matter which image tag was tried. Root cause: Intel-detection in `detect_hardware()` only searched `/dev/dri/renderD*`; WSL2 exposes the GPU through `/dev/dxg` (DirectX bridge). New WSL2 detection branch via `clinfo --list` + new `_parse_clinfo_intel_name()` helper. New commented `ai-upscaler-wsl2` section in `docker-compose.yml` with the verified Intel Arc A380 mount/devices/env recipe. `/gpu-verify` endpoint exposes a new `wsl2` diagnostics section (`is_wsl2_environment`, `wsl_lib_mounted`, `ld_library_path`) — users self-debug without server logs.
+- **Stale issues closed:** #49 Vulkan (already supported as `docker7-vulkan` image), #64 Select Library (implemented v1.6.1.14), #62 + #63 v1.5.x install bugs (obsolete after repo-feed sync in `e470849`).
+- **Polish:** `README.md` "Windows Docker Desktop: GPU passthrough not supported" replaced with WSL2 mount instructions. `docs/ISSUES-PLAN-2026-05-19.md` documents the full triage/fix plan for all 6 issues.
+- **Verification:** `dotnet build` — 0/0. `dotnet test` — 123/123 unchanged from v1.7.3.1. Python syntax check on `main.py` passed. Quad-MD5 verified post-release (`Scripts/verify-release.ps1 -Tag v1.7.4` PASSED).
 
 ### v1.7.3.1 (Hotfix + Interface-Extraction)
 

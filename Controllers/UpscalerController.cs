@@ -406,7 +406,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpGet("hardware-info")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetHardwareInfo()
         {
@@ -432,7 +431,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpGet("recommendations")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> GetHardwareRecommendations()
         {
@@ -452,7 +450,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Used by the UI to show which model will be auto-selected.
         /// </summary>
         [HttpGet("recommend-model")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> RecommendModel(
             [FromQuery] string? genres = null,
@@ -505,7 +502,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpGet("compare/{itemId}")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> GetComparisonData(
             string itemId,
@@ -590,7 +586,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Saves upscaled images alongside originals with "_upscaled" suffix.
         /// </summary>
         [HttpPost("upscale-images/{itemId}")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> UpscaleItemImages(
             string itemId,
@@ -702,7 +697,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpPost("process")]
-        [Authorize(Policy = "RequiresElevation")]
         [Consumes(MediaTypeNames.Application.Json)]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> ProcessVideo([FromBody] VideoProcessRequest request)
@@ -769,7 +763,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpPost("process/item/{itemId}")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> ProcessItem(string itemId, [FromQuery] string? model = null, [FromQuery] int? scale = null)
         {
@@ -823,7 +816,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpGet("jobs")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetActiveJobs()
         {
@@ -840,7 +832,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpPost("jobs/{jobId}/pause")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> PauseJob(string jobId)
         {
@@ -864,7 +855,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpPost("jobs/{jobId}/resume")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> ResumeJob(string jobId)
         {
@@ -888,7 +878,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpPost("jobs/{jobId}/cancel")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> CancelJob(string jobId)
         {
@@ -917,7 +906,6 @@ namespace JellyfinUpscalerPlugin.Controllers
 
         /// <summary>Get queue status — pending, active, completed jobs.</summary>
         [HttpGet("queue")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetQueueStatus()
         {
@@ -926,7 +914,6 @@ namespace JellyfinUpscalerPlugin.Controllers
 
         /// <summary>Enqueue a video for processing with optional priority.</summary>
         [HttpPost("queue/add")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> EnqueueJob(
             [FromQuery] string inputPath,
@@ -1000,7 +987,6 @@ namespace JellyfinUpscalerPlugin.Controllers
 
         /// <summary>Cancel a pending queued job.</summary>
         [HttpPost("queue/{jobId}/cancel")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> CancelQueuedJob(string jobId)
         {
@@ -1010,7 +996,6 @@ namespace JellyfinUpscalerPlugin.Controllers
 
         /// <summary>Change priority of a pending job (1=highest, 10=lowest).</summary>
         [HttpPost("queue/{jobId}/priority")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> SetJobPriority(string jobId, [FromQuery] int priority)
         {
@@ -1076,7 +1061,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpGet("hardware")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> GetHardwareProfile()
         {
@@ -1092,7 +1076,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpPost("upscale/image")]
-        [Authorize(Policy = "RequiresElevation")]
         [Consumes("application/octet-stream")]
         [Produces("application/octet-stream")]
         [RequestSizeLimit(52428800)] // 50MB max
@@ -1142,7 +1125,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         [HttpPost("preprocess")]
-        [Authorize(Policy = "RequiresElevation")]
         [Consumes(MediaTypeNames.Application.Json)]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> PreProcessVideo([FromBody] PreProcessRequest request)
@@ -1513,7 +1495,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Server-side health check proxy for the Docker AI service (avoids CORS issues)
         /// </summary>
         [HttpGet("service-health")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> CheckServiceHealth()
         {
@@ -1550,7 +1531,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Get available GPUs from the AI Docker service (proxy to /gpus).
         /// </summary>
         [HttpGet("gpus")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> GetGpuList()
         {
@@ -1577,7 +1557,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Accepts model_name as query param, form field, or JSON body.
         /// </summary>
         [HttpPost("models/load")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult> LoadModel()
         {
@@ -1652,7 +1631,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Proxy: Run benchmark on the currently loaded model.
         /// </summary>
         [HttpGet("model-benchmark")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult> ModelBenchmark()
         {
@@ -1678,7 +1656,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Proxy: Load a face-restore model (GFPGAN / CodeFormer) on the Docker service.
         /// </summary>
         [HttpPost("face-restore/load")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult> FaceRestoreLoad([FromQuery] string model_name = "gfpgan-v1.4")
         {
@@ -1711,7 +1688,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Proxy: Get face-restore subsystem status (loaded model, available models, providers).
         /// </summary>
         [HttpGet("face-restore/status")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult> FaceRestoreStatus()
         {
@@ -1733,7 +1709,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Proxy: Unload the face-restore model to free VRAM.
         /// </summary>
         [HttpPost("face-restore/unload")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult> FaceRestoreUnload()
         {
@@ -1777,7 +1752,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Proxy: GPU verification diagnostics from Docker service.
         /// </summary>
         [HttpGet("gpu-verify")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult> GpuVerify()
         {
@@ -1897,7 +1871,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Proxy: Real-time frame upscaling. Raw JPEG body in, JPEG out. Returns 503 when AI service is busy.
         /// </summary>
         [HttpPost("upscale-frame")]
-        [Authorize(Policy = "RequiresElevation")]
         [RequestSizeLimit(52_428_800)]
         public async Task<ActionResult> UpscaleFrame()
         {
@@ -1945,7 +1918,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Proxy: Multi-frame video chunk upscaling. Forwards multipart form with N PNG frames to Docker service.
         /// </summary>
         [HttpPost("upscale-video-chunk")]
-        [Authorize(Policy = "RequiresElevation")]
         [RequestSizeLimit(52_428_800)]
         public async Task<ActionResult> UpscaleVideoChunk()
         {
@@ -2003,7 +1975,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Proxy: Benchmark frame upscaling at a specific capture resolution.
         /// </summary>
         [HttpGet("benchmark-frame")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> BenchmarkFrame([FromQuery] int width = 480, [FromQuery] int height = 270)
         {
@@ -2207,7 +2178,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// and optionally applies it to a provided image via FFmpeg.
         /// </summary>
         [HttpPost("filter-preview")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> FilterPreview([FromQuery] string? preset)
         {
@@ -2239,7 +2209,6 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// and returns both the original and filtered frames as base64 JPEG.
         /// </summary>
         [HttpGet("filter-preview/frame/{itemId}")]
-        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> GetFilterPreviewFrame(
             string itemId,

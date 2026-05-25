@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.7.5.0",
+        "changelog": "v1.7.5: Non-Admin User Support + 4:3 Aspect-Ratio Fix. Issue #69 driven. FIX #69 (Auth): 31 of 47 admin-only endpoints downgraded to [Authorize] (authenticated-user OK) - playback/upscale/queue/models/jobs were all admin-only before. 16 endpoints remain RequiresElevation (server-config, destructive, security, global). Per-user quota deferred to v1.7.6. FIX #69 (Aspect-Ratio): added object-fit:contain to canvas-overlay in webgl-upscaler.js + webgpu-ai-realtime.js - 4:3 movies no longer stretched. Issue #45 closed as obsolete. Tests 123/123. v1.7.x configs bit-compatible. 0 open issues.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.7.5/JellyfinUpscalerPlugin-v1.7.5.zip",
+        "checksum": "2066d1204f71ec21369078107b3742af",
+        "timestamp": "2026-05-25T16:00:00.000Z"
+      },
+      {
         "version": "1.7.4.0",
         "changelog": "v1.7.4: Docker-side fixes. FIX #67 (eparrish64): NVIDIA users got ONNXRuntimeError INVALID_ARGUMENT at warmup - _resolve_fp16_setting() auto-enabled FP16 but most catalog ONNX models are FP32. New _session_input_is_fp16(session) helper guards the cast paths in _onnx_infer_tile() and _onnx_infer_multiframe_tile(). FIX #66 (FrRene06): WSL2+Intel Arc A380 stuck on 'No GPU detected' because Intel-detection only checked /dev/dri/renderD*. New /dev/dxg detection branch via clinfo. New ai-upscaler-wsl2 section in docker-compose.yml. /gpu-verify exposes wsl2 diagnostics. Plus 4 stale issues closed: #49 Vulkan, #64 Select Library, #62+#63 v1.5.x install bugs. C# Plugin DLL bit-identical to v1.7.3.1. Tests 123/123. v1.7.x configs bit-compatible. 0 open issues.",
         "targetAbi": "10.11.8.0",
