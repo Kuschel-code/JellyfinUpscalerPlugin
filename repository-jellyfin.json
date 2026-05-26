@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.7.6.0",
+        "changelog": "v1.7.6: Intel OpenVINO Provider Hotfix (Issue #69 Point 1). Empirically verified via Laurent's /gpu-verify: onnx_providers had only Azure+CPU, no OpenVINOExecutionProvider. Root cause: requirements-intel.txt installed plain onnxruntime (doesn't bundle OpenVINO EP) instead of onnxruntime-openvino. Fix: single-line swap. After Docker Hub rebuild + restart, OpenVINOExecutionProvider is active and Intel GPU is actually used. C# Plugin DLL bit-identical to v1.7.5. Plus AMD build retry. Tests 123/123. v1.7.x configs bit-compatible.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.7.6/JellyfinUpscalerPlugin-v1.7.6.zip",
+        "checksum": "d1ff72bada2ae215a0a6f13081e78940",
+        "timestamp": "2026-05-25T22:00:00.000Z"
+      },
+      {
         "version": "1.7.5.0",
         "changelog": "v1.7.5: Non-Admin User Support + 4:3 Aspect-Ratio Fix. Issue #69 driven. FIX #69 (Auth): 31 of 47 admin-only endpoints downgraded to [Authorize] (authenticated-user OK) - playback/upscale/queue/models/jobs were all admin-only before. 16 endpoints remain RequiresElevation (server-config, destructive, security, global). Per-user quota deferred to v1.7.6. FIX #69 (Aspect-Ratio): added object-fit:contain to canvas-overlay in webgl-upscaler.js + webgpu-ai-realtime.js - 4:3 movies no longer stretched. Issue #45 closed as obsolete. Tests 123/123. v1.7.x configs bit-compatible. 0 open issues.",
         "targetAbi": "10.11.8.0",

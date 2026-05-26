@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.7.6.0",
+        "changelog": "v1.7.6: Intel OpenVINO Provider Hotfix. Closes the last open Point of issue #69 (Intel Arc GPU detected but inference ran on CPU). Verified empirically via Laurent (FrRene06)'s /gpu-verify output: onnx_providers showed only [AzureExecutionProvider, CPUExecutionProvider] - no OpenVINOExecutionProvider at all. Root cause: requirements-intel.txt had a wrong comment claiming onnxruntime-openvino was deprecated and that plain onnxruntime + system OpenVINO would work; in reality, plain onnxruntime from PyPI does NOT bundle the OpenVINOExecutionProvider, even with system OpenVINO present in the base image. Fix: single-line swap onnxruntime -> onnxruntime-openvino in requirements-intel.txt. After Docker Hub rebuild + container restart, /gpu-verify shows OpenVINOExecutionProvider as active provider and Intel GPU is actually used for inference. C# Plugin DLL bit-identical to v1.7.5 - fix is docker-ai-service-only. Plus AMD build retry (Trivy timeout in v1.7.5 was transient). Tests 123/123 unchanged. v1.7.x configs bit-compatible.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.7.6/JellyfinUpscalerPlugin-v1.7.6.zip",
+        "checksum": "d1ff72bada2ae215a0a6f13081e78940",
+        "timestamp": "2026-05-25T22:00:00.000Z"
+      },
+      {
         "version": "1.7.5.0",
         "changelog": "v1.7.5: Non-Admin User Support + 4:3 Aspect-Ratio Fix. Issue #69 driven release. FIX #69 (Auth): audit found 47 of 52 endpoints in UpscalerController were RequiresElevation (admin-only) - including all playback/upscale/queue ops. Normal Jellyfin users could see models but not load or use them. Reclassified 31 endpoints to [Authorize] (authenticated-user OK) while keeping 16 admin-only (server-config, destructive, security-sensitive, global queue). Class-level [Authorize] on UpscalerController ensures all endpoints still require an authenticated session. Per-user GPU-quota deferred to v1.7.6. FIX #69 (Aspect-Ratio): both webgl-upscaler.js and webgpu-ai-realtime.js set canvas-overlay to 100% width/height without object-fit, stretching 4:3 source to 16:9 container. Added object-fit:contain - canvas drawbuffer already has correct aspect, so contain letterboxes correctly. Issue #45 closed as obsolete (same reporter as #66, indirectly fixed in v1.7.4). Tests 123/123 unchanged. v1.7.x configs bit-compatible. Repo now has 0 open issues.",
         "targetAbi": "10.11.8.0",

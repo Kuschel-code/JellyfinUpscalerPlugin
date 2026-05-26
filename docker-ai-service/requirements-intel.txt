@@ -4,9 +4,12 @@ uvicorn[standard]>=0.32.0,<1.0
 python-multipart>=0.0.18,<1.0
 
 # AI/ML - ONNX Runtime with OpenVINO EP
-# The separate onnxruntime-openvino package is deprecated; use onnxruntime + system OpenVINO
-# Pin to match OpenVINO 2025.4.1 base image — 1.24.x includes built-in OpenVINO EP for 2025.x
-onnxruntime>=1.20.0,<2.0.0
+# Use onnxruntime-openvino which BUNDLES the OpenVINOExecutionProvider.
+# Plain onnxruntime from PyPI does NOT include OpenVINO EP even with system OpenVINO
+# present in the base image — verified empirically via issue #69 (Laurent's /gpu-verify
+# returned onnx_providers: ["AzureExecutionProvider", "CPUExecutionProvider"] without
+# OpenVINO despite running on openvino/ubuntu22_runtime:2025.4.1).
+onnxruntime-openvino>=1.20.0,<2.0.0
 numpy>=1.24.0,<2.0.0
 
 # Image Processing - OpenCV with DNN Super Resolution

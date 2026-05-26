@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.7.5
+# Jellyfin AI Upscaler Plugin v1.7.6
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.7-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.7.5):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.7.6):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.7.5     │  │
+│  │  AI Upscaler Plugin v1.7.6     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -289,12 +289,16 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.7.5` — pinned to a specific plugin release
-- `:v1.7.5-<backend>` — full semver (e.g. `:v1.7.5-cpu`)
+- `:docker7-v1.7.6` — pinned to a specific plugin release
+- `:v1.7.6-<backend>` — full semver (e.g. `:v1.7.6-cpu`)
 
 ---
 
 ## Changelog
+
+### v1.7.6 (Intel OpenVINO Provider Fix — Issue #69 Punkt 1)
+
+Hotfix-Release für Issue #69 Punkt 1 (Intel Arc GPU detected aber Inferenz auf CPU). Empirisch verifiziert via Laurent's `/gpu-verify`: `onnx_providers` enthielt **nur `AzureExecutionProvider` + `CPUExecutionProvider`** — kein `OpenVINOExecutionProvider`. Ursache: `requirements-intel.txt` hatte einen falschen Kommentar + falsches Package: `onnxruntime` (plain) statt `onnxruntime-openvino`. Plain `onnxruntime` aus PyPI **bringt den OpenVINOExecutionProvider NICHT mit** — auch wenn das Base-Image `openvino/ubuntu22_runtime:2025.4.1` die system-libs hat. v1.7.6 wechselt auf `onnxruntime-openvino>=1.20.0,<2.0.0` welches den Provider gebundled hat. Nach Docker-Image-Pull sollte `/gpu-verify` zeigen `OpenVINOExecutionProvider` als ersten Provider. **C# Plugin DLL bit-identisch zu v1.7.5** — Fix nur in docker-ai-service. Tests 123/123 unchanged. v1.7.x configs bit-compatible.
 
 ### v1.7.5 (Non-Admin User Support + 4:3 Aspect-Ratio Fix)
 
