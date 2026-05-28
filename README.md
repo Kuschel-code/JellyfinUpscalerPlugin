@@ -2,7 +2,7 @@
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.7-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
-> **Built with Claude Opus 4.7** — this plugin is developed and maintained entirely with [Anthropic's Claude Opus](https://www.anthropic.com/claude/opus). Code contributions, Dockerfiles, CI workflows and documentation are produced in a pair-programming style with the model; the maintainer ([Kuschel-code](https://github.com/Kuschel-code)) reviews, tests and publishes every change. Release commits carry the `Co-Authored-By: Claude` trailer as disclosure.
+> **Built with Claude Opus 4.8** — this plugin is developed and maintained entirely with [Anthropic's Claude Opus](https://www.anthropic.com/claude/opus). Code contributions, Dockerfiles, CI workflows and documentation are produced in a pair-programming style with the model; the maintainer ([Kuschel-code](https://github.com/Kuschel-code)) reviews, tests and publishes every change. Release commits carry the `Co-Authored-By: Claude` trailer as disclosure.
 
 ---
 
