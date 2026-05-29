@@ -346,5 +346,5 @@ v2.0.0     — Multi-Frame VSR realtime (geplant, 3–6 Monate)
 
 ---
 
-**Analyse-Autor:** Claude Opus 4.7 als Maintainer-Assistant
+**Analyse-Autor:** Claude Opus 4.8 als Maintainer-Assistant
 **Quellen:** Code-Inspection 2026-05-12, alle Release-Notes seit v1.6.1.16, externer Audit-Trail (14 Iterationen), Build-Output, Test-Run (123/123).

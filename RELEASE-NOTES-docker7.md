@@ -165,7 +165,7 @@ only calls `/upscale`, `/status`, `/health`.
 ## Attribution
 
 This plugin (and this Docker release) is developed as a pair-programming
-collaboration with **Anthropic's Claude Opus 4.7**. See the README badge
+collaboration with **Anthropic's Claude Opus 4.8**. See the README badge
 and the `Co-Authored-By: Claude` trailer on release commits.
 
 ---
