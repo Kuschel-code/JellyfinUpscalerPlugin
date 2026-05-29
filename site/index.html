@@ -15,7 +15,7 @@
     <a href="index.html" class="brand">
       <span class="brand-logo">AI</span>
       <span>Jellyfin AI Upscaler</span>
-      <span class="brand-version">v1.7.6</span>
+      <span class="brand-version">v1.7.7</span>
     </a>
     <nav class="nav" data-nav></nav>
     <div class="nav-cta">
@@ -73,11 +73,11 @@
 
   <h2>Latest release</h2>
   <div class="card">
-    <h3>v1.7.6 · Intel OpenVINO Provider Hotfix (Issue #69 Point 1)</h3>
-    <p style="color: var(--text-dim); margin-bottom: 12px;">Hotfix-Release schließt den letzten offenen Punkt aus Issue #69. User Laurent (@FrRene06) hatte sein <code>/gpu-verify</code> gepostet mit der Beweis-Diagnose: Intel Arc detected (dashboard zeigt "Intel Arc A310"), Setup korrekt (group_add: render + WSL2 mount), aber <code>onnx_providers</code> enthielt <strong>nur AzureExecutionProvider + CPUExecutionProvider</strong> — kein <code>OpenVINOExecutionProvider</code>. Gemini's Diagnose (Reshape-node) war Symptom-Behandlung — die echte Ursache war im Plugin: <code>requirements-intel.txt</code> installierte plain <code>onnxruntime</code> aus PyPI, welches den <strong>OpenVINO EP nicht gebundled</strong> hat. Selbst mit system-OpenVINO im Base-Image war der Provider zur Runtime nicht verfügbar.</p>
-    <p style="color: var(--text-dim); margin-bottom: 12px;"><strong>Fix:</strong> Ein-Zeilen-Wechsel von <code>onnxruntime</code> auf <code>onnxruntime-openvino</code> in <code>requirements-intel.txt</code>. Das offizielle Intel-Variant-Package bringt den OpenVINOExecutionProvider mit. Nach Docker-Image-Pull + Container-Restart sollte <code>/gpu-verify</code> zeigen <code>OpenVINOExecutionProvider</code> als ersten aktiven Provider, und Inferenz nutzt die Intel-GPU effektiv. <strong>C# Plugin DLL bit-identisch zu v1.7.5</strong>. Tests 123/123. Plus AMD-Build-Retry (Trivy-Timeout aus v1.7.5 transient).</p>
+    <h3>v1.7.7 · Docker Self-Verification Hardening</h3>
+    <p style="color: var(--text-dim); margin-bottom: 12px;">Strukturelle Vollendung der Intel-Arc-Saga (#45/#66/#67/#69). Eine dedizierte Docker-Tiefenanalyse fand keine akuten Bugs mehr, aber <strong>eine fehlende Verifikations-Schicht</strong>: kein Dockerfile prüfte beim Build, ob der erwartete ONNX-Provider tatsächlich installiert ist. Genau diese Lücke ließ den v1.7.5-Intel-Bug durchrutschen (plain <code>onnxruntime</code> baute durch, hatte aber keinen OpenVINO-EP). v1.7.7 schließt die Klasse „GPU-Image läuft heimlich auf CPU" strukturell.</p>
+    <p style="color: var(--text-dim); margin-bottom: 12px;"><strong>Build-Time-Provider-Asserts:</strong> <code>Dockerfile</code> (NVIDIA) + <code>Dockerfile.intel</code> hard-failen den Build wenn <code>CUDAExecutionProvider</code> bzw. <code>OpenVINOExecutionProvider</code> fehlt — ein kaputtes GPU-Image kann nicht mehr publiziert werden. <code>Dockerfile.amd</code> macht den stillen CPU-Fallback im Build-Log sichtbar (warn-only, da CPU bei AMD ein legitimer Fallback ist). <strong>entrypoint.sh</strong> kennt jetzt WSL2 <code>/dev/dxg</code> — das Startup-Banner widerspricht nicht mehr der echten Detection. <strong>C# Plugin DLL bit-identisch zu v1.7.6</strong> — alle Änderungen in <code>docker-ai-service/</code>. Tests 123/123.</p>
     <a href="changelog.html" class="btn btn-ghost">Full changelog →</a>
-    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.7.6" target="_blank" class="btn btn-ghost" style="margin-left: 8px;">Release on GitHub →</a>
+    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.7.7" target="_blank" class="btn btn-ghost" style="margin-left: 8px;">Release on GitHub →</a>
   </div>
 
   <h2>Who it's for</h2>
@@ -106,7 +106,7 @@ docker run -d --name jellyfin-ai-upscaler \
 <footer class="footer">
   <div class="footer-inner">
     <div>
-      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.7.6 · not affiliated with the Jellyfin project
+      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.7.7 · not affiliated with the Jellyfin project
       <div style="margin-top: 4px;"><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a> · <a href="https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler">Docker Hub</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues">Issues</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">Releases</a></div>
     </div>
     <div>Co-engineered with <a href="https://claude.com/claude-code">Claude Opus 4.7</a></div>

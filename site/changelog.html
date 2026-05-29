@@ -7,13 +7,22 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.7.6</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.7.7</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.7.6 — Intel OpenVINO Provider Hotfix (Issue #69 Point 1) <span class="tag success">latest</span></h2>
+  <h2>v1.7.7 — Docker Self-Verification Hardening <span class="tag success">latest</span></h2>
+  <p><em>Released May 2026.</em> Strukturelle Vollendung der Intel-Arc-Saga (#45/#66/#67/#69). Dedizierte Docker-Tiefenanalyse fand keine akuten Bugs mehr — aber eine fehlende Verifikations-Schicht. C# Plugin DLL bit-identisch zu v1.7.6 — alle Änderungen in <code>docker-ai-service/</code>. Tests 123/123.</p>
+  <ul>
+    <li><strong>Build-Time-Provider-Asserts (das Kern-Fix):</strong> Kein Dockerfile prüfte beim Build, ob der erwartete ONNX-Provider tatsächlich installiert ist. Genau diese Lücke ließ den v1.7.5-Intel-Bug durchrutschen (plain <code>onnxruntime</code> baute fehlerfrei, hatte aber keinen OpenVINO-EP → CPU-only Image trotz GPU-Dashboard). Neu: <code>Dockerfile</code> (NVIDIA) asserts <code>CUDAExecutionProvider</code>, <code>Dockerfile.intel</code> asserts <code>OpenVINOExecutionProvider</code> — beide <strong>hard-fail</strong> (exit 1) wenn der Provider fehlt. Der Build wird rot statt ein scheinbar-funktionierendes CPU-only Image zu publishen.</li>
+    <li><strong>AMD Provider-Sichtbarkeit:</strong> <code>Dockerfile.amd</code> hatte einen stillen <code>|| pip install onnxruntime</code> CPU-Fallback. Neu: ein <strong>warn-only</strong> Assert (exit 0, weil CPU bei AMD ein legitimer Fallback ist wenn ROCm-Wheels yanked sind) — der CPU-Modus ist jetzt im Build-Log sichtbar statt unbemerkt.</li>
+    <li><strong>entrypoint.sh WSL2-Awareness:</strong> <code>detect_backend()</code> prüfte nur <code>/dev/dri/renderD128</code> und zeigte auf WSL2-Setups fälschlich „Backend: cpu" (+ falsche GPU-missing-Warnung) obwohl <code>main.py</code> die GPU via <code>/dev/dxg</code> seit v1.7.4 korrekt erkennt. Neu: <code>/dev/dxg</code>-Branch → Banner konsistent mit der echten Detection.</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> — 0/0. Build-Asserts greifen bei jedem Docker-Rebuild. Quad-MD5 post-release verifiziert.</li>
+  </ul>
+
+  <h2>v1.7.6 — Intel OpenVINO Provider Hotfix (Issue #69 Point 1)</h2>
   <p><em>Released May 2026.</em> Hotfix-Release schließt den letzten offenen Punkt aus Issue #69 (Intel Arc GPU detected aber Inferenz auf CPU). C# Plugin DLL bit-identisch zu v1.7.5 — Fix ist docker-ai-service-only.</p>
   <ul>
     <li><strong>Root-Cause — empirisch verifiziert via Laurent's <code>/gpu-verify</code>:</strong> Sein Setup war korrekt (<code>group_add: render</code>, WSL2 mount, latest image), aber <code>onnx_providers</code> enthielt nur <code>[AzureExecutionProvider, CPUExecutionProvider]</code>. <strong>Kein <code>OpenVINOExecutionProvider</code> in der Liste</strong> — das Plugin konnte gar nicht GPU-Inferenz auf Intel-Hardware machen, egal welches Modell. Gemini's Diagnose (Reshape-node in realesrgan-x4) war Symptom-Behandlung.</li>

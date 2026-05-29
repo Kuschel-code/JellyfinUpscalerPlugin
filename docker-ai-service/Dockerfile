@@ -58,6 +58,11 @@ COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
     python -m pip install -r requirements.txt
 
+# Build-time provider assert (issue #69 lesson): fail the build if the CUDA
+# ExecutionProvider is not actually present. Prevents shipping a GPU image that
+# silently runs on CPU (the exact failure mode of the Intel/AMD onnxruntime bugs).
+RUN python -c "import onnxruntime as ort; p = ort.get_available_providers(); print('ONNX providers:', p); assert 'CUDAExecutionProvider' in p, 'BUILD FAIL: CUDAExecutionProvider missing - onnxruntime-gpu not correctly installed'"
+
 # Copy application code
 COPY app/ ./app/
 COPY static/ ./static/
