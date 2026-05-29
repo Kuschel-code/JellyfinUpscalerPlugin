@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.7.6
+# Jellyfin AI Upscaler Plugin v1.7.7
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.7-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.7.6):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.7.7):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.7.6     │  │
+│  │  AI Upscaler Plugin v1.7.7     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -289,12 +289,21 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.7.6` — pinned to a specific plugin release
-- `:v1.7.6-<backend>` — full semver (e.g. `:v1.7.6-cpu`)
+- `:docker7-v1.7.7` — pinned to a specific plugin release
+- `:v1.7.7-<backend>` — full semver (e.g. `:v1.7.7-cpu`)
 
 ---
 
 ## Changelog
+
+### v1.7.7 (Docker Self-Verification Hardening)
+
+Strukturelle Vollendung der Intel-Arc-Saga (#45/#66/#67/#69). Eine dedizierte Docker-Tiefenanalyse fand keine akuten Bugs mehr, aber **eine fehlende Verifikations-Schicht**: kein Dockerfile prüfte beim Build, ob der erwartete ONNX-Provider tatsächlich installiert ist. Genau diese Lücke ließ den v1.7.5-Intel-Bug durchrutschen (plain `onnxruntime` baute durch, hatte aber keinen OpenVINO-EP). v1.7.7 schließt die Klasse „GPU-Image läuft heimlich auf CPU" strukturell. **C# Plugin DLL bit-identisch zu v1.7.6** — alle Änderungen in `docker-ai-service/`. Tests 123/123. v1.7.x configs bit-compatible.
+
+- **Build-Time-Provider-Asserts (3 Images):** `Dockerfile` (NVIDIA) asserts `CUDAExecutionProvider`, `Dockerfile.intel` asserts `OpenVINOExecutionProvider` — beide **hard-fail** (exit 1) wenn der Provider fehlt. Der Build wird rot statt ein scheinbar-funktionierendes CPU-only Image zu publishen. Hätte den v1.7.5-Intel-Bug nie ins Release gelassen.
+- **AMD Provider-Sichtbarkeit:** `Dockerfile.amd` hatte einen stillen `|| pip install onnxruntime` CPU-Fallback. Neu: ein **warn-only** Assert (exit 0, weil CPU bei AMD ein legitimer Fallback ist wenn ROCm-Wheels yanked sind) — der CPU-Modus ist jetzt im Build-Log sichtbar statt unbemerkt.
+- **entrypoint.sh WSL2-Awareness:** `detect_backend()` prüfte nur `/dev/dri/renderD128` und zeigte auf WSL2-Setups fälschlich „Backend: cpu" (+ falsche GPU-missing-Warnung) obwohl `main.py` die GPU via `/dev/dxg` seit v1.7.4 korrekt erkennt. Neu: `/dev/dxg`-Branch → Banner konsistent mit der echten Detection.
+- **Verification:** `dotnet build` — 0/0. Build-Asserts greifen jetzt bei jedem Docker-Rebuild. Quad-MD5 post-release verifiziert.
 
 ### v1.7.6 (Intel OpenVINO Provider Fix — Issue #69 Punkt 1)
 

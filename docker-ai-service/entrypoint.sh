@@ -23,6 +23,15 @@ detect_backend() {
         echo "vulkan-or-intel"
         return
     fi
+    # WSL2 / Docker Desktop on Windows exposes the GPU via /dev/dxg, not
+    # /dev/dri/renderD128 (issue #66/#69). main.py already detects this since
+    # v1.7.4 - keep the startup banner consistent with the real detection so it
+    # doesn't print "Backend: cpu" (and fire a false GPU-missing warning) when an
+    # Intel/AMD GPU is actually present through the DirectX bridge.
+    if [ -e /dev/dxg ]; then
+        echo "intel-wsl2"
+        return
+    fi
     echo "cpu"
 }
 

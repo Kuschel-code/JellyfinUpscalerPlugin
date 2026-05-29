@@ -60,6 +60,13 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r requirements.txt && \
     (pip install "onnxruntime-rocm<=1.22.99" || pip install onnxruntime)
 
+# Build-time provider visibility (issue #69 lesson): the ROCm wheel install above
+# has a SILENT `|| pip install onnxruntime` CPU fallback. Unlike NVIDIA/Intel this
+# does NOT hard-fail - a CPU image is a valid degraded mode when ROCm wheels are
+# unavailable (they are frequently yanked). But the fallback must be VISIBLE in the
+# build log so a CPU-only AMD image is never published unnoticed.
+RUN python3 -c "import onnxruntime as ort; p = ort.get_available_providers(); print('ONNX providers:', p); print('OK: ROCMExecutionProvider present') if 'ROCMExecutionProvider' in p else print('WARNING: ROCMExecutionProvider MISSING - this AMD image will run inference on CPU (ROCm wheel unavailable). Build continues (CPU is a valid fallback).')"
+
 # Copy application code
 COPY app/ ./app/
 COPY static/ ./static/

@@ -83,6 +83,12 @@ COPY requirements-intel.txt ./requirements.txt
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r requirements.txt
 
+# Build-time provider assert (issue #69 root-cause guard): fail the build if the
+# OpenVINO ExecutionProvider is not present. This is the exact bug that shipped in
+# v1.7.5 - plain onnxruntime built fine but had no OpenVINO EP, so the image ran on
+# CPU while the dashboard showed the Intel GPU. This assert makes that impossible.
+RUN python3 -c "import onnxruntime as ort; p = ort.get_available_providers(); print('ONNX providers:', p); assert 'OpenVINOExecutionProvider' in p, 'BUILD FAIL: OpenVINOExecutionProvider missing - use onnxruntime-openvino, not plain onnxruntime'"
+
 # Copy application code
 COPY app/ ./app/
 COPY static/ ./static/
