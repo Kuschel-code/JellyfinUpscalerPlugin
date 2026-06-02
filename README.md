@@ -48,7 +48,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 │  │  CUDA / ROCm / OpenVINO / CPU     │  │
 │  │  Real-ESRGAN, SPAN, SwinIR, DAT2 │  │
 │  │  EDVR-M, RealBasicVSR, AnimeSR  │  │
-│  │  EDSR, FSRCNN, ESPCN (40+ models) │  │
+│  │  EDSR, FSRCNN, ESPCN (70+ models) │  │
 │  │  Web UI for Model Management      │  │
 │  └────────────────────────────────────┘  │
 └──────────────────────────────────────────┘
@@ -295,6 +295,26 @@ Each tag is published three ways so you can pin precisely:
 ---
 
 ## Changelog
+
+### v1.7.8 (Docker AI Service — Model Catalog +12 & GPU/Benchmark/AMD Fixes)
+
+**Docker-image-only release** — pull the refreshed `docker7` / `docker7-<backend>` tags (or pin `:v1.7.8-<backend>`). **The Jellyfin plugin is unchanged at v1.7.7** — all changes are in `docker-ai-service/`, so there is no new plugin to install, just a fresh Docker image to pull.
+
+- **Model catalog 59 → 71 (+12).** New ONNX models from the curated `notaneimu/onnx-image-models` source, focused on the real Jellyfin case (h264/h265-compressed sources): `realesr-general-x4v3` / `-wdn` (tiny modern general default), `realwebphoto-v4-dat2-x4` + `nomoswebphoto-realplksr-x4` (trained on degraded web/compressed images), `dejpg-realplksr-1x` + `denoise-realplksr-1x` (1x artifact-cleanup pre-passes), `foolhardy-remacri-x4`, `nmkd-siax-x4`, `nomos8k-hat-l-x4` (full HAT-L), `textures-rgt-s-x4` (RGT-S, new architecture), `lsdir-compact-v2-x4`, `spanx2-ch48`.
+- **FIX — 256px-model benchmark crash (#70).** `run_benchmark()` now reads the loaded ONNX session's real input shape; fixed-shape models (`realesrgan-x4-256`) benchmark at 256×256 instead of a 64px tile that raised a Reshape error during warmup — the "Reshape" failure Gemini misattributed to the GPU.
+- **FIX — GPU-active reporting (#69/#70).** New `gpu_is_active()` derives "is the GPU really in use?" from the live execution-provider list (now counts OpenVINO/CoreML, not only CUDA/ROCm). `/health`, `/status`, `/hardware`, `/gpu-verify` report the honest value, so the dashboard and the System tab no longer disagree and `/gpu-verify` no longer shows `using_gpu:false` while OpenVINO is active.
+- **FIX — AMD image ran on CPU.** The build log proved the `onnxruntime-rocm` wheel installed fine, but plain `onnxruntime` (pulled by `requirements-amd.txt`) shadowed it — both ship the same `onnxruntime` module and the plain build won (reporting `AzureExecutionProvider`/CPU). Removed plain onnxruntime from the AMD requirements and force-install `onnxruntime-rocm` as the sole provider in `Dockerfile.amd`.
+- **FIX — stale service version.** The startup banner / `/status` reported a hardcoded `1.6.1.21`; `VERSION` now reads the `APP_VERSION` build arg (single source of truth).
+
+### v1.7.8 (Docker AI Service — Model Catalog +12 & GPU/Benchmark/AMD Fixes)
+
+**Docker-image-only release** — pull the refreshed `docker7` / `docker7-<backend>` tags (or pin `:v1.7.8-<backend>`). **The Jellyfin plugin is unchanged at v1.7.7** — all changes are in `docker-ai-service/`, so there is no new plugin to install, just a fresh Docker image to pull.
+
+- **Model catalog 59 → 71 (+12).** New ONNX models from the curated `notaneimu/onnx-image-models` source, focused on the real Jellyfin case (h264/h265-compressed sources): `realesr-general-x4v3` / `-wdn` (tiny modern general default), `realwebphoto-v4-dat2-x4` + `nomoswebphoto-realplksr-x4` (trained on degraded web/compressed images), `dejpg-realplksr-1x` + `denoise-realplksr-1x` (1x artifact-cleanup pre-passes), `foolhardy-remacri-x4`, `nmkd-siax-x4`, `nomos8k-hat-l-x4` (full HAT-L), `textures-rgt-s-x4` (RGT-S, new architecture), `lsdir-compact-v2-x4`, `spanx2-ch48`.
+- **FIX — 256px-model benchmark crash (#70).** `run_benchmark()` now reads the loaded ONNX session's real input shape; fixed-shape models (`realesrgan-x4-256`) benchmark at 256×256 instead of a 64px tile that raised a Reshape error during warmup — the "Reshape" failure Gemini misattributed to the GPU.
+- **FIX — GPU-active reporting (#69/#70).** New `gpu_is_active()` derives "is the GPU really in use?" from the live execution-provider list (now counts OpenVINO/CoreML, not only CUDA/ROCm). `/health`, `/status`, `/hardware`, `/gpu-verify` report the honest value, so the dashboard and the System tab no longer disagree and `/gpu-verify` no longer shows `using_gpu:false` while OpenVINO is active.
+- **FIX — AMD image ran on CPU.** The build log proved the `onnxruntime-rocm` wheel installed fine, but plain `onnxruntime` (pulled by `requirements-amd.txt`) shadowed it — both ship the same `onnxruntime` module and the plain build won (reporting `AzureExecutionProvider`/CPU). Removed plain onnxruntime from the AMD requirements and force-install `onnxruntime-rocm` as the sole provider in `Dockerfile.amd`.
+- **FIX — stale service version.** The startup banner / `/status` reported a hardcoded `1.6.1.21`; `VERSION` now reads the `APP_VERSION` build arg (single source of truth).
 
 ### v1.7.7 (Docker Self-Verification Hardening)
 

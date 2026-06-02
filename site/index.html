@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Jellyfin AI Upscaler — GPU-accelerated video upscaling</title>
-<meta name="description" content="AI-powered video upscaling plugin for Jellyfin 10.11.x. Dockerized microservice with 30+ models, 7 camera-style filters, AI face restoration, and live in-player controls.">
+<meta name="description" content="AI-powered video upscaling plugin for Jellyfin 10.11.x. Dockerized microservice with 70+ models, 7 camera-style filters, AI face restoration, and live in-player controls.">
 <meta property="og:title" content="Jellyfin AI Upscaler Plugin">
-<meta property="og:description" content="Dockerized AI upscaler for Jellyfin — 30+ models, NVIDIA/Intel/AMD acceleration, face restoration, camera-style filters.">
+<meta property="og:description" content="Dockerized AI upscaler for Jellyfin — 70+ models, NVIDIA/Intel/AMD acceleration, face restoration, camera-style filters.">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -73,11 +73,11 @@
 
   <h2>Latest release</h2>
   <div class="card">
-    <h3>v1.7.7 · Docker Self-Verification Hardening</h3>
-    <p style="color: var(--text-dim); margin-bottom: 12px;">Structural completion of the Intel-Arc saga (#45/#66/#67/#69). A dedicated docker-ai-service deep-analysis found no acute bugs left, but <strong>a missing verification layer</strong>: no Dockerfile checked at build time whether its expected ONNX provider was actually installed. That gap is exactly what let the v1.7.5 Intel bug slip through (plain <code>onnxruntime</code> built fine but had no OpenVINO EP). v1.7.7 structurally closes the "GPU image silently runs on CPU" class.</p>
-    <p style="color: var(--text-dim); margin-bottom: 12px;"><strong>Build-time provider asserts:</strong> <code>Dockerfile</code> (NVIDIA) + <code>Dockerfile.intel</code> hard-fail the build if <code>CUDAExecutionProvider</code> / <code>OpenVINOExecutionProvider</code> is missing — a broken GPU image can no longer be published. <code>Dockerfile.amd</code> makes the silent CPU fallback visible in the build log (warn-only, since CPU is a valid fallback for AMD). <strong>entrypoint.sh</strong> now knows WSL2 <code>/dev/dxg</code> — the startup banner no longer contradicts the real detection. <strong>C# Plugin DLL bit-identical to v1.7.6</strong> — all changes are in <code>docker-ai-service/</code>. Tests 123/123.</p>
+    <h3>v1.7.8 · Model catalog 71 + GPU / benchmark / AMD fixes</h3>
+    <p style="color: var(--text-dim); margin-bottom: 12px;">A <strong>Docker-image-only update</strong> — the Jellyfin plugin is unchanged at v1.7.7, just pull the refreshed images. The model catalog grows <strong>59 → 71</strong> (+12 ONNX models) focused on compressed/streaming sources: Real-ESRGAN general v3, RealWebPhoto/NomosWebPhoto, 1x DeJPEG/DeNoise pre-passes, Remacri, NMKD-Siax, full HAT-L, RGT-S, plus fast low-VRAM picks.</p>
+    <p style="color: var(--text-dim); margin-bottom: 12px;">Four service fixes ship with it: the <strong>256px-model benchmark Reshape crash</strong> (#70) is gone — it now reads the model's real ONNX input shape; <strong>GPU-active status</strong> is derived from the live provider list so the dashboard and System tab agree (OpenVINO/CoreML now count, #69/#70); the <strong>AMD image runs on the GPU again</strong> (plain <code>onnxruntime</code> no longer shadows <code>onnxruntime-rocm</code>); and the stale service-version banner is fixed. Pull <code>docker7</code> / <code>docker7-&lt;backend&gt;</code> or pin <code>:v1.7.8-&lt;backend&gt;</code>.</p>
     <a href="changelog.html" class="btn btn-ghost">Full changelog →</a>
-    <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.7.7" target="_blank" class="btn btn-ghost" style="margin-left: 8px;">Release on GitHub →</a>
+    <a href="https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler/tags" target="_blank" class="btn btn-ghost" style="margin-left: 8px;">Images on Docker Hub →</a>
   </div>
 
   <h2>Who it's for</h2>
