@@ -11,12 +11,12 @@
 
 <main class="container">
   <h1>AI model catalog</h1>
-  <p class="lead" style="color: var(--text-dim);">59 models registered, 5 marked <em>[self-host required]</em>. Weights are pulled on demand — none of them are bundled in the Docker image.</p>
+  <p class="lead" style="color: var(--text-dim);">71 models registered, 5 marked <em>[self-host required]</em>. Weights are pulled on demand — none of them are bundled in the Docker image.</p>
 
   <!-- AUTO-GENERATED FROM docker-ai-service/app/main.py:AVAILABLE_MODELS -->
   <!-- Generator: Scripts/sync-fallback-models.ps1 -->
   <!-- DO NOT EDIT BY HAND. Regenerate the JSON, then re-render this section. -->
-  <p style="color: var(--text-dim); font-size: 0.9em;">Last regenerated: <code>2026-05-12</code> from <code>docker-ai-service/app/main.py:AVAILABLE_MODELS</code></p>
+  <p style="color: var(--text-dim); font-size: 0.9em;">Last regenerated: <code>2026-06-03</code> from <code>docker-ai-service/app/main.py:AVAILABLE_MODELS</code></p>
 
   <h2>Real-ESRGAN <small>(2)</small></h2>
   <table>
@@ -53,7 +53,7 @@
     </tbody>
   </table>
 
-  <h2>Next-Gen (SPAN/SwinIR/APISR/OmniSR/DAT-light/MAN/CRAFT) <small>(14)</small></h2>
+  <h2>Next-Gen (SPAN/SwinIR/APISR/OmniSR/DAT-light/MAN/CRAFT/RGT) <small>(15)</small></h2>
   <table>
     <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
     <tbody>
@@ -71,10 +71,11 @@
       <tr><td><code>man-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">MAN x4 — Multi-scale Attention Network. ~8MB. (v1.7.2)</td></tr>
       <tr><td><code>craft-x2</code></td><td>x2</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">CRAFT x2 — Compositional Refinement, 2023. Texture-aware, ~12MB. (v1.7.2)</td></tr>
       <tr><td><code>craft-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">CRAFT x4 — Compositional Refinement. ~12MB. (v1.7.2)</td></tr>
+      <tr><td><code>textures-rgt-s-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">RGT-S (Recursive Generalization Transformer, small) — new arch, strong on textures/fine detail. ~46MB.</td></tr>
     </tbody>
   </table>
 
-  <h2>Video Fast (Compact / Speed) <small>(6)</small></h2>
+  <h2>Video Fast (Compact / Speed) <small>(9)</small></h2>
   <table>
     <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
     <tbody>
@@ -84,10 +85,13 @@
       <tr><td><code>swinir-small-x2</code></td><td>x2</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Lightweight SwinIR 2x, only 7.9MB. Good quality/speed balance for video.</td></tr>
       <tr><td><code>swinir-small-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Lightweight SwinIR 4x, only 8MB. Best quality in the fast category.</td></tr>
       <tr><td><code>bhi-realplksr-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">BHI-RealPLKSR x4 - 2x faster than DAT2 at comparable quality. ~5fps@256 on RTX 3060. New default for…</td></tr>
+      <tr><td><code>realesr-general-x4v3</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Real-ESRGAN general v3 — tiny (~5MB), fast dynamic-shape all-rounder. Best modern default for streaming.</td></tr>
+      <tr><td><code>lsdir-compact-v2-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">v2 upgrade of LSDIR Compact — tiny (~2.5MB), fast real-time 4x for low-power/low-VRAM devices.</td></tr>
+      <tr><td><code>spanx2-ch48</code></td><td>x2</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">SPAN 2x with 48 channels — very fast (~1.7MB), real-time on modest GPUs (T600/Arc A380).</td></tr>
     </tbody>
   </table>
 
-  <h2>Video Quality (DAT2 / DRCT-L / RealPLKSR) <small>(4)</small></h2>
+  <h2>Video Quality (DAT2 / DRCT-L / RealPLKSR / ESRGAN / HAT-L) <small>(9)</small></h2>
   <table>
     <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
     <tbody>
@@ -95,16 +99,24 @@
       <tr><td><code>nomos2-dat2-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">DAT2 trained on Nomos v2 dataset. Fixes noise, compression, blur. 53MB.</td></tr>
       <tr><td><code>nomos2-realplksr-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Modern RealPLKSR architecture. 30MB — best quality-to-size ratio for video.</td></tr>
       <tr><td><code>drct-l-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">DRCT-L x4 - Dense-Residual Connected Transformer. Sharper than DAT2 on photo content, ~3GB VRAM for …</td></tr>
+      <tr><td><code>realwebphoto-v4-dat2-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">DAT2 trained on degraded web/compressed images — best match for h264/h265 streaming frames. ~49MB.</td></tr>
+      <tr><td><code>nomoswebphoto-realplksr-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">RealPLKSR trained on web photos — efficient quality restore for compressed sources. ~30MB.</td></tr>
+      <tr><td><code>foolhardy-remacri-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Remacri — legendary general-purpose ESRGAN upscaler, sharp detail without over-smoothing. ~67MB.</td></tr>
+      <tr><td><code>nmkd-siax-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">NMKD-Siax 200k — top-rated ESRGAN for detail/general content. ~67MB.</td></tr>
+      <tr><td><code>nomos8k-hat-l-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Full HAT-L (vs HAT-S) — highest photo quality, very heavy (~162MB, high VRAM). Poster/backdrop only.</td></tr>
     </tbody>
   </table>
 
-  <h2>Film Restoration <small>(3)</small></h2>
+  <h2>Film Restoration <small>(6)</small></h2>
   <table>
     <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
     <tbody>
       <tr><td><code>fsdedither-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Removes dithering artifacts from old DVDs and digitized VHS tapes. 67MB.</td></tr>
       <tr><td><code>nomos8k-hat-x4</code></td><td>x4</td><td>onnx</td><td><span style="color: #d3a35c;">self-host</span></td><td style="font-size: 0.85em; color: var(--text-dim);">HAT Transformer trained on 8k dataset. Handles JPG compression + blur. 57MB.</td></tr>
       <tr><td><code>nafnet-denoise</code></td><td>—</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">NAFNet — non-AI baseline for image denoising/restoration. ECCV 2022. Use as pre-pass before upscaling. ~17MB. (v1.7.2)</td></tr>
+      <tr><td><code>realesr-general-wdn-x4v3</code></td><td>x4</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">Real-ESRGAN general v3 with denoise weighting (wdn) — ideal for noisy/compressed sources. ~5MB.</td></tr>
+      <tr><td><code>dejpg-realplksr-1x</code></td><td>—</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">1x DeJPEG — removes JPEG/block compression artifacts before upscaling. Pair with any 4x model. ~30MB.</td></tr>
+      <tr><td><code>denoise-realplksr-1x</code></td><td>—</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">1x denoise pre-pass — complements NAFNet with the faster RealPLKSR arch. ~30MB.</td></tr>
     </tbody>
   </table>
 
@@ -178,7 +190,7 @@ POST /models/{id}/unload           # free VRAM
 GET  /Upscaler/recommend-model     # plugin → service: pick per-video</code></pre>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.21</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.7.7</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

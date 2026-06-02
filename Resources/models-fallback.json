@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-05-11",
+  "generated_at": "2026-06-03",
   "source": "docker-ai-service/app/main.py:AVAILABLE_MODELS",
   "generator": "Scripts/sync-fallback-models.ps1",
   "notice": "AUTO-GENERATED - DO NOT EDIT BY HAND. Regenerate via the script when main.py changes.",
-  "total": 59,
+  "total": 71,
   "models": [
     {
       "id": "realesrgan-x4",
@@ -190,7 +190,7 @@
     {
       "id": "span-x2",
       "name": "SPAN x2 (Fastest Quality)",
-      "description": "SPAN — fastest quality model, NTIRE 2023 winner. Best for real-time video.",
+      "description": "SPAN \u2014 fastest quality model, NTIRE 2023 winner. Best for real-time video.",
       "scale": [
         2
       ],
@@ -203,7 +203,7 @@
     {
       "id": "span-x4",
       "name": "SPAN x4 (Fastest Quality)",
-      "description": "SPAN 4x — fast quality upscaling, great speed/quality balance.",
+      "description": "SPAN 4x \u2014 fast quality upscaling, great speed/quality balance.",
       "scale": [
         4
       ],
@@ -216,7 +216,7 @@
     {
       "id": "realesrgan-x2-plus",
       "name": "Real-ESRGAN x2+ (General)",
-      "description": "Real-ESRGAN x2 Plus — high quality 2x for photos and live-action.",
+      "description": "Real-ESRGAN x2 Plus \u2014 high quality 2x for photos and live-action.",
       "scale": [
         2
       ],
@@ -242,7 +242,7 @@
     {
       "id": "swinir-x4",
       "name": "SwinIR x4 (Transformer Quality)",
-      "description": "SwinIR — Swin Transformer for image restoration. Best quality for photos & live-action.",
+      "description": "SwinIR \u2014 Swin Transformer for image restoration. Best quality for photos & live-action.",
       "scale": [
         4
       ],
@@ -320,7 +320,7 @@
     {
       "id": "ultrasharp-v2-x4",
       "name": "UltraSharp V2 x4 (Best Photo/Video)",
-      "description": "DAT2 Transformer — best overall quality for photos and video. 49MB.",
+      "description": "DAT2 Transformer \u2014 best overall quality for photos and video. 49MB.",
       "scale": [
         4
       ],
@@ -346,7 +346,7 @@
     {
       "id": "nomos2-realplksr-x4",
       "name": "Nomos2 RealPLKSR x4 (Efficient Quality)",
-      "description": "Modern RealPLKSR architecture. 30MB — best quality-to-size ratio for video.",
+      "description": "Modern RealPLKSR architecture. 30MB \u2014 best quality-to-size ratio for video.",
       "scale": [
         4
       ],
@@ -398,7 +398,7 @@
     {
       "id": "apisr-anime-x2",
       "name": "APISR x2 (Anime Production Quality)",
-      "description": "CVPR 2024 — trained on anime production pipeline. Best anime 2x quality. 18MB.",
+      "description": "CVPR 2024 \u2014 trained on anime production pipeline. Best anime 2x quality. 18MB.",
       "scale": [
         2
       ],
@@ -411,7 +411,7 @@
     {
       "id": "apisr-x3",
       "name": "APISR x3 (General Quality) [self-host required]",
-      "description": "CVPR 2024 — general 3x for photos & video. Ideal for 720p to 1080p. ~25MB. [Upstream Xenova repo gated — see docs/MODEL-HOSTING.md to self-host.]",
+      "description": "CVPR 2024 \u2014 general 3x for photos & video. Ideal for 720p to 1080p. ~25MB. [Upstream Xenova repo gated \u2014 see docs/MODEL-HOSTING.md to self-host.]",
       "scale": [
         3
       ],
@@ -424,7 +424,7 @@
     {
       "id": "edvr-m-x4",
       "name": "EDVR-M x4 (Video SR - 5 Frame) [self-host required]",
-      "description": "EDVR-M — Multi-frame video super-resolution. Uses 5 frames for temporal consistency. Best batch quality. [Requires self-hosted ONNX export — see docs/MODEL-HOSTING.md]",
+      "description": "EDVR-M \u2014 Multi-frame video super-resolution. Uses 5 frames for temporal consistency. Best batch quality. [Requires self-hosted ONNX export \u2014 see docs/MODEL-HOSTING.md]",
       "scale": [
         4
       ],
@@ -437,7 +437,7 @@
     {
       "id": "realbasicvsr-x4",
       "name": "RealBasicVSR x4 (Video SR - 5 Frame) [self-host required]",
-      "description": "RealBasicVSR — Recurrent VSR with optical flow (CVPR 2022). Best for real-world degraded video (VHS, DVD, streaming). ~50MB. [Requires self-hosted ONNX — see docs/MODEL-HOSTING.md]",
+      "description": "RealBasicVSR \u2014 Recurrent VSR with optical flow (CVPR 2022). Best for real-world degraded video (VHS, DVD, streaming). ~50MB. [Requires self-hosted ONNX \u2014 see docs/MODEL-HOSTING.md]",
       "scale": [
         4
       ],
@@ -450,7 +450,7 @@
     {
       "id": "animesr-v2-x4",
       "name": "AnimeSR v2 x4 (Anime Video SR - 5 Frame) [self-host required]",
-      "description": "AnimeSR v2 — Anime-specialized multi-frame VSR (NeurIPS 2022). Preserves line art and flat colors. ~30MB. [Requires self-hosted ONNX — see docs/MODEL-HOSTING.md]",
+      "description": "AnimeSR v2 \u2014 Anime-specialized multi-frame VSR (NeurIPS 2022). Preserves line art and flat colors. ~30MB. [Requires self-hosted ONNX \u2014 see docs/MODEL-HOSTING.md]",
       "scale": [
         4
       ],
@@ -502,7 +502,7 @@
     {
       "id": "rife-v4.7",
       "name": "RIFE v4.7 (Fast Frame Interpolation)",
-      "description": "RIFE v4.7 — Faster Frame Interpolation (2x FPS). Ensemble enabled, scale=1. Lighter model for real-time use. 21MB.",
+      "description": "RIFE v4.7 \u2014 Faster Frame Interpolation (2x FPS). Ensemble enabled, scale=1. Lighter model for real-time use. 21MB.",
       "scale": [
         1
       ],
@@ -515,7 +515,7 @@
     {
       "id": "rife-v4.8",
       "name": "RIFE v4.8 (Balanced Frame Interpolation)",
-      "description": "RIFE v4.8 — Balanced Frame Interpolation (2x FPS). Middle ground between v4.7 (fast) and v4.9 (quality). 21MB.",
+      "description": "RIFE v4.8 \u2014 Balanced Frame Interpolation (2x FPS). Middle ground between v4.7 (fast) and v4.9 (quality). 21MB.",
       "scale": [
         1
       ],
@@ -528,7 +528,7 @@
     {
       "id": "rife-v4.9",
       "name": "RIFE v4.9 (Quality Frame Interpolation)",
-      "description": "RIFE v4.9 — Best-quality Real-Time Frame Interpolation (2x FPS). Ensemble enabled, scale=1. Recommended for film/anime. 21MB.",
+      "description": "RIFE v4.9 \u2014 Best-quality Real-Time Frame Interpolation (2x FPS). Ensemble enabled, scale=1. Recommended for film/anime. 21MB.",
       "scale": [
         1
       ],
@@ -541,7 +541,7 @@
     {
       "id": "gfpgan-v1.4",
       "name": "GFPGAN v1.4 (Face Restore)",
-      "description": "GFPGAN v1.4 — Tencent ARC's face restoration GAN. Restores heavily degraded faces. 512x512 crops. Apache 2.0. Mirrored via facefusion/models-3.0.0. ~340MB.",
+      "description": "GFPGAN v1.4 \u2014 Tencent ARC's face restoration GAN. Restores heavily degraded faces. 512x512 crops. Apache 2.0. Mirrored via facefusion/models-3.0.0. ~340MB.",
       "scale": [
         1
       ],
@@ -633,7 +633,9 @@
       "id": "omnisr-x2",
       "name": "OmniSR x2 (Compact SOTA)",
       "description": "OmniSR x2 - CVPR 2023, omni-axis self-attention. ~10MB, faster than SwinIR at comparable PSNR. Good for 720p->1440p.",
-      "scale": [ 2 ],
+      "scale": [
+        2
+      ],
       "category": "nextgen",
       "type": "onnx",
       "available": true,
@@ -644,7 +646,9 @@
       "id": "omnisr-x4",
       "name": "OmniSR x4 (Compact SOTA)",
       "description": "OmniSR x4 - CVPR 2023. ~10MB. Sweet spot between SwinIR and FSRCNN for 480p->1920p.",
-      "scale": [ 4 ],
+      "scale": [
+        4
+      ],
       "category": "nextgen",
       "type": "onnx",
       "available": true,
@@ -655,7 +659,9 @@
       "id": "dat-light-x2",
       "name": "DAT-light x2 (Production Transformer)",
       "description": "DAT-light x2 - smaller/faster sibling of DAT2. ~15MB. Good general-purpose model.",
-      "scale": [ 2 ],
+      "scale": [
+        2
+      ],
       "category": "nextgen",
       "type": "onnx",
       "available": true,
@@ -666,7 +672,9 @@
       "id": "dat-light-x4",
       "name": "DAT-light x4 (Production Transformer)",
       "description": "DAT-light x4 - smaller/faster sibling of DAT2. ~15MB.",
-      "scale": [ 4 ],
+      "scale": [
+        4
+      ],
       "category": "nextgen",
       "type": "onnx",
       "available": true,
@@ -677,7 +685,9 @@
       "id": "restoreformer-plus-plus",
       "name": "RestoreFormer++ (Face Restoration)",
       "description": "RestoreFormer++ - state-of-the-art face restoration, better than GFPGAN/CodeFormer for severely degraded faces. ~50MB.",
-      "scale": [ 1 ],
+      "scale": [
+        1
+      ],
       "category": "face_restore",
       "type": "onnx",
       "available": true,
@@ -688,7 +698,9 @@
       "id": "man-x2",
       "name": "MAN x2 (Multi-scale Attention)",
       "description": "MAN x2 - Multi-scale Attention Network, ICME 2023. Lightweight transformer, ~8MB. Competitive with SwinIR at half the cost.",
-      "scale": [ 2 ],
+      "scale": [
+        2
+      ],
       "category": "nextgen",
       "type": "onnx",
       "available": true,
@@ -699,7 +711,9 @@
       "id": "man-x4",
       "name": "MAN x4 (Multi-scale Attention)",
       "description": "MAN x4 - Multi-scale Attention Network, ICME 2023. ~8MB. Strong PSNR-per-MB ratio.",
-      "scale": [ 4 ],
+      "scale": [
+        4
+      ],
       "category": "nextgen",
       "type": "onnx",
       "available": true,
@@ -710,7 +724,9 @@
       "id": "craft-x2",
       "name": "CRAFT x2 (Compositional Refinement)",
       "description": "CRAFT x2 - Compositional Refinement texture-aware SR, 2023. ~12MB. Especially good on high-frequency detail recovery.",
-      "scale": [ 2 ],
+      "scale": [
+        2
+      ],
       "category": "nextgen",
       "type": "onnx",
       "available": true,
@@ -721,7 +737,9 @@
       "id": "craft-x4",
       "name": "CRAFT x4 (Compositional Refinement)",
       "description": "CRAFT x4 - Compositional Refinement, 2023. ~12MB.",
-      "scale": [ 4 ],
+      "scale": [
+        4
+      ],
       "category": "nextgen",
       "type": "onnx",
       "available": true,
@@ -732,7 +750,9 @@
       "id": "gpen-512",
       "name": "GPEN-512 (Face Restoration Alternative)",
       "description": "GPEN-512 - face restoration with GAN prior. Different visual style than GFPGAN (more conservative). ~280MB.",
-      "scale": [ 1 ],
+      "scale": [
+        1
+      ],
       "category": "face_restore",
       "type": "onnx",
       "available": true,
@@ -743,8 +763,166 @@
       "id": "nafnet-denoise",
       "name": "NAFNet (Denoising / Restoration Pre-Pass)",
       "description": "NAFNet - non-AI baseline for image denoising / restoration. ECCV 2022. Use as pre-pass before upscaling on noisy source material. ~17MB.",
-      "scale": [ 1 ],
+      "scale": [
+        1
+      ],
       "category": "film-restore",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "realesr-general-x4v3",
+      "name": "Real-ESRGAN General x4 v3 (Versatile Default)",
+      "description": "Real-ESRGAN general-purpose v3 - tiny (~5MB), fast, dynamic-shape all-rounder. Best modern default for mixed live-action/anime streaming content.",
+      "scale": [
+        4
+      ],
+      "category": "video-fast",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "realesr-general-wdn-x4v3",
+      "name": "Real-ESRGAN General x4 v3 (Denoise)",
+      "description": "Real-ESRGAN general v3 with denoise weighting (wdn) - ideal for noisy/compressed sources. ~5MB.",
+      "scale": [
+        4
+      ],
+      "category": "film-restore",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "realwebphoto-v4-dat2-x4",
+      "name": "RealWebPhoto v4 DAT2 x4 (Compressed Sources)",
+      "description": "DAT2 trained specifically on degraded web/compressed images - best match for h264/h265 streaming frames with blocking + ringing. ~49MB.",
+      "scale": [
+        4
+      ],
+      "category": "video-quality",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "nomoswebphoto-realplksr-x4",
+      "name": "NomosWebPhoto RealPLKSR x4 (Web/Stream Quality)",
+      "description": "RealPLKSR trained on web photos - efficient quality restore for compressed sources. ~30MB.",
+      "scale": [
+        4
+      ],
+      "category": "video-quality",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "dejpg-realplksr-1x",
+      "name": "DeJPEG RealPLKSR 1x (Artifact Cleanup Pre-Pass)",
+      "description": "1x DeJPEG restoration - removes JPEG/block compression artifacts before upscaling. Pair with any 4x model on heavily compressed streams. ~30MB.",
+      "scale": [
+        1
+      ],
+      "category": "film-restore",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "denoise-realplksr-1x",
+      "name": "DeNoise RealPLKSR 1x (Denoise Pre-Pass)",
+      "description": "1x denoise restoration pre-pass - complements NAFNet with the faster RealPLKSR arch. ~30MB.",
+      "scale": [
+        1
+      ],
+      "category": "film-restore",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "foolhardy-remacri-x4",
+      "name": "Remacri x4 (Community Favorite)",
+      "description": "4x_foolhardy_Remacri - legendary general-purpose ESRGAN upscaler, sharp detail without over-smoothing. ~67MB.",
+      "scale": [
+        4
+      ],
+      "category": "video-quality",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "nmkd-siax-x4",
+      "name": "NMKD Siax x4 (Detail Restore)",
+      "description": "4x_NMKD-Siax_200k - top-rated ESRGAN for detail/general content, 200k iterations. ~67MB.",
+      "scale": [
+        4
+      ],
+      "category": "video-quality",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "nomos8k-hat-l-x4",
+      "name": "Nomos8k HAT-L x4 (Maximum Quality)",
+      "description": "Full HAT-L (vs HAT-S in catalog) - highest photo quality, very heavy (~162MB, high VRAM). Poster/backdrop refresh only, not real-time.",
+      "scale": [
+        4
+      ],
+      "category": "video-quality",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "textures-rgt-s-x4",
+      "name": "Textures RGT-S x4 (New Transformer)",
+      "description": "RGT-S (Recursive Generalization Transformer, small) - new architecture not previously in catalog, strong on textures/fine detail. ~46MB.",
+      "scale": [
+        4
+      ],
+      "category": "nextgen",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "lsdir-compact-v2-x4",
+      "name": "LSDIR Compact v2 x4 (Fast Video)",
+      "description": "v2 upgrade of LSDIR Compact - tiny (~2.5MB), fast real-time 4x for low-power/low-VRAM devices.",
+      "scale": [
+        4
+      ],
+      "category": "video-fast",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "spanx2-ch48",
+      "name": "SPAN x2 ch48 (Real-Time Fast)",
+      "description": "SPAN 2x with 48 channels - very fast (~1.7MB), good for real-time on modest GPUs (T600/Arc A380).",
+      "scale": [
+        2
+      ],
+      "category": "video-fast",
       "type": "onnx",
       "available": true,
       "downloaded": false,

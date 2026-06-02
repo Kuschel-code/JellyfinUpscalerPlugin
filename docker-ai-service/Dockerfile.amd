@@ -52,20 +52,30 @@ WORKDIR /app
 # Copy requirements first for layer caching
 COPY requirements-amd.txt requirements.txt
 
-# Install Python dependencies with ROCm ONNX Runtime
-# onnxruntime-rocm ≤1.22.x is the last version with ROCm EP (deprecated after v1.23)
-# Falls back to CPU-only onnxruntime if ROCm wheel is unavailable
+# Install Python dependencies, then the ROCm ONNX Runtime.
+# onnxruntime-rocm ≤1.22.x is the last version with the ROCm EP (removed after v1.23).
+#
+# IMPORTANT (FIX-2): onnxruntime-rocm PROVIDES the `onnxruntime` module itself, so
+# plain `onnxruntime` must NOT be present alongside it — otherwise the plain build
+# (which reports AzureExecutionProvider/CPU) shadows the ROCm one and
+# ROCMExecutionProvider never appears. That was the real cause of the CPU-only AMD
+# image: the 2026-05-29 build log shows the rocm wheel installing fine as
+# 1.22.2.post1, yet the runtime reported ['AzureExecutionProvider','CPUExecutionProvider']
+# because plain onnxruntime (pulled by requirements) won. requirements-amd.txt no
+# longer lists it; we also uninstall any pre-baked copy, then force-install the rocm
+# build as the sole provider. The `|| pip install onnxruntime` tail remains only as a
+# genuine wheel-unavailable safety net (a visible CPU image, never a silent one).
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip && \
     pip install -r requirements.txt && \
-    (pip install "onnxruntime-rocm<=1.22.99" || pip install onnxruntime)
+    { pip uninstall -y onnxruntime onnxruntime-gpu || true; } && \
+    { pip install --force-reinstall "onnxruntime-rocm<=1.22.99" || pip install onnxruntime; }
 
-# Build-time provider visibility (issue #69 lesson): the ROCm wheel install above
-# has a SILENT `|| pip install onnxruntime` CPU fallback. Unlike NVIDIA/Intel this
-# does NOT hard-fail - a CPU image is a valid degraded mode when ROCm wheels are
-# unavailable (they are frequently yanked). But the fallback must be VISIBLE in the
-# build log so a CPU-only AMD image is never published unnoticed.
-RUN python3 -c "import onnxruntime as ort; p = ort.get_available_providers(); print('ONNX providers:', p); print('OK: ROCMExecutionProvider present') if 'ROCMExecutionProvider' in p else print('WARNING: ROCMExecutionProvider MISSING - this AMD image will run inference on CPU (ROCm wheel unavailable). Build continues (CPU is a valid fallback).')"
+# Build-time provider visibility (issue #69 lesson): make the result VISIBLE so a
+# CPU-only AMD image is never published unnoticed. ROCMExecutionProvider present =
+# real GPU acceleration; missing = the wheel was genuinely unavailable and we fell
+# back to CPU (a valid degraded mode for AMD, unlike the hard-fail NVIDIA/Intel paths).
+RUN python3 -c "import onnxruntime as ort; p = ort.get_available_providers(); print('ONNX providers:', p); print('OK: ROCMExecutionProvider present') if 'ROCMExecutionProvider' in p else print('WARNING: ROCMExecutionProvider MISSING - AMD image will run inference on CPU. Build continues (CPU is a valid fallback).')"
 
 # Copy application code
 COPY app/ ./app/

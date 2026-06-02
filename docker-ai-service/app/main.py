@@ -115,8 +115,11 @@ MODELS_DIR = Path(os.getenv("MODELS_DIR", "/app/models"))
 CACHE_DIR = Path(os.getenv("CACHE_DIR", "/app/cache"))
 STATIC_DIR = Path(os.getenv("STATIC_DIR", "/app/static"))
 
-# Version
-VERSION = "1.6.1.21"
+# Version — single source of truth is the APP_VERSION build arg the
+# Dockerfiles pass; fall back to a literal only for bare local runs.
+# (FIX-1: the hardcoded literal had drifted to 1.6.1.21 while the image
+# entrypoint banner correctly reported 1.7.7 — issue #69 screenshots.)
+VERSION = os.getenv("APP_VERSION", "1.7.7")
 
 # Global state
 class AppState:
@@ -1110,6 +1113,149 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "film-restore",
         "model_type": "restoration",
+        "available": True
+    },
+
+    # ============================================================
+    # === Catalog expansion (issue-review pass, 2026-06) ===
+    # Sourced from notaneimu/onnx-image-models (same base URL the
+    # loader already uses for clearreality/nomosuni/lsdir). All URLs
+    # HEAD-verified. Focus: compressed/streaming sources + artifact
+    # cleanup, the real-world Jellyfin use case (h264/h265 frames).
+    # ============================================================
+
+    # Real-ESRGAN general v3 — the modern tiny all-rounder. Dynamic
+    # input shape, ~5MB. Key is "realesr-general" (NOT "realesrgan"),
+    # so it is unaffected by the benchmark 64px heuristic.
+    "realesr-general-x4v3": {
+        "name": "Real-ESRGAN General x4 v3 (Versatile Default)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/realesr-general-x4v3.onnx",
+        "scale": 4,
+        "description": "Real-ESRGAN general-purpose v3 - tiny (~5MB), fast, dynamic-shape all-rounder. Best modern default for mixed live-action/anime streaming content.",
+        "type": "onnx",
+        "category": "video-fast",
+        "model_type": "realesr-general",
+        "available": True
+    },
+    "realesr-general-wdn-x4v3": {
+        "name": "Real-ESRGAN General x4 v3 (Denoise)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/realesr-general-wdn-x4v3.onnx",
+        "scale": 4,
+        "description": "Real-ESRGAN general v3 with denoise weighting (wdn) - ideal for noisy/compressed sources. ~5MB.",
+        "type": "onnx",
+        "category": "film-restore",
+        "model_type": "realesr-general",
+        "available": True
+    },
+
+    # Compressed/web-source specialists — trained on degraded inputs,
+    # the closest match to real streaming frames.
+    "realwebphoto-v4-dat2-x4": {
+        "name": "RealWebPhoto v4 DAT2 x4 (Compressed Sources)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/4xRealWebPhoto_v4_dat2_fp32_opset17.onnx",
+        "scale": 4,
+        "description": "DAT2 trained specifically on degraded web/compressed images - best match for h264/h265 streaming frames with blocking + ringing. ~49MB.",
+        "type": "onnx",
+        "category": "video-quality",
+        "model_type": "dat2",
+        "available": True
+    },
+    "nomoswebphoto-realplksr-x4": {
+        "name": "NomosWebPhoto RealPLKSR x4 (Web/Stream Quality)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/4xNomosWebPhoto_RealPLKSR.onnx",
+        "scale": 4,
+        "description": "RealPLKSR trained on web photos - efficient quality restore for compressed sources. ~30MB.",
+        "type": "onnx",
+        "category": "video-quality",
+        "model_type": "realplksr",
+        "available": True
+    },
+
+    # 1x artifact-cleanup pre-passes (no upscale) — run before a 4x
+    # model on heavily compressed streams.
+    "dejpg-realplksr-1x": {
+        "name": "DeJPEG RealPLKSR 1x (Artifact Cleanup Pre-Pass)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/1xDeJPG_realplksr_otf_fp32_fullyoptimized.onnx",
+        "scale": 1,
+        "description": "1x DeJPEG restoration - removes JPEG/block compression artifacts before upscaling. Pair with any 4x model on heavily compressed streams. ~30MB.",
+        "type": "onnx",
+        "category": "film-restore",
+        "model_type": "realplksr",
+        "available": True
+    },
+    "denoise-realplksr-1x": {
+        "name": "DeNoise RealPLKSR 1x (Denoise Pre-Pass)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/1xDeNoise_realplksr_otf_fp32.onnx",
+        "scale": 1,
+        "description": "1x denoise restoration pre-pass - complements NAFNet with the faster RealPLKSR arch. ~30MB.",
+        "type": "onnx",
+        "category": "film-restore",
+        "model_type": "realplksr",
+        "available": True
+    },
+
+    # Community-favorite ESRGAN classics + new RGT-S architecture.
+    "foolhardy-remacri-x4": {
+        "name": "Remacri x4 (Community Favorite)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/4x_foolhardy_Remacri.onnx",
+        "scale": 4,
+        "description": "4x_foolhardy_Remacri - legendary general-purpose ESRGAN upscaler, sharp detail without over-smoothing. ~67MB.",
+        "type": "onnx",
+        "category": "video-quality",
+        "model_type": "esrgan",
+        "available": True
+    },
+    "nmkd-siax-x4": {
+        "name": "NMKD Siax x4 (Detail Restore)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/4x_NMKD-Siax_200k.onnx",
+        "scale": 4,
+        "description": "4x_NMKD-Siax_200k - top-rated ESRGAN for detail/general content, 200k iterations. ~67MB.",
+        "type": "onnx",
+        "category": "video-quality",
+        "model_type": "esrgan",
+        "available": True
+    },
+    "nomos8k-hat-l-x4": {
+        "name": "Nomos8k HAT-L x4 (Maximum Quality)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/4xNomos8kSCHAT-L.onnx",
+        "scale": 4,
+        "description": "Full HAT-L (vs HAT-S in catalog) - highest photo quality, very heavy (~162MB, high VRAM). Poster/backdrop refresh only, not real-time.",
+        "type": "onnx",
+        "category": "video-quality",
+        "model_type": "hat",
+        "available": True
+    },
+    "textures-rgt-s-x4": {
+        "name": "Textures RGT-S x4 (New Transformer)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/4xTextures_GTAV_rgt-s_fp32_opset17.onnx",
+        "scale": 4,
+        "description": "RGT-S (Recursive Generalization Transformer, small) - new architecture not previously in catalog, strong on textures/fine detail. ~46MB.",
+        "type": "onnx",
+        "category": "nextgen",
+        "model_type": "rgt",
+        "available": True
+    },
+
+    # Low-VRAM / real-time fast lane (for the T600 4GB / Arc A380 6GB
+    # users seen in issues #62/#69).
+    "lsdir-compact-v2-x4": {
+        "name": "LSDIR Compact v2 x4 (Fast Video)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/4xLSDIRCompactv2.onnx",
+        "scale": 4,
+        "description": "v2 upgrade of LSDIR Compact - tiny (~2.5MB), fast real-time 4x for low-power/low-VRAM devices.",
+        "type": "onnx",
+        "category": "video-fast",
+        "model_type": "compact",
+        "available": True
+    },
+    "spanx2-ch48": {
+        "name": "SPAN x2 ch48 (Real-Time Fast)",
+        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/2x-spanx2-ch48.onnx",
+        "scale": 2,
+        "description": "SPAN 2x with 48 channels - very fast (~1.7MB), good for real-time on modest GPUs (T600/Arc A380).",
+        "type": "onnx",
+        "category": "video-fast",
+        "model_type": "span",
         "available": True
     },
 
@@ -3108,11 +3254,28 @@ def run_benchmark(test_size: int = 256) -> dict:
     if state.current_model is None:
         return {"error": "No model loaded"}
 
-    # Adjust test_size for models that require specific input dimensions
-    # Real-ESRGAN x4 models effectively work on tiles, but for benchmarking we keep it small and standard.
-    # 64x64 input -> 256x256 output (x4)
-    if state.current_model_type == "onnx" and "realesrgan" in state.current_model:
-        test_size = 64
+    # Adjust test_size to the model's ACTUAL expected input dimensions.
+    # Dynamic-shape models accept any tile (use a small, fast 64px tile);
+    # fixed-shape models such as "realesrgan-x4-256" bake a 256x256 input
+    # into the graph and raise a Reshape error during warmup if fed 64x64
+    # (FIX-3 / issue #70 — the "Reshape" failure Gemini misattributed to the
+    # GPU). Read the real shape from the loaded ONNX session instead of
+    # guessing from the model name (the substring "realesrgan" matched both
+    # the dynamic realesrgan-x4 and the fixed realesrgan-x4-256).
+    if state.current_model_type == "onnx":
+        fixed_dim = None
+        if state.onnx_session is not None:
+            try:
+                ishape = state.onnx_session.get_inputs()[0].shape  # e.g. [1,3,256,256] or [1,3,'h','w']
+                h = ishape[2] if len(ishape) >= 3 else None
+                if isinstance(h, int) and h > 0:
+                    fixed_dim = h
+            except Exception:
+                fixed_dim = None
+        if fixed_dim is not None:
+            test_size = fixed_dim          # fixed-shape model: input MUST match exactly
+        elif "realesrgan" in state.current_model:
+            test_size = 64                 # dynamic Real-ESRGAN: small tile (prior behavior)
 
     # Create test image
     test_img = np.random.randint(0, 255, (test_size, test_size, 3), dtype=np.uint8)
@@ -3218,6 +3381,31 @@ async def logs_stream(request: Request):
     )
 
 
+# --- GPU-active reporting (FIX-4 / issues #69, #70) -----------------------
+# state.use_gpu is the *requested* USE_GPU intent and was effectively only
+# tracked for CUDA/ROCm, so OpenVINO/CoreML setups got reported as "no GPU":
+# the dashboard showed GPU active while the System tab said "CPU only", and
+# /gpu-verify returned "using_gpu": false even with OpenVINO in the active
+# provider list. Report the truth derived from the live provider list. Only
+# the *displayed* value changes here — control flow still keys off
+# state.use_gpu.
+_NON_CPU_PROVIDERS = frozenset({
+    "CUDAExecutionProvider", "TensorrtExecutionProvider",
+    "OpenVINOExecutionProvider", "ROCMExecutionProvider",
+    "MIGraphXExecutionProvider", "CoreMLExecutionProvider",
+    "DmlExecutionProvider",
+})
+
+
+def gpu_is_active() -> bool:
+    """True when a non-CPU execution provider is active. Before any model is
+    loaded (provider list still empty) fall back to the requested USE_GPU
+    intent so a freshly started GPU box doesn't read 'no GPU'."""
+    if state.providers:
+        return any(p in _NON_CPU_PROVIDERS for p in state.providers)
+    return state.use_gpu
+
+
 @app.get("/health")
 async def health():
     """Health check endpoint."""
@@ -3227,7 +3415,7 @@ async def health():
         "model_name": state.current_model,
         "model_type": state.current_model_type,
         "providers": state.providers,
-        "using_gpu": state.use_gpu,
+        "using_gpu": gpu_is_active(),
         "gpu_name": state.gpu_name,
         "circuit_open": state.circuit_open
     }
@@ -3262,7 +3450,7 @@ async def status():
         "current_model": state.current_model,
         "model_type": state.current_model_type,
         "available_providers": state.providers,
-        "using_gpu": state.use_gpu,
+        "using_gpu": gpu_is_active(),
         "loaded_models": [state.current_model] if state.current_model else [],
         "processing_count": state.processing_count,
         "max_concurrent": state.max_concurrent,
@@ -3300,7 +3488,7 @@ async def hardware_info():
             "cores": state.cpu_cores
         },
         "providers": state.providers,
-        "using_gpu": state.use_gpu,
+        "using_gpu": gpu_is_active(),
         "gpu_list": state.gpu_list
     }
 
@@ -3372,7 +3560,8 @@ async def gpu_verify():
     diagnostics = {
         "onnx_providers": ort.get_available_providers() if ONNX_AVAILABLE else [],
         "active_providers": state.providers,
-        "using_gpu": state.use_gpu,
+        "using_gpu": gpu_is_active(),
+        "gpu_requested": state.use_gpu,
         "gpu_device_id": state.gpu_device_id,
         "gpu_list": state.gpu_list
     }

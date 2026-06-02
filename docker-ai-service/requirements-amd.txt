@@ -6,8 +6,11 @@ fastapi>=0.115.0,<1.0
 uvicorn[standard]>=0.32.0,<1.0
 python-multipart>=0.0.18,<1.0
 
-# AI/ML - ONNX Runtime (ROCm version attempted first in Dockerfile, fallback to CPU)
-onnxruntime>=1.20.0,<2.0.0
+# AI/ML - ONNX Runtime: do NOT list onnxruntime here.
+# The AMD image installs onnxruntime-rocm in Dockerfile.amd, which PROVIDES the
+# `onnxruntime` module itself. Installing plain onnxruntime alongside it shadows
+# the ROCm build, so the runtime reports AzureExecutionProvider/CPU and the GPU
+# is never used (FIX-2 — the real cause of the CPU-only AMD image).
 numpy>=1.24.0,<2.0.0
 
 # Image Processing - OpenCV with DNN Super Resolution
