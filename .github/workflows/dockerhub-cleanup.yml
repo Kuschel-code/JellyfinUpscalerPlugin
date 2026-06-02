@@ -1,0 +1,39 @@
+# Docker Hub tag cleanup — deletes obsolete tags and re-points `latest`.
+# Runs Scripts/cleanup-dockerhub-tags.ps1 with the existing repo secrets, so no
+# token is ever pasted anywhere. Manual dispatch only.
+#
+#   execute=false (default) → DRY RUN: logs KEEP/DELETE lists, changes nothing.
+#   execute=true            → re-points latest to v1.7.8 + deletes obsolete tags.
+#
+# NOTE: deleting tags needs a Docker Hub access token with the *Delete* scope.
+# If DOCKERHUB_TOKEN only has write scope, the delete calls return 403 — create a
+# Read/Write/Delete token and update the secret.
+name: Docker Hub Cleanup
+
+on:
+  workflow_dispatch:
+    inputs:
+      execute:
+        description: 'Actually delete + re-point latest (false = dry run)'
+        required: true
+        default: 'false'
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run cleanup script
+        shell: pwsh
+        env:
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if ('${{ inputs.execute }}' -eq 'true') {
+            ./Scripts/cleanup-dockerhub-tags.ps1 -Execute
+          } else {
+            ./Scripts/cleanup-dockerhub-tags.ps1
+          }
