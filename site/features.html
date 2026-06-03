@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.7.7</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.7.8</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container">
   <h1>Features</h1>
@@ -15,8 +15,8 @@
 
   <h2>Upscaling engine</h2>
   <div class="grid grid-2">
-    <div class="card"><h3>30+ ONNX models</h3><p>Real-ESRGAN family (x4plus / x2plus / anime), SwinIR (M/L), HAT (S/M/L), EDVR-M, RealBasicVSR, AnimeSR v2, Anime Compact, RIFE frame-interp (v4.7/v4.8/v4.9), FSRCNN, Waifu2x.</p></div>
-    <div class="card"><h3>4 hardware backends</h3><p>NVIDIA CUDA + TensorRT, Intel OpenVINO, AMD ROCm, CPU-only. Auto-detected on service startup, routed per-model based on benchmark history.</p></div>
+    <div class="card"><h3>70+ ONNX models</h3><p>Real-ESRGAN family, SwinIR, DAT2 / DAT-light, DRCT-L, HAT / HAT-L, OmniSR, MAN, CRAFT, RGT-S, RealPLKSR, EDVR-M, RealBasicVSR, AnimeSR v2, Real-CUGAN, APISR, RIFE frame-interp (v4.7–v4.25), FSRCNN / ESPCN / LapSRN / EDSR, ncnn-Vulkan.</p></div>
+    <div class="card"><h3>6 hardware backends</h3><p>NVIDIA CUDA + TensorRT, Intel OpenVINO, AMD ROCm, Apple Silicon, Vulkan (ncnn), CPU-only. Auto-detected on service startup, routed per-model based on benchmark history.</p></div>
     <div class="card"><h3>5 processing strategies</h3><p>Real-time (per-frame passthrough), Frame-by-Frame (batch of N frames), Batch (multi-segment), Multi-Frame (temporal), Real-Time AI (throttled queue).</p></div>
     <div class="card"><h3>Pre-processing cache</h3><p>Upscaled frames persist to disk keyed by (file hash, model, scale). Replaying a processed video costs zero GPU cycles.</p></div>
     <div class="card"><h3>Stream-copy codec path</h3><p>When you only want filters applied without re-encoding, stream-copy mode keeps the original video bitstream and copies audio 1:1.</p></div>
@@ -71,7 +71,7 @@
   <p><span class="tag">English</span><span class="tag">Deutsch</span><span class="tag">Français</span><span class="tag">中文</span><span class="tag">Русский</span><span class="tag">日本語</span></p>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.6.1.21</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.7.8</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>
