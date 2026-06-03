@@ -50,3 +50,12 @@
 
   container.innerHTML = html;
 })();
+
+// Load the client-side Support Assistant on every page (separate IIFE so it runs
+// even when a page has no [data-nav] container).
+(function () {
+  var s = document.createElement('script');
+  s.src = 'assets/support-bot.js';
+  s.defer = true;
+  document.head.appendChild(s);
+})();

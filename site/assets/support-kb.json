@@ -1,0 +1,142 @@
+{
+  "version": "1.7.8",
+  "updated": "2026-06-03",
+  "repo": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin",
+  "newIssueUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/new",
+  "intro": "Hi! I'm the AI Upscaler support assistant. I answer from every support topic we've ever handled. Ask me about install errors, GPU not being used, Docker/NAS setup, API tokens, models, and more.",
+  "entries": [
+    {
+      "id": "install-checksum",
+      "title": "Plugin won't install / checksum mismatch",
+      "issues": [51, 52, 54, 57, 62, 63],
+      "keywords": ["install", "installation", "checksum", "mismatch", "didn't match", "doesn't match", "invaliddataexception", "error occurred installing", "corrupt", "cannot install", "failed to install", "package installation failed"],
+      "answer": "Jellyfin verifies the plugin ZIP's MD5 against the repository manifest and rejects it on any mismatch.\n1. Make sure you use the official repo URL: `https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/repository-jellyfin.json`\n2. Every release since v1.6.1.12 is Quad-MD5 verified, so a checksum error on a current version almost always means a **stale cached repo**. Remove the repository, re-add it, restart Jellyfin, then install the latest (**v1.7.8**).\nIf it still fails, paste the exact error and your Jellyfin version."
+    },
+    {
+      "id": "no-newer-version",
+      "title": "\"No newer version available\" / can't update",
+      "issues": [65],
+      "keywords": ["no newer version", "newer version", "update", "cant update", "can't update", "outdated", "latest version", "no update", "stuck on old"],
+      "answer": "Jellyfin caches the plugin catalog. To force a refresh:\nDashboard → Plugins → **Repositories** → remove the AI Upscaler repo → re-add it → **restart Jellyfin**. The Catalog then shows the latest (**v1.7.8**). A hard browser refresh of the dashboard also helps."
+    },
+    {
+      "id": "not-supported-abi",
+      "title": "Plugin not supported / not compatible with my Jellyfin",
+      "issues": [58, 47],
+      "keywords": ["not supported", "unsupported", "incompatible", "compatible", "abi", "targetabi", "10.11", "won't load", "disabled", "wrong version"],
+      "answer": "The plugin targets Jellyfin **ABI 10.11.8**. Install the plugin version that matches your Jellyfin:\n- Jellyfin 10.11.x → install **v1.7.8**.\n- Older Jellyfin → update Jellyfin first.\nIf the plugin shows as disabled after install, check the Jellyfin logs for the ABI line and update accordingly."
+    },
+    {
+      "id": "docker-unreachable",
+      "title": "Unable to connect to the Docker AI service / service unavailable",
+      "issues": [62],
+      "keywords": ["unable to connect", "cant connect", "can't connect", "docker service", "ai service", "unavailable", "503", "connection refused", "offline", "not reachable", "service unavailable", "standalone"],
+      "answer": "The plugin talks to the Docker AI container over HTTP. Check, in order:\n1. The container is **running**.\n2. Port **5000** is published (`-p 5000:5000` / `ports: - \"5000:5000\"`).\n3. Open `http://YOUR-SERVER-IP:5000/health` in a browser → it should return `{\"status\":\"healthy\", ...}`.\n4. In the plugin set **AI Service URL** = `http://YOUR-SERVER-IP:5000`.\nA firewall or reverse proxy between Jellyfin and the container can block it."
+    },
+    {
+      "id": "gpu-on-cpu",
+      "title": "GPU is detected but inference runs on CPU (slow)",
+      "issues": [66, 67, 69, 70],
+      "keywords": ["gpu", "cpu", "not used", "using_gpu", "runs on cpu", "slow", "no gpu", "azureexecutionprovider", "gpu not working", "not using gpu", "inference cpu"],
+      "answer": "Usually you're on an **old/wrong image**. If `/gpu-verify` shows `AzureExecutionProvider`, that's plain `onnxruntime` with no GPU provider.\n1. Force a fresh pull of the right vendor image:\n```\ndocker compose pull\ndocker compose up -d --force-recreate\n```\nwith `docker7-intel` / `docker7-amd` / `docker7` (NVIDIA).\n2. Pass the GPU device: `--gpus all` (NVIDIA), `/dev/dri` (Intel/AMD Linux), or `/dev/dxg` (WSL2). On native Linux also add `group_add: render`.\nv1.7.8 also fixed a reporting bug where `/gpu-verify` showed `using_gpu:false` even though OpenVINO was active — trust `active_providers`."
+    },
+    {
+      "id": "intel-arc-wsl2",
+      "title": "Intel Arc / iGPU on Windows or WSL2 not used",
+      "issues": [66, 69, 70],
+      "keywords": ["intel", "arc", "wsl2", "wsl", "windows", "dxg", "openvino", "a380", "a310", "a750", "igpu", "docker desktop"],
+      "answer": "Use the **`docker7-intel`** image (it bundles `onnxruntime-openvino`).\n- On WSL2 / Docker Desktop pass **`/dev/dxg`** (not `/dev/dri/renderD128`) and mount `/usr/lib/wsl`.\n- Force a fresh image: `docker compose pull` (plain `docker compose up` reuses the cached old image).\n`/gpu-verify` should then show `OpenVINOExecutionProvider`. Note: real-time 4x on HD is heavy on an A380 — use **batch** mode for best quality."
+    },
+    {
+      "id": "onnx-reshape-fp16",
+      "title": "ONNX error / \"Reshape\" / wrong input type / FP16 crash",
+      "issues": [67, 70],
+      "keywords": ["onnx", "reshape", "fp16", "input type", "invalid_argument", "warmup", "runtime_exception", "onnxruntimeerror", "non-zero status"],
+      "answer": "Two separate fixes — update to the **v1.7.8** images:\n- **FP16-on-FP32 warmup crash** (INVALID_ARGUMENT): fixed in v1.7.4 — FP16 is only used when the loaded model actually agrees.\n- **\"Reshape\" warmup error** on `realesrgan-x4-256`: fixed in v1.7.8 — the benchmark now reads the model's real input shape instead of forcing a 64px tile."
+    },
+    {
+      "id": "api-token",
+      "title": "\"Api token not configured\" message",
+      "issues": [71],
+      "keywords": ["api token", "api_token", "not configured", "token", "403", "secure", "authentication", "unauthorized"],
+      "answer": "The Docker AI service is **secure-by-default** and refuses requests without a token. Two options:\n- **Home / LAN (simplest):** add `API_TOKEN=disable` to the container environment, then restart it.\n- **Secured:** set the same secret on **both** sides — container `API_TOKEN=your-secret` and the plugin's **AI Service Token** field.\nAfter either, the message is gone and model downloads work."
+    },
+    {
+      "id": "non-admin-users",
+      "title": "Non-admin users can't use the plugin (models won't load)",
+      "issues": [69],
+      "keywords": ["non-admin", "non admin", "normal user", "regular user", "permission", "elevation", "models won't show", "cant load model", "only admin", "authorize"],
+      "answer": "Fixed in **v1.7.5**: 47 of 52 endpoints used to be admin-only (`RequiresElevation`), so normal users could see models but not load/use them. 31 endpoints were reclassified to normal authenticated access. **Update the plugin to v1.7.8** and non-admin users can use it."
+    },
+    {
+      "id": "aspect-ratio-43",
+      "title": "4:3 video is stretched to fill the screen",
+      "issues": [69],
+      "keywords": ["aspect", "4:3", "stretched", "ratio", "distorted", "16:9", "letterbox", "squished"],
+      "answer": "Fixed in **v1.7.5** — both real-time renderers now use `object-fit: contain` on the canvas overlay, so 4:3 sources are letterboxed instead of stretched. Update the plugin to v1.7.8."
+    },
+    {
+      "id": "amd-vulkan",
+      "title": "AMD GPU support (ROCm / Vulkan)",
+      "issues": [49, 59],
+      "keywords": ["amd", "rocm", "vulkan", "radeon", "rx", "ncnn", "amd gpu", "miopen"],
+      "answer": "Two paths:\n- **`docker7-amd`** (ROCm). v1.7.8 fixed a bug where it silently ran on CPU (plain onnxruntime was shadowing the ROCm build) — it now reports `ROCMExecutionProvider`.\n- **`docker7-vulkan`** (ncnn-Vulkan) — works on most AMD/Intel GPUs and is the reliable path for older AMD cards.\nPass `/dev/dri` (+ `/dev/kfd` for ROCm) to the container."
+    },
+    {
+      "id": "nvidia-error",
+      "title": "NVIDIA / RTX random error or crash",
+      "issues": [46, 67],
+      "keywords": ["nvidia", "rtx", "cuda", "tensorrt", "a2000", "random error", "crash", "geforce", "nvenc"],
+      "answer": "Use the **`docker7`** (NVIDIA) image with `--gpus all` and the NVIDIA Container Toolkit installed on the host.\nIf you saw an `INVALID_ARGUMENT` error at warmup, that was the FP16/FP32 bug fixed in v1.7.4. Update to the **v1.7.8** images. `/gpu-verify` should show `CUDAExecutionProvider` / `TensorrtExecutionProvider`."
+    },
+    {
+      "id": "realtime-webgl",
+      "title": "Real-time keeps falling back to WebGL / poor playback performance",
+      "issues": [70],
+      "keywords": ["real-time", "realtime", "webgl", "fallback", "performance", "fps", "stutter", "slow playback", "switches back", "server mode"],
+      "answer": "Real-time **server** upscaling is best-effort: if your GPU can't sustain the target FPS within the per-frame budget, the plugin drops back to client-side WebGL so playback doesn't stutter. Live **4x on HD** exceeds most consumer GPUs (even an Arc A380).\nFor real quality, use the **batch / scheduled-task** route — pre-process the file once, then play the upscaled result normally."
+    },
+    {
+      "id": "job-stuck-95",
+      "title": "Batch upscale job stuck at 95% / where are the output files?",
+      "issues": [70],
+      "keywords": ["stuck", "95%", "95 percent", "job", "hangs", "never finishes", "temp", "temporary", "partial", "output file", "where", "scheduled task"],
+      "answer": "95% is the final **re-mux** stage (re-encode video + copy audio/subs).\n- The finished file is `<name>_upscaled.<ext>` next to the source; a failed/partial output is **auto-deleted** (so you won't find leftovers).\n- Intermediate frames live in the container's `/tmp` (not mounted, so invisible from the host).\nIf it hangs at 95%, `/tmp` likely filled up — mount a volume: `- ai-tmp:/tmp`. Grab `docker logs --tail 80` + `df -h /tmp` while it's stuck."
+    },
+    {
+      "id": "choose-model",
+      "title": "Which model should I use?",
+      "issues": [70],
+      "keywords": ["which model", "best model", "recommend", "model choice", "what model", "fast model", "quality model", "anime model", "models"],
+      "answer": "From the 71-model catalog:\n- **Fast / low-VRAM:** `realesr-general-x4v3` (~5MB), `lsdir-compact-v2-x4`, `spanx2-ch48`.\n- **Quality:** `realesrgan-x4`, `nomos2-dat2-x4`, `drct-l-x4`, `nomos8k-hat-l-x4` (heavy).\n- **Compressed / streaming sources:** `realwebphoto-v4-dat2-x4`, `nomoswebphoto-realplksr-x4`.\n- **Anime:** `real-cugan-x4`, `apisr-anime-x2`.\nSee the Model catalog page for the full list."
+    },
+    {
+      "id": "nas-setup",
+      "title": "Setup on ZimaOS / CasaOS / Synology / TrueNAS / Unraid",
+      "issues": [71],
+      "keywords": ["zimaos", "casaos", "nas", "synology", "truenas", "unraid", "qnap", "setup", "docker compose", "how to install", "docker run", "container"],
+      "answer": "Deploy the AI service with **docker compose** (one file, survives reboots). Minimal:\n```\nservices:\n  ai-upscaler:\n    image: kuscheltier/jellyfin-ai-upscaler:docker7-cpu\n    ports: [\"5000:5000\"]\n    environment: [\"API_TOKEN=disable\"]\n    volumes: [\"ai-models:/app/models\"]\n    restart: unless-stopped\nvolumes:\n  ai-models:\n```\nUse `docker7-intel` (+ `/dev/dri`) for an Intel iGPU. Then set the plugin's **AI Service URL** to `http://NAS-IP:5000`. TrueNAS users: there's a ready compose in `docker-ai-service/truenas/`."
+    },
+    {
+      "id": "select-library",
+      "title": "Scan only specific libraries (not everything)",
+      "issues": [64],
+      "keywords": ["select library", "specific library", "scan all", "library picker", "which library", "only one library", "enabledlibraryids"],
+      "answer": "Implemented in **v1.6.1.14**: the Settings tab has a library picker (stored as `EnabledLibraryIds`). Tick the libraries you want the scheduled scan to process. Leave all unticked = scan everything (the default)."
+    },
+    {
+      "id": "old-docker-tag",
+      "title": "Old docker5 / docker6 tag missing",
+      "issues": [59],
+      "keywords": ["docker5", "docker6", "docker4", "tag missing", "old tag", "pull failed", "manifest unknown", "not found tag"],
+      "answer": "The old tag families (`docker4/5/6/6.1`) are retired and were cleaned up. Use the current rolling tags **`docker7-<backend>`** (e.g. `docker7-intel`) or pin a release: **`:v1.7.8-<backend>`**."
+    },
+    {
+      "id": "getting-started",
+      "title": "Getting started / is the plugin usable?",
+      "issues": [48],
+      "keywords": ["usable", "getting started", "how to use", "beginner", "overview", "what is", "first time", "setup guide", "how does it work"],
+      "answer": "The quick path:\n1. Deploy the **Docker AI service** (compose — see the NAS/setup answer).\n2. Install the plugin from the repo and point its **AI Service URL** at `http://server:5000`.\n3. Open `http://server:5000` and **download a model**.\nThen: **batch** mode upscales your library overnight; **real-time** mode enhances during playback. See the Installation and Configuration pages."
+    }
+  ]
+}

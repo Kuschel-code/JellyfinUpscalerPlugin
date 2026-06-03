@@ -1119,6 +1119,7 @@ The plugin repository auto-updates checksums via CI. If you see a mismatch:
 
 ## Support
 
+- 💬 **[Support Assistant](https://kuschel-code.github.io/JellyfinUpscalerPlugin/)** — an in-browser bot on the docs site (button, bottom-right) that answers from **every issue we've ever handled**: install errors, GPU not used, Docker/NAS setup, API token, model choice, and more. No login, runs entirely in your browser.
 - [Project Website](https://transcendent-blancmange-824967.netlify.app)
 - [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 - [GitHub Wiki](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/wiki)
