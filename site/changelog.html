@@ -13,7 +13,16 @@
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.7.8 — Model Catalog +12 &amp; GPU / Benchmark / AMD Fixes <span class="tag success">latest</span></h2>
+  <h2>v1.7.9 — Setup Doctor + Embedded Anime4K + GPU-State Fix <span class="tag success">latest</span></h2>
+  <p><em>2026-06.</em> Docker + plugin release, both at <strong>v1.7.9</strong>. Pull the refreshed <code>docker7</code> / <code>docker7-&lt;backend&gt;</code> images <strong>and</strong> update the plugin.</p>
+  <ul>
+    <li><strong>Setup Doctor.</strong> New <code>GET /doctor</code> one-shot self-diagnostic — backend, GPU provider active, device passthrough, the right onnxruntime build (catches vendor-shadowing), API token, and a model smoke test, each row with a copy-paste fix — plus a "Setup Check" panel on the Docker dashboard's Hardware tab. Condenses the #66/#69/#70 setup-friction saga into one <code>curl</code>.</li>
+    <li><strong>GPU-state fix.</strong> <code>run_benchmark()</code>, <code>/models/load</code> and <code>/benchmark-frame</code> still reported the <em>requested</em> GPU intent instead of the <em>active</em> provider truth; all three now use <code>gpu_is_active()</code>.</li>
+    <li><strong>Anime4K actually runs now.</strong> The "Anime4K (anime shader)" real-time tier previously loaded a dead CDN URL and silently fell back to Lanczos. It now ships a <strong>vendored, tree-shaken Anime4K.js</strong> (npm 1.1.2, Anime4K 4.0.1, WebGL, MIT, ~225 KB) <strong>embedded in the plugin DLL</strong> — offline, no CDN — with a WebGL2 float-texture support-gate and automatic Lanczos fallback. Honest label: an anime <em>shader</em>, not a neural net. Third-party licenses recorded in <code>THIRD-PARTY-NOTICES.md</code>.</li>
+    <li><strong>Docs honesty.</strong> Honest real-time tier ladder across README + site; the website support bot gained a Setup Doctor topic.</li>
+  </ul>
+
+  <h2>v1.7.8 — Model Catalog +12 &amp; GPU / Benchmark / AMD Fixes</h2>
   <p><em>2026-06.</em> Plugin bumped to <strong>v1.7.8</strong> (embedded offline model-fallback refreshed 59 → 71); all <em>functional</em> fixes ship in the Docker images. Pull the refreshed <code>docker7</code> / <code>docker7-&lt;backend&gt;</code> images (or pin <code>:v1.7.8-&lt;backend&gt;</code>). All changes are in <code>docker-ai-service/</code>.</p>
   <ul>
     <li><strong>Model catalog 59 → 71 (+12).</strong> New ONNX models from the curated <code>notaneimu/onnx-image-models</code> source, focused on compressed/streaming sources: <code>realesr-general-x4v3</code>/<code>-wdn</code> (tiny modern general default), <code>realwebphoto-v4-dat2-x4</code> + <code>nomoswebphoto-realplksr-x4</code> (trained on degraded web images), <code>dejpg-realplksr-1x</code> + <code>denoise-realplksr-1x</code> (1x artifact-cleanup pre-passes), <code>foolhardy-remacri-x4</code>, <code>nmkd-siax-x4</code>, <code>nomos8k-hat-l-x4</code> (full HAT-L), <code>textures-rgt-s-x4</code> (RGT-S, new architecture), <code>lsdir-compact-v2-x4</code>, <code>spanx2-ch48</code>.</li>

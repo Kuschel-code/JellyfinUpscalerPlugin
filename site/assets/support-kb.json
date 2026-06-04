@@ -172,6 +172,13 @@
       "issues": [66, 69, 70],
       "keywords": ["doctor", "diagnose", "diagnostic", "setup check", "why cpu", "gpu not used", "is my gpu working", "self test", "health check"],
       "answer": "v1.7.9 adds a one-shot Setup Doctor that inspects YOUR running AI service and tells you exactly what to fix. Step by step:\n1. Open http://YOUR-SERVER-IP:5000/doctor in a browser (or run: curl http://IP:5000/doctor | jq). The Docker dashboard also has a 'Setup Check' button on the Hardware tab.\n2. Read the rows top to bottom - each is green (ok) / amber (warn) / red (fail) with a copy-paste fix.\n3. backend: which image/GPU was detected (info only).\n4. gpu_provider_active: red means you are on CPU - pull the matching docker7-<nvidia|amd|intel> image and pass the GPU device.\n5. device_passthrough: red prints the exact line for your backend (--gpus all, or /dev/dri, or WSL2 /dev/dxg + group_add).\n6. onnx_provider_pkg: red means the wrong onnxruntime build (a plain onnxruntime shadows the GPU one) - pull the clean docker7-<backend> image.\n7. api_token: warn if no token is set - use API_TOKEN=disable for a trusted LAN, or the same token on both the plugin and the service.\n8. model_smoke: runs a tiny inference on the loaded model; 'no model loaded yet' is fine on a fresh start, not an error.\nPaste the /doctor output into a GitHub issue and we can pinpoint the problem in one reply."
+    },
+    {
+      "id": "anime4k",
+      "title": "Anime4K mode (anime shader) - how to use it / it does nothing",
+      "issues": [],
+      "keywords": ["anime4k", "anime", "anime mode", "anime shader", "anime upscale", "shader", "anime4k not working", "nothing happens", "webgl2", "cartoon"],
+      "answer": "Anime4K is a real-time WebGL anime SHADER (Anime4K 4.0.1) - not a neural net, and it needs no server. As of v1.7.9 it actually runs; older builds loaded a dead CDN and silently fell back to plain sharpening. Step by step:\n1. Update the plugin to v1.7.9 or newer.\n2. In a WEB client (browser, not a native app) start an anime title.\n3. Plugin settings -> Realtime Mode -> 'Anime4K (anime shader)' (or switch it in the in-player quick-menu), then play.\n4. Confirm in the browser console (F12): success shows 'AI Upscaler RT: Anime4K (embedded, SIMPLE_M 2x) started'. In the Network tab, 'configurationpage?name=UPSCALERAnime4K' should return 200.\n5. If your client lacks WebGL2 float textures, the console shows 'Anime4K unsupported ... using Lanczos' and it auto-falls back to the sharpen shader (no error, just not anime upscaling).\nNotes: it runs client-side, so no Docker/GPU server is needed; it's best on anime/cartoon content. For live-action or guaranteed maximum quality, use Server AI or the batch scheduled task instead."
     }
   ]
 }
