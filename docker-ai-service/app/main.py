@@ -3772,7 +3772,10 @@ async def doctor():
         checks.append({"check": "onnx_provider_pkg", "status": "warn",
                        "detail": "onnxruntime not importable in this image",
                        "fix": "Use an image that ships onnxruntime (docker7 variants do)."})
-    elif state.use_gpu and not gpu_eps:
+    elif state.use_gpu and not gpu_eps and (has_dri or has_dxg or nvidia_ok):
+        # Only a *shadowed/wrong* build: GPU intent + a GPU device is actually
+        # present, yet no GPU EP. On a plain CPU image (no device) USE_GPU
+        # defaults to "true", so without this guard a CPU box would false-fail.
         checks.append({"check": "onnx_provider_pkg", "status": "fail",
                        "detail": f"GPU requested but only {sorted(avail)} available",
                        "fix": "Wrong/shadowed onnxruntime: a plain `onnxruntime` installed "
