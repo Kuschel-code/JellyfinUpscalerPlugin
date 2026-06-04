@@ -1,6 +1,6 @@
 {
-  "version": "1.7.8",
-  "updated": "2026-06-03",
+  "version": "1.7.9",
+  "updated": "2026-06-04",
   "repo": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin",
   "newIssueUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/new",
   "intro": "Hi! I'm the AI Upscaler support assistant. I answer from every support topic we've ever handled (each with a step-by-step guide), and I can search all GitHub issues live. Ask about install errors, GPU not used, Docker/NAS setup, API tokens, models, and more.",
@@ -165,6 +165,13 @@
       "issues": [42],
       "keywords": ["ffmpeg", "ffprobe", "crash", "cannot start process", "file name has not been provided", "playback crash", "invalidoperationexception", "scan task fails", "fails at 0%", "no models list"],
       "answer": "An old ffmpeg cold-start bug (paths captured before Jellyfin resolved them), **fixed in v1.6.1.21**. Step by step:\n1. Update to **v1.7.8**.\n2. Dashboard → Playback → confirm Jellyfin's bundled FFmpeg is detected.\n3. Restart Jellyfin.\n4. Re-run the scheduled task — paths are now late-resolved on every entry point."
+    },
+    {
+      "id": "setup-doctor",
+      "title": "Run the Setup Doctor (one-shot self-diagnosis)",
+      "issues": [66, 69, 70],
+      "keywords": ["doctor", "diagnose", "diagnostic", "setup check", "why cpu", "gpu not used", "is my gpu working", "self test", "health check"],
+      "answer": "v1.7.9 adds a one-shot Setup Doctor that inspects YOUR running AI service and tells you exactly what to fix. Step by step:\n1. Open http://YOUR-SERVER-IP:5000/doctor in a browser (or run: curl http://IP:5000/doctor | jq). The Docker dashboard also has a 'Setup Check' button on the Hardware tab.\n2. Read the rows top to bottom - each is green (ok) / amber (warn) / red (fail) with a copy-paste fix.\n3. backend: which image/GPU was detected (info only).\n4. gpu_provider_active: red means you are on CPU - pull the matching docker7-<nvidia|amd|intel> image and pass the GPU device.\n5. device_passthrough: red prints the exact line for your backend (--gpus all, or /dev/dri, or WSL2 /dev/dxg + group_add).\n6. onnx_provider_pkg: red means the wrong onnxruntime build (a plain onnxruntime shadows the GPU one) - pull the clean docker7-<backend> image.\n7. api_token: warn if no token is set - use API_TOKEN=disable for a trusted LAN, or the same token on both the plugin and the service.\n8. model_smoke: runs a tiny inference on the loaded model; 'no model loaded yet' is fine on a fresh start, not an error.\nPaste the /doctor output into a GitHub issue and we can pinpoint the problem in one reply."
     }
   ]
 }

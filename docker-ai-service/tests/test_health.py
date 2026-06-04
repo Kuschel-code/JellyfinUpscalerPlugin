@@ -59,3 +59,28 @@ def test_gpus_returns_list(client):
     # API returns either a plain list or {"gpus": [...], "total": N, ...}
     gpu_list = data if isinstance(data, list) else data.get("gpus", [])
     assert isinstance(gpu_list, list), f"expected list or dict with gpus key, got {type(data)}"
+
+
+def test_doctor_returns_200_and_shape(client):
+    """Setup Doctor (WS1) returns a structured checklist."""
+    resp = client.get("/doctor")
+    assert resp.status_code == 200
+    d = resp.json()
+    assert d.get("overall") in ("ok", "warn", "fail"), f"bad overall: {d}"
+    checks = d.get("checks")
+    assert isinstance(checks, list) and len(checks) >= 6, f"expected >=6 checks: {d}"
+    names = {c["check"] for c in checks}
+    expected = {"backend", "gpu_provider_active", "device_passthrough",
+                "onnx_provider_pkg", "api_token", "model_smoke"}
+    assert expected <= names, f"missing checks: {expected - names}"
+    for c in checks:
+        assert {"check", "status", "detail", "fix"} <= set(c.keys()), f"bad check shape: {c}"
+        assert c["status"] in ("ok", "warn", "fail"), f"bad status: {c}"
+
+
+def test_doctor_no_model_smoke_never_fails(client):
+    """A freshly started, no-model instance must never show model_smoke=fail
+    (it must degrade to warn) — otherwise a clean box reads as broken."""
+    d = client.get("/doctor").json()
+    smoke = next(c for c in d["checks"] if c["check"] == "model_smoke")
+    assert smoke["status"] in ("ok", "warn"), f"model_smoke must not fail on no-model box: {smoke}"

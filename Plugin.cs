@@ -198,6 +198,13 @@ namespace JellyfinUpscalerPlugin
                 {
                     Name = "UPSCALERWebGPUAI",
                     EmbeddedResourcePath = GetType().Namespace + ".Configuration.webgpu-ai-realtime.js"
+                },
+                // v1.7.9 - vendored, tree-shaken Anime4K.js (WebGL) for the anime tier.
+                // Loaded lazily by player-integration.js when RealtimeMode is anime4k.
+                new PluginPageInfo
+                {
+                    Name = "UPSCALERAnime4K",
+                    EmbeddedResourcePath = GetType().Namespace + ".Configuration.anime4k.js"
                 }
             };
         }

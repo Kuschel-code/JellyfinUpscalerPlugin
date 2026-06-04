@@ -119,7 +119,7 @@ STATIC_DIR = Path(os.getenv("STATIC_DIR", "/app/static"))
 # Dockerfiles pass; fall back to a literal only for bare local runs.
 # (FIX-1: the hardcoded literal had drifted to 1.6.1.21 while the image
 # entrypoint banner correctly reported 1.7.7 — issue #69 screenshots.)
-VERSION = os.getenv("APP_VERSION", "1.7.7")
+VERSION = os.getenv("APP_VERSION", "1.7.9")
 
 # Global state
 class AppState:
@@ -3313,7 +3313,7 @@ def run_benchmark(test_size: int = 256) -> dict:
         "output_size": f"{test_size * scale}x{test_size * scale}",
         "avg_time_ms": round(avg_time * 1000, 2),
         "fps": round(fps, 2),
-        "using_gpu": state.use_gpu
+        "using_gpu": gpu_is_active()
     }
     
     state.last_benchmark = result
@@ -3642,6 +3642,195 @@ async def gpu_verify():
     return diagnostics
 
 
+# --- Setup Doctor (WS1, v1.7.9) ----------------------------------------------
+# One-shot self-service diagnostic that condenses the recent setup-friction
+# saga (#66 WSL2 / #69 wrong image / #70 "switches to CPU") into a single curl.
+# Every check is strictly read-only EXCEPT model_smoke (one tiny inference),
+# which is timeout-guarded and degrades to warn — never fail — on a no-model box.
+
+def _detect_backend() -> str:
+    """Best-effort backend label. There is no single stored backend value, so
+    derive it from the live ONNX provider list, falling back to device hints
+    when no model is loaded yet. Returns one clean key:
+    nvidia | amd | intel | intel-wsl2 | apple | directml | cpu."""
+    providers = state.providers or []
+    if any("Tensorrt" in p or "CUDA" in p for p in providers):
+        return "nvidia"
+    if any("ROCM" in p or "MIGraphX" in p for p in providers):
+        return "amd"
+    if any("OpenVINO" in p for p in providers):
+        return "intel-wsl2" if Path("/dev/dxg").exists() else "intel"
+    if any("CoreML" in p for p in providers):
+        return "apple"
+    if any("Dml" in p for p in providers):
+        return "directml"
+    # No GPU provider active yet → derive from device hints / requested intent.
+    if Path("/dev/dxg").exists():
+        return "intel-wsl2"
+    return "cpu"
+
+
+def _model_smoke_sync() -> dict:
+    """Tiny, bounded smoke test on the already-loaded model. ONNX models get a
+    real run() built from their declared input shape (same probe as /gpu-verify);
+    non-ONNX (ncnn/opencv) models report 'loaded' (no cheap isolated inference
+    path). Runs in a worker thread under a timeout in the route."""
+    if ONNX_AVAILABLE and state.onnx_session is not None:
+        model_input = state.onnx_session.get_inputs()[0]
+        input_name = model_input.name
+        input_shape = model_input.shape
+        test_shape = [d if isinstance(d, int) and d > 0 else 16 for d in input_shape]
+        test_input = np.random.rand(*test_shape).astype(np.float32)
+        t = time.time()
+        state.onnx_session.run(None, {input_name: test_input})
+        return {"ok": True, "ms": round((time.time() - t) * 1000, 2),
+                "shape": str(input_shape), "kind": "onnx"}
+    return {"ok": True, "ms": None, "shape": None,
+            "kind": state.current_model_type or "unknown"}
+
+
+@app.get("/doctor")
+async def doctor():
+    """Setup Doctor — one-shot diagnostic checklist for the running instance.
+    Each item: {check, status: ok|warn|fail, detail, fix}. Pairs with the
+    website support bot: the bot answers questions, the doctor diagnoses THIS box."""
+    checks = []
+    backend = _detect_backend()
+    providers = state.providers or []
+    gpu_active = gpu_is_active()
+
+    # Per-backend device-passthrough fix line (reused by checks 2 & 3).
+    device_fix = {
+        "nvidia": "Grant the GPU: compose `deploy.resources.reservations.devices: "
+                  "[{driver: nvidia, count: all, capabilities: [gpu]}]` "
+                  "(older Docker: `runtime: nvidia`; CLI: `docker run --gpus all`).",
+        "amd": "Pass ROCm devices: `--device=/dev/kfd --device=/dev/dri` + "
+               "`group_add: [video, render]`.",
+        "intel": "Pass the render node: `--device=/dev/dri` + `group_add: render`.",
+        "intel-wsl2": "WSL2/Docker-Desktop: `devices: [/dev/dxg:/dev/dxg]` + "
+                      "`volumes: [/usr/lib/wsl:/usr/lib/wsl:ro]` + "
+                      "`environment: [LD_LIBRARY_PATH=/usr/lib/wsl/lib]`.",
+        "apple": "Apple Silicon runs natively (install-native-macos.sh); "
+                 "Docker cannot pass the Apple GPU.",
+        "directml": "DirectML needs a Windows host with a DX12-capable GPU.",
+    }
+
+    # 1) backend — info only.
+    checks.append({
+        "check": "backend",
+        "status": "ok",
+        "detail": f"detected backend: {backend}"
+                  + ("" if providers else " (no model loaded yet — derived from device/intent)"),
+        "fix": None,
+    })
+
+    # 2) gpu_provider_active — a non-CPU provider is actually live.
+    if gpu_active:
+        checks.append({"check": "gpu_provider_active", "status": "ok",
+                       "detail": f"active providers: {providers}", "fix": None})
+    elif backend == "cpu":
+        checks.append({"check": "gpu_provider_active", "status": "warn",
+                       "detail": "running on CPU (CPU image / no GPU image selected)",
+                       "fix": "This is CPU-only upscaling. For GPU, pull "
+                              "`docker7-<nvidia|amd|intel|...>` and pass the device "
+                              "(see device_passthrough)."})
+    else:
+        checks.append({"check": "gpu_provider_active", "status": "fail",
+                       "detail": f"on CPU though backend '{backend}' was detected; "
+                                 f"providers={providers}",
+                       "fix": f"Pull `docker7-{backend}` and pass the device "
+                              f"(see device_passthrough)."})
+
+    # 3) device_passthrough — the GPU device reaches the container.
+    dri = Path("/dev/dri")
+    has_dri = dri.exists() and any(dri.glob("renderD*"))
+    has_dxg = Path("/dev/dxg").exists()
+    nvidia_ok = False
+    try:
+        r = subprocess.run(["nvidia-smi", "-L"], capture_output=True, text=True, timeout=5)
+        nvidia_ok = r.returncode == 0
+    except Exception:
+        nvidia_ok = False
+    passthrough_ok = has_dri or has_dxg or nvidia_ok
+    pt_detail = f"/dev/dri renderD*={has_dri}, /dev/dxg={has_dxg}, nvidia-smi={nvidia_ok}"
+    if backend == "cpu":
+        checks.append({"check": "device_passthrough", "status": "ok",
+                       "detail": "CPU image — no GPU device required. " + pt_detail,
+                       "fix": None})
+    elif passthrough_ok:
+        checks.append({"check": "device_passthrough", "status": "ok",
+                       "detail": pt_detail, "fix": None})
+    else:
+        checks.append({"check": "device_passthrough", "status": "fail",
+                       "detail": pt_detail,
+                       "fix": device_fix.get(backend, "Pass your GPU device into the container.")})
+
+    # 4) onnx_provider_pkg — the right onnxruntime build (no vendor shadowing).
+    avail = set(ort.get_available_providers()) if ONNX_AVAILABLE else set()
+    gpu_eps = avail & set(_NON_CPU_PROVIDERS)
+    if not ONNX_AVAILABLE:
+        checks.append({"check": "onnx_provider_pkg", "status": "warn",
+                       "detail": "onnxruntime not importable in this image",
+                       "fix": "Use an image that ships onnxruntime (docker7 variants do)."})
+    elif state.use_gpu and not gpu_eps:
+        checks.append({"check": "onnx_provider_pkg", "status": "fail",
+                       "detail": f"GPU requested but only {sorted(avail)} available",
+                       "fix": "Wrong/shadowed onnxruntime: a plain `onnxruntime` installed "
+                              "next to the vendor build shadows it (Azure/CPU only) → silent "
+                              "CPU fallback. Pull the clean `docker7-<backend>` image."})
+    else:
+        checks.append({"check": "onnx_provider_pkg", "status": "ok",
+                       "detail": f"available EPs: {sorted(avail)}", "fix": None})
+
+    # 5) api_token — auth is configured (a token, or explicit disable).
+    api_token_env = os.getenv("API_TOKEN", "")
+    if api_token_env == "disable":
+        checks.append({"check": "api_token", "status": "ok",
+                       "detail": "API_TOKEN=disable (auth off — fine for trusted LAN)", "fix": None})
+    elif api_token_env:
+        checks.append({"check": "api_token", "status": "ok",
+                       "detail": "API_TOKEN set (auth on)", "fix": None})
+    else:
+        checks.append({"check": "api_token", "status": "warn",
+                       "detail": "API_TOKEN not set",
+                       "fix": "Set `API_TOKEN=disable` for a trusted LAN, or the SAME token "
+                              "on both the Jellyfin plugin and this service."})
+
+    # 6) model_smoke — the one non-read-only check. Warn (never fail) with no model;
+    #    timeout-guarded so /doctor never blocks.
+    smoke_timeout = 8.0
+    if not state.current_model:
+        checks.append({"check": "model_smoke", "status": "warn",
+                       "detail": "no model loaded yet — load a model to run a smoke test",
+                       "fix": "Load a model (POST /models/load or pick one in the UI), then re-run /doctor."})
+    else:
+        try:
+            loop = asyncio.get_running_loop()
+            smoke = await asyncio.wait_for(loop.run_in_executor(None, _model_smoke_sync),
+                                           timeout=smoke_timeout)
+            if smoke.get("kind") == "onnx":
+                checks.append({"check": "model_smoke", "status": "ok",
+                               "detail": f"ONNX inference ok in {smoke.get('ms')} ms "
+                                         f"(input {smoke.get('shape')})", "fix": None})
+            else:
+                checks.append({"check": "model_smoke", "status": "ok",
+                               "detail": f"model loaded ({smoke.get('kind')}); "
+                                         f"ONNX deep smoke not applicable", "fix": None})
+        except asyncio.TimeoutError:
+            checks.append({"check": "model_smoke", "status": "warn",
+                           "detail": f"smoke test exceeded {smoke_timeout:.0f}s "
+                                     f"(skipped to keep /doctor responsive)",
+                           "fix": "Model may be slow to warm up; retry or check logs."})
+        except Exception as e:
+            checks.append({"check": "model_smoke", "status": "fail",
+                           "detail": f"inference failed: {e}",
+                           "fix": "Model load/warmup failed — check server logs and the model file."})
+
+    statuses = [c["status"] for c in checks]
+    overall = "fail" if "fail" in statuses else ("warn" if "warn" in statuses else "ok")
+    return {"version": VERSION, "backend": backend, "overall": overall, "checks": checks}
+
+
 @app.get("/connections")
 async def plugin_connections():
     """Get plugin connection status."""
@@ -3826,7 +4015,7 @@ async def load_model_endpoint(
         "status": "success",
         "model": model_name,
         "model_type": state.current_model_type,
-        "using_gpu": state.use_gpu,
+        "using_gpu": gpu_is_active(),
         "gpu_device_id": state.gpu_device_id,
         "providers": state.providers
     }
@@ -4203,7 +4392,7 @@ def _run_frame_benchmark(width: int, height: int) -> dict:
         "fps": round(fps, 1),
         "avg_time_ms": round(avg_time * 1000, 1),
         "model": state.current_model,
-        "using_gpu": state.use_gpu,
+        "using_gpu": gpu_is_active(),
         "capture_width": width,
         "capture_height": height,
         "output_width": width * (state.onnx_model_scale if state.current_model_type == "onnx" else (state.ncnn_model_scale if state.current_model_type == "ncnn" else state.cv_model_scale)),

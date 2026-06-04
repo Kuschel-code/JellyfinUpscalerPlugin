@@ -1,0 +1,11 @@
+{
+  "name": "a4k-vendor-build",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Throwaway build harness: produces the tree-shaken Anime4K.js bundle embedded in the plugin. Not committed.",
+  "dependencies": {
+    "anime4k.js": "1.1.2",
+    "esbuild": "^0.25.0"
+  }
+}

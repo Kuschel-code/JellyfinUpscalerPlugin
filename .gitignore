@@ -84,3 +84,10 @@ truenas-catalog/
 
 # MCP/Agent tool caches
 .claude-flow/
+
+# Anime4K vendor build harness — keep the recipe (package.json/entry.mjs/build.mjs),
+# ignore the install + generated artifacts.
+.a4k-build/node_modules/
+.a4k-build/out.js
+.a4k-build/package-lock.json
+.a4k-build/UPSTREAM_LICENSE.txt

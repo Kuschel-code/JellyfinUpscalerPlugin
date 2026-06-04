@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.7.9.0",
+        "changelog": "v1.7.9: Setup Doctor + Anime4K embedded tier + GPU-state fix. NEW GET /doctor self-diagnostic (backend, GPU provider, device passthrough, onnxruntime build, API token, model smoke) plus a Setup Check panel in the Docker dashboard - condenses the #66/#69/#70 setup-friction saga into one curl. FIX: three AI-service endpoints (run_benchmark, /models/load, /benchmark-frame) reported the requested GPU intent instead of the active provider truth - now all use gpu_is_active(). The Anime4K anime-shader realtime tier now ships a vendored, tree-shaken Anime4K.js (npm 1.1.2, WebGL, MIT, ~225KB, Anime4K 4.0.1) embedded in the plugin DLL instead of a dead CDN load, with a WebGL2 float-texture support-gate and automatic Lanczos fallback; honest tier label (anime shader, not a neural net). Docker AI service and plugin both at 1.7.9.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.7.9/JellyfinUpscalerPlugin-v1.7.9.zip",
+        "checksum": "e5ebed4a23b8bd4a9ff6d8e7aa049662",
+        "timestamp": "2026-06-04T00:00:00.000Z"
+      },
+      {
         "version": "1.7.8.0",
         "changelog": "v1.7.8: Docker AI service catalog + GPU/benchmark/AMD fixes. Model catalog 59 -> 71 (+12 ONNX models for compressed/streaming sources: realesr-general v3, RealWebPhoto/NomosWebPhoto, 1x DeJPEG/DeNoise pre-passes, Remacri, NMKD-Siax, HAT-L, RGT-S, fast low-VRAM picks). FIX (#70): run_benchmark() reads the ONNX session input shape so fixed-shape realesrgan-x4-256 no longer crashes warmup with a Reshape error. FIX (#69/#70): gpu_is_active() derives GPU-active from the live provider list (counts OpenVINO/CoreML) - /health,/status,/hardware,/gpu-verify stop reporting using_gpu false while OpenVINO is active. FIX: AMD image ran on CPU because plain onnxruntime shadowed onnxruntime-rocm - removed from requirements-amd.txt + force-install rocm as sole provider. FIX: VERSION reads APP_VERSION (was hardcoded 1.6.1.21). C# Plugin DLL: embedded model-fallback list refreshed 59 -> 71; functional fixes are all docker-side. Docker images: pull docker7-<backend> or :v1.7.8-<backend>. Tests 123/123. v1.7.x configs bit-compatible.",
         "targetAbi": "10.11.8.0",

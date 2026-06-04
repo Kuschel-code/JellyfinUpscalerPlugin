@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.7.8
+# Jellyfin AI Upscaler Plugin v1.7.9
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.7.8):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.7.9):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.7.8     │  │
+│  │  AI Upscaler Plugin v1.7.9     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -78,11 +78,16 @@ The **Scheduled Task** ("Scan & Upscale Library Images") runs weekly on Sunday a
 3. Auto-scales: 4x for very low-res images, 2x otherwise
 4. Also available on-demand via `POST /api/upscaler/upscale-images/{itemId}`
 
-### Real-Time Upscaling During Playback (NEW in v1.5.3.3)
-When you press play, the plugin automatically enhances the video in real-time using a **two-tier system**:
+### Real-Time Upscaling During Playback
+When you press play, the plugin enhances the video in real-time. It offers several **honest tiers** (pick one, or let *Auto* choose) — each labelled for what it actually is, not marketing:
 
-- **Tier 1 — WebGL (Client-Side):** A Lanczos2 resampling shader with CAS (Contrast Adaptive Sharpening) runs on your browser's GPU. Zero latency, always available. Works on any device with WebGL support.
-- **Tier 2 — Server AI:** Video frames are captured, sent to the Docker AI service, upscaled with the selected model, and rendered back. Requires a powerful server.
+- **WebGL (sharpen)** — a Lanczos2 + CAS sharpening shader on your browser's GPU. Zero latency, works on any WebGL device. *Not AI* — the always-available baseline.
+- **Anime4K (anime shader)** — the Anime4K 4.0.1 GLSL filter (a *shader*, not a neural net), embedded in the plugin and run client-side via WebGL. Best for anime; auto-falls back to WebGL if the client lacks WebGL2 float textures.
+- **WebGPU AI (client GPU)** — a real Real-ESRGAN compact model via onnxruntime-web on **WebGPU**, running on *your* GPU in the browser. Real neural-net AI, no server needed.
+- **Server AI** — frames are sent to the Docker AI service, upscaled with the selected model (Real-ESRGAN / SwinIR / DAT2 / …), and rendered back. Highest live quality; needs a capable server GPU.
+- **Batch (scheduled task)** — for guaranteed best quality, upscale the whole file once on the server and just play the `_upscaled` result — and reach the TVs/phones nothing else can.
+
+**Pair it with what you already have:** on a desktop browser you can also use your GPU's own VSR (NVIDIA RTX Video Super Resolution / Intel VSR); for mpv there's mpv-shim + Anime4K. This plugin is the *hub* that brings anime/AI upscaling to every web/TV/mobile client **and** batch-upscales your whole library.
 
 **How it decides:** At playback start, a benchmark runs against the Docker service. If the server can process frames fast enough (≥80% of video FPS), it uses Server AI mode. Otherwise, it falls back to WebGL. If server performance drops during playback, it auto-switches to WebGL.
 
@@ -196,7 +201,7 @@ To batch-upscale your low-resolution content:
 - **40+ AI Models**: Real-ESRGAN, SPAN, SwinIR, DAT2, EDVR-M, RealBasicVSR, AnimeSR, APISR, EDSR, FSRCNN, ESPCN, LapSRN (2x–8x)
 - **Multi-Frame VSR**: 5-frame sliding window for temporal consistency (EDVR-M, RealBasicVSR, AnimeSR v2)
 - **Auto-Model Selection**: Picks best model per video based on genre (anime/live-action), resolution, and mode
-- **Real-Time Upscaling**: Two-tier system — WebGL client-side shader + Server AI frame pipeline with auto-fallback
+- **Real-Time Upscaling**: Honest tiers — WebGL (sharpen) · Anime4K (anime shader) · WebGPU AI (client GPU) · Server AI · Batch (best) — with auto-fallback
 - **Pre-Upscaling**: Scheduled task batch-processes low-res videos overnight
 - **Image Upscaling**: Scheduled task for posters, backdrops, thumbnails, logos, banners
 - **Quality Metrics (PSNR/SSIM)**: Compare bicubic vs AI upscale quality with Gaussian-based SSIM (NEW in v1.5.5.4)
@@ -289,12 +294,21 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.7.8` — pinned to a specific plugin release
-- `:v1.7.8-<backend>` — full semver (e.g. `:v1.7.8-cpu`)
+- `:docker7-v1.7.9` — pinned to a specific plugin release
+- `:v1.7.9-<backend>` — full semver (e.g. `:v1.7.9-cpu`)
 
 ---
 
 ## Changelog
+
+### v1.7.9 (Setup Doctor + Anime4K Embedded Tier + GPU-State Fix)
+
+**Docker + Plugin release.** Pull the refreshed `docker7` / `docker7-<backend>` images **and** update the plugin to v1.7.9.
+
+- **Setup Doctor** — new `GET /doctor` one-shot self-diagnostic (backend · GPU provider active · device passthrough · onnxruntime build · API token · model smoke), each row with a copy-paste fix, plus a "Setup Check" panel on the Docker dashboard's Hardware tab. Turns the #66/#69/#70 setup-friction saga into a single `curl`.
+- **GPU-state fix** — `run_benchmark()`, `/models/load` and `/benchmark-frame` reported the *requested* GPU intent instead of the *active* provider truth; all three now use `gpu_is_active()`.
+- **Anime4K, for real** — the "Anime4K (anime shader)" real-time tier previously loaded a dead CDN URL and silently fell back to Lanczos. It now ships a **vendored, tree-shaken Anime4K.js** (npm 1.1.2, Anime4K 4.0.1, WebGL, MIT, ~225 KB) **embedded in the plugin DLL** — offline, no CDN — with a WebGL2 float-texture support-gate and automatic Lanczos fallback. Honest label: an anime *shader*, not a neural net.
+- Third-party licenses recorded in `THIRD-PARTY-NOTICES.md`; website AI support bot gained a Setup Doctor topic.
 
 ### v1.7.8 (Docker AI Service — Model Catalog +12 & GPU/Benchmark/AMD Fixes)
 

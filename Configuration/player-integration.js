@@ -307,18 +307,18 @@
             }
         },
 
-        // --- Anime4K Tier (v1.7.0) ---
-        // Real AI-shader-based realtime anime upscaling via Anime4K.js library.
-        // Library is MIT-licensed (https://github.com/monyone/Anime4K.js, npm: anime4k).
-        // Loaded lazily from jsdelivr CDN on first use; falls back to Lanczos if unreachable.
+        // --- Anime4K Tier (v1.7.9: embedded, vendored bundle) ---
+        // Real Anime4K (4.0.1) WebGL anime upscaling via a VENDORED, tree-shaken
+        // Anime4K.js v1.1.2 bundle (MIT, https://github.com/monyone/Anime4K.js)
+        // embedded in the plugin DLL and served from UPSCALERAnime4K -- NO CDN, fully
+        // self-contained/offline. Exposes window.Anime4KJS. Honest label: anime SHADER,
+        // not a neural net. Auto-falls back to Lanczos if WebGL2 float textures are absent.
         _startAnime4K: function() {
             var self = this;
             this._loadAnime4KLibrary(function(ok) {
                 if (!ok) {
-                    console.warn('AI Upscaler RT: Anime4K library load failed, falling back to Lanczos');
-                    self._mode = 'lanczos';
-                    self._updateButtonIndicator('lanczos');
-                    self._startWebGL();
+                    console.warn('AI Upscaler RT: Anime4K bundle load failed, falling back to Lanczos');
+                    self._fallbackToLanczos();
                     return;
                 }
                 self._initAnime4K();
@@ -326,34 +326,24 @@
         },
 
         _loadAnime4KLibrary: function(callback) {
-            // Resolve the library namespace - the npm UMD bundle exposes itself as a global.
-            // Try common names; if any is already loaded, skip the script tag.
-            function resolveGlobal() {
-                return window.Anime4K || window.anime4k || window.Anime4KJS;
-            }
-            if (resolveGlobal()) { callback(true); return; }
+            // Load the embedded bundle (exposes window.Anime4KJS). No external network.
+            function resolved() { return window.Anime4KJS; }
+            if (resolved()) { callback(true); return; }
             if (document.querySelector('script[data-upscaler-anime4k]')) {
-                // Already loading - poll briefly.
                 var attempts = 0;
                 var poll = setInterval(function() {
                     attempts++;
-                    if (resolveGlobal()) { clearInterval(poll); callback(true); }
+                    if (resolved()) { clearInterval(poll); callback(true); }
                     else if (attempts >= 50) { clearInterval(poll); callback(false); }
                 }, 100);
                 return;
             }
             var script = document.createElement('script');
-            // Pinned to a stable major version so a CDN-side breaking change doesn't break
-            // the player. Update deliberately in a release that also re-tests the integration.
-            script.src = 'https://cdn.jsdelivr.net/npm/anime4k@latest/dist/anime4k.umd.min.js';
-            script.crossOrigin = 'anonymous';
+            script.src = '/web/configurationpage?name=UPSCALERAnime4K';
             script.setAttribute('data-upscaler-anime4k', '1');
-            script.onload = function() {
-                // Some UMD bundles attach the export to a non-obvious global; give it a tick.
-                setTimeout(function() { callback(!!resolveGlobal()); }, 50);
-            };
+            script.onload = function() { setTimeout(function() { callback(!!resolved()); }, 50); };
             script.onerror = function() {
-                console.warn('AI Upscaler RT: Failed to load Anime4K from CDN', script.src);
+                console.warn('AI Upscaler RT: Failed to load embedded Anime4K bundle', script.src);
                 callback(false);
             };
             document.head.appendChild(script);
@@ -361,56 +351,54 @@
 
         _initAnime4K: function() {
             if (!this._videoElement || !this._active) return;
-            var ns = window.Anime4K || window.anime4k || window.Anime4KJS;
-            if (!ns) { console.warn('AI Upscaler RT: Anime4K namespace missing'); return; }
+            var ns = window.Anime4KJS;
+            if (!ns || typeof ns.VideoUpscaler !== 'function') {
+                console.warn('AI Upscaler RT: Anime4KJS.VideoUpscaler missing');
+                this._fallbackToLanczos();
+                return;
+            }
+            var VideoUpscaler = ns.VideoUpscaler;
             try {
-                // Build overlay canvas above the video element.
-                this._anime4kCanvas = document.createElement('canvas');
-                this._anime4kCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;';
-                var parent = this._videoElement.parentElement;
-                if (parent) {
-                    parent.style.position = 'relative';
-                    parent.appendChild(this._anime4kCanvas);
-                }
-
-                // VideoUpscaler API may vary across library versions; pick whichever the
-                // loaded UMD bundle exposes.
-                var VideoUpscaler = ns.VideoUpscaler || (ns.default && ns.default.VideoUpscaler);
-                var profile = ns.ANIME4KJS_SIMPLE_M_2X
-                    || ns.SIMPLE_M_2X
-                    || (ns.profiles && ns.profiles.simple_m_2x);
-                if (!VideoUpscaler || !profile) {
-                    console.warn('AI Upscaler RT: Anime4K API shape unexpected, falling back to Lanczos');
-                    this._stopAnime4K();
-                    this._mode = 'lanczos';
-                    this._startWebGL();
+                if (typeof VideoUpscaler.isSupported === 'function' && !VideoUpscaler.isSupported()) {
+                    console.warn('AI Upscaler RT: Anime4K unsupported here (no WebGL float textures), using Lanczos');
+                    this._fallbackToLanczos();
                     return;
                 }
-
-                this._anime4kInstance = new VideoUpscaler({ fps: 30, profile: profile });
-                if (typeof this._anime4kInstance.attachToVideo === 'function') {
-                    this._anime4kInstance.attachToVideo(this._videoElement);
-                }
-                if (typeof this._anime4kInstance.attachToCanvas === 'function') {
-                    this._anime4kInstance.attachToCanvas(this._anime4kCanvas);
-                }
-                if (typeof this._anime4kInstance.start === 'function') {
-                    this._anime4kInstance.start();
-                }
-                console.log('AI Upscaler RT: Anime4K initialized');
+            } catch (e) { this._fallbackToLanczos(); return; }
+            var profile = ns.ANIME4KJS_SIMPLE_M_2X || ns.ANIME4KJS_SIMPLE_S_2X;
+            if (!profile) {
+                console.warn('AI Upscaler RT: Anime4K profile missing');
+                this._fallbackToLanczos();
+                return;
+            }
+            try {
+                this._anime4kCanvas = document.createElement('canvas');
+                this._anime4kCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:999;';
+                var parent = this._videoElement.parentElement;
+                if (parent) { parent.style.position = 'relative'; parent.appendChild(this._anime4kCanvas); }
+                this._anime4kInstance = new VideoUpscaler(profile, 30);
+                this._anime4kInstance.attachVideo(this._videoElement, this._anime4kCanvas);
+                this._anime4kInstance.start();
+                console.log('AI Upscaler RT: Anime4K (embedded, SIMPLE_M 2x) started');
             } catch (e) {
                 console.warn('AI Upscaler RT: Anime4K init threw', e);
-                this._stopAnime4K();
-                this._mode = 'lanczos';
-                this._startWebGL();
+                this._fallbackToLanczos();
             }
+        },
+
+        _fallbackToLanczos: function() {
+            this._stopAnime4K();
+            if (!this._active) return;
+            this._mode = 'lanczos';
+            this._updateButtonIndicator('lanczos');
+            this._startWebGL();
         },
 
         _stopAnime4K: function() {
             if (this._anime4kInstance) {
                 try {
                     if (typeof this._anime4kInstance.stop === 'function') this._anime4kInstance.stop();
-                    if (typeof this._anime4kInstance.destroy === 'function') this._anime4kInstance.destroy();
+                    if (typeof this._anime4kInstance.detachVideo === 'function') this._anime4kInstance.detachVideo();
                 } catch (e) { /* best effort */ }
                 this._anime4kInstance = null;
             }

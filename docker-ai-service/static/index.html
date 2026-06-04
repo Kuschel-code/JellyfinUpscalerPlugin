@@ -319,6 +319,21 @@
 
   <!-- HARDWARE ==================================================== -->
   <section id="view-hardware" class="view">
+    <!-- Setup Doctor (WS1, v1.7.9) -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-head">
+        <div class="card-title">Setup Doctor</div>
+        <span class="card-meta">/doctor</span>
+      </div>
+      <div class="card-body">
+        <p class="dim">One-shot diagnostic for <strong>this</strong> instance - backend, GPU passthrough, the right onnxruntime build, auth, and a model smoke test. Each row is green / amber / red with a copy-paste fix.</p>
+        <div class="flex items-center gap-8" style="flex-wrap:wrap;margin-top:12px">
+          <button type="button" class="btn" id="doctor-run">Run setup check</button>
+          <span class="chip" id="doctor-overall" style="display:none"></span>
+        </div>
+        <div id="doctor-results" style="margin-top:12px"></div>
+      </div>
+    </div>
     <div class="row row-12" style="margin-bottom:16px">
       <div class="card span-6">
         <div class="card-head"><div class="card-title">Compute</div><span class="card-meta">/hardware</span></div>
@@ -748,6 +763,47 @@
       $('#gpus-body').innerHTML = `<tr><td colspan="6" class="muted" style="padding:16px">/gpus unavailable (${e.message})</td></tr>`;
     }
   }
+
+  // --- Setup Doctor ----------------------------------------------
+  function _docEsc(s){ return String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
+  async function runDoctor() {
+    const btn = $("#doctor-run"), out = $("#doctor-results"), overall = $("#doctor-overall");
+    btn.disabled = true; btn.textContent = "Running...";
+    out.innerHTML = "<span class=\"muted\">running diagnostic...</span>";
+    overall.style.display = "none";
+    const sev = { ok: "chip--ok", warn: "chip--warn", fail: "chip--err" };
+    try {
+      const d = await fetchJson("/doctor");
+      overall.className = "chip " + (sev[d.overall] || "");
+      overall.textContent = "overall: " + d.overall + " / " + d.backend;
+      overall.style.display = "";
+      out.innerHTML = (d.checks || []).map(c => {
+        const fix = c.fix
+          ? '<div class="flex items-center gap-8" style="flex-wrap:wrap;margin-top:8px">'
+            + '<pre class="code" style="margin:0;flex:1;min-width:0;white-space:pre-wrap;word-break:break-word">' + _docEsc(c.fix) + '</pre>'
+            + '<button type="button" class="btn btn--sm doctor-copy">Copy</button></div>'
+          : "";
+        return '<div class="card" style="margin-bottom:10px"><div class="card-body" style="padding:12px">'
+          + '<div class="flex items-center gap-8" style="justify-content:space-between">'
+          + "<strong>" + _docEsc(c.check) + "</strong>"
+          + '<span class="chip ' + (sev[c.status] || "") + '">' + _docEsc(c.status) + "</span></div>"
+          + '<div class="dim" style="margin-top:8px">' + _docEsc(c.detail || "") + "</div>"
+          + fix + "</div></div>";
+      }).join("");
+    } catch (e) {
+      out.innerHTML = '<span class="muted">/doctor unavailable (' + _docEsc(e.message) + ")</span>";
+    } finally {
+      btn.disabled = false; btn.textContent = "Run setup check";
+    }
+  }
+  $("#doctor-run").addEventListener("click", runDoctor);
+  $("#doctor-results").addEventListener("click", ev => {
+    const b = ev.target.closest && ev.target.closest(".doctor-copy"); if (!b) return;
+    const pre = b.parentElement.querySelector("pre");
+    if (pre && navigator.clipboard) navigator.clipboard.writeText(pre.textContent).then(() => {
+      const t = b.textContent; b.textContent = "Copied"; setTimeout(() => { b.textContent = t; }, 1200);
+    });
+  });
 
   // --- API tab ----------------------------------------------------
   let apiLoaded = false;
