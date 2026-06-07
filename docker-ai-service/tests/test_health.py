@@ -84,3 +84,25 @@ def test_doctor_no_model_smoke_never_fails(client):
     d = client.get("/doctor").json()
     smoke = next(c for c in d["checks"] if c["check"] == "model_smoke")
     assert smoke["status"] in ("ok", "warn"), f"model_smoke must not fail on no-model box: {smoke}"
+
+
+def test_doctor_flags_gpu_available_but_inactive(client, monkeypatch):
+    """WS2: GPU EPs compiled in + a GPU device present, but inference on CPU
+    (gpu_is_active() False) -> gpu_provider_active must FAIL with a driver-mismatch
+    hint, not the wrong 'pull docker7-<backend>' image hint."""
+    from app import main as m
+    monkeypatch.setattr(m.state, "providers", ["CPUExecutionProvider"])  # gpu_is_active() -> False
+    monkeypatch.setattr(m.state, "use_gpu", True)
+    monkeypatch.setattr(m.ort, "get_available_providers",
+                        lambda: ["CUDAExecutionProvider", "CPUExecutionProvider"])
+
+    class _NvOk:
+        returncode = 0
+        stdout = "GPU 0: NVIDIA"
+        stderr = ""
+    monkeypatch.setattr(m.subprocess, "run", lambda *a, **k: _NvOk())  # nvidia-smi present
+
+    gpa = next(c for c in client.get("/doctor").json()["checks"]
+               if c["check"] == "gpu_provider_active")
+    assert gpa["status"] == "fail", gpa
+    assert "driver" in (gpa["fix"] or "").lower(), gpa

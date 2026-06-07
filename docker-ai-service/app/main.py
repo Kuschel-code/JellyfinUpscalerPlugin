@@ -3699,6 +3699,20 @@ async def doctor():
     providers = state.providers or []
     gpu_active = gpu_is_active()
 
+    # Probes computed once, reused across checks 2-4 (avoids a double nvidia-smi).
+    dri = Path("/dev/dri")
+    has_dri = dri.exists() and any(dri.glob("renderD*"))
+    has_dxg = Path("/dev/dxg").exists()
+    try:
+        _nv = subprocess.run(["nvidia-smi", "-L"], capture_output=True, text=True, timeout=5)
+        nvidia_ok = _nv.returncode == 0
+    except Exception:
+        nvidia_ok = False
+    passthrough_ok = has_dri or has_dxg or nvidia_ok
+    pt_detail = f"/dev/dri renderD*={has_dri}, /dev/dxg={has_dxg}, nvidia-smi={nvidia_ok}"
+    avail = set(ort.get_available_providers()) if ONNX_AVAILABLE else set()
+    gpu_eps = avail & set(_NON_CPU_PROVIDERS)
+
     # Per-backend device-passthrough fix line (reused by checks 2 & 3).
     device_fix = {
         "nvidia": "Grant the GPU: compose `deploy.resources.reservations.devices: "
@@ -3728,6 +3742,17 @@ async def doctor():
     if gpu_active:
         checks.append({"check": "gpu_provider_active", "status": "ok",
                        "detail": f"active providers: {providers}", "fix": None})
+    elif gpu_eps and passthrough_ok:
+        # WS2: the onnxruntime build HAS GPU EPs and a GPU device is passed, but none
+        # is active -> the GPU runtime failed to initialise (the image is correct).
+        checks.append({"check": "gpu_provider_active", "status": "fail",
+                       "detail": f"GPU device present and {sorted(gpu_eps)} compiled in, "
+                                 f"but inference runs on CPU (active providers={providers})",
+                       "fix": "GPU runtime failed to initialise -- almost always a HOST "
+                              "driver/toolkit version mismatch (your image is correct). Update the "
+                              "host NVIDIA driver (>= what the image's CUDA needs) or ROCm, recreate "
+                              "the container, and check `docker logs` for the onnxruntime error "
+                              "(e.g. 'CUDA driver version is insufficient for CUDA runtime version')."})
     elif backend == "cpu":
         checks.append({"check": "gpu_provider_active", "status": "warn",
                        "detail": "running on CPU (CPU image / no GPU image selected)",
@@ -3742,17 +3767,6 @@ async def doctor():
                               f"(see device_passthrough)."})
 
     # 3) device_passthrough — the GPU device reaches the container.
-    dri = Path("/dev/dri")
-    has_dri = dri.exists() and any(dri.glob("renderD*"))
-    has_dxg = Path("/dev/dxg").exists()
-    nvidia_ok = False
-    try:
-        r = subprocess.run(["nvidia-smi", "-L"], capture_output=True, text=True, timeout=5)
-        nvidia_ok = r.returncode == 0
-    except Exception:
-        nvidia_ok = False
-    passthrough_ok = has_dri or has_dxg or nvidia_ok
-    pt_detail = f"/dev/dri renderD*={has_dri}, /dev/dxg={has_dxg}, nvidia-smi={nvidia_ok}"
     if backend == "cpu":
         checks.append({"check": "device_passthrough", "status": "ok",
                        "detail": "CPU image — no GPU device required. " + pt_detail,
