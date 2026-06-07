@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.7.9
+# Jellyfin AI Upscaler Plugin v1.7.10
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.7.9):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.7.10):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.7.9     │  │
+│  │  AI Upscaler Plugin v1.7.10     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -294,12 +294,20 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.7.9` — pinned to a specific plugin release
-- `:v1.7.9-<backend>` — full semver (e.g. `:v1.7.9-cpu`)
+- `:docker7-v1.7.10` — pinned to a specific plugin release
+- `:v1.7.10-<backend>` — full semver (e.g. `:v1.7.10-cpu`)
 
 ---
 
 ## Changelog
+
+### v1.7.10 (Fixes "stuck at 95%" + sharper GPU diagnostics)
+
+**Docker + Plugin release.** Pull the refreshed `docker7` / `docker7-<backend>` images **and** update the plugin.
+
+- **"Stuck at 95%" fixed at the root.** Batch progress now reflects **real frames processed** (frames done/total + fps + ETA) instead of a time estimate that pinned at 95% on slow hardware; and a job with **no AI model loaded fails fast** ("load a model first") instead of grinding to 95% and hanging (#70 / #72).
+- **Smarter Setup Doctor.** `/doctor` now detects **"GPU + CUDA/ROCm available but inference on CPU"** (a host driver/toolkit mismatch) and says to update the host driver / check logs, instead of mislabeling it a CPU image (#71).
+- **Honest version display.** The in-player menu + System-Diagnostics panel now show the real plugin version.
 
 ### v1.7.9 (Setup Doctor + Anime4K Embedded Tier + GPU-State Fix)
 

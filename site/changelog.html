@@ -7,13 +7,21 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.7.9</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.7.10</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.7.9 — Setup Doctor + Embedded Anime4K + GPU-State Fix <span class="tag success">latest</span></h2>
+  <h2>v1.7.10 — "Stuck at 95%" fix + sharper GPU diagnostics <span class="tag success">latest</span></h2>
+  <p><em>2026-06.</em> Docker + plugin release, both at <strong>v1.7.10</strong>.</p>
+  <ul>
+    <li><strong>"Stuck at 95%" fixed at the root.</strong> Job progress now reflects real frames processed (frames done/total + fps + ETA) instead of a time estimate that capped at 95% on slow hardware. A job with no AI model loaded now fails fast with a clear "load a model first" message instead of grinding to 95% and hanging. (#70 / #72)</li>
+    <li><strong>Smarter Setup Doctor.</strong> <code>/doctor</code> detects "GPU + CUDA/ROCm available but inference on CPU" (a host driver/toolkit mismatch) and gives the right fix -- update the host driver / check logs -- instead of mislabeling it a CPU image. (#71)</li>
+    <li><strong>Honest version display.</strong> The in-player menu + System-Diagnostics panel now show the real plugin version.</li>
+  </ul>
+
+  <h2>v1.7.9 — Setup Doctor + Embedded Anime4K + GPU-State Fix</h2>
   <p><em>2026-06.</em> Docker + plugin release, both at <strong>v1.7.9</strong>. Pull the refreshed <code>docker7</code> / <code>docker7-&lt;backend&gt;</code> images <strong>and</strong> update the plugin.</p>
   <ul>
     <li><strong>Setup Doctor.</strong> New <code>GET /doctor</code> one-shot self-diagnostic — backend, GPU provider active, device passthrough, the right onnxruntime build (catches vendor-shadowing), API token, and a model smoke test, each row with a copy-paste fix — plus a "Setup Check" panel on the Docker dashboard's Hardware tab. Condenses the #66/#69/#70 setup-friction saga into one <code>curl</code>.</li>
@@ -273,7 +281,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.7.9</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.7.10</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

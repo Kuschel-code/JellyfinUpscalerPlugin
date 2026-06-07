@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.7.10.0",
+        "changelog": "v1.7.10: Fixes the recurring 'job stuck at 95%' + sharper GPU diagnostics. (1) Batch progress now reflects REAL frames processed (frames done/total + fps + ETA) instead of a time estimate that pinned at 95% on slow hardware; and a job with NO model loaded now FAILS FAST with a clear 'load a model first' message instead of grinding to 95% and hanging (#70/#72). (2) Setup Doctor /doctor now detects 'GPU + CUDA/ROCm available but inference on CPU' = a host driver/toolkit mismatch (right fix: update the host driver / check docker logs) instead of mislabeling it a CPU image (#71). (3) Plugin's displayed version (player/quick-menu/sidebar) synced to the real release. Docker AI service + plugin both at 1.7.10. Tests 123/123; /doctor pytests incl. the new GPU-inactive case.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.7.10/JellyfinUpscalerPlugin-v1.7.10.zip",
+        "checksum": "fbf07d46fc285286797a060f86312422",
+        "timestamp": "2026-06-08T00:00:00.000Z"
+      },
+      {
         "version": "1.7.9.0",
         "changelog": "v1.7.9: Setup Doctor + Anime4K embedded tier + GPU-state fix. NEW GET /doctor self-diagnostic (backend, GPU provider, device passthrough, onnxruntime build, API token, model smoke) plus a Setup Check panel in the Docker dashboard - condenses the #66/#69/#70 setup-friction saga into one curl. FIX: three AI-service endpoints (run_benchmark, /models/load, /benchmark-frame) reported the requested GPU intent instead of the active provider truth - now all use gpu_is_active(). The Anime4K anime-shader realtime tier now ships a vendored, tree-shaken Anime4K.js (npm 1.1.2, WebGL, MIT, ~225KB, Anime4K 4.0.1) embedded in the plugin DLL instead of a dead CDN load, with a WebGL2 float-texture support-gate and automatic Lanczos fallback; honest tier label (anime shader, not a neural net). Docker AI service and plugin both at 1.7.9.",
         "targetAbi": "10.11.8.0",

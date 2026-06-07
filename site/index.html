@@ -15,7 +15,7 @@
     <a href="index.html" class="brand">
       <span class="brand-logo">AI</span>
       <span>Jellyfin AI Upscaler</span>
-      <span class="brand-version">v1.7.9</span>
+      <span class="brand-version">v1.7.10</span>
     </a>
     <nav class="nav" data-nav></nav>
     <div class="nav-cta">
@@ -77,9 +77,9 @@
 
   <h2>Latest release</h2>
   <div class="card">
-    <h3>v1.7.9 · Setup Doctor + Anime4K embedded tier + GPU-state fix</h3>
-    <p style="color: var(--text-dim); margin-bottom: 12px;">A new <strong>Setup Doctor</strong> (<code>GET /doctor</code> plus a "Setup Check" panel on the dashboard) diagnoses your running AI service in one call — backend, GPU provider, device passthrough, the right onnxruntime build, API token and a model smoke test, each row with a copy-paste fix. It condenses the recent setup-friction saga (#66 / #69 / #70) into a single <code>curl</code>.</p>
-    <p style="color: var(--text-dim); margin-bottom: 12px;">The <strong>Anime4K (anime shader)</strong> real-time tier now actually runs: it ships a vendored, tree-shaken <strong>Anime4K.js</strong> (Anime4K 4.0.1, WebGL, MIT, ~225 KB) <strong>embedded in the plugin</strong> instead of a dead CDN load, with a WebGL2 support-gate and automatic Lanczos fallback. Three AI-service endpoints that reported the <em>requested</em> GPU state instead of the <em>active</em> one are fixed (<code>gpu_is_active()</code>). Docker and plugin are both at <strong>v1.7.9</strong>.</p>
+    <h3>v1.7.10 · "Stuck at 95%" fixed + sharper GPU diagnostics</h3>
+    <p style="color: var(--text-dim); margin-bottom: 12px;">The recurring <strong>"job stuck at 95%"</strong> is fixed at the root: batch progress now reflects <strong>real frames processed</strong> (frames done/total + fps + ETA) instead of a time estimate that pinned at 95% on slow hardware — and a job with <strong>no AI model loaded fails fast</strong> ("load a model first") instead of grinding to 95% and hanging.</p>
+    <p style="color: var(--text-dim); margin-bottom: 12px;">The <strong>Setup Doctor</strong> (<code>/doctor</code>) now spots <strong>"GPU + CUDA/ROCm available but inference on CPU"</strong> — a host driver/toolkit mismatch — and tells you to update the host driver, instead of mislabeling it a CPU image. The plugin's shown version is synced too. Docker and plugin are both at <strong>v1.7.10</strong>.</p>
     <a href="changelog.html" class="btn btn-ghost">Full changelog →</a>
     <a href="https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler/tags" target="_blank" class="btn btn-ghost" style="margin-left: 8px;">Images on Docker Hub →</a>
   </div>
@@ -110,7 +110,7 @@ docker run -d --name jellyfin-ai-upscaler \
 <footer class="footer">
   <div class="footer-inner">
     <div>
-      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.7.9 · not affiliated with the Jellyfin project
+      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.7.10 · not affiliated with the Jellyfin project
       <div style="margin-top: 4px;"><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a> · <a href="https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler">Docker Hub</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues">Issues</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">Releases</a></div>
     </div>
     <div>Co-engineered with <a href="https://claude.com/claude-code">Claude Opus 4.8</a></div>
