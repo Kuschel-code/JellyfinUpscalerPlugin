@@ -22,6 +22,20 @@ namespace JellyfinUpscalerPlugin.Services
             _sessionManager = sessionManager;
         }
 
+        // v1.7.10 - cache the REAL frame-based progress per job at the single SendFrameProgress
+        // chokepoint (both batch loops go through it), so the polled status
+        // (ProcessingStrategySelector.CalculateJobProgress) can use it instead of a time estimate
+        // that sticks at 95% on slow hardware (#70/#72).
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, double> _latestFrameProgress = new();
+
+        /// <summary>Latest real (frame-based) progress 0-100 for a job, or null if none reported yet.</summary>
+        public static double? GetFrameProgress(string jobId)
+            => _latestFrameProgress.TryGetValue(jobId, out var p) ? p : (double?)null;
+
+        /// <summary>Idempotently drop a job's cached frame progress. Call on every terminal path
+        /// (completed/cancelled/failed) so the static cache can't leak over server uptime.</summary>
+        public static void ClearFrameProgress(string jobId) => _latestFrameProgress.TryRemove(jobId, out _);
+
         /// <summary>
         /// Send progress update to all connected clients
         /// </summary>
@@ -83,6 +97,7 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         public async Task SendJobCompleted(string jobId, string fileName, bool success, string? error = null)
         {
+            ClearFrameProgress(jobId);
             await SendProgressUpdate(new UpscalerProgressMessage
             {
                 JobId = jobId,
@@ -99,6 +114,7 @@ namespace JellyfinUpscalerPlugin.Services
         public async Task SendFrameProgress(string jobId, string fileName, int currentFrame, int totalFrames, double fps)
         {
             var progress = totalFrames > 0 ? (currentFrame * 100.0 / totalFrames) : 0;
+            _latestFrameProgress[jobId] = progress;
             var framesRemaining = totalFrames - currentFrame;
             var secondsRemaining = fps > 0 ? framesRemaining / fps : 0;
 

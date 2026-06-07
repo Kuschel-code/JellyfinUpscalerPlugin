@@ -260,7 +260,15 @@ namespace JellyfinUpscalerPlugin.Services
 
                 if (!modelLoaded)
                 {
-                    _logger.LogWarning("No model in fallback chain could be loaded, proceeding with default");
+                    // v1.7.10 - fail fast instead of grinding to 95% and hanging: with no model
+                    // loaded every /upscale returns 400, so the job can never complete (#70/#72).
+                    _logger.LogError("No AI model could be loaded (tried: {Chain}) - aborting {File}",
+                        string.Join(", ", modelChain), Path.GetFileName(inputPath));
+                    job.Status = ProcessingStatus.Failed;
+                    job.EndTime = DateTime.UtcNow;
+                    await _progressHub.SendJobCompleted(job.Id, Path.GetFileName(inputPath), false,
+                        "No AI model could be loaded - load a model first (Dashboard -> Models), then re-run.");
+                    return new VideoProcessingResult { Success = false, Error = "No AI model could be loaded - load a model first (Dashboard -> Models)." };
                 }
 
                 // 4. Check multi-frame model support
@@ -336,6 +344,7 @@ namespace JellyfinUpscalerPlugin.Services
                     removedCts.Dispose();
                 }
                 _pausedJobs.TryRemove(jobId, out _);
+                UpscalerProgressHub.ClearFrameProgress(jobId); // v1.7.10 - clean frame-progress cache on every terminal path (cancel/exception too)
             }
         }
 

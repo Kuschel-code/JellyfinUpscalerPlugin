@@ -232,12 +232,24 @@ namespace JellyfinUpscalerPlugin.Services
             if (job.Status == ProcessingStatus.Starting)
                 return ProgressStartingPercent;
 
-            if (job.Status == ProcessingStatus.Processing && job.InputInfo != null && job.InputInfo.Duration.TotalSeconds > 0)
+            if (job.Status == ProcessingStatus.Processing)
             {
-                var elapsed = (DateTime.UtcNow - job.StartTime).TotalSeconds;
-                var estimatedTotal = job.InputInfo.Duration.TotalSeconds * EstimatedProcessingSpeedRatio;
-                if (estimatedTotal <= 0) estimatedTotal = EstimatedTotalFallbackSeconds;
-                return Math.Min(ProgressMaxPercent, (elapsed / estimatedTotal) * 100);
+                // v1.7.10 - prefer REAL frame-based progress (reported by the frame loops via
+                // UpscalerProgressHub.SendFrameProgress) over the time estimate below, which
+                // capped at 95% and "stuck" there on slow hardware (#70/#72).
+                var frameProgress = UpscalerProgressHub.GetFrameProgress(job.Id);
+                if (frameProgress.HasValue && frameProgress.Value > 0)
+                    return Math.Min(99.0, frameProgress.Value); // reserve 100 for Status==Completed
+
+                // Fallback: time estimate (used before per-frame reports arrive, e.g. during
+                // frame extraction or the final re-encode).
+                if (job.InputInfo != null && job.InputInfo.Duration.TotalSeconds > 0)
+                {
+                    var elapsed = (DateTime.UtcNow - job.StartTime).TotalSeconds;
+                    var estimatedTotal = job.InputInfo.Duration.TotalSeconds * EstimatedProcessingSpeedRatio;
+                    if (estimatedTotal <= 0) estimatedTotal = EstimatedTotalFallbackSeconds;
+                    return Math.Min(ProgressMaxPercent, (elapsed / estimatedTotal) * 100);
+                }
             }
 
             return ProgressDefaultPercent;
