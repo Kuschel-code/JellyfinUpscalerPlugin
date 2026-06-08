@@ -10,6 +10,13 @@
   (Jellyfin's plugin installer computes MD5 of the downloaded ZIP and rejects
   the package when it doesn't match the 32-char hex `checksum` in the manifest.)
 
+  It also asserts that every USER-VISIBLE version string in the local checkout
+  (configurationpage.html header + PluginVersion, the three JS PLUGIN_VERSION
+  consts, meta.json, and the csproj Version/AssemblyVersion/FileVersion) equals
+  the release tag. Those strings compile into the DLL, so the ZIP/meta check
+  cannot see them — this is the guard that would have caught the v1.7.10 drift
+  where the dashboard still rendered "v1.7.9" after release.
+
   Exits 1 on ANY mismatch. Designed so the release is only marked "done" when
   this script passes — this is the guard that would have caught the v1.6.1.11
   wrong-ZIP-upload where a 13.9 MB test-binary got hosted instead of the 1.7 MB
@@ -84,6 +91,49 @@ try {
     $manifestChecksum = $manifestEntry.checksum.ToLower()
     Write-Host ("  manifest checksum: " + $manifestChecksum)
     Write-Host ("  targetAbi:         " + $manifestEntry.targetAbi)
+
+    Write-Host ""
+    Write-Host "=== Source version-string consistency (local checkout) ===" -ForegroundColor Cyan
+    # Guards the whole class of "displayed version lagged behind the release" drift.
+    # v1.7.10 shipped with Configuration/configurationpage.html still rendering "v1.7.9"
+    # because a manual bump missed it - and these strings compile INTO the DLL, so the
+    # post-publish ZIP/meta check below cannot see them. Every USER-VISIBLE version
+    # string in the checkout must equal the release tag, or the release is not "done".
+    $repoRoot = Split-Path -Parent $PSScriptRoot
+    $tagVersion = $Tag.TrimStart("v")                                # e.g. 1.7.11
+    $tagVersion4 = if ($tagVersion -match '^\d+\.\d+\.\d+$') { "$tagVersion.0" } else { $tagVersion }  # csproj uses x.y.z.0
+
+    $versionChecks = @(
+        @{ File = "Configuration/configurationpage.html"; Pattern = 'upscaler-header-meta">v([\d.]+)';            Expect = $tagVersion  },
+        @{ File = "Configuration/configurationpage.html"; Pattern = "config\.PluginVersion = '([\d.]+)'";          Expect = $tagVersion  },
+        @{ File = "Configuration/player-integration.js";  Pattern = "PLUGIN_VERSION = '([\d.]+)'";                 Expect = $tagVersion  },
+        @{ File = "Configuration/quick-menu.js";          Pattern = "PLUGIN_VERSION = '([\d.]+)'";                 Expect = $tagVersion  },
+        @{ File = "Configuration/sidebar-upscaler.js";    Pattern = "PLUGIN_VERSION = '([\d.]+)'";                 Expect = $tagVersion  },
+        @{ File = "meta.json";                            Pattern = '"version"\s*:\s*"([\d.]+)"';                  Expect = $tagVersion  },
+        @{ File = "JellyfinUpscalerPlugin.csproj";        Pattern = '<Version>([\d.]+)</Version>';                 Expect = $tagVersion4 },
+        @{ File = "JellyfinUpscalerPlugin.csproj";        Pattern = '<AssemblyVersion>([\d.]+)</AssemblyVersion>'; Expect = $tagVersion4 },
+        @{ File = "JellyfinUpscalerPlugin.csproj";        Pattern = '<FileVersion>([\d.]+)</FileVersion>';         Expect = $tagVersion4 }
+    )
+
+    foreach ($chk in $versionChecks) {
+        $path = Join-Path $repoRoot $chk.File
+        if (-not (Test-Path $path)) {
+            Write-Host ("  [FAIL] missing file: " + $chk.File) -ForegroundColor Red
+            $fail = $true
+            continue
+        }
+        $content = Get-Content -LiteralPath $path -Raw
+        $m = [regex]::Match($content, $chk.Pattern)
+        if (-not $m.Success) {
+            Write-Host ("  [FAIL] " + $chk.File + ": version pattern not found (/" + $chk.Pattern + "/)") -ForegroundColor Red
+            $fail = $true
+        } elseif ($m.Groups[1].Value -ne $chk.Expect) {
+            Write-Host ("  [FAIL] " + $chk.File + ": found '" + $m.Groups[1].Value + "', expected '" + $chk.Expect + "'") -ForegroundColor Red
+            $fail = $true
+        } else {
+            Write-Host ("  [OK] " + $chk.File + " = " + $m.Groups[1].Value)
+        }
+    }
 
     Write-Host ""
     Write-Host "=== Downloading release assets for $Tag ===" -ForegroundColor Cyan
