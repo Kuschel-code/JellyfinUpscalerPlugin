@@ -1839,6 +1839,14 @@
                 }
                 page.querySelector('#perf-model').textContent = data.currentModel || '-';
                 page.querySelector('#perf-status').textContent = data.processingCount > 0 ? 'Processing active...' : 'Idle — waiting for jobs';
+                // v1.7.11 - plugin-side batch jobs (extraction/upscale) aren't counted by the Docker
+                // service's processingCount, so they showed "Idle". Surface the active job's phase;
+                // fall back to the service-health text above when there is none.
+                ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/jobs'), dataType: 'json' }).then(function(jobs) {
+                    var list = Array.isArray(jobs) ? jobs : (jobs && jobs.jobs) || [];
+                    var phased = list.filter(function(j) { return j.status === 'Processing' && j.phase && j.phase.length; });
+                    if (phased.length) { page.querySelector('#perf-status').textContent = phased[0].phase + '…'; }
+                }).catch(function() {});
             }).catch(function() {});
 
             // Fetch Prometheus metrics via Jellyfin proxy (avoids CORS)

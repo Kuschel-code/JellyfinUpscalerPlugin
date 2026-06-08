@@ -136,7 +136,10 @@ namespace JellyfinUpscalerPlugin.Models
         public DateTime EndTime { get; set; }
         public VideoProcessingResult Result { get; set; } = new();
         public string Error { get; set; } = "";
-        
+        // v1.7.11 - human-readable sub-phase for the dashboard ("Extracting frames"/"Upscaling"/
+        // "Encoding"); the coarse Status enum can't express it. Empty for paths without phases.
+        public string Phase { get; set; } = "";
+
         public TimeSpan ProcessingDuration => EndTime > StartTime ? EndTime - StartTime : DateTime.UtcNow - StartTime;
     }
 

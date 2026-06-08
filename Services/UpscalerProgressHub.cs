@@ -36,6 +36,40 @@ namespace JellyfinUpscalerPlugin.Services
         /// (completed/cancelled/failed) so the static cache can't leak over server uptime.</summary>
         public static void ClearFrameProgress(string jobId) => _latestFrameProgress.TryRemove(jobId, out _);
 
+        // v1.7.11 - extraction-phase progress (Gap 1). Frame extraction is a single blocking ffmpeg
+        // call that reports nothing, so the polled status used to sit on the 95%-capped time estimate
+        // for the whole extraction. A poller counts frame_*.png and writes here. INVARIANT: this is
+        // cleared ONLY on terminal paths (see ClearExtractionProgress) - never when extraction ends -
+        // so CalculateJobProgress keeps the extraction band reserved for the rest of the job.
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, double> _latestExtractionProgress = new();
+
+        /// <summary>Latest extraction progress 0-100 for a job, or null if extraction never reported
+        /// (unknown duration, or a path with no extraction phase).</summary>
+        public static double? GetExtractionProgress(string jobId)
+            => _latestExtractionProgress.TryGetValue(jobId, out var p) ? p : (double?)null;
+
+        /// <summary>Idempotently drop a job's cached extraction progress. Call ONLY on terminal paths -
+        /// never when extraction finishes, or the progress bar would jump backwards (non-monotonic).</summary>
+        public static void ClearExtractionProgress(string jobId) => _latestExtractionProgress.TryRemove(jobId, out _);
+
+        /// <summary>Report extraction-phase progress. Ignored when the total is unknown
+        /// (estimatedTotal &lt;= 0) so the job stays on the time estimate (hadExtraction=false) rather
+        /// than dividing by zero / caching a bogus value - mirrors the -1 frame sentinel.</summary>
+        public async Task SendExtractionProgress(string jobId, int extracted, int estimatedTotal)
+        {
+            if (estimatedTotal <= 0) return;
+            var pct = Math.Min(100.0, extracted * 100.0 / estimatedTotal);
+            _latestExtractionProgress[jobId] = pct;
+            await SendProgressUpdate(new UpscalerProgressMessage
+            {
+                JobId = jobId,
+                Progress = pct,
+                CurrentFrame = extracted,
+                TotalFrames = estimatedTotal,
+                Status = "Extracting"
+            });
+        }
+
         /// <summary>
         /// Send progress update to all connected clients
         /// </summary>
@@ -98,6 +132,7 @@ namespace JellyfinUpscalerPlugin.Services
         public async Task SendJobCompleted(string jobId, string fileName, bool success, string? error = null)
         {
             ClearFrameProgress(jobId);
+            ClearExtractionProgress(jobId);
             await SendProgressUpdate(new UpscalerProgressMessage
             {
                 JobId = jobId,

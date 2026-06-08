@@ -64,7 +64,9 @@ namespace JellyfinUpscalerPlugin.Services
             double frameRate,
             CancellationToken cancellationToken,
             bool isInterlaced = false,
-            bool isHDR = false)
+            bool isHDR = false,
+            string jobId = "",
+            int estimatedTotalFrames = 0)
         {
             var effectiveFps = frameRate > 0 ? frameRate : 30;
 
@@ -90,19 +92,53 @@ namespace JellyfinUpscalerPlugin.Services
                 _logger.LogInformation("Extracting frames as 16-bit PNG for HDR content: {File}", Path.GetFileName(inputPath));
             }
 
-            var result = await Cli.Wrap(_ffmpegPath)
-                .WithArguments(args => {
-                    args.Add("-i").Add(inputPath)
-                        .Add("-vf").Add(vfArg);
-                    if (isHDR) args.Add("-pix_fmt").Add("rgb48be");
-                    args.Add(Path.Combine(framesDir, "frame_%06d.png"));
-                })
-                .WithValidation(CommandResultValidation.None)
-                .ExecuteAsync(cancellationToken);
+            // v1.7.11 - extraction reports no progress on its own (one blocking ffmpeg call), so a
+            // background poller counts the written frame_*.png every ~2s and feeds the extraction band
+            // (Gap 1). File-count is deliberate (robust across ffmpeg builds vs parsing stderr 'frame=').
+            // The CTS is linked to cancellationToken; the finally cancels + awaits the poller so it can
+            // never outlive the job (no orphan task, no write-after-clear).
+            using var pollerCts = System.Threading.CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var reportExtraction = !string.IsNullOrEmpty(jobId) && estimatedTotalFrames > 0;
+            var pollerTask = reportExtraction
+                ? Task.Run(async () =>
+                {
+                    try
+                    {
+                        while (!pollerCts.Token.IsCancellationRequested)
+                        {
+                            await Task.Delay(TimeSpan.FromSeconds(2), pollerCts.Token);
+                            var n = Directory.Exists(framesDir)
+                                ? Directory.GetFiles(framesDir, "frame_*.png").Length : 0;
+                            await _progressHub.SendExtractionProgress(jobId, n, estimatedTotalFrames);
+                        }
+                    }
+                    catch (OperationCanceledException) { /* normal: extraction finished or job cancelled */ }
+                }, pollerCts.Token)
+                : Task.CompletedTask;
 
-            if (result.ExitCode != 0)
+            try
             {
-                throw new InvalidOperationException($"Frame extraction failed with exit code {result.ExitCode}");
+                var result = await Cli.Wrap(_ffmpegPath)
+                    .WithArguments(args => {
+                        args.Add("-i").Add(inputPath)
+                            .Add("-vf").Add(vfArg);
+                        if (isHDR) args.Add("-pix_fmt").Add("rgb48be");
+                        args.Add(Path.Combine(framesDir, "frame_%06d.png"));
+                    })
+                    .WithValidation(CommandResultValidation.None)
+                    .ExecuteAsync(cancellationToken);
+
+                if (result.ExitCode != 0)
+                {
+                    throw new InvalidOperationException($"Frame extraction failed with exit code {result.ExitCode}");
+                }
+            }
+            finally
+            {
+                // Stop the poller and wait for it (no orphan). Deliberately does NOT clear the
+                // extraction cache - that happens only on terminal paths so the bar stays monotonic.
+                pollerCts.Cancel();
+                try { await pollerTask; } catch { /* poller is best-effort */ }
             }
         }
 

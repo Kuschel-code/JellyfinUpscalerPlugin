@@ -119,5 +119,118 @@ namespace JellyfinUpscalerPlugin.Tests.Services
                 UpscalerProgressHub.ClearFrameProgress(jobId);
             }
         }
+
+        // ---- v1.7.11 Fix B: extraction-phase band + monotonic phase weighting (Gap 1) ----
+        private const double Band = 15.0; // mirrors ProcessingStrategySelector's extraction band
+
+        [Fact]
+        public async Task SendExtractionProgress_KnownTotal_CachesPct()
+        {
+            var jobId = Guid.NewGuid().ToString();
+            try
+            {
+                await Hub().SendExtractionProgress(jobId, extracted: 50, estimatedTotal: 100);
+                UpscalerProgressHub.GetExtractionProgress(jobId).Should().Be(50.0);
+            }
+            finally { UpscalerProgressHub.ClearExtractionProgress(jobId); }
+        }
+
+        [Fact]
+        public async Task SendExtractionProgress_UnknownTotal_DoesNotCache()
+        {
+            var jobId = Guid.NewGuid().ToString();
+            try
+            {
+                // estimatedTotal <= 0 must NOT cache: keeps hadExtraction=false (time estimate),
+                // no divide-by-zero - mirrors the -1 frame sentinel for unknown totals.
+                await Hub().SendExtractionProgress(jobId, extracted: 999, estimatedTotal: 0);
+                UpscalerProgressHub.GetExtractionProgress(jobId).Should().BeNull();
+            }
+            finally { UpscalerProgressHub.ClearExtractionProgress(jobId); }
+        }
+
+        [Fact]
+        public async Task CalculateJobProgress_ExtractionOnly_StaysInBand_NotNinetyFive()
+        {
+            var jobId = Guid.NewGuid().ToString();
+            try
+            {
+                await Hub().SendExtractionProgress(jobId, extracted: 50, estimatedTotal: 100); // 50% extracted
+
+                var job = new ProcessingJob
+                {
+                    Id = jobId,
+                    Status = ProcessingStatus.Processing,
+                    StartTime = DateTime.UtcNow.AddHours(-1), // time estimate alone would pin at 95%
+                    InputInfo = new VideoInfo { Width = 1920, Height = 1080, FrameRate = 30, Duration = TimeSpan.FromMinutes(1) }
+                };
+
+                _selector.CalculateJobProgress(job)
+                    .Should().Be(Band * 0.5, "extraction at 50% sits at half the band (7.5%), never the 95% time cap");
+            }
+            finally { UpscalerProgressHub.ClearExtractionProgress(jobId); }
+        }
+
+        [Fact]
+        public async Task CalculateJobProgress_ExtractionThenFrame_MapsAboveBand()
+        {
+            var jobId = Guid.NewGuid().ToString();
+            try
+            {
+                await Hub().SendExtractionProgress(jobId, extracted: 100, estimatedTotal: 100); // extraction done
+                await Hub().SendFrameProgress(jobId, "clip.mkv", currentFrame: 50, totalFrames: 100, fps: 4.0); // 50% upscaled
+
+                var job = new ProcessingJob { Id = jobId, Status = ProcessingStatus.Processing, StartTime = DateTime.UtcNow };
+
+                // band + 0.5 * (99 - band) = 15 + 0.5*84 = 57
+                _selector.CalculateJobProgress(job).Should().Be(57.0);
+            }
+            finally
+            {
+                UpscalerProgressHub.ClearFrameProgress(jobId);
+                UpscalerProgressHub.ClearExtractionProgress(jobId);
+            }
+        }
+
+        [Fact]
+        public async Task CalculateJobProgress_NoExtraction_FrameMappingUnchanged_PipePath()
+        {
+            var jobId = Guid.NewGuid().ToString();
+            try
+            {
+                // No extraction reported (pipe/realtime): frame mapping must stay EXACTLY v1.7.10 -> 50% maps to 50.
+                await Hub().SendFrameProgress(jobId, "clip.mkv", currentFrame: 50, totalFrames: 100, fps: 24.0);
+
+                var job = new ProcessingJob { Id = jobId, Status = ProcessingStatus.Processing, StartTime = DateTime.UtcNow };
+                _selector.CalculateJobProgress(job)
+                    .Should().Be(50.0, "the pipe path has no extraction band and is unchanged");
+            }
+            finally { UpscalerProgressHub.ClearFrameProgress(jobId); }
+        }
+
+        [Fact]
+        public async Task CalculateJobProgress_MonotonicAcrossExtractionToUpscale()
+        {
+            var jobId = Guid.NewGuid().ToString();
+            try
+            {
+                var job = new ProcessingJob { Id = jobId, Status = ProcessingStatus.Processing, StartTime = DateTime.UtcNow };
+
+                await Hub().SendExtractionProgress(jobId, extracted: 100, estimatedTotal: 100); // extraction complete
+                var atExtractionEnd = _selector.CalculateJobProgress(job); // == band (15)
+
+                await Hub().SendFrameProgress(jobId, "clip.mkv", currentFrame: 1, totalFrames: 100, fps: 4.0); // first upscale frame
+                var atFirstFrame = _selector.CalculateJobProgress(job); // band + 0.01*84 = 15.84
+
+                atExtractionEnd.Should().Be(Band);
+                atFirstFrame.Should().BeGreaterThan(atExtractionEnd,
+                    "the bar must rise from extraction into upscaling, never jump back toward 0");
+            }
+            finally
+            {
+                UpscalerProgressHub.ClearFrameProgress(jobId);
+                UpscalerProgressHub.ClearExtractionProgress(jobId);
+            }
+        }
     }
 }

@@ -234,18 +234,34 @@ namespace JellyfinUpscalerPlugin.Services
 
             if (job.Status == ProcessingStatus.Processing)
             {
-                // v1.7.10 - prefer REAL frame-based progress (reported by the frame loops via
-                // UpscalerProgressHub.SendFrameProgress) over the time estimate below, which
-                // capped at 95% and "stuck" there on slow hardware (#70/#72).
-                var frameProgress = UpscalerProgressHub.GetFrameProgress(job.Id);
-                // > 0 = a real frame fraction. A cached -1 is the v1.7.11 "frames flowing, total
-                // unknown" sentinel (Gap 2) and null means no report yet (e.g. still extracting) -
-                // both deliberately fall through to the time estimate rather than render as a bar value.
-                if (frameProgress.HasValue && frameProgress.Value > 0)
-                    return Math.Min(99.0, frameProgress.Value); // reserve 100 for Status==Completed
+                // v1.7.11 - phase-weighted progress (Gap 1 + Gap 2). When a job reports an extraction
+                // phase, reserve a 0..15% band for it and map real upscale frame progress into 15..99%,
+                // so the bar is MONOTONIC across extract -> upscale and never pins at 95% during the
+                // long frame extraction on slow hardware (#72). Pipe/realtime paths report no extraction
+                // (hadExtraction=false) -> band=0 -> frames map 0..99 exactly as the v1.7.10 fix did.
+                var extraction = UpscalerProgressHub.GetExtractionProgress(job.Id); // 0..100 or null
+                var frame = UpscalerProgressHub.GetFrameProgress(job.Id);           // >0, -1 sentinel, or null
+                var hadExtraction = extraction.HasValue;
+                const double band = 15.0; // % reserved for the extraction phase when present
 
-                // Fallback: time estimate (used before per-frame reports arrive, e.g. during
-                // frame extraction or the final re-encode).
+                // Upscaling: a real frame fraction (> 0) maps above the extraction band. A cached -1 is
+                // the "frames flowing, total unknown" sentinel (Gap 2) and null means no per-frame report
+                // yet - both fall through to the extraction / time-estimate branches below.
+                if (frame.HasValue && frame.Value > 0)
+                {
+                    // No extraction phase (pipe/realtime): keep the v1.7.10 mapping EXACTLY (frame% -> bar%),
+                    // so that path is unchanged. With an extraction phase: compress the real frame fraction
+                    // into [band, 99] above the reserved band so the bar stays monotonic across phases.
+                    return hadExtraction
+                        ? Math.Min(99.0, band + (frame.Value / 100.0) * (99.0 - band))
+                        : Math.Min(99.0, frame.Value); // reserve 100 for Status==Completed
+                }
+
+                // Still extracting (no upscale frames yet): show progress inside the band.
+                if (extraction.HasValue)
+                    return Math.Min(band, (extraction.Value / 100.0) * band);
+
+                // Fallback: time estimate (no frame/extraction report yet, or the final re-encode).
                 if (job.InputInfo != null && job.InputInfo.Duration.TotalSeconds > 0)
                 {
                     var elapsed = (DateTime.UtcNow - job.StartTime).TotalSeconds;

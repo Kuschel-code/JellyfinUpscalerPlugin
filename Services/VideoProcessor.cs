@@ -345,6 +345,7 @@ namespace JellyfinUpscalerPlugin.Services
                 }
                 _pausedJobs.TryRemove(jobId, out _);
                 UpscalerProgressHub.ClearFrameProgress(jobId); // v1.7.10 - clean frame-progress cache on every terminal path (cancel/exception too)
+                UpscalerProgressHub.ClearExtractionProgress(jobId); // v1.7.11 - same for the extraction-phase cache
             }
         }
 

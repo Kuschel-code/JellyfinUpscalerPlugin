@@ -158,15 +158,21 @@ namespace JellyfinUpscalerPlugin.Services
                     var framesFps = job.InputInfo?.FrameRate ?? 30.0;
                     var isInterlaced = job.InputInfo?.IsInterlaced ?? false;
                     var isHDR = job.InputInfo?.IsHDR ?? false;
-                    await _frameProcessor.ExtractFramesAsync(inputPath, framesDir, framesFps, cancellationToken, isInterlaced, isHDR);
+                    // v1.7.11 - estimated frame count drives the extraction progress band; 0 (unknown
+                    // duration) makes ExtractFramesAsync skip the poller -> falls back to time estimate.
+                    var estTotalFrames = (int)((job.InputInfo?.Duration.TotalSeconds ?? 0) * framesFps);
+                    job.Phase = "Extracting frames";
+                    await _frameProcessor.ExtractFramesAsync(inputPath, framesDir, framesFps, cancellationToken, isInterlaced, isHDR, job.Id, estTotalFrames);
 
                     // 2. Process frames with AI
                     var processedDir = Path.Combine(tempDir, "processed");
                     Directory.CreateDirectory(processedDir);
 
+                    job.Phase = "Upscaling";
                     await _frameProcessor.ProcessFramesAsync(framesDir, processedDir, job.OptimizedOptions, job.Id, cancellationToken, isHDR);
 
                     // 3. Reconstruct video
+                    job.Phase = "Encoding";
                     await _frameProcessor.ReconstructVideoAsync(processedDir, inputPath, outputPath, job.OptimizedOptions, framesFps, cancellationToken, job.InputInfo);
 
                     return new VideoProcessingResult
@@ -279,6 +285,7 @@ namespace JellyfinUpscalerPlugin.Services
 
                 var mfVfArg = string.Join(",", mfVfFilters);
                 _logger.LogInformation("Extracting frames for multi-frame processing with filter: {Filter}", mfVfArg);
+                job.Phase = "Extracting frames";
 
                 await Cli.Wrap(_ffmpegPath)
                     .WithArguments(args => args
@@ -308,6 +315,7 @@ namespace JellyfinUpscalerPlugin.Services
                 var multiFrameClient = _httpClientFactory.CreateClient("AiUpscalerLongTimeout");
 
                 // SEQUENTIAL sliding window -- do NOT parallelize
+                job.Phase = "Upscaling";
                 for (int i = 0; i < totalFrames; i++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -371,6 +379,7 @@ namespace JellyfinUpscalerPlugin.Services
                 }
 
                 _logger.LogInformation("Reconstructing video from {Count} processed frames with audio", totalFrames);
+                job.Phase = "Encoding";
                 await _frameProcessor.ReconstructVideoAsync(processedDir, inputPath, outputPath, job.OptimizedOptions, effectiveFps, cancellationToken, job.InputInfo);
 
                 return new VideoProcessingResult

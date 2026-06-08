@@ -48,6 +48,7 @@ namespace JellyfinUpscalerPlugin.Services
                 outputPath = Path.GetFileName(job.OutputPath),
                 status = job.Status.ToString(),
                 progress = _strategySelector.CalculateJobProgress(job),
+                phase = job.Phase,
                 startTime = job.StartTime,
                 duration = job.ProcessingDuration.TotalSeconds,
                 method = job.ProcessingMethod.ToString(),
