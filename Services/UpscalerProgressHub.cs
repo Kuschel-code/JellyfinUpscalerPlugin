@@ -113,8 +113,15 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         public async Task SendFrameProgress(string jobId, string fileName, int currentFrame, int totalFrames, double fps)
         {
-            var progress = totalFrames > 0 ? (currentFrame * 100.0 / totalFrames) : 0;
-            _latestFrameProgress[jobId] = progress;
+            // v1.7.11 - when the total frame count is unknown (totalFrames <= 0, e.g. the
+            // pipe-encode path before v1.7.11 passed -1) cache a -1 SENTINEL, not 0. A cached 0
+            // was indistinguishable from "genuinely 0% done", so CalculateJobProgress's `> 0`
+            // check fell back to the 95%-capped time estimate even while frames were flowing
+            // (Gap 2). The SignalR message still reports 0 (not -1) so the UI never shows a
+            // negative bar.
+            var hasTotal = totalFrames > 0;
+            var progress = hasTotal ? (currentFrame * 100.0 / totalFrames) : 0;
+            _latestFrameProgress[jobId] = hasTotal ? progress : -1;
             var framesRemaining = totalFrames - currentFrame;
             var secondsRemaining = fps > 0 ? framesRemaining / fps : 0;
 

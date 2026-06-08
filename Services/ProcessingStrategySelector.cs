@@ -238,6 +238,9 @@ namespace JellyfinUpscalerPlugin.Services
                 // UpscalerProgressHub.SendFrameProgress) over the time estimate below, which
                 // capped at 95% and "stuck" there on slow hardware (#70/#72).
                 var frameProgress = UpscalerProgressHub.GetFrameProgress(job.Id);
+                // > 0 = a real frame fraction. A cached -1 is the v1.7.11 "frames flowing, total
+                // unknown" sentinel (Gap 2) and null means no report yet (e.g. still extracting) -
+                // both deliberately fall through to the time estimate rather than render as a bar value.
                 if (frameProgress.HasValue && frameProgress.Value > 0)
                     return Math.Min(99.0, frameProgress.Value); // reserve 100 for Status==Completed
 

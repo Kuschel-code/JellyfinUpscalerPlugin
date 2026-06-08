@@ -532,6 +532,15 @@ namespace JellyfinUpscalerPlugin.Services
                 var processingStartTime = DateTime.UtcNow;
                 var frameBuffer = new byte[frameByteSize];
 
+                // v1.7.11 - estimate the total frame count (duration x fps) so batch progress is a
+                // REAL fraction. Previously this loop passed -1 to SendFrameProgress; the hub cached
+                // that as 0, and CalculateJobProgress's `> 0` check then ignored it and fell back to
+                // the time estimate that pins at 95% on slow hardware (Gap 2). When the duration is
+                // unknown we pass -1 through so the hub stores the "unknown total" sentinel instead.
+                var estimatedTotalFrames = job.InputInfo != null && job.InputInfo.Duration.TotalSeconds > 0
+                    ? (int)Math.Round(job.InputInfo.Duration.TotalSeconds * effectiveFps)
+                    : -1;
+
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     // Check for pause
@@ -604,7 +613,7 @@ namespace JellyfinUpscalerPlugin.Services
                             job.Id,
                             Path.GetFileName(inputPath),
                             framesProcessed,
-                            -1,
+                            estimatedTotalFrames,
                             currentFps
                         );
 
