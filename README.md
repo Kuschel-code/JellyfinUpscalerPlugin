@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.7.10
+# Jellyfin AI Upscaler Plugin v1.7.11
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.7.10):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.7.11):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.7.10     │  │
+│  │  AI Upscaler Plugin v1.7.11     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -294,12 +294,19 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.7.10` — pinned to a specific plugin release
-- `:v1.7.10-<backend>` — full semver (e.g. `:v1.7.10-cpu`)
+- `:docker7-v1.7.11` — pinned to a specific plugin release
+- `:v1.7.11-<backend>` — full semver (e.g. `:v1.7.11-cpu`)
 
 ---
 
 ## Changelog
+
+### v1.7.11 (Honest extraction progress + version-display guard)
+
+**Plugin release** (no Docker functional change).
+
+- **"Stuck at 95%" - now fixed for the extraction phase too.** Batch progress shows real frame-extraction + upscale progress (frames done/total) instead of a time estimate that pinned at 95% during the long ffmpeg extraction on slow CPUs (#72); the dashboard shows the live phase (Extracting / Upscaling / Encoding) instead of "Idle". The pipe-encode path that could also pin at 95% is fixed too.
+- **Honest version display, guarded.** `configurationpage.html` now shows the real plugin version (v1.7.10 shipped still rendering v1.7.9), and the release script asserts every user-visible version string matches the tag so it can never drift again.
 
 ### v1.7.10 (Fixes "stuck at 95%" + sharper GPU diagnostics)
 

@@ -119,7 +119,7 @@ STATIC_DIR = Path(os.getenv("STATIC_DIR", "/app/static"))
 # Dockerfiles pass; fall back to a literal only for bare local runs.
 # (FIX-1: the hardcoded literal had drifted to 1.6.1.21 while the image
 # entrypoint banner correctly reported 1.7.7 — issue #69 screenshots.)
-VERSION = os.getenv("APP_VERSION", "1.7.10")
+VERSION = os.getenv("APP_VERSION", "1.7.11")
 
 # Global state
 class AppState:
