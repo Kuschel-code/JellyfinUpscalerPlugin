@@ -15,7 +15,7 @@
     <a href="index.html" class="brand">
       <span class="brand-logo">AI</span>
       <span>Jellyfin AI Upscaler</span>
-      <span class="brand-version">v1.7.11</span>
+      <span class="brand-version">v1.7.12</span>
     </a>
     <nav class="nav" data-nav></nav>
     <div class="nav-cta">
@@ -77,9 +77,9 @@
 
   <h2>Latest release</h2>
   <div class="card">
-    <h3>v1.7.11 · Honest extraction progress + version-display guard</h3>
-    <p style="color: var(--text-dim); margin-bottom: 12px;">The <strong>"job stuck at 95%"</strong> fix now covers the frame-<strong>extraction</strong> phase: batch progress shows <strong>real extraction + upscale progress</strong> (frames done/total) instead of a time estimate that pinned at 95% during the long ffmpeg extraction on slow CPUs, and the dashboard shows the live phase (<strong>Extracting / Upscaling / Encoding</strong>) instead of "Idle". The pipe-encode path that could also pin at 95% is fixed too.</p>
-    <p style="color: var(--text-dim); margin-bottom: 12px;">And <code>configurationpage.html</code> now shows the <strong>real plugin version</strong> (v1.7.10 shipped still rendering v1.7.9) — with a release guard that asserts every user-visible version string matches the tag, so it can't drift again. Plugin-only release.</p>
+    <h3>v1.7.12 · First-load timeout fix + real error messages</h3>
+    <p style="color: var(--text-dim); margin-bottom: 12px;">Loading a model that has to <strong>download</strong> (face-restore GFPGAN/CodeFormer/GPEN ~280-377MB, or large ONNX) used to fail with "Load failed" — the proxy timed out at 120s while the download was still running. A dedicated <strong>570s download client</strong> fixes it, kept just under the 600s UI wait so an over-long download shows a <strong>real error</strong>, not a blank browser timeout; benchmarks went 120s → 300s.</p>
+    <p style="color: var(--text-dim); margin-bottom: 12px;">And the UI error parsers now read <code>detail || error || message</code>, so the actual cause is shown instead of a generic "Load failed". A DI test guards the named-client timeouts so a typo can't silently fall back to the 100s default. Plugin-only release.</p>
     <a href="changelog.html" class="btn btn-ghost">Full changelog →</a>
     <a href="https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler/tags" target="_blank" class="btn btn-ghost" style="margin-left: 8px;">Images on Docker Hub →</a>
   </div>
@@ -110,7 +110,7 @@ docker run -d --name jellyfin-ai-upscaler \
 <footer class="footer">
   <div class="footer-inner">
     <div>
-      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.7.11 · not affiliated with the Jellyfin project
+      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.7.12 · not affiliated with the Jellyfin project
       <div style="margin-top: 4px;"><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a> · <a href="https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler">Docker Hub</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues">Issues</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">Releases</a></div>
     </div>
     <div>Co-engineered with <a href="https://claude.com/claude-code">Claude Opus 4.8</a></div>

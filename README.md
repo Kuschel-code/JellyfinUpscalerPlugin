@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.7.11
+# Jellyfin AI Upscaler Plugin v1.7.12
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.7.11):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.7.12):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.7.11     │  │
+│  │  AI Upscaler Plugin v1.7.12     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -294,12 +294,19 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.7.11` — pinned to a specific plugin release
-- `:v1.7.11-<backend>` — full semver (e.g. `:v1.7.11-cpu`)
+- `:docker7-v1.7.12` — pinned to a specific plugin release
+- `:v1.7.12-<backend>` — full semver (e.g. `:v1.7.12-cpu`)
 
 ---
 
 ## Changelog
+
+### v1.7.12 (Timeout-wall + error-message fixes)
+
+**Plugin release** (no Docker functional change).
+
+- **First-time downloads no longer fail with "Load failed".** Loading a model that has to download (face-restore GFPGAN/CodeFormer/GPEN ~280-377MB, or large ONNX models) used to hit a 120s proxy timeout while the download was still running. A dedicated 570s download client fixes it (kept just under the 600s UI wait so an over-long download shows a real error, not a blank browser timeout); the `/models/load` UI timeout was raised to match, and benchmarks went 120s -> 300s.
+- **Real error messages.** The UI error parsers now read `detail || error || message`, so the actual cause is shown instead of a generic "Load failed". A DI test guards the named-client timeouts so a typo can never silently fall back to the 100s default.
 
 ### v1.7.11 (Honest extraction progress + version-display guard)
 

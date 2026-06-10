@@ -90,7 +90,7 @@
       .catch(function () { cb(null); });
   }
   function issueUrl(q) {
-    var body = "**Problem:**\n" + (q || "") + "\n\n**Plugin version:** v1.7.11\n**Docker image tag:** (e.g. docker7-intel)\n**Hardware / GPU:** \n**Jellyfin version:** \n**/gpu-verify output:** \n**Relevant logs:** ";
+    var body = "**Problem:**\n" + (q || "") + "\n\n**Plugin version:** v1.7.12\n**Docker image tag:** (e.g. docker7-intel)\n**Hardware / GPU:** \n**Jellyfin version:** \n**/gpu-verify output:** \n**Relevant logs:** ";
     return NEWISSUE + "?title=" + encodeURIComponent((q || "Support request").slice(0, 80)) + "&body=" + encodeURIComponent(body);
   }
   function issueCta(q) { return '<div class="sb-rel"><a href="' + esc(issueUrl(q)) + '" target="_blank" rel="noopener">' + esc(t("prefill")) + "</a></div>"; }

@@ -87,6 +87,10 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Uses IHttpClientFactory for proper DNS refresh and connection pooling.
         /// </summary>
         private HttpClient GetAiServiceClient() => _httpClientFactory.CreateClient("AiUpscaler");
+        // v1.7.12 - longer-timeout clients for the two slow operation classes that hit the 120s wall:
+        // first-load auto-downloads (~380MB) and CPU benchmarks on weak hardware (#72-class boxes).
+        private HttpClient GetDownloadClient() => _httpClientFactory.CreateClient("AiUpscalerDownload");   // 570s (< 600s UI)
+        private HttpClient GetBenchmarkClient() => _httpClientFactory.CreateClient("AiUpscalerLongTimeout"); // 300s
         private HttpClient GetMultiFrameClient() => _httpClientFactory.CreateClient("AiUpscalerLongTimeout");
 
         /// <summary>
@@ -1616,7 +1620,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                     new KeyValuePair<string, string>("use_gpu", useGpu.ToString().ToLower()),
                     new KeyValuePair<string, string>("gpu_device_id", gpuDeviceId.ToString())
                 });
-                using var response = await GetAiServiceClient().PostAsync($"{serviceUrl}/models/load", formContent, HttpContext.RequestAborted);
+                using var response = await GetDownloadClient().PostAsync($"{serviceUrl}/models/load", formContent, HttpContext.RequestAborted);
                 var content = await response.Content.ReadAsStringAsync();
                 return new ContentResult { Content = content, ContentType = "application/json", StatusCode = (int)response.StatusCode };
             }
@@ -1637,7 +1641,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             try
             {
                 var serviceUrl = GetValidatedServiceUrl();
-                using var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/benchmark", HttpContext.RequestAborted);
+                using var response = await GetBenchmarkClient().GetAsync($"{serviceUrl}/benchmark", HttpContext.RequestAborted);
                 var content = await response.Content.ReadAsStringAsync();
                 return new ContentResult { Content = content, ContentType = "application/json", StatusCode = (int)response.StatusCode };
             }
@@ -1673,7 +1677,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                 {
                     new KeyValuePair<string, string>("model_name", model_name)
                 });
-                using var response = await GetAiServiceClient().PostAsync($"{serviceUrl}/face-restore/load", form, HttpContext.RequestAborted);
+                using var response = await GetDownloadClient().PostAsync($"{serviceUrl}/face-restore/load", form, HttpContext.RequestAborted);
                 var content = await response.Content.ReadAsStringAsync();
                 return new ContentResult { Content = content, ContentType = "application/json", StatusCode = (int)response.StatusCode };
             }
@@ -1987,7 +1991,7 @@ namespace JellyfinUpscalerPlugin.Controllers
             {
                 var serviceUrl = GetValidatedServiceUrl();
 
-                using var response = await GetAiServiceClient().GetAsync($"{serviceUrl}/benchmark-frame?width={width}&height={height}", HttpContext.RequestAborted);
+                using var response = await GetBenchmarkClient().GetAsync($"{serviceUrl}/benchmark-frame?width={width}&height={height}", HttpContext.RequestAborted);
 
                 if (response.IsSuccessStatusCode)
                 {
