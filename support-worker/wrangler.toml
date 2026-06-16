@@ -2,6 +2,6 @@ name = "upscaler-support-chat"
 main = "worker.js"
 compatibility_date = "2026-06-01"
 
-# The Anthropic API key is NOT stored here. Set it as an encrypted secret:
-#   wrangler secret put ANTHROPIC_API_KEY
-# (use a SEPARATE Anthropic account's key so your main key/budget is untouched)
+# Free Cloudflare Workers AI — no API key, no billing. Bind it:
+[ai]
+binding = "AI"

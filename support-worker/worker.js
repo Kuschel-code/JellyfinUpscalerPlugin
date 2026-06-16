@@ -1,12 +1,13 @@
 /*
- * Cloudflare Worker — Claude Haiku fallback for the AI Upscaler support bot.
+ * Cloudflare Worker — free AI fallback for the AI Upscaler support bot.
  *
- * The website (GitHub Pages) is static, so it cannot hold an API key. This tiny
- * Worker is the proxy: it holds the Anthropic key ONLY as the Worker secret
- * ANTHROPIC_API_KEY (set via `wrangler secret put ANTHROPIC_API_KEY`) and forwards
- * the question to Claude Haiku. The key is never in this file, the repo, or the
- * browser. Connect a SEPARATE Anthropic account's key so your main key is untouched.
+ * Uses **Cloudflare Workers AI** (env.AI binding) — no API key, no external
+ * account, no billing. Cloudflare's free daily allowance is plenty for a
+ * low-traffic support bot. The website's support-bot.js calls this Worker only
+ * when its local knowledge base can't answer a question.
  *
+ * Setup (dashboard): Worker -> Settings -> Bindings -> Add -> Workers AI,
+ *   variable name: AI   (that's it — no secret needed).
  * Deploy: see README.md in this folder.
  */
 
@@ -14,8 +15,8 @@ const ALLOWED_ORIGINS = [
   "https://kuschel-code.github.io",
   "http://localhost:8080", // local preview
 ];
-const MODEL = "claude-haiku-4-5";   // latest Haiku
-const MAX_QUESTION = 2000;          // chars — caps abuse / cost
+const MODEL = "@cf/meta/llama-3.1-8b-instruct"; // free Workers AI text model
+const MAX_QUESTION = 2000;
 const MAX_CONTEXT = 6000;
 const MAX_TOKENS = 1024;
 
@@ -45,12 +46,11 @@ export default {
     if (request.method !== "POST") {
       return json({ error: "Method not allowed" }, 405, origin);
     }
-    // Only answer for our own site (cheap abuse gate; pair with Cloudflare rate-limiting).
     if (!ALLOWED_ORIGINS.includes(origin)) {
       return json({ error: "Forbidden origin" }, 403, origin);
     }
-    if (!env.ANTHROPIC_API_KEY) {
-      return json({ error: "Worker missing ANTHROPIC_API_KEY secret" }, 500, origin);
+    if (!env.AI) {
+      return json({ error: "Worker missing AI binding (add a Workers AI binding named 'AI')" }, 500, origin);
     }
 
     let body;
@@ -71,33 +71,21 @@ export default {
       context || "(none provided)",
     ].join("\n");
 
-    let upstream;
+    let result;
     try {
-      upstream = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "x-api-key": env.ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: MODEL,
-          max_tokens: MAX_TOKENS,
-          system,
-          messages: [{ role: "user", content: question }],
-        }),
+      result = await env.AI.run(MODEL, {
+        max_tokens: MAX_TOKENS,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: question },
+        ],
       });
     } catch (e) {
-      return json({ error: "Upstream fetch failed" }, 502, origin);
+      return json({ error: "AI run failed", detail: String(e && e.message || e).slice(0, 300) }, 502, origin);
     }
 
-    if (!upstream.ok) {
-      const detail = (await upstream.text()).slice(0, 300);
-      return json({ error: "Upstream error", status: upstream.status, detail }, 502, origin);
-    }
-
-    const data = await upstream.json();
-    const answer = (data.content || []).map((b) => b.text || "").join("").trim();
+    const answer = String((result && (result.response ?? result.text)) || "").trim();
+    if (!answer) return json({ error: "Empty AI response" }, 502, origin);
     return json({ answer }, 200, origin);
   },
 };
