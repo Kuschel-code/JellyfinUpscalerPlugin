@@ -15,7 +15,7 @@ const ALLOWED_ORIGINS = [
   "https://kuschel-code.github.io",
   "http://localhost:8080", // local preview
 ];
-const MODEL = "@cf/meta/llama-3.1-8b-instruct"; // free Workers AI text model
+const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"; // free Workers AI text model
 const MAX_QUESTION = 2000;
 const MAX_CONTEXT = 6000;
 const MAX_TOKENS = 1024;
