@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.7.12</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.7.13</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>REST API reference</h1>
@@ -18,6 +18,37 @@
     <li><strong>Plugin controller:</strong> Jellyfin's standard <code>X-Emby-Token</code> access-token header. Elevated endpoints additionally require admin role (<code>RequiresElevation</code>).</li>
     <li><strong>AI service:</strong> shared-secret <code>X-Api-Token</code> header when <code>API_TOKEN</code> env var is set on the container. Plain HTTP with no token if unset (homelab-friendly default).</li>
   </ul>
+
+  <h2 id="api-token">🔐 Securing the AI service (API token)</h2>
+  <p>The AI service on <code>:5000</code> does the GPU work. If it's reachable on your network, an <strong>API token</strong> stops anyone else from using it. The token is a <strong>shared secret you pick yourself</strong> — there's deliberately <em>no "generate" button</em>, because an unauthenticated UI can't be trusted to hand out its own auth.</p>
+  <p>It fits together in three steps:</p>
+  <ol>
+    <li>Set <code>API_TOKEN</code> as an <strong>environment variable on the Docker container</strong> (read once at startup).</li>
+    <li>The plugin sends that exact value as the <code>X-Api-Token</code> header on every request.</li>
+    <li>So you paste the <strong>identical</strong> value into the plugin's <em>Settings → AI Service API Token</em> field. If they differ, the service answers <code>401 Unauthorized</code>.</li>
+  </ol>
+  <div class="callout">💡 <strong>Trusted home LAN and don't want a token?</strong> Deploy with <code>API_TOKEN=disable</code> and leave the plugin field empty — the service then runs without auth (the homelab-friendly default).</div>
+
+  <h3>docker-compose</h3>
+  <pre><code>services:
+  ai-upscaler:
+    image: kuscheltier/jellyfin-ai-upscaler:latest-cuda   # or :docker7-intel / :docker7-amd / :latest (CPU)
+    environment:
+      - API_TOKEN=change-me-to-a-long-random-string        # or: disable
+    ports:
+      - "5000:5000"
+    volumes:
+      - upscaler-models:/app/models
+    restart: unless-stopped</code></pre>
+
+  <h3>docker run</h3>
+  <pre><code>docker run -d --name jellyfin-ai-upscaler \
+  -e API_TOKEN=change-me-to-a-long-random-string \
+  -p 5000:5000 \
+  kuscheltier/jellyfin-ai-upscaler:latest-cuda</code></pre>
+
+  <h3>Confirm it's active</h3>
+  <p>Call <code>GET /status</code> on the service — <code>"api_token_configured": true</code> and <code>"auth_enabled": true</code> mean the token is enforced. The Operator Console at <code>:5000</code> shows the same on its <em>API</em> tab. Then click <strong>Test Connection</strong> in the plugin: a green result means the plugin's token matches the container's.</p>
 
   <h2>Plugin controller endpoints (<code>/Upscaler/*</code>)</h2>
   <table>
@@ -104,7 +135,7 @@ curl -X POST -H "X-Api-Token: $TOKEN" -H "Content-Type: application/json" \
   <p>Model IDs and filter preset IDs are validated against <code>^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*$</code> — dot-separated segments are allowed (for <code>rife-v4.9</code> etc) but traversal patterns (<code>..</code>, leading/trailing dots) are blocked.</p>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.7.12</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.7.13</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

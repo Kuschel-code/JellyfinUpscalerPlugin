@@ -1,182 +1,116 @@
 <div id="UpscalerConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
 <style>
-    /* ===== AI Upscaler v1.7.12 — Jellyfin-compatible dark theme ===== */
+    /* ===== AI Upscaler v1.7.13 — Operator-Console theme (ported from the :5000 service UI) ===== */
     #UpscalerConfigurationPage {
-        --accent: #00d4ff;
-        --accent-bg: rgba(0, 212, 255, 0.12);
-        --success: #4ade80;
-        --warning: #fbbf24;
-        --danger: #f87171;
-        --bg-card: rgba(30, 41, 59, 0.55);
-        --bg-input: #1e293b;
-        --border: rgba(255, 255, 255, 0.08);
-        --text-primary: #e2e8f0;
-        --text-secondary: #94a3b8;
-        --text-muted: #64748b;
+        --bg: #0b0d12;
+        --surface: #11141b;
+        --surface-2: #161a23;
+        --border: #1f2430;
+        --border-strong: #2a3040;
+        --accent: #3b82f6;
+        --accent-bg: rgba(30,58,138,0.20);
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --bg-card: var(--surface);
+        --bg-input: var(--bg);
+        --text-primary: #e6e8ec;
+        --text-secondary: #9199a6;
+        --text-muted: #5c6472;
+        --mono: ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+        font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+        font-size: 13px;
+        -webkit-font-smoothing: antialiased;
     }
     #UpscalerConfigurationPage, #UpscalerConfigurationPage * { color-scheme: dark !important; }
     #UpscalerConfigurationPage .content-primary { background: transparent !important; }
     #UpscalerConfigurationPage[data-role="page"] { background: transparent !important; }
+    #UpscalerConfigurationPage code, #UpscalerConfigurationPage .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
     /* ===== Tab bar ===== */
     #UpscalerConfigurationPage .upscaler-tabs {
+        display: flex; align-items: center; gap: 4px;
         border-bottom: 1px solid var(--border);
-        margin-bottom: 1.25rem;
-        padding-bottom: 0;
+        margin-bottom: 1.25rem; padding-bottom: 0; overflow-x: auto;
     }
     #UpscalerConfigurationPage .upscaler-tab {
-        display: inline-block;
-        padding: 0.55rem 1.1rem;
-        color: var(--text-secondary);
-        cursor: pointer;
-        border-bottom: 2px solid transparent;
-        font-size: 0.9rem;
-        margin-bottom: -1px;
-        transition: color 0.15s, border-color 0.15s;
+        padding: 10px 12px; color: var(--text-secondary); cursor: pointer;
+        border-bottom: 2px solid transparent; font-size: 13px;
+        margin-bottom: -1px; user-select: none; transition: color .15s, border-color .15s;
     }
     #UpscalerConfigurationPage .upscaler-tab:hover { color: var(--text-primary); }
-    #UpscalerConfigurationPage .upscaler-tab.active {
-        color: var(--accent);
-        border-bottom-color: var(--accent);
-        font-weight: 600;
-    }
+    #UpscalerConfigurationPage .upscaler-tab.active { color: var(--text-primary); border-bottom-color: var(--accent); font-weight: 600; }
 
     /* ===== Header ===== */
-    #UpscalerConfigurationPage .upscaler-header {
-        margin-bottom: 1rem;
-    }
+    #UpscalerConfigurationPage .upscaler-header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 1rem; }
     #UpscalerConfigurationPage .upscaler-header h1 {
-        margin: 0 0 0.25rem;
-        font-size: 1.5rem;
-        color: var(--text-primary);
+        margin: 0; font-size: 1.15rem; font-weight: 600; letter-spacing: -0.01em; color: var(--text-primary);
+        display: flex; align-items: center; gap: 10px;
     }
-    #UpscalerConfigurationPage .upscaler-header-meta {
-        font-size: 0.8rem;
-        color: var(--text-muted);
+    #UpscalerConfigurationPage .upscaler-header h1::before {
+        content: "U"; width: 22px; height: 22px; border-radius: 5px; background: var(--accent);
+        color: #fff; font-size: 12px; font-weight: 700; display: inline-grid; place-items: center; flex-shrink: 0;
     }
+    #UpscalerConfigurationPage .upscaler-header-meta { font-size: 12px; color: var(--text-muted); width: 100%; margin-top: 2px; }
 
-    /* ===== Status pills ===== */
+    /* ===== Status pills (chips) ===== */
     #UpscalerConfigurationPage .status-pill {
-        display: inline-block;
-        padding: 2px 10px;
-        border-radius: 100px;
-        font-size: 0.75rem;
-        font-weight: 500;
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 500;
+        border: 1px solid var(--border); background: var(--surface-2); color: var(--text-secondary);
         vertical-align: middle;
     }
-    #UpscalerConfigurationPage .status-pill--online { background: rgba(74,222,128,0.15); color: var(--success); }
-    #UpscalerConfigurationPage .status-pill--offline { background: rgba(248,113,113,0.15); color: var(--danger); }
-    #UpscalerConfigurationPage .status-pill--processing { background: rgba(0,212,255,0.15); color: var(--accent); }
-    #UpscalerConfigurationPage .status-pill--warning { background: rgba(251,191,36,0.15); color: var(--warning); }
-    #UpscalerConfigurationPage .status-pill--checking { background: rgba(251,191,36,0.15); color: var(--warning); }
-    #UpscalerConfigurationPage .status-pill--standalone { background: rgba(148,163,184,0.15); color: var(--text-secondary, #94a3b8); }
+    #UpscalerConfigurationPage .status-pill--online { color: #6ee7b7; border-color: #0f4a38; background: #042822; }
+    #UpscalerConfigurationPage .status-pill--offline { color: #fca5a5; border-color: #7f1d1d; background: #270b0b; }
+    #UpscalerConfigurationPage .status-pill--processing { color: #93c5fd; border-color: #1e3a8a; background: #0b1733; }
+    #UpscalerConfigurationPage .status-pill--warning,
+    #UpscalerConfigurationPage .status-pill--checking { color: #fcd34d; border-color: #713f12; background: #27180a; }
+    #UpscalerConfigurationPage .status-pill--standalone { color: var(--text-secondary); }
 
     /* ===== Cards ===== */
     #UpscalerConfigurationPage .upscaler-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 1.1rem;
-        margin-bottom: 1rem;
+        background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+        padding: 16px; margin-bottom: 16px;
     }
     #UpscalerConfigurationPage .upscaler-card h3 {
-        margin: 0 0 0.75rem;
-        font-size: 0.95rem;
-        color: var(--accent);
+        margin: 0 0 12px; font-size: 12px; font-weight: 600; text-transform: uppercase;
+        letter-spacing: .03em; color: var(--text-primary);
     }
 
-    /* ===== Stat grid ===== */
-    #UpscalerConfigurationPage .stat-row {
-        display: block;
-        margin-bottom: 1rem;
-    }
+    /* ===== Stat / KPI grid ===== */
+    #UpscalerConfigurationPage .stat-row { display: block; margin-bottom: 16px; }
     #UpscalerConfigurationPage .stat-card {
-        display: inline-block;
-        vertical-align: top;
-        width: 23%;
-        min-width: 120px;
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 0.9rem;
-        text-align: center;
-        margin-right: 1.5%;
-        margin-bottom: 0.5rem;
-        box-sizing: border-box;
+        display: inline-block; vertical-align: top; width: 23%; min-width: 120px;
+        background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+        padding: 14px 16px; text-align: left; margin-right: 1.5%; margin-bottom: 8px; box-sizing: border-box;
     }
-    #UpscalerConfigurationPage .stat-value { font-size: 1.4rem; font-weight: 700; }
-    #UpscalerConfigurationPage .stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; }
+    #UpscalerConfigurationPage .stat-value { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+    #UpscalerConfigurationPage .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin-top: 2px; }
 
     /* ===== Two-column row ===== */
-    #UpscalerConfigurationPage .two-col {
-        display: block;
-        margin-bottom: 1rem;
-    }
-    #UpscalerConfigurationPage .two-col > .upscaler-card {
-        display: inline-block;
-        vertical-align: top;
-        width: 48.5%;
-        margin-right: 2%;
-        box-sizing: border-box;
-    }
+    #UpscalerConfigurationPage .two-col { display: block; margin-bottom: 16px; }
+    #UpscalerConfigurationPage .two-col > .upscaler-card { display: inline-block; vertical-align: top; width: 48.5%; margin-right: 2%; box-sizing: border-box; }
     #UpscalerConfigurationPage .two-col > .upscaler-card:last-child { margin-right: 0; }
 
-    /* ===== Info rows (key-value) ===== */
-    #UpscalerConfigurationPage .info-row {
-        display: block;
-        padding: 0.35rem 0;
-        border-bottom: 1px solid rgba(255,255,255,0.04);
-        font-size: 0.85rem;
-    }
-    #UpscalerConfigurationPage .info-row .label {
-        display: inline-block;
-        width: 120px;
-        color: var(--text-secondary);
-    }
-    #UpscalerConfigurationPage .info-row .value { color: var(--text-primary); }
+    /* ===== Info rows (key-value / dl) ===== */
+    #UpscalerConfigurationPage .info-row { display: block; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+    #UpscalerConfigurationPage .info-row .label { display: inline-block; width: 140px; color: var(--text-muted); }
+    #UpscalerConfigurationPage .info-row .value { color: var(--text-primary); font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
     /* ===== Service banner ===== */
-    #UpscalerConfigurationPage .service-banner {
-        padding: 0.75rem 1rem;
-        border-radius: 8px;
-        margin-bottom: 1rem;
-        font-size: 0.85rem;
-    }
-    #UpscalerConfigurationPage .service-banner.online { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.2); color: var(--success); }
-    #UpscalerConfigurationPage .service-banner.offline { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); color: var(--danger); }
-    #UpscalerConfigurationPage .service-banner.checking { background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.2); color: var(--warning); }
+    #UpscalerConfigurationPage .service-banner { padding: 10px 14px; border-radius: 6px; border: 1px solid; margin-bottom: 14px; font-size: 12px; line-height: 1.55; }
+    #UpscalerConfigurationPage .service-banner.online { background: #042822; border-color: #0f4a38; color: #6ee7b7; }
+    #UpscalerConfigurationPage .service-banner.offline { background: #2a0b0b; border-color: #5a1111; color: #fecaca; }
+    #UpscalerConfigurationPage .service-banner.checking { background: #2a1b06; border-color: #5a3a0c; color: #fde8b5; }
 
     /* ===== Details/Summary (accordion) ===== */
-    #UpscalerConfigurationPage details {
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        margin-bottom: 0.75rem;
-    }
-    #UpscalerConfigurationPage details[open] { border-color: rgba(255,255,255,0.12); }
-    #UpscalerConfigurationPage summary {
-        padding: 0.75rem 1rem;
-        cursor: pointer;
-        color: var(--text-primary);
-        font-weight: 600;
-        font-size: 0.9rem;
-        list-style: none;
-        display: block;
-    }
+    #UpscalerConfigurationPage details { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 12px; }
+    #UpscalerConfigurationPage details[open] { border-color: var(--border-strong); }
+    #UpscalerConfigurationPage summary { padding: 12px 16px; cursor: pointer; color: var(--text-primary); font-weight: 600; font-size: 13px; list-style: none; display: block; }
     #UpscalerConfigurationPage summary::-webkit-details-marker { display: none; }
-    #UpscalerConfigurationPage summary::after {
-        content: '\25B6';
-        float: right;
-        font-size: 0.7rem;
-        color: var(--text-muted);
-        transition: transform 0.2s;
-    }
-    #UpscalerConfigurationPage details[open] > summary::after {
-        transform: rotate(90deg);
-    }
-    #UpscalerConfigurationPage .details-body {
-        padding: 0.25rem 1rem 1rem;
-    }
+    #UpscalerConfigurationPage summary::after { content: "\25B6"; float: right; font-size: 0.7rem; color: var(--text-muted); transition: transform .2s; }
+    #UpscalerConfigurationPage details[open] > summary::after { transform: rotate(90deg); }
+    #UpscalerConfigurationPage .details-body { padding: 4px 16px 16px; }
 
     /* ===== Form elements ===== */
     #UpscalerConfigurationPage input[type="text"],
@@ -186,165 +120,76 @@
     #UpscalerConfigurationPage input:not([type="checkbox"]):not([type="file"]),
     #UpscalerConfigurationPage select,
     #UpscalerConfigurationPage textarea {
-        background: var(--bg-input) !important;
-        color: var(--text-primary) !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
-        border-radius: 6px !important;
-        padding: 0.5rem !important;
-        width: 100%;
-        box-sizing: border-box;
-        font-size: 0.9rem;
+        background: var(--bg) !important; color: var(--text-primary) !important;
+        border: 1px solid var(--border-strong) !important; border-radius: 4px !important;
+        padding: 6px 10px !important; width: 100%; box-sizing: border-box; font-size: 12px;
     }
     #UpscalerConfigurationPage input:focus,
-    #UpscalerConfigurationPage select:focus {
-        border-color: var(--accent) !important;
-        outline: none !important;
-        box-shadow: 0 0 0 2px var(--accent-bg) !important;
-    }
-    #UpscalerConfigurationPage select option {
-        background: var(--bg-input) !important;
-        color: var(--text-primary) !important;
-    }
-    #UpscalerConfigurationPage label { color: #cbd5e1 !important; font-size: 0.88rem; }
-    #UpscalerConfigurationPage .inputLabel,
-    #UpscalerConfigurationPage .selectLabel { color: var(--text-secondary) !important; font-size: 0.85rem; display: block; margin-bottom: 0.2rem; }
-    #UpscalerConfigurationPage .fieldDescription { color: var(--text-muted) !important; font-size: 0.78rem; }
-    #UpscalerConfigurationPage .inputContainer,
-    #UpscalerConfigurationPage .selectContainer { margin-bottom: 0.6rem; }
+    #UpscalerConfigurationPage select:focus { border-color: var(--accent) !important; outline: none !important; box-shadow: 0 0 0 2px var(--accent-bg) !important; }
+    #UpscalerConfigurationPage select option { background: var(--surface) !important; color: var(--text-primary) !important; }
+    #UpscalerConfigurationPage label { color: var(--text-primary) !important; font-size: 0.88rem; }
+    #UpscalerConfigurationPage .inputLabel, #UpscalerConfigurationPage .selectLabel { color: var(--text-secondary) !important; font-size: 12px; display: block; margin-bottom: 4px; }
+    #UpscalerConfigurationPage .fieldDescription { color: var(--text-muted) !important; font-size: 11px; }
+    #UpscalerConfigurationPage .inputContainer, #UpscalerConfigurationPage .selectContainer { margin-bottom: 12px; }
 
     /* Checkbox */
-    #UpscalerConfigurationPage .checkboxContainer { margin: 0.4rem 0; }
-    #UpscalerConfigurationPage .checkboxContainer label {
-        cursor: pointer;
-        display: inline-block !important;
-    }
+    #UpscalerConfigurationPage .checkboxContainer { margin: 8px 0; }
+    #UpscalerConfigurationPage .checkboxContainer label { cursor: pointer; display: inline-block !important; }
     #UpscalerConfigurationPage input[type="checkbox"] {
-        -webkit-appearance: checkbox !important;
-        appearance: checkbox !important;
-        accent-color: var(--accent);
-        width: 16px !important;
-        height: 16px !important;
-        cursor: pointer;
-        vertical-align: middle;
-        margin-right: 0.4rem;
-        background: transparent !important;
-        border: none !important;
-        padding: 0 !important;
+        -webkit-appearance: checkbox !important; appearance: checkbox !important; accent-color: var(--accent);
+        width: 16px !important; height: 16px !important; cursor: pointer; vertical-align: middle;
+        margin-right: 0.4rem; background: transparent !important; border: none !important; padding: 0 !important;
     }
-    #UpscalerConfigurationPage .checkboxIcon,
-    #UpscalerConfigurationPage .checkboxOutline { display: none !important; }
+    #UpscalerConfigurationPage .checkboxIcon, #UpscalerConfigurationPage .checkboxOutline { display: none !important; }
 
-    /* ===== Form grid (inline-block, not flex/grid) ===== */
-    #UpscalerConfigurationPage .form-row {
-        display: block;
-        margin-bottom: 0.25rem;
-    }
-    #UpscalerConfigurationPage .form-row > .form-col {
-        display: inline-block;
-        vertical-align: top;
-        width: 48%;
-        margin-right: 2%;
-        box-sizing: border-box;
-    }
+    /* ===== Form grid ===== */
+    #UpscalerConfigurationPage .form-row { display: block; margin-bottom: 4px; }
+    #UpscalerConfigurationPage .form-row > .form-col { display: inline-block; vertical-align: top; width: 48%; margin-right: 2%; box-sizing: border-box; }
     #UpscalerConfigurationPage .form-row > .form-col:last-child { margin-right: 0; }
     #UpscalerConfigurationPage .form-row > .form-col-full { display: block; width: 100%; }
 
     /* ===== Buttons ===== */
     #UpscalerConfigurationPage button,
     #UpscalerConfigurationPage .raised {
-        background: var(--bg-input) !important;
-        color: var(--text-primary) !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
-        border-radius: 6px !important;
-        padding: 0.45rem 1rem !important;
-        cursor: pointer !important;
-        font-size: 0.85rem !important;
-        -webkit-appearance: none !important;
-        appearance: none !important;
-        display: inline-block;
-        vertical-align: middle;
-        margin-right: 0.4rem;
-        margin-bottom: 0.3rem;
+        background: var(--surface-2) !important; color: var(--text-primary) !important;
+        border: 1px solid var(--border-strong) !important; border-radius: 4px !important;
+        padding: 6px 12px !important; cursor: pointer !important; font-size: 12px !important;
+        -webkit-appearance: none !important; appearance: none !important;
+        display: inline-block; vertical-align: middle; margin-right: 0.4rem; margin-bottom: 0.3rem;
+        transition: border-color .15s, background .15s;
     }
     #UpscalerConfigurationPage button:hover,
-    #UpscalerConfigurationPage .raised:hover {
-        background: rgba(255,255,255,0.08) !important;
-        border-color: var(--accent) !important;
-        color: var(--accent) !important;
-    }
+    #UpscalerConfigurationPage .raised:hover { border-color: var(--accent) !important; color: var(--text-primary) !important; background: var(--surface-2) !important; }
     #UpscalerConfigurationPage .btn-primary {
-        background: linear-gradient(135deg, #0369a1, #0284c7) !important;
-        color: #fff !important;
-        border: none !important;
-        font-weight: bold !important;
-        padding: 0.6rem 1.5rem !important;
-        font-size: 0.95rem !important;
-        width: 100%;
+        background: var(--accent) !important; color: #fff !important; border: 1px solid var(--accent) !important;
+        font-weight: 600 !important; padding: 8px 18px !important; font-size: 13px !important; width: 100%;
     }
-    #UpscalerConfigurationPage .btn-primary:hover {
-        background: linear-gradient(135deg, #0284c7, #0ea5e9) !important;
-        color: #fff !important;
-    }
+    #UpscalerConfigurationPage .btn-primary:hover { background: #2f6fe0 !important; border-color: #2f6fe0 !important; color: #fff !important; }
 
     /* ===== Quick actions ===== */
     #UpscalerConfigurationPage .quick-actions { margin-top: 1rem; }
-    #UpscalerConfigurationPage .quick-action-btn {
-        display: inline-block;
-        vertical-align: middle;
-        padding: 0.35rem 0.75rem !important;
-        font-size: 0.82rem !important;
-    }
+    #UpscalerConfigurationPage .quick-action-btn { display: inline-block; vertical-align: middle; padding: 5px 10px !important; font-size: 11.5px !important; }
 
-    /* ===== Jobs table ===== */
-    #UpscalerConfigurationPage table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.85rem;
-    }
+    /* ===== Tables ===== */
+    #UpscalerConfigurationPage table { width: 100%; border-collapse: collapse; font-size: 12px; }
     #UpscalerConfigurationPage th {
-        text-align: left;
-        padding: 0.5rem;
-        color: var(--text-secondary);
-        border-bottom: 1px solid var(--border);
-        font-weight: 600;
-        font-size: 0.8rem;
+        text-align: left; padding: 10px 12px; color: var(--text-muted); border-bottom: 1px solid var(--border);
+        font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; background: var(--surface-2);
     }
-    #UpscalerConfigurationPage td {
-        padding: 0.5rem;
-        border-bottom: 1px solid rgba(255,255,255,0.03);
-        color: var(--text-primary);
-    }
-    #UpscalerConfigurationPage .file-path {
-        max-width: 200px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
+    #UpscalerConfigurationPage td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-primary); }
+    #UpscalerConfigurationPage tbody tr:hover { background: var(--surface-2); }
+    #UpscalerConfigurationPage .file-path { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* ===== Toast ===== */
-    #UpscalerConfigurationPage ~ .upscaler-toast,
-    .upscaler-toast {
-        position: fixed;
-        bottom: 2rem;
-        right: 2rem;
-        background: rgba(15, 23, 42, 0.95);
-        border: 1px solid rgba(255,255,255,0.1);
-        padding: 0.75rem 1.25rem;
-        border-radius: 8px;
-        font-size: 0.85rem;
-        z-index: 9999;
-        animation: upscaler-toast-in 0.3s;
+    #UpscalerConfigurationPage ~ .upscaler-toast, .upscaler-toast {
+        position: fixed; bottom: 2rem; right: 2rem; background: var(--surface); color: var(--text-primary);
+        border: 1px solid var(--border-strong); padding: 0.75rem 1.25rem; border-radius: 6px; font-size: 12px;
+        z-index: 9999; animation: upscaler-toast-in 0.3s;
     }
     @keyframes upscaler-toast-in { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 
     /* ===== Skeleton ===== */
-    #UpscalerConfigurationPage .skeleton {
-        background: linear-gradient(90deg, #1e293b 25%, #2d3a4f 50%, #1e293b 75%);
-        background-size: 200% 100%;
-        animation: shimmer 1.5s infinite;
-        border-radius: 4px;
-        display: inline-block;
-    }
+    #UpscalerConfigurationPage .skeleton { background: linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 50%, var(--surface) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4px; display: inline-block; }
     @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
     /* ===== Responsive ===== */
@@ -361,7 +206,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.7.12 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.7.13 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -457,7 +302,7 @@
                             <div class="inputContainer">
                                 <label class="inputLabel" for="AiServiceApiToken">AI Service API Token</label>
                                 <input type="password" id="AiServiceApiToken" placeholder="Required — must match container API_TOKEN env var" autocomplete="off" />
-                                <div class="fieldDescription">Shared secret sent as <code>X-Api-Token</code> header on every call to the AI service. Must match the <code>API_TOKEN</code> environment variable on the Docker container. Leave empty only if the service was deployed with <code>API_TOKEN=disable</code>.</div>
+                                <div class="fieldDescription">Shared secret sent as <code>X-Api-Token</code> header on every call to the AI service. There is <strong>no "generate" button</strong> — you choose the value and set it in <em>two</em> places: the <code>API_TOKEN</code> environment variable on the Docker container (e.g. docker-compose <code>environment: [ API_TOKEN=your-secret ]</code>) <em>and</em> this field. They must match, or the service returns <code>401</code>. Leave empty only if the service was deployed with <code>API_TOKEN=disable</code>. Full guide: the API page on the project website.</div>
                             </div>
                             <div class="selectContainer">
                                 <label class="selectLabel" for="GpuDeviceIndex">GPU Device</label>
@@ -1678,7 +1523,7 @@
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.7.12';
+                config.PluginVersion = '1.7.13';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');

@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.7.13.0",
+        "changelog": "v1.7.13: Settings-page redesign + API-token guide (plugin-only, no Docker functional change). The plugin config page now adopts the Docker service's 'Operator Console' design - one consistent dark theme, cards, KPI tiles, chips, blue accent, Inter typography - as a CSS-only re-theme, so every setting and behaviour is unchanged (verified: field counts identical to v1.7.12). Plus a clear API-token setup guide on the website's API page and a sharper plugin field hint: API_TOKEN is a container environment variable you also paste into the plugin's 'AI Service API Token' field (or set API_TOKEN=disable on a trusted LAN); there is no 'generate' button. Tests 137/137.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.7.13/JellyfinUpscalerPlugin-v1.7.13.zip",
+        "checksum": "f0f611de91ceaf750ef2415f349945c5",
+        "timestamp": "2026-06-16T12:00:00.000Z"
+      },
+      {
         "version": "1.7.12.0",
         "changelog": "v1.7.12: Timeout-wall + error-key fixes (plugin-only). First-time model loads that auto-download large models (face-restore GFPGAN/CodeFormer/GPEN ~280-377MB, large ONNX) no longer hit the 120s proxy wall: a dedicated 570s download client (just under the 600s UI wait so an over-long download surfaces a readable error, not a body-less browser timeout); /models/load UI timeout raised 180s->600s; benchmarks 120s->300s. The UI error parsers now read detail||error||message so the real cause is shown instead of a generic 'Load failed'. New DI test asserts the named-client timeouts (120/300/570) so a typo cannot silently fall back to the 100s default. Tests 137/137.",
         "targetAbi": "10.11.8.0",

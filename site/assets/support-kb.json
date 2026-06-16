@@ -1,6 +1,6 @@
 {
-  "version": "1.7.12",
-  "updated": "2026-06-09",
+  "version": "1.7.13",
+  "updated": "2026-06-16",
   "repo": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin",
   "newIssueUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/new",
   "intro": "Hi! I'm the AI Upscaler support assistant. I answer from every support topic we've ever handled (each with a step-by-step guide), and I can search all GitHub issues live. Ask about install errors, GPU not used, Docker/NAS setup, API tokens, models, and more.",
@@ -56,10 +56,10 @@
     },
     {
       "id": "api-token",
-      "title": "\"Api token not configured\" message",
+      "title": "Set the API token / \"not configured\" / 401 Unauthorized",
       "issues": [71],
-      "keywords": ["api token", "api_token", "not configured", "token", "403", "secure", "authentication", "unauthorized"],
-      "answer": "The Docker AI service refuses requests without a token. **Home/LAN (simplest)** — step by step:\n1. Add to the container environment: `API_TOKEN=disable`.\n2. Restart the container.\n3. The message is gone; model downloads work.\n\n**To secure it instead** — step by step:\n1. Set `API_TOKEN=your-secret` on the container.\n2. Enter the **same** secret in the plugin's **AI Service Token** field.\n3. Save in the plugin, then restart the container."
+      "keywords": ["api token", "api_token", "x-api-token", "not configured", "token", "401", "403", "secure", "authentication", "unauthorized", "generate token", "where do i set the token", "disable auth", "shared secret"],
+      "answer": "The API token is a **shared secret you choose** that gates the Docker AI service so only your plugin can use it. There's **no \"generate\" button** — you set the **same value in two places**, or pick the no-auth path.\n\n**Home/LAN (simplest)** — turn auth off:\n1. Set `API_TOKEN=disable` on the container.\n2. Restart the container. The \"not configured\" message is gone and model downloads work.\n\n**Secure it instead** — same secret in both places:\n1. On the Docker container set `API_TOKEN=your-secret` (docker-compose: `environment:` → `- API_TOKEN=your-secret`).\n2. In the plugin: **Settings → AI Service API Token** — paste the identical value, then Save.\n3. Restart the container. If the two differ, the service returns **401/403**.\n4. Verify: open `http://YOUR-IP:5000/status` → expect `api_token_configured: true` and `auth_enabled: true`.\nFull walkthrough: the **API** page on the project website."
     },
     {
       "id": "non-admin-users",
