@@ -20,7 +20,7 @@
   // Haiku answer questions the KB can't. The Anthropic API key lives ONLY as the
   // Worker secret ANTHROPIC_API_KEY — never here, never in the repo. Deploy guide:
   // support-worker/README.md
-  var HAIKU_ENDPOINT = "";
+  var HAIKU_ENDPOINT = "https://upscaler-support-chat.weltraumaffe02.workers.dev";
 
   var DOC_MAP = {
     "install-checksum": "installation.html", "no-newer-version": "installation.html",
