@@ -15,6 +15,13 @@
   var NEWISSUE = "https://github.com/" + REPO + "/issues/new";
   var KB = null;
 
+  // Optional Claude Haiku fallback. Leave "" to keep the bot fully client-side
+  // (KB + live GitHub search only). Set this to your Cloudflare Worker URL to let
+  // Haiku answer questions the KB can't. The Anthropic API key lives ONLY as the
+  // Worker secret ANTHROPIC_API_KEY — never here, never in the repo. Deploy guide:
+  // support-worker/README.md
+  var HAIKU_ENDPOINT = "";
+
   var DOC_MAP = {
     "install-checksum": "installation.html", "no-newer-version": "installation.html",
     "not-supported-abi": "installation.html", "docker-unreachable": "troubleshooting.html",
@@ -29,8 +36,8 @@
   };
 
   var I18N = {
-    en: { name: "English", title: "Support Assistant", sub: "answers from every past issue", placeholder: "Describe your problem...", ask: "Ask", intro: "Hi! I answer from every support topic we've handled, and I can search all GitHub issues live. Ask about install errors, GPU not used, Docker/NAS setup, API tokens, models, and more.", common: "Common topics:", related: "Related:", seeAlso: "See also:", noMatch: "No quick match in our topics — searching GitHub...", openIssue: "Open a GitHub issue", note: "", searchAll: "🔎 Search all GitHub issues", searching: "Searching GitHub...", ghFound: "Matching issues on GitHub:", ghNone: "No matching issues on GitHub.", ghError: "GitHub search is busy (rate limit) — try again shortly.", openDocs: "📖 Docs", copy: "Copy", copied: "Copied!", prefill: "Open a pre-filled issue" },
-    de: { name: "Deutsch", title: "Support-Assistent", sub: "Antworten aus allen bisherigen Issues", placeholder: "Beschreibe dein Problem...", ask: "Fragen", intro: "Hi! Ich antworte aus allen bisherigen Support-Themen und kann alle GitHub-Issues live durchsuchen. Frag zu Installationsfehlern, GPU wird nicht genutzt, Docker/NAS-Setup, API-Tokens, Modellen und mehr.", common: "Häufige Themen:", related: "Verwandt:", seeAlso: "Siehe auch:", noMatch: "Kein schneller Treffer in unseren Themen — durchsuche GitHub...", openIssue: "GitHub-Issue öffnen", note: "(Antworten sind aus Genauigkeitsgründen auf Englisch.)", searchAll: "🔎 Alle GitHub-Issues durchsuchen", searching: "Durchsuche GitHub...", ghFound: "Passende Issues auf GitHub:", ghNone: "Keine passenden Issues auf GitHub.", ghError: "GitHub-Suche ausgelastet (Rate-Limit) — gleich nochmal versuchen.", openDocs: "📖 Doku", copy: "Kopieren", copied: "Kopiert!", prefill: "Vorausgefülltes Issue öffnen" },
+    en: { name: "English", title: "Support Assistant", sub: "answers from every past issue", placeholder: "Describe your problem...", ask: "Ask", intro: "Hi! I answer from every support topic we've handled, and I can search all GitHub issues live. Ask about install errors, GPU not used, Docker/NAS setup, API tokens, models, and more.", common: "Common topics:", related: "Related:", seeAlso: "See also:", noMatch: "No quick match in our topics — searching GitHub...", openIssue: "Open a GitHub issue", note: "", searchAll: "🔎 Search all GitHub issues", searching: "Searching GitHub...", ghFound: "Matching issues on GitHub:", ghNone: "No matching issues on GitHub.", ghError: "GitHub search is busy (rate limit) — try again shortly.", openDocs: "📖 Docs", copy: "Copy", copied: "Copied!", prefill: "Open a pre-filled issue", aiThinking: "Thinking…", aiError: "AI assistant unavailable right now — searching GitHub instead.", aiBadge: "AI" },
+    de: { name: "Deutsch", title: "Support-Assistent", sub: "Antworten aus allen bisherigen Issues", placeholder: "Beschreibe dein Problem...", ask: "Fragen", intro: "Hi! Ich antworte aus allen bisherigen Support-Themen und kann alle GitHub-Issues live durchsuchen. Frag zu Installationsfehlern, GPU wird nicht genutzt, Docker/NAS-Setup, API-Tokens, Modellen und mehr.", common: "Häufige Themen:", related: "Verwandt:", seeAlso: "Siehe auch:", noMatch: "Kein schneller Treffer in unseren Themen — durchsuche GitHub...", openIssue: "GitHub-Issue öffnen", note: "(Antworten sind aus Genauigkeitsgründen auf Englisch.)", searchAll: "🔎 Alle GitHub-Issues durchsuchen", searching: "Durchsuche GitHub...", ghFound: "Passende Issues auf GitHub:", ghNone: "Keine passenden Issues auf GitHub.", ghError: "GitHub-Suche ausgelastet (Rate-Limit) — gleich nochmal versuchen.", openDocs: "📖 Doku", copy: "Kopieren", copied: "Kopiert!", prefill: "Vorausgefülltes Issue öffnen", aiThinking: "Denke nach…", aiError: "KI-Assistent gerade nicht erreichbar — durchsuche stattdessen GitHub.", aiBadge: "KI" },
     es: { name: "Español", title: "Asistente de soporte", sub: "respuestas de cada incidencia anterior", placeholder: "Describe tu problema...", ask: "Preguntar", intro: "¡Hola! Respondo de todos los temas tratados y puedo buscar en todas las incidencias de GitHub en vivo. Pregunta por errores de instalación, GPU no usada, Docker/NAS, tokens de API, modelos y más.", common: "Temas frecuentes:", related: "Relacionado:", seeAlso: "Ver también:", noMatch: "Sin coincidencia rápida — buscando en GitHub...", openIssue: "Abrir incidencia en GitHub", note: "(Las respuestas están en inglés por precisión.)", searchAll: "🔎 Buscar en todas las incidencias de GitHub", searching: "Buscando en GitHub...", ghFound: "Incidencias coincidentes en GitHub:", ghNone: "Sin incidencias coincidentes en GitHub.", ghError: "Búsqueda de GitHub saturada (límite) — reintenta en un momento.", openDocs: "📖 Docs", copy: "Copiar", copied: "¡Copiado!", prefill: "Abrir incidencia precompletada" },
     fr: { name: "Français", title: "Assistant de support", sub: "réponses tirées de tous les tickets passés", placeholder: "Décrivez votre problème...", ask: "Demander", intro: "Bonjour ! Je réponds à partir de tous les sujets traités et je peux chercher dans tous les tickets GitHub en direct. Posez vos questions : erreurs d'installation, GPU non utilisé, Docker/NAS, jetons API, modèles, etc.", common: "Sujets fréquents :", related: "Connexe :", seeAlso: "Voir aussi :", noMatch: "Pas de correspondance rapide — recherche sur GitHub...", openIssue: "Ouvrir un ticket GitHub", note: "(Les réponses sont en anglais par souci de précision.)", searchAll: "🔎 Rechercher dans tous les tickets GitHub", searching: "Recherche sur GitHub...", ghFound: "Tickets correspondants sur GitHub :", ghNone: "Aucun ticket correspondant sur GitHub.", ghError: "Recherche GitHub saturée (limite) — réessayez bientôt.", openDocs: "📖 Docs", copy: "Copier", copied: "Copié !", prefill: "Ouvrir un ticket pré-rempli" },
     it: { name: "Italiano", title: "Assistente di supporto", sub: "risposte da ogni problema precedente", placeholder: "Descrivi il tuo problema...", ask: "Chiedi", intro: "Ciao! Rispondo da tutti gli argomenti trattati e posso cercare in tutte le issue GitHub in tempo reale. Chiedi di errori di installazione, GPU non usata, Docker/NAS, token API, modelli e altro.", common: "Argomenti comuni:", related: "Correlato:", seeAlso: "Vedi anche:", noMatch: "Nessuna corrispondenza rapida — ricerca su GitHub...", openIssue: "Apri una issue su GitHub", note: "(Le risposte sono in inglese per precisione.)", searchAll: "🔎 Cerca in tutte le issue GitHub", searching: "Ricerca su GitHub...", ghFound: "Issue corrispondenti su GitHub:", ghNone: "Nessuna issue corrispondente su GitHub.", ghError: "Ricerca GitHub occupata (limite) — riprova tra poco.", openDocs: "📖 Docs", copy: "Copia", copied: "Copiato!", prefill: "Apri una issue precompilata" },
@@ -153,9 +160,40 @@
     var typing = addMsg('<span class="sb-typing">' + esc(t("searching")) + "</span>", "bot", true);
     searchGitHub(query, function (items) { typing.innerHTML = renderGh(items, query); msgs.scrollTop = msgs.scrollHeight; persist(); });
   }
+  // --- Claude Haiku fallback (only when HAIKU_ENDPOINT is configured) ---
+  function haikuContext(query) {
+    if (!KB || !KB.entries) return "";
+    var ranked = KB.entries.map(function (e) { return { e: e, s: scoreEntry(e, tokenize(query), query.toLowerCase()) }; })
+      .sort(function (a, b) { return b.s - a.s; });
+    var out = "All support topics: " + KB.entries.map(function (e) { return e.title; }).join("; ") + "\n\n";
+    for (var i = 0; i < ranked.length && out.length < 5200; i++) {
+      out += "## " + ranked[i].e.title + "\n" + ranked[i].e.answer + "\n\n";
+    }
+    return out.slice(0, 5800);
+  }
+  function askHaiku(query, cb) {
+    fetch(HAIKU_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: query, context: haikuContext(query) }) })
+      .then(function (r) { if (!r.ok) throw r.status; return r.json(); })
+      .then(function (d) { cb(d && d.answer ? String(d.answer) : null); })
+      .catch(function () { cb(null); });
+  }
+  function doHaiku(query) {
+    var typing = addMsg('<span class="sb-typing">' + esc(t("aiThinking")) + "</span>", "bot", true);
+    askHaiku(query, function (answer) {
+      if (answer) {
+        typing.innerHTML = '<span class="sb-aibadge">' + esc(t("aiBadge")) + "</span> " + md(answer) + ghSearchChip();
+        msgs.scrollTop = msgs.scrollHeight; persist();
+      } else {
+        typing.innerHTML = esc(t("aiError")); msgs.scrollTop = msgs.scrollHeight;
+        doGitHub(query);
+      }
+    });
+  }
   function respond(query) {
     var hits = search(query);
     if (hits.length) { addMsg(answerFor(hits[0], hits.slice(1, 3)), "bot"); return; }
+    if (HAIKU_ENDPOINT) { doHaiku(query); return; }
     addMsg(esc(t("noMatch")), "bot");
     doGitHub(query);
   }
@@ -191,6 +229,7 @@
       + ".sb-badge{font-size:10px;padding:1px 7px;border-radius:999px;margin-left:4px;vertical-align:middle}"
       + ".sb-op{background:#16351f;color:#7ee2a8;border:1px solid #2f6b43}.sb-cl{background:#3a1f2b;color:#f0a0b8;border:1px solid #6b2f47}"
       + ".sb-typing{opacity:.7}"
+      + ".sb-aibadge{display:inline-block;background:#3b82f6;color:#fff;font-size:10px;font-weight:600;padding:1px 7px;border-radius:999px;margin-right:6px;vertical-align:middle}"
       + ".sb-rel{margin-top:8px;font-size:12px;color:#7d8aa3}.sb-rel a{margin-right:2px}"
       + ".sb-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}"
       + ".sb-chip,.sb-ghsearch{background:#0b1220;border:1px solid #334155;color:#cbd5e1;border-radius:999px;padding:5px 10px;font-size:12px;cursor:pointer;text-align:left}"
