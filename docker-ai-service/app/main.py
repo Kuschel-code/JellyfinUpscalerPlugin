@@ -4649,6 +4649,51 @@ async def update_config(
 
 
 # ============================================================
+# === Managed API tokens (CRUD) ===
+# Admin-managed, hashed, persistent tokens (see token_store). Every endpoint
+# requires an already-valid credential (env bootstrap token OR an existing
+# managed token) via _require_api_token — you must be authenticated to manage
+# tokens. The env API_TOKEN therefore bootstraps the very first token.
+# ============================================================
+@app.get("/auth/tokens")
+async def list_api_tokens(request: Request = None):
+    """List managed tokens. Never returns the secret or its hash; each entry
+    carries a derived `expired` flag so the UI can grey out dead tokens."""
+    _require_api_token(request)
+    env_token = os.getenv("API_TOKEN", "")
+    return {
+        "tokens": token_store.list_tokens(),
+        "bootstrap_env": bool(env_token) and env_token != "disable",
+    }
+
+
+@app.post("/auth/tokens")
+async def create_api_token(
+    name: str = Form(...),
+    expires_days: Optional[int] = Form(None),
+    request: Request = None,
+):
+    """Create a managed token. Omit expires_days (or 0/null) for a token that
+    never expires; otherwise 1..3650 days. Returns the plaintext token EXACTLY
+    ONCE — it is hashed at rest and can never be retrieved again."""
+    _require_api_token(request)
+    try:
+        token, info = token_store.create_token((name or "").strip(), expires_days)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"token": token, "info": info}
+
+
+@app.delete("/auth/tokens/{token_id}")
+async def revoke_api_token(token_id: str, request: Request = None):
+    """Revoke (permanently delete) a managed token by id."""
+    _require_api_token(request)
+    if not token_store.revoke_token(token_id):
+        raise HTTPException(status_code=404, detail="Token not found")
+    return {"revoked": True, "id": token_id}
+
+
+# ============================================================
 # === Prometheus-Style Metrics Endpoint ===
 # ============================================================
 
