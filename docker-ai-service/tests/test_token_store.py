@@ -15,6 +15,8 @@ from app import token_store
 def _isolated_config(tmp_path, monkeypatch):
     monkeypatch.setenv("CONFIG_DIR", str(tmp_path))
     token_store._last_used_flushed.clear()  # reset in-memory throttle between tests
+    token_store._cache = None               # reset (path, mtime) file cache between tests
+    token_store._cache_key = None
     yield
 
 
@@ -84,6 +86,20 @@ def test_count_list_and_has_any():
     listed = token_store.list_tokens()
     assert {t["name"] for t in listed} == {"a", "b"}
     assert all("hash" not in t for t in listed)
+
+
+def test_external_edit_invalidates_cache(tmp_path):
+    """An external rewrite of tokens.json is picked up via the (path, mtime) cache key."""
+    import json
+    import os
+    import time
+    token, _ = token_store.create_token("ext")
+    assert token_store.verify(token) is True
+    path = tmp_path / "tokens.json"
+    path.write_text(json.dumps({"version": 1, "tokens": []}), encoding="utf-8")
+    future = time.time() + 5  # ensure a distinct mtime so the cache key changes
+    os.utime(path, (future, future))
+    assert token_store.verify(token) is False
 
 
 def test_survives_reload(monkeypatch, tmp_path):

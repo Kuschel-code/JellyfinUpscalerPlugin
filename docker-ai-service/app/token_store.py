@@ -40,6 +40,13 @@ _LAST_USED_THROTTLE_S = 60  # don't persist last_used more often than this per t
 _lock = threading.Lock()
 # monotonic timestamp of the last persisted last_used per token id (in-memory only)
 _last_used_flushed: dict[str, float] = {}
+# In-memory cache of the parsed file, keyed by (path, mtime). Keeps the auth
+# hot-path to a single stat() per verify() instead of open+read+json.loads;
+# a full parse happens only when the file actually changed (external edit) or
+# right after our own write. Atomic rename guarantees a reader never sees a
+# half-written file, so the cache only ever holds a complete old-or-new state.
+_cache: Optional[dict] = None
+_cache_key: Optional[tuple] = None
 
 
 # --------------------------------------------------------------------------- #
@@ -85,18 +92,33 @@ def _is_expired(rec: dict, now: Optional[datetime] = None) -> bool:
 # Load / save (atomic)
 # --------------------------------------------------------------------------- #
 def _load() -> dict:
+    """Return the parsed token file, served from a (path, mtime)-keyed cache.
+    Hot path = one stat(); a full open+parse runs only on an actual change."""
+    global _cache, _cache_key
     path = _config_path()
     try:
-        with path.open("r", encoding="utf-8") as f:
-            data = json.load(f)
-    except (FileNotFoundError, OSError, json.JSONDecodeError):
-        return _empty()
-    if not isinstance(data, dict) or not isinstance(data.get("tokens"), list):
-        return _empty()
+        mtime = path.stat().st_mtime
+    except OSError:
+        mtime = -1.0
+    key = (str(path), mtime)
+    if _cache is not None and _cache_key == key:
+        return _cache
+    if mtime < 0:
+        data = _empty()
+    else:
+        try:
+            with path.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            data = _empty()
+        if not isinstance(data, dict) or not isinstance(data.get("tokens"), list):
+            data = _empty()
+    _cache, _cache_key = data, key
     return data
 
 
 def _save(data: dict) -> None:
+    global _cache, _cache_key
     path = _config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=".tokens-", suffix=".tmp")
@@ -110,6 +132,12 @@ def _save(data: dict) -> None:
             os.chmod(path, 0o600)
         except OSError:
             pass  # best-effort (e.g. Windows / unusual FS)
+        # refresh cache so the next _load() is a hit (no disk read after a write)
+        _cache = data
+        try:
+            _cache_key = (str(path), path.stat().st_mtime)
+        except OSError:
+            _cache_key = None
     finally:
         try:
             if os.path.exists(tmp):
@@ -157,8 +185,9 @@ def create_token(name: str, expires_days: Optional[int] = None) -> tuple[str, di
     }
     with _lock:
         data = _load()
-        data["tokens"].append(rec)
-        _save(data)
+        # build a new structure (don't mutate the cached object) so a failed
+        # write leaves the cache exactly matching what's on disk
+        _save({**data, "tokens": [*data["tokens"], rec]})
     return plaintext, _public(rec)
 
 
@@ -173,8 +202,7 @@ def revoke_token(token_id: str) -> bool:
         kept = [t for t in data["tokens"] if t.get("id") != token_id]
         if len(kept) == len(data["tokens"]):
             return False
-        data["tokens"] = kept
-        _save(data)
+        _save({**data, "tokens": kept})
     _last_used_flushed.pop(token_id, None)
     return True
 
