@@ -350,6 +350,62 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
+        // ── Managed API tokens ───────────────────────────────────────────
+        // Jellyfin-admin-only management of the AI service's hashed token list.
+        // These transparently proxy /auth/tokens on the service; the shared
+        // AiServiceAuthHandler attaches X-Api-Token (the configured token) so
+        // the plugin bootstraps token management with its existing credential.
+        [HttpGet("tokens")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public Task<ActionResult> ListApiTokens()
+            => ProxyTokenRequest(HttpMethod.Get, "/auth/tokens", null);
+
+        [HttpPost("tokens")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public Task<ActionResult> CreateApiToken([FromForm] string name, [FromForm] int? expiresDays = null)
+        {
+            var form = new List<KeyValuePair<string, string>> { new("name", name ?? string.Empty) };
+            if (expiresDays.HasValue)
+                form.Add(new("expires_days", expiresDays.Value.ToString()));
+            return ProxyTokenRequest(HttpMethod.Post, "/auth/tokens", new FormUrlEncodedContent(form));
+        }
+
+        [HttpDelete("tokens/{id}")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public Task<ActionResult> RevokeApiToken(string id)
+            => ProxyTokenRequest(HttpMethod.Delete, $"/auth/tokens/{Uri.EscapeDataString(id ?? string.Empty)}", null);
+
+        /// <summary>
+        /// Transparent proxy to the AI service's /auth/tokens API. Forwards the
+        /// service's status code + JSON body verbatim (403 = plugin token rejected,
+        /// 404 = unknown id, 400 = invalid name).
+        /// </summary>
+        private async Task<ActionResult> ProxyTokenRequest(HttpMethod method, string path, HttpContent? content)
+        {
+            var baseUrl = GetValidatedServiceUrl();
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                using var req = new HttpRequestMessage(method, $"{baseUrl}{path}") { Content = content };
+                using var response = await GetAiServiceClient().SendAsync(req, cts.Token);
+                var json = await response.Content.ReadAsStringAsync();
+                return new ContentResult
+                {
+                    StatusCode = (int)response.StatusCode,
+                    Content = string.IsNullOrEmpty(json) ? "{}" : json,
+                    ContentType = "application/json"
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AI Upscaler: token proxy {Method} {Path} failed", method, path);
+                return StatusCode(502, new { error = "AI service unreachable" });
+            }
+        }
+
         [HttpGet("info")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetPluginInfo()
