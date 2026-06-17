@@ -1550,6 +1550,16 @@
             if (!video) return;
             var css = this._composeCssFromState(st);
             video.style.filter = css || '';
+            // A realtime client-side upscaler (Anime4K / WebGL / WebGPU) renders to a
+            // canvas overlay (z-index 999) that covers the — often opacity:0 — <video>.
+            // The CSS filter on the hidden video then has no visible effect, so apply it
+            // to the visible canvas too. Without this the filters "don't take" whenever
+            // realtime upscaling is on (which auto-starts on every video since 10.11).
+            var parent = video.parentElement;
+            if (parent) {
+                var canvases = parent.querySelectorAll('canvas');
+                for (var i = 0; i < canvases.length; i++) canvases[i].style.filter = css || '';
+            }
             this._updateLiveDot(css.length > 0);
         },
 
