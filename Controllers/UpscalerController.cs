@@ -364,7 +364,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         [HttpPost("tokens")]
         [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
-        public Task<ActionResult> CreateApiToken([FromForm] string name, [FromForm] int? expiresDays = null)
+        public Task<ActionResult> CreateApiToken([FromQuery] string name, [FromQuery] int? expiresDays = null)
         {
             var form = new List<KeyValuePair<string, string>> { new("name", name ?? string.Empty) };
             if (expiresDays.HasValue)
