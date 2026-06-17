@@ -1116,3 +1116,34 @@ section.container-narrow > .card { border-radius: var(--radius); }
 .ba-handle { border-radius: 50%; }
 .ba-tag-before { border-top-right-radius: var(--radius-sm); }
 .ba-tag-after { border-top-left-radius: var(--radius-sm); }
+
+/* ====================================================================
+   Language selector (sidebar) + Google-Translate chrome suppression
+   ==================================================================== */
+/* hide Google Translate's injected banner/iframe + the gadget element */
+.goog-te-banner-frame, .goog-te-gadget-icon, .skiptranslate > iframe { display: none !important; }
+body { top: 0 !important; }
+#google_translate_element { display: none !important; }
+/* GT wraps translated text in <font> with inline highlight — neutralise it */
+font[style] { background: transparent !important; box-shadow: none !important; vertical-align: inherit !important; }
+
+.lang-row { padding: .25rem .7rem 0; }
+.lang-select {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: .8rem;
+  letter-spacing: .02em;
+  color: var(--ink-dim);
+  background: var(--paper-tint);
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  padding: .42rem .85rem;
+  cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+  transition: border-color .14s ease, color .14s ease;
+}
+.lang-select:hover, .lang-select:focus { border-color: var(--accent); color: var(--ink); outline: none; }
+.lang-select option { background: var(--paper-deep); color: var(--ink); }
+@media (max-width: 960px) {
+  .lang-row { padding: .35rem .25rem 0; max-width: 220px; }
+}
