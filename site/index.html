@@ -7,7 +7,7 @@
 <meta name="description" content="AI-powered video upscaling plugin for Jellyfin 10.11.x. 70+ models, 6 hardware backends, 15 filters. Ask the in-page console anything about setup, GPUs, models and Docker.">
 <meta property="og:title" content="Jellyfin AI Upscaler Plugin">
 <meta property="og:description" content="Dockerized AI upscaler for Jellyfin — 70+ models, NVIDIA/Intel/AMD acceleration, face restoration, camera-style filters. Ask the in-page console.">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=2">
 </head>
 <body>
 <header class="topbar">
@@ -45,9 +45,37 @@
     </div>
   </header>
 
-  <!-- ===== 01 — the signature before/after upscale demo ===== -->
+  <!-- ===== 01 — the giant chat search (Google-style) ===== -->
   <div class="ed-secnum reveal">
     <span class="n">01</span>
+    <h2>Ask anything</h2>
+    <span class="meta">KB + live AI · free</span>
+  </div>
+
+  <div class="hc-frame hc-hero reveal" id="hc-frame">
+    <form class="hc-form" id="hc-form" autocomplete="off">
+      <input class="hc-input" id="hc-input" type="text" name="q"
+             placeholder="Ask anything — e.g. my GPU runs on CPU…"
+             aria-label="Ask the AI Upscaler assistant">
+      <button class="hc-send" id="hc-send" type="submit" aria-label="Send">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14M13 6l6 6-6 6"/>
+        </svg>
+      </button>
+    </form>
+    <div class="hc-suggest" id="hc-suggest">
+      <button type="button" class="hc-chip">GPU runs on CPU</button>
+      <button type="button" class="hc-chip">Install / checksum error</button>
+      <button type="button" class="hc-chip">Set the API token</button>
+      <button type="button" class="hc-chip">Which model should I use?</button>
+    </div>
+    <div class="hc-convo" id="hc-convo" aria-live="polite"></div>
+  </div>
+
+  <!-- ===== 02 — the signature before/after upscale demo ===== -->
+  <div class="ed-secnum reveal">
+    <span class="n">02</span>
     <h2>The difference</h2>
     <span class="meta">Drag the divider</span>
   </div>
@@ -120,43 +148,6 @@
       <span>SVG · no external images</span>
     </figcaption>
   </figure>
-
-  <!-- ===== 02 — the chat console module ===== -->
-  <div class="ed-secnum reveal">
-    <span class="n">02</span>
-    <h2>Ask the console</h2>
-    <span class="meta">KB + live AI</span>
-  </div>
-
-  <div class="hc-frame reveal" id="hc-frame">
-    <div class="hc-head">
-      <span class="hc-badge">Console</span>
-      <p class="hc-tagline">Type a real problem. It answers from every solved issue first, then asks the AI when the knowledge base comes up short.</p>
-    </div>
-
-    <div class="hc-stage">
-      <form class="hc-form" id="hc-form" autocomplete="off">
-        <input class="hc-input" id="hc-input" type="text" name="q"
-               placeholder="e.g. my GPU runs on CPU…"
-               aria-label="Ask the AI Upscaler console">
-        <button class="hc-send" id="hc-send" type="submit" aria-label="Send">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M5 12h14M13 6l6 6-6 6"/>
-          </svg>
-        </button>
-      </form>
-
-      <div class="hc-suggest" id="hc-suggest">
-        <button type="button" class="hc-chip">GPU runs on CPU</button>
-        <button type="button" class="hc-chip">Install / checksum error</button>
-        <button type="button" class="hc-chip">Set the API token</button>
-        <button type="button" class="hc-chip">Which model should I use?</button>
-      </div>
-
-      <div class="hc-convo" id="hc-convo" aria-live="polite"></div>
-    </div>
-  </div>
 
   <!-- ===== 03 — numbered feature blocks (asymmetric) ===== -->
   <div class="ed-secnum reveal">

@@ -14,10 +14,10 @@
   --rule:         #26252a;   /* hairline */
   --rule-strong:  #37353c;   /* stronger hairline */
 
-  /* signature accent — VERMILION, used sparingly */
-  --accent:       #ff3d2e;
-  --accent-soft:  #2a1310;   /* chips / callout tint */
-  --accent-ink:   #ff6f63;   /* lighter vermilion for text-on-dark */
+  /* signature accent — electric blue, used sparingly */
+  --accent:       #3b6dff;
+  --accent-soft:  #101f3d;   /* chips / callout tint */
+  --accent-ink:   #8fb0ff;   /* lighter blue for text-on-dark */
 
   --ok:           #8fae6e;
   --warn:         #d9a45e;
@@ -323,8 +323,8 @@ em { font-style: italic; }
 }
 .btn:hover { text-decoration: none; }
 .btn:active { transform: translateY(1px); }
-.btn-primary { background: var(--accent); color: #0b0b0c; border-color: var(--accent); }
-.btn-primary:hover { background: #ff5648; border-color: #ff5648; color: #0b0b0c; }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { background: #5a86ff; border-color: #5a86ff; color: #fff; }
 .btn-ghost { background: transparent; color: var(--ink); border-color: var(--rule-strong); }
 .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
 
@@ -908,6 +908,15 @@ tbody tr:hover { background: var(--paper-tint); }
   padding: 1.4rem 1.4rem 1.5rem;
 }
 
+/* giant "Google-style" search variant — homepage hero */
+.hc-hero { border: 0; background: transparent; padding: 0; margin-top: .35rem; }
+.hc-hero .hc-form { background: var(--paper-tint); border: 1px solid var(--rule-strong); padding: .5rem .5rem .5rem 1.5rem; }
+.hc-hero .hc-form:focus-within { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-soft); }
+.hc-hero .hc-input { font-family: var(--sans); font-size: clamp(1.1rem, 2.2vw, 1.6rem); padding: 1rem 0; }
+.hc-hero .hc-send { width: 56px; height: 56px; }
+.hc-hero .hc-send svg { width: 22px; height: 22px; }
+.hc-hero .hc-suggest { margin-top: 1.1rem; }
+
 /* input bar — squared, hairline, vermilion focus */
 .hc-form {
   display: flex;
@@ -934,15 +943,15 @@ tbody tr:hover { background: var(--paper-tint); }
   flex: none;
   width: 42px; height: 42px;
   border: 0; border-radius: 0;
-  background: var(--accent); color: #0b0b0c;
+  background: var(--accent); color: #fff;
   cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
   transition: background .15s ease, transform .1s ease;
 }
-.hc-send:hover { background: #ff5648; }
+.hc-send:hover { background: #5a86ff; }
 .hc-send:active { transform: scale(.94); }
 .hc-send:disabled { opacity: .45; cursor: not-allowed; }
-.hc-send svg { width: 18px; height: 18px; display: block; stroke: #0b0b0c; }
+.hc-send svg { width: 18px; height: 18px; display: block; stroke: #fff; }
 
 /* suggestion chips — mono, squared, hairline */
 .hc-suggest { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .9rem; }
@@ -973,7 +982,7 @@ tbody tr:hover { background: var(--paper-tint); }
   align-self: flex-end;
   max-width: 85%;
   background: var(--accent);
-  color: #0b0b0c;
+  color: #fff;
   padding: .55rem .9rem;
   border-radius: 0;
   font-family: var(--mono);

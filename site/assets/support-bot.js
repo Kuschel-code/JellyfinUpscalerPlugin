@@ -11,6 +11,9 @@
   if (window.__supportBotLoaded) return;
   window.__supportBotLoaded = true;
 
+  // Homepage has its own big inline console (#home-console) — no floating bubble there.
+  if (document.getElementById("home-console")) return;
+
   var REPO = "Kuschel-code/JellyfinUpscalerPlugin";
   var NEWISSUE = "https://github.com/" + REPO + "/issues/new";
   var KB = null;
