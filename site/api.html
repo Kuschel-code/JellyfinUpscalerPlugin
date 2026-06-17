@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>REST API — Jellyfin AI Upscaler</title>
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=5">
 </head>
 <body>
 <header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.7.13</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
@@ -20,18 +20,33 @@
   </ul>
 
   <h2 id="api-token">🔐 Securing the AI service (API token)</h2>
-  <p>The AI service on <code>:5000</code> does the GPU work. If it's reachable on your network, an <strong>API token</strong> stops anyone else from using it. The token is a <strong>shared secret you pick yourself</strong> — there's deliberately <em>no "generate" button</em>, because an unauthenticated UI can't be trusted to hand out its own auth.</p>
-  <p>It fits together in three steps:</p>
-  <ol>
-    <li>Set <code>API_TOKEN</code> as an <strong>environment variable on the Docker container</strong> (read once at startup).</li>
-    <li>The plugin sends that exact value as the <code>X-Api-Token</code> header on every request.</li>
-    <li>So you paste the <strong>identical</strong> value into the plugin's <em>Settings → AI Service API Token</em> field. If they differ, the service answers <code>401 Unauthorized</code>.</li>
-  </ol>
-  <div class="callout">💡 <strong>Trusted home LAN and don't want a token?</strong> Deploy with <code>API_TOKEN=disable</code> and leave the plugin field empty — the service then runs without auth (the homelab-friendly default).</div>
+  <p>The AI service on <code>:5000</code> does the GPU work and has <strong>no login of its own</strong>. If it's reachable beyond a fully trusted LAN, protect it with the <code>X-Api-Token</code> header. There are <strong>three</strong> distinct pieces — keep them apart and the rest is easy:</p>
+  <table>
+    <thead><tr><th>Piece</th><th>Where you set it</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td><code>API_TOKEN</code> <em>(env)</em></td><td>Docker container environment variable</td><td><strong>Master / bootstrap secret.</strong> Read once at container startup. Always valid and <strong>cannot be revoked from the UI</strong> — so you can never lock yourself out.</td></tr>
+      <tr><td><em>AI Service API Token</em></td><td>Plugin → <strong>Settings</strong> tab (field)</td><td>What the <strong>plugin itself</strong> sends on every call. Must equal a value the service accepts (the env token, or a managed one).</td></tr>
+      <tr><td><strong>Managed tokens</strong></td><td>Plugin → <strong>API Tokens</strong> tab</td><td>Named, optionally-expiring tokens for <strong>other clients</strong> (scripts, integrations) that hit <code>:5000</code> directly. Generated in the UI, stored hashed, individually revocable.</td></tr>
+    </tbody>
+  </table>
+  <p>A request is accepted when its <code>X-Api-Token</code> matches <strong>either</strong> the env <code>API_TOKEN</code> <strong>or</strong> any active (non-expired) managed token — both compared in constant time (<code>hmac.compare_digest</code>).</p>
 
-  <h3>Managed tokens (plugin → <em>API Tokens</em> tab)</h3>
-  <p>Beyond the single <code>API_TOKEN</code>, the plugin's <strong>API Tokens</strong> tab (Jellyfin admin only) lets you mint <strong>named tokens</strong> with an optional expiry (30 days / 90 days / 1 year / never). Each is shown <strong>once</strong> on creation and stored only as a SHA-256 hash; revoke any of them individually without touching the others. The <code>API_TOKEN</code> env value stays valid as a non-revocable <em>bootstrap</em> credential, so you can never lock yourself out.</p>
-  <div class="callout">🔒 Tokens persist in a dedicated <code>/app/config</code> volume (not the cache) so they survive container recreates. Mint/revoke is gated behind Jellyfin's admin login — the service itself never hands out its own auth.</div>
+  <h3>Turn auth on — 3 steps</h3>
+  <ol>
+    <li>Generate a strong secret locally: <code>openssl rand -base64 32</code> (≈256 bit). <strong>Don't reuse it anywhere else.</strong></li>
+    <li>Set it as <code>API_TOKEN</code> on the container (compose / run below) and <strong>restart the container</strong>.</li>
+    <li>Paste the <strong>identical</strong> value into <em>Plugin → Settings → AI Service API Token</em> and save. <strong>⚠️ If the two differ, every call returns <code>401/403</code></strong> — the #1 setup mistake. Then hit <strong>Test Connection</strong>: green means the tokens match.</li>
+  </ol>
+  <div class="callout">💡 <strong>Trusted home LAN, no auth wanted?</strong> Set <code>API_TOKEN=disable</code> and leave the plugin field empty — the service runs open (the homelab default). You can still create managed tokens, but they are <strong>not enforced</strong> until you switch <code>disable</code> off.</div>
+
+  <h3>Generating named tokens in Jellyfin (<em>API Tokens</em> tab)</h3>
+  <p>Once auth is on, the plugin's <strong>API Tokens</strong> tab (Jellyfin <strong>admin only</strong>) mints extra tokens without ever touching the env var:</p>
+  <ol>
+    <li>Type a <strong>name</strong> (e.g. <em>Living-room TV</em>), pick an <strong>expiry</strong> (30 / 90 / 365 days, or never), click <strong>Create token</strong>.</li>
+    <li>The value is shown <strong>once</strong> — copy it immediately. Only a SHA-256 hash is stored; it can never be displayed again.</li>
+    <li><strong>Revoke</strong> any token individually; the others and the env bootstrap stay valid. Expired tokens stop working automatically (no sweep needed).</li>
+  </ol>
+  <div class="callout">🔒 <strong>Why minting needs admin — and an env token first:</strong> the service has no identity of its own, so it can't safely hand out its own auth. The env <code>API_TOKEN</code> is the <em>bootstrap</em> that lets the plugin talk to the service; once that handshake works, the admin-gated <em>API Tokens</em> tab can issue the rest. Managed tokens live in a dedicated <code>/app/config</code> volume (not the cache) so they survive container recreates.</div>
 
   <h3>docker-compose</h3>
   <pre><code>services:
@@ -43,6 +58,7 @@
       - "5000:5000"
     volumes:
       - upscaler-models:/app/models
+      - upscaler-config:/app/config        # persists managed API tokens across recreates
     restart: unless-stopped</code></pre>
 
   <h3>docker run</h3>

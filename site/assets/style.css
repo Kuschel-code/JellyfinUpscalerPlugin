@@ -36,7 +36,7 @@
   --mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   --sidebar-w: 264px;
-  --content-w: 760px;
+  --content-w: 920px;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -207,7 +207,7 @@ section.container-narrow {
   justify-self: center;
 }
 main.container,
-section.container { max-width: 900px; }
+section.container { max-width: 1040px; }
 
 /* ====================================================================
    Typography
