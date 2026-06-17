@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.7.13
+# Jellyfin AI Upscaler Plugin v1.8.1
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.7.13):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.8.1):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.7.13     │  │
+│  │  AI Upscaler Plugin v1.8.1     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -294,12 +294,19 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.7.13` — pinned to a specific plugin release
-- `:v1.7.13-<backend>` — full semver (e.g. `:v1.7.13-cpu`)
+- `:docker7-v1.8.1` — pinned to a specific plugin release
+- `:v1.8.1-<backend>` — full semver (e.g. `:v1.8.1-cpu`)
 
 ---
 
 ## Changelog
+
+### v1.8.1 (Live filter fix + hardware-aware recommendation)
+
+**Plugin + service release.**
+
+- **Live video filters fixed.** In-player presets/sliders had no visible effect while realtime client-side upscaling was active — the upscaler renders to a canvas overlay that covered the filtered `<video>`, so the CSS filter sat on a hidden element. It is now applied to the visible canvas too.
+- **Hardware-aware model recommendation.** New `/recommend` (service) and `/Upscaler/recommend` (plugin, admin) pick a model + scale the detected hardware can actually run — weak CPU → `fsrcnn-x2` @2x, dedicated GPU → `realesrgan-x4` — instead of letting you pick a heavy model that hits the seconds-per-frame wall.
 
 ### v1.7.13 (Settings-page redesign + API-token guide)
 
