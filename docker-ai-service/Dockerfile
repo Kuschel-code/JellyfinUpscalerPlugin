@@ -16,7 +16,7 @@ ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 ENV SKIP_TENSORRT=true
 
 # Build-time metadata — pass via: --build-arg APP_VERSION=1.6.1.15 --build-arg APP_COMMIT=$(git rev-parse --short HEAD)
-ARG APP_VERSION=1.6.1.15
+ARG APP_VERSION=1.7.13
 ARG APP_COMMIT=unknown
 ENV APP_VERSION=${APP_VERSION} \
     APP_COMMIT=${APP_COMMIT}
