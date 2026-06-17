@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.8.0.0",
+        "changelog": "v1.8.0: Managed API tokens. A new 'API Tokens' tab (Jellyfin admin) mints named tokens for the AI service with an optional expiry (30 / 90 / 365 days or never); each is shown once, stored only as a SHA-256 hash, and revocable individually. The service keeps them in a persistent /app/config volume and validates X-Api-Token against the env API_TOKEN (now a non-revocable bootstrap) OR any active managed token - both timing-safe, expiry checked lazily (no background sweep). New endpoints: service /auth/tokens (GET/POST/DELETE), plugin /Upscaler/tokens (admin-only proxy). Requires the AI service image >= v1.8.0 (docker7) so /auth/tokens exists. Tests: pytest 22, build clean.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.0/JellyfinUpscalerPlugin-v1.8.0.zip",
+        "checksum": "3aaab63da49ef9e4fae52a817ccdf355",
+        "timestamp": "2026-06-17T12:00:00.000Z"
+      },
+      {
         "version": "1.7.13.0",
         "changelog": "v1.7.13: Settings-page redesign + API-token guide (plugin-only, no Docker functional change). The plugin config page now adopts the Docker service's 'Operator Console' design - one consistent dark theme, cards, KPI tiles, chips, blue accent, Inter typography - as a CSS-only re-theme, so every setting and behaviour is unchanged (verified: field counts identical to v1.7.12). Plus a clear API-token setup guide on the website's API page and a sharper plugin field hint: API_TOKEN is a container environment variable you also paste into the plugin's 'AI Service API Token' field (or set API_TOKEN=disable on a trusted LAN); there is no 'generate' button. Tests 137/137.",
         "targetAbi": "10.11.8.0",
