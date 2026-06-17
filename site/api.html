@@ -29,6 +29,10 @@
   </ol>
   <div class="callout">💡 <strong>Trusted home LAN and don't want a token?</strong> Deploy with <code>API_TOKEN=disable</code> and leave the plugin field empty — the service then runs without auth (the homelab-friendly default).</div>
 
+  <h3>Managed tokens (plugin → <em>API Tokens</em> tab)</h3>
+  <p>Beyond the single <code>API_TOKEN</code>, the plugin's <strong>API Tokens</strong> tab (Jellyfin admin only) lets you mint <strong>named tokens</strong> with an optional expiry (30 days / 90 days / 1 year / never). Each is shown <strong>once</strong> on creation and stored only as a SHA-256 hash; revoke any of them individually without touching the others. The <code>API_TOKEN</code> env value stays valid as a non-revocable <em>bootstrap</em> credential, so you can never lock yourself out.</p>
+  <div class="callout">🔒 Tokens persist in a dedicated <code>/app/config</code> volume (not the cache) so they survive container recreates. Mint/revoke is gated behind Jellyfin's admin login — the service itself never hands out its own auth.</div>
+
   <h3>docker-compose</h3>
   <pre><code>services:
   ai-upscaler:
@@ -66,6 +70,9 @@
       <tr><td><code>POST</code></td><td><code>/Upscaler/filter-config</code></td><td>Persists the 6 advanced filter params (gamma/sharpness/temp/vignette/grain/denoise).</td></tr>
       <tr><td><code>GET</code></td><td><code>/Upscaler/recommend-model</code></td><td>Given an item ID, returns the best model + filter preset based on genre. Used by Auto-Mode.</td></tr>
       <tr><td><code>POST</code></td><td><code>/Upscaler/wrapper/install</code></td><td>Generates the FFmpeg-wrapper script for remote transcoding. Admin only.</td></tr>
+      <tr><td><code>GET</code></td><td><code>/Upscaler/tokens</code></td><td>List managed AI-service tokens (proxied). Admin only.</td></tr>
+      <tr><td><code>POST</code></td><td><code>/Upscaler/tokens</code></td><td>Create a managed token (<code>name</code>, optional <code>expiresDays</code>). Returns the value once. Admin only.</td></tr>
+      <tr><td><code>DELETE</code></td><td><code>/Upscaler/tokens/{id}</code></td><td>Revoke a managed token. Admin only.</td></tr>
     </tbody>
   </table>
 
@@ -83,6 +90,9 @@
       <tr><td><code>GET</code></td><td><code>/metrics</code></td><td>Prometheus-compatible — per-model latency, queue depth, VRAM, request counts.</td></tr>
       <tr><td><code>GET</code></td><td><code>/openapi.json</code></td><td>Full OpenAPI 3.1 schema. Feed it to any generator.</td></tr>
       <tr><td><code>GET</code></td><td><code>/logs-stream</code></td><td>Server-Sent Events stream of service logs. Powers the in-UI Console tab.</td></tr>
+      <tr><td><code>GET</code></td><td><code>/auth/tokens</code></td><td>List managed tokens (hash + secret never returned; each has a derived <code>expired</code> flag).</td></tr>
+      <tr><td><code>POST</code></td><td><code>/auth/tokens</code></td><td>Create a hashed token (<code>name</code>, optional <code>expires_days</code>); returns the plaintext once.</td></tr>
+      <tr><td><code>DELETE</code></td><td><code>/auth/tokens/{id}</code></td><td>Revoke a managed token by id.</td></tr>
     </tbody>
   </table>
 
