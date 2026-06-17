@@ -204,7 +204,7 @@ section.container-narrow {
   width: 100%;
   margin: 0;
   padding: 4rem 3.5rem 5rem 3.5rem;
-  justify-self: start;
+  justify-self: center;
 }
 main.container,
 section.container { max-width: 900px; }
@@ -517,7 +517,7 @@ tbody tr:hover { background: var(--paper-tint); }
   font-family: var(--mono);
   letter-spacing: 0.01em;
   border-top: 1px solid var(--rule-strong);
-  justify-self: start;
+  justify-self: center;
 }
 .footer a { color: var(--ink-dim); text-decoration: none; }
 .footer a:hover { color: var(--accent); text-decoration: underline; }
@@ -588,7 +588,7 @@ tbody tr:hover { background: var(--paper-tint); }
   grid-row: 1;
   width: 100%;
   max-width: 920px;
-  justify-self: start;
+  justify-self: center;
   margin: 0;
   padding: 3.5rem 3.5rem 4rem;
 }
@@ -1071,3 +1071,48 @@ tbody tr:hover { background: var(--paper-tint); }
   a { color: #000; text-decoration: underline; }
   pre { background: #f5f5f5; color: #000; border: 1px solid #ddd; }
 }
+
+/* ====================================================================
+   Rounded refresh — softer geometry (Ziel: weniger eckig, runde Ecken)
+   Nach der brutalist Basis geschichtet → gewinnt bei gleicher Spezifität.
+   ==================================================================== */
+:root {
+  --radius:      14px;
+  --radius-lg:   22px;
+  --radius-sm:   10px;
+  --radius-pill: 999px;
+}
+
+/* primary controls → pill */
+.btn { border-radius: var(--radius-pill); }
+.hero-eyebrow, .tag { border-radius: var(--radius-pill); }
+.brand-logo { border-radius: 9px; }
+
+/* surfaces */
+code { border-radius: 6px; }
+pre, .callout { border-radius: var(--radius-sm); }
+.card,
+main > .card,
+section.container > .card,
+section.container-narrow > .card { border-radius: var(--radius); }
+
+/* homepage: giant search → Google-style pill + runder Send-Button */
+.hc-frame { border-radius: var(--radius-lg); }
+.hc-form { border-radius: var(--radius-pill); }
+.hc-hero .hc-form { border-radius: var(--radius-pill); padding-left: 1.75rem; }
+.hc-send { border-radius: 50%; }
+.hc-chip { border-radius: var(--radius-pill); }
+.hc-srclabel { border-radius: var(--radius-pill); }
+.hc-msg-user { border-radius: 16px 16px 5px 16px; }
+.hc-msg-bot { border-radius: var(--radius); border-left: 1px solid var(--rule); }
+
+/* feature blocks → getrennte runde Tiles statt hartem Linien-Grid */
+.ed-feat { gap: 14px; border-top: none; }
+.ed-feat > a, .ed-feat > div { border: 1px solid var(--rule); border-radius: var(--radius); }
+.ed-feat > :nth-child(3) { border-right: 1px solid var(--rule); }
+
+/* before/after-Szene → runder Rahmen, runder Handle, weiche Tags */
+.ba { border-radius: var(--radius-lg); }
+.ba-handle { border-radius: 50%; }
+.ba-tag-before { border-top-right-radius: var(--radius-sm); }
+.ba-tag-after { border-top-left-radius: var(--radius-sm); }

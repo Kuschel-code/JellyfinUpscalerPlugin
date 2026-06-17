@@ -7,7 +7,7 @@
 <meta name="description" content="AI-powered video upscaling plugin for Jellyfin 10.11.x. 70+ models, 6 hardware backends, 15 filters. Ask the in-page console anything about setup, GPUs, models and Docker.">
 <meta property="og:title" content="Jellyfin AI Upscaler Plugin">
 <meta property="og:description" content="Dockerized AI upscaler for Jellyfin — 70+ models, NVIDIA/Intel/AMD acceleration, face restoration, camera-style filters. Ask the in-page console.">
-<link rel="stylesheet" href="assets/style.css?v=2">
+<link rel="stylesheet" href="assets/style.css?v=4">
 </head>
 <body>
 <header class="topbar">
@@ -87,48 +87,80 @@
         <svg viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#1d2740"/>
-              <stop offset="0.55" stop-color="#3a2a3f"/>
-              <stop offset="1" stop-color="#5a2f30"/>
+              <stop offset="0" stop-color="#0a1330"/>
+              <stop offset="0.42" stop-color="#27407a"/>
+              <stop offset="0.72" stop-color="#7a6a9c"/>
+              <stop offset="1" stop-color="#e1a074"/>
             </linearGradient>
-            <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
-              <stop offset="0" stop-color="#ffd9b0"/>
-              <stop offset="0.5" stop-color="#ff8a4a"/>
-              <stop offset="1" stop-color="#ff3d2e" stop-opacity="0"/>
+            <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+              <stop offset="0" stop-color="#ffe9c8" stop-opacity="0.95"/>
+              <stop offset="0.45" stop-color="#ffb070" stop-opacity="0.5"/>
+              <stop offset="1" stop-color="#ffb070" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="core" cx="0.5" cy="0.45" r="0.55">
+              <stop offset="0" stop-color="#fff6e8"/>
+              <stop offset="0.7" stop-color="#ffd9a1"/>
+              <stop offset="1" stop-color="#ffc070"/>
             </radialGradient>
             <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#6a3530"/>
-              <stop offset="1" stop-color="#161018"/>
+              <stop offset="0" stop-color="#3a4f86"/>
+              <stop offset="0.5" stop-color="#1c2c54"/>
+              <stop offset="1" stop-color="#0a1228"/>
+            </linearGradient>
+            <linearGradient id="refl" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#ffd9a1" stop-opacity="0.55"/>
+              <stop offset="1" stop-color="#ffd9a1" stop-opacity="0"/>
             </linearGradient>
           </defs>
           <rect width="320" height="180" fill="url(#sky)"/>
-          <circle cx="208" cy="74" r="46" fill="url(#sun)"/>
-          <circle cx="208" cy="74" r="20" fill="#ffcf9a"/>
-          <!-- far ridgeline -->
-          <path d="M0 104 L48 88 L96 100 L150 80 L200 96 L260 78 L320 92 L320 180 L0 180 Z" fill="#241a2a"/>
-          <!-- near ridgeline -->
-          <path d="M0 124 L60 110 L120 126 L186 108 L250 124 L320 110 L320 180 L0 180 Z" fill="#1a1320"/>
+          <!-- stars -->
+          <g fill="#ffffff">
+            <circle cx="30" cy="22" r="0.9" opacity="0.7"/>
+            <circle cx="58" cy="38" r="0.7" opacity="0.5"/>
+            <circle cx="86" cy="18" r="0.8" opacity="0.6"/>
+            <circle cx="120" cy="30" r="0.6" opacity="0.45"/>
+            <circle cx="150" cy="15" r="0.9" opacity="0.6"/>
+            <circle cx="265" cy="26" r="0.7" opacity="0.5"/>
+            <circle cx="292" cy="44" r="0.8" opacity="0.55"/>
+            <circle cx="44" cy="60" r="0.6" opacity="0.4"/>
+          </g>
+          <!-- sun -->
+          <circle cx="214" cy="92" r="54" fill="url(#glow)"/>
+          <circle cx="214" cy="92" r="17" fill="url(#core)"/>
+          <!-- cloud streaks -->
+          <g fill="#1d2546" opacity="0.5">
+            <ellipse cx="150" cy="70" rx="72" ry="3.2"/>
+            <ellipse cx="232" cy="57" rx="48" ry="2.4"/>
+            <ellipse cx="118" cy="49" rx="38" ry="2"/>
+          </g>
+          <!-- mountains (smooth, layered) -->
+          <path d="M0 102 Q70 84 140 96 Q185 103 214 101 Q270 92 320 100 L320 130 L0 130 Z" fill="#33406e" opacity="0.9"/>
+          <path d="M0 110 Q70 96 130 107 Q185 116 245 103 Q290 96 320 105 L320 140 L0 140 Z" fill="#232d54"/>
+          <path d="M0 116 Q55 106 120 113 Q185 120 250 108 Q296 102 320 111 L320 140 L0 140 Z" fill="#151c39"/>
           <!-- water -->
-          <rect y="120" width="320" height="60" fill="url(#water)"/>
-          <!-- sun reflection -->
-          <rect x="200" y="120" width="16" height="60" fill="#ff8a4a" opacity="0.35"/>
-          <rect x="204" y="120" width="8" height="60" fill="#ffcf9a" opacity="0.45"/>
-          <!-- birds -->
-          <path d="M70 50 q5 -5 10 0 q5 -5 10 0" stroke="#0b0b0c" stroke-width="1.4" fill="none"/>
-          <path d="M96 40 q4 -4 8 0 q4 -4 8 0" stroke="#0b0b0c" stroke-width="1.2" fill="none"/>
+          <rect y="112" width="320" height="68" fill="url(#water)"/>
+          <rect y="109" width="320" height="6" fill="#e1a074" opacity="0.18"/>
+          <!-- sun reflection + ripples -->
+          <rect x="200" y="112" width="28" height="62" fill="url(#refl)"/>
+          <g stroke="#ffd9a1" stroke-linecap="round">
+            <line x1="206" y1="122" x2="222" y2="122" stroke-width="1.4" opacity="0.55"/>
+            <line x1="201" y1="132" x2="227" y2="132" stroke-width="1.4" opacity="0.4"/>
+            <line x1="197" y1="144" x2="231" y2="144" stroke-width="1.6" opacity="0.3"/>
+            <line x1="192" y1="158" x2="236" y2="158" stroke-width="1.8" opacity="0.22"/>
+          </g>
         </svg>
       </div>
-      <!-- BEFORE (blurred + pixel grid) — clipped on top -->
+      <!-- BEFORE (blurred + pixel grid) — clipped on top, shares the defs above -->
       <div class="ba-layer ba-before" aria-hidden="true">
         <svg viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
           <rect width="320" height="180" fill="url(#sky)"/>
-          <circle cx="208" cy="74" r="46" fill="url(#sun)"/>
-          <circle cx="208" cy="74" r="20" fill="#ffcf9a"/>
-          <path d="M0 104 L48 88 L96 100 L150 80 L200 96 L260 78 L320 92 L320 180 L0 180 Z" fill="#241a2a"/>
-          <path d="M0 124 L60 110 L120 126 L186 108 L250 124 L320 110 L320 180 L0 180 Z" fill="#1a1320"/>
-          <rect y="120" width="320" height="60" fill="url(#water)"/>
-          <rect x="200" y="120" width="16" height="60" fill="#ff8a4a" opacity="0.35"/>
-          <rect x="204" y="120" width="8" height="60" fill="#ffcf9a" opacity="0.45"/>
+          <circle cx="214" cy="92" r="54" fill="url(#glow)"/>
+          <circle cx="214" cy="92" r="17" fill="url(#core)"/>
+          <path d="M0 102 Q70 84 140 96 Q185 103 214 101 Q270 92 320 100 L320 130 L0 130 Z" fill="#33406e" opacity="0.9"/>
+          <path d="M0 110 Q70 96 130 107 Q185 116 245 103 Q290 96 320 105 L320 140 L0 140 Z" fill="#232d54"/>
+          <path d="M0 116 Q55 106 120 113 Q185 120 250 108 Q296 102 320 111 L320 140 L0 140 Z" fill="#151c39"/>
+          <rect y="112" width="320" height="68" fill="url(#water)"/>
+          <rect x="200" y="112" width="28" height="62" fill="url(#refl)"/>
         </svg>
       </div>
 
@@ -214,7 +246,7 @@
   </div>
 </footer>
 <script src="assets/nav.js"></script>
-<script src="assets/home-fx.js?v=1"></script>
+<script src="assets/home-fx.js?v=2"></script>
 <script src="assets/home-chat.js?v=3"></script>
 </body>
 </html>

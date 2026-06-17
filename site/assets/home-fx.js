@@ -118,11 +118,11 @@
     if (reduce) { setSplit(50); return; }
     function sweep() {
       var start = null;
-      // center -> reveal source -> reveal upscaled -> settle center
+      // gentle center -> hint source -> hint upscaled -> settle dead-center
       var keys = [
         { t: 0,    v: 50 },
-        { t: 700,  v: 14 },
-        { t: 1500, v: 84 },
+        { t: 700,  v: 36 },
+        { t: 1500, v: 64 },
         { t: 2200, v: 50 }
       ];
       var last = keys[keys.length - 1].t;
