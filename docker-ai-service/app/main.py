@@ -114,6 +114,11 @@ def _attach_buffer_to_uvicorn():
 MODELS_DIR = Path(os.getenv("MODELS_DIR", "/app/models"))
 CACHE_DIR = Path(os.getenv("CACHE_DIR", "/app/cache"))
 STATIC_DIR = Path(os.getenv("STATIC_DIR", "/app/static"))
+# CONFIG_DIR — PERSISTENT auth/config state (managed API tokens). Deliberately
+# separate from the wipe-able CACHE_DIR and from MODELS_DIR; mount as its own volume.
+CONFIG_DIR = Path(os.getenv("CONFIG_DIR", "/app/config"))
+
+from . import token_store  # hashed, persistent multi-token store (lazy expiry)
 
 # Version — single source of truth is the APP_VERSION build arg the
 # Dockerfiles pass; fall back to a literal only for bare local runs.
@@ -339,19 +344,31 @@ _cpu_executor = ThreadPoolExecutor(
 
 
 def _require_api_token(request: Request) -> None:
-    """Check the X-Api-Token header against the API_TOKEN env var.
-    If API_TOKEN is not set, log a warning and reject the request (secure by default).
+    """Authenticate a request via the X-Api-Token header.
+
+    Two credential sources, both timing-safe:
+      1. the env API_TOKEN  (bootstrap / legacy single token)
+      2. any active, non-expired managed token  (token_store)
+    API_TOKEN=disable opts out entirely. Secure-by-default: if neither an env
+    token nor any managed token exists, requests are rejected.
     Raises HTTPException(403) on mismatch or missing token."""
     expected_token = os.getenv("API_TOKEN", "")
-    if not expected_token:
-        logger.warning("API_TOKEN env var is not set — rejecting request. "
-                       "Set API_TOKEN to enable authenticated access, or set API_TOKEN=disable to explicitly allow unauthenticated access.")
-        raise HTTPException(status_code=403, detail="API_TOKEN not configured. Set API_TOKEN env var to secure this service.")
     if expected_token == "disable":
         return  # Explicitly opted out of auth
     provided_token = request.headers.get("x-api-token", "") if request else ""
-    if not hmac.compare_digest(provided_token, expected_token):
-        raise HTTPException(status_code=403, detail="Invalid or missing API token")
+
+    # 1) bootstrap env token
+    if expected_token and provided_token and hmac.compare_digest(provided_token, expected_token):
+        return
+    # 2) managed tokens (hashed, persistent, lazy-expiry)
+    if provided_token and token_store.verify(provided_token):
+        return
+
+    if not expected_token and not token_store.has_any():
+        logger.warning("No API auth configured (no API_TOKEN env var and no managed tokens) — rejecting request. "
+                       "Create a token in the plugin, set API_TOKEN, or set API_TOKEN=disable for a trusted LAN.")
+        raise HTTPException(status_code=403, detail="API_TOKEN not configured. Set API_TOKEN env var or create a managed token to secure this service.")
+    raise HTTPException(status_code=403, detail="Invalid or missing API token")
 
 
 # Tile size for ONNX inference (prevents OOM on large images)
@@ -3441,7 +3458,8 @@ async def status():
     # Expose auth posture so the UI can show a one-time banner instead of error toasts
     # on every call when the operator forgot to set API_TOKEN. "disable" = explicit opt-out.
     api_token_env = os.getenv("API_TOKEN", "")
-    api_token_configured = bool(api_token_env) and api_token_env != "disable"
+    managed_token_count = token_store.count()
+    api_token_configured = (bool(api_token_env) and api_token_env != "disable") or managed_token_count > 0
     auth_enabled = bool(api_token_env)
 
     return {
@@ -3462,6 +3480,7 @@ async def status():
         "use_fp16": state.use_fp16,
         "api_token_configured": api_token_configured,
         "auth_enabled": auth_enabled,
+        "managed_tokens": managed_token_count,
         "scene_change_detection": {
             "enabled": SCENE_CHANGE_THRESHOLD < 1.0,
             "threshold": SCENE_CHANGE_THRESHOLD

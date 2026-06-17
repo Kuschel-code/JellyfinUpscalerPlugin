@@ -96,7 +96,7 @@ COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Create directories for models and cache
-RUN mkdir -p /app/models /app/cache && \
+RUN mkdir -p /app/models /app/cache /app/config && \
     chown -R openvino:openvino /app /entrypoint.sh
 
 # Run as non-root openvino user for security.

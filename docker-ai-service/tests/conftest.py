@@ -51,13 +51,16 @@ def client():
         models_dir = os.path.join(tmp, "models")
         cache_dir = os.path.join(tmp, "cache")
         static_dir = os.path.join(tmp, "static")
+        config_dir = os.path.join(tmp, "config")
         os.makedirs(models_dir)
         os.makedirs(cache_dir)
         os.makedirs(static_dir)
+        os.makedirs(config_dir)
         env_overrides = {
             "MODELS_DIR": models_dir,
             "CACHE_DIR": cache_dir,
             "STATIC_DIR": static_dir,
+            "CONFIG_DIR": config_dir,
         }
         with patch.dict(os.environ, env_overrides):
             with patch.dict("sys.modules", {

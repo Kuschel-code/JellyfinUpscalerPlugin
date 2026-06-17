@@ -20,6 +20,7 @@ services:
     volumes:
       - ai-models:/app/models
       - ai-cache:/app/cache
+      - ai-config:/app/config   # PERSISTENT auth state (managed API tokens) — must survive recreates
     environment:
       - USE_GPU=true
       - MAX_CONCURRENT_REQUESTS=4
@@ -72,6 +73,8 @@ volumes:
     name: jellyfin-ai-models
   ai-cache:
     name: jellyfin-ai-cache
+  ai-config:
+    name: jellyfin-ai-config
 
 # ============================================================
 # WATCHTOWER - AUTOMATIC DOCKER UPDATES

@@ -90,7 +90,7 @@ RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuse
     usermod -aG render appuser 2>/dev/null || true
 
 # Create directories for models and cache
-RUN mkdir -p /app/models /app/cache && \
+RUN mkdir -p /app/models /app/cache /app/config && \
     chown -R appuser:appuser /app
 
 # Expose API port

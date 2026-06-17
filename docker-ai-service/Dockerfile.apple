@@ -70,7 +70,7 @@ RUN chmod +x /entrypoint.sh
 RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
 
 # Create directories for models and cache
-RUN mkdir -p /app/models /app/cache && \
+RUN mkdir -p /app/models /app/cache /app/config && \
     chown -R appuser:appuser /app
 
 # Expose API port
