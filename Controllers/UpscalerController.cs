@@ -406,6 +406,34 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
+        /// <summary>
+        /// Hardware-aware model recommendation — proxies the AI service's /recommend,
+        /// which picks a model + scale the detected hardware can actually run.
+        /// </summary>
+        [HttpGet("recommend")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult> RecommendForHardware()
+        {
+            var baseUrl = GetValidatedServiceUrl();
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                using var response = await GetAiServiceClient().GetAsync($"{baseUrl}/recommend", cts.Token);
+                var json = await response.Content.ReadAsStringAsync();
+                return new ContentResult
+                {
+                    StatusCode = (int)response.StatusCode,
+                    Content = string.IsNullOrEmpty(json) ? "{}" : json,
+                    ContentType = "application/json"
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AI Upscaler: recommend proxy failed");
+                return StatusCode(502, new { error = "AI service unreachable" });
+            }
+        }
+
         [HttpGet("info")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetPluginInfo()

@@ -3512,6 +3512,78 @@ async def hardware_info():
     }
 
 
+def recommend_model():
+    """Hardware-aware model recommendation.
+
+    Picks a model + scale the detected hardware can actually run in reasonable
+    time — addressing the #1 setup friction (pushing realesrgan-x4 onto a weak
+    CPU box and hitting the seconds-per-frame wall). Pure function of the
+    detected state (providers / gpu_list / vram / cpu_cores), so it is unit-testable.
+    """
+    providers = state.providers or []
+    has_cuda = any(("CUDA" in p) or ("Tensorrt" in p) for p in providers)
+    has_rocm = any(("ROCM" in p) or ("MIGraphX" in p) for p in providers)
+    has_ov = any("OpenVINO" in p for p in providers)
+    gpu_present = bool(state.gpu_list)
+    gpu_active = gpu_present and (has_cuda or has_rocm or has_ov)
+
+    vram = 0
+    try:
+        vram = int(str(state.gpu_memory).split()[0])
+    except (ValueError, IndexError, AttributeError, TypeError):
+        vram = 0
+    cores = state.cpu_cores or 0
+
+    if gpu_active and (has_cuda or has_rocm) and vram >= 6000:
+        model_id, scale, tier = "realesrgan-x4", 4, "strong-gpu"
+        reason = "Dedicated GPU with %d MB VRAM — best quality (Real-ESRGAN x4)." % vram
+        alts = ["realesrgan-x4-256", "fsrcnn-x2"]
+    elif gpu_active and (has_cuda or has_rocm):
+        model_id, scale, tier = "realesrgan-x4-256", 4, "mid-gpu"
+        reason = "GPU with limited VRAM (%d MB) — 256px-tiled Real-ESRGAN keeps memory in check." % vram
+        alts = ["realesrgan-x4", "fsrcnn-x2"]
+    elif gpu_active and has_ov:
+        model_id, scale, tier = "realesrgan-x4-256", 4, "igpu"
+        reason = "Intel iGPU via OpenVINO — tiled Real-ESRGAN; switch to fsrcnn-x2 if it's too slow."
+        alts = ["fsrcnn-x2", "fsrcnn-x3"]
+    elif cores >= 8:
+        model_id, scale, tier = "fsrcnn-x2", 2, "strong-cpu"
+        reason = "CPU only (%d cores) — a lightweight model at 2x; heavy ONNX models will saturate the host." % cores
+        alts = ["fsrcnn-x3", "realesrgan-x4-256"]
+    else:
+        model_id, scale, tier = "fsrcnn-x2", 2, "weak-cpu"
+        reason = ("Weak CPU (%d cores, e.g. Celeron) — lightest model at 2x. For live playback prefer "
+                  "Anime4K on the client GPU instead of server-side upscaling.") % cores
+        alts = ["fsrcnn-x3"]
+
+    # never recommend something that isn't in the catalog
+    if model_id not in AVAILABLE_MODELS:
+        model_id, scale, tier = "fsrcnn-x2", 2, tier
+    alts = [a for a in alts if a in AVAILABLE_MODELS and a != model_id]
+
+    return {
+        "tier": tier,
+        "recommended_model": model_id,
+        "recommended_scale": scale,
+        "reason": reason,
+        "alternatives": alts,
+        "hardware": {
+            "gpu": state.gpu_name,
+            "gpu_active": gpu_active,
+            "vram_mb": vram,
+            "cpu": state.cpu_name,
+            "cpu_cores": cores,
+            "providers": providers,
+        },
+    }
+
+
+@app.get("/recommend")
+async def recommend_endpoint():
+    """Hardware-aware model + scale recommendation (read-only, no token)."""
+    return recommend_model()
+
+
 @app.get("/gpus")
 async def list_gpus():
     """Enumerate available GPUs for multi-GPU selection."""
