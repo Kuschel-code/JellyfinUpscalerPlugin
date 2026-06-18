@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.1
+# Jellyfin AI Upscaler Plugin v1.8.2
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.8.1):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.8.2):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.1     │  │
+│  │  AI Upscaler Plugin v1.8.2     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -294,12 +294,24 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.8.1` — pinned to a specific plugin release
-- `:v1.8.1-<backend>` — full semver (e.g. `:v1.8.1-cpu`)
+- `:docker7-v1.8.2` — pinned to a specific plugin release
+- `:v1.8.2-<backend>` — full semver (e.g. `:v1.8.2-cpu`)
 
 ---
 
 ## Changelog
+
+### v1.8.2 (Quality + hardening pass)
+
+**Plugin + service release.**
+
+- **Denoise-before-encode prefilter.** Dedicated source-clean pass (`hqdn3d` / `nlmeans`) run before upscaling/encoding, independent of the camera-style filters — cleaner input → better SR + smaller re-encode.
+- **VMAF quality scoring.** New admin-only `POST /Upscaler/vmaf` scores an upscaled file against a reference via ffmpeg+libvmaf (501 if the ffmpeg build lacks libvmaf).
+- **Second interpolation architecture.** The interpolation engine is now input-signature-adaptive (RIFE / IFRNet 3-input / CAIN 2-input); IFRNet + CAIN added to the catalog as experimental self-host.
+- **MultiFrame extraction progress.** The multi-frame path now reports live extraction progress like FrameByFrame/Batch.
+- **Decoupled model download.** `POST /models/download-async` + `GET /models/download-status/{id}` run big downloads in the background, so they no longer trip client/proxy timeouts.
+- **Supply-chain hardening.** All 6 Docker base images pinned by `@sha256` digest + a pip-audit CVE sweep across the requirement sets (0 known).
+- **Docs + tests.** New "client-VSR vs server-side" hardware chapter, a verified `FrameStreamCoordinator`, and new tests across detection, denoise, VMAF, interpolation, async download and multi-frame VSR.
 
 ### v1.8.1 (Live filter fix + hardware-aware recommendation)
 

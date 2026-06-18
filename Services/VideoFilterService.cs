@@ -26,6 +26,52 @@ namespace JellyfinUpscalerPlugin.Services
         };
 
         /// <summary>
+        /// v1.8.2 — supported denoise-prefilter engines. Mirrors the
+        /// &lt;option&gt; values of &lt;select id="DenoisePrefilterMethod"&gt; in configurationpage.html.
+        /// </summary>
+        public static readonly IReadOnlySet<string> SupportedDenoiseMethods = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "hqdn3d", "nlmeans"
+        };
+
+        /// <summary>
+        /// v1.8.2 — builds the denoise-before-encode prefilter (the "Netflix lesson":
+        /// denoise the source before upscaling/encoding so the SR model gets a clean
+        /// input and you don't waste output bitrate encoding compression noise).
+        ///
+        /// Deliberately independent of the camera-style filter system — gated only by
+        /// <see cref="PluginConfiguration.EnableDenoisePrefilter"/>, so it works with
+        /// preset = "none". Returns null when disabled or strength is ~0.
+        /// </summary>
+        public string? BuildDenoisePrefilter(PluginConfiguration config)
+        {
+            if (!config.EnableDenoisePrefilter)
+                return null;
+
+            var strength = config.DenoisePrefilterStrength;
+            if (strength <= 0.001)
+                return null;
+
+            var method = (config.DenoisePrefilterMethod ?? "hqdn3d").ToLowerInvariant();
+            if (!SupportedDenoiseMethods.Contains(method))
+                method = "hqdn3d";
+
+            if (method == "nlmeans")
+            {
+                // nlmeans s= denoising strength (≈1.0 light … higher = stronger, much slower).
+                return $"nlmeans=s={strength.ToString("F1", Inv)}";
+            }
+
+            // hqdn3d luma_spatial:chroma_spatial:luma_tmp:chroma_tmp — driven from one knob:
+            // chroma a touch lower, temporal a touch higher (standard hqdn3d tuning).
+            var ls = strength.ToString("F1", Inv);
+            var cs = (strength * 0.75).ToString("F1", Inv);
+            var lt = (strength * 1.5).ToString("F1", Inv);
+            var ct = (strength * 1.5).ToString("F1", Inv);
+            return $"hqdn3d={ls}:{cs}:{lt}:{ct}";
+        }
+
+        /// <summary>
         /// Builds the complete FFmpeg filter chain string from plugin configuration.
         /// Returns null when no filters are active.
         /// </summary>

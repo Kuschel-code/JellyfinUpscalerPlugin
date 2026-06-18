@@ -7,10 +7,11 @@
 # ROCm 6.2 + PyTorch 2.3.0 — verified tag on Docker Hub
 # Note: onnxruntime-rocm is deprecated after v1.23 (ROCm EP removed).
 # GPU inference works via ROCm + ONNX Runtime ≤1.22.x; CPU fallback otherwise.
-FROM rocm/pytorch:rocm6.2_ubuntu22.04_py3.10_pytorch_release_2.3.0
+# Pinned by digest for reproducible, supply-chain-safe builds (digest fetched 2026-06-18; bump tag+digest together).
+FROM rocm/pytorch:rocm6.2_ubuntu22.04_py3.10_pytorch_release_2.3.0@sha256:931d3e3dcebe6c6fab84adf16cfca3e1d1449100df7c881a46fccd06f6c9bc1c
 
 # Build-time metadata — pass via: --build-arg APP_VERSION=1.6.1.15 --build-arg APP_COMMIT=$(git rev-parse --short HEAD)
-ARG APP_VERSION=1.8.1
+ARG APP_VERSION=1.8.2
 ARG APP_COMMIT=unknown
 ENV APP_VERSION=${APP_VERSION} \
     APP_COMMIT=${APP_COMMIT}

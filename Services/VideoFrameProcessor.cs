@@ -76,6 +76,17 @@ namespace JellyfinUpscalerPlugin.Services
                 vfFilters.Add("bwdif=mode=send_frame:parity=auto:deint=all");
                 _logger.LogInformation("Applying bwdif deinterlacing filter during frame extraction for {File}", Path.GetFileName(inputPath));
             }
+
+            // v1.8.2 - denoise-before-upscale prefilter (Netflix lesson): clean compression
+            // noise on the source frames BEFORE they hit the SR model — better reconstruction
+            // and a smaller re-encode. Runs after deinterlace, before fps/creative filters.
+            var denoisePrefilter = new VideoFilterService().BuildDenoisePrefilter(Config);
+            if (denoisePrefilter != null)
+            {
+                vfFilters.Add(denoisePrefilter);
+                _logger.LogInformation("Applying denoise prefilter '{Filter}' before upscale for {File}", denoisePrefilter, Path.GetFileName(inputPath));
+            }
+
             vfFilters.Add($"fps={effectiveFps}");
 
             // Camera-style video filters (applied during frame extraction)

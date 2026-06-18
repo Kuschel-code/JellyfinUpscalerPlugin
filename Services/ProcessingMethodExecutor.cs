@@ -287,13 +287,47 @@ namespace JellyfinUpscalerPlugin.Services
                 _logger.LogInformation("Extracting frames for multi-frame processing with filter: {Filter}", mfVfArg);
                 job.Phase = "Extracting frames";
 
-                await Cli.Wrap(_ffmpegPath)
-                    .WithArguments(args => args
-                        .Add("-i").Add(inputPath)
-                        .Add("-vf").Add(mfVfArg)
-                        .Add(Path.Combine(framesDir, "frame_%06d.png")))
-                    .WithValidation(CommandResultValidation.ZeroExitCode)
-                    .ExecuteAsync(cancellationToken);
+                // v1.8.2 (Gap) - MultiFrame extraction is a single blocking ffmpeg call and
+                // previously reported no progress (unlike FrameByFrame/Batch via ExtractFramesAsync).
+                // Mirror that path's poller: a background task counts the written frame_*.png every
+                // ~2s and feeds the extraction band. CTS is linked to cancellationToken; the finally
+                // cancels + awaits so the poller can never outlive the extraction (no orphan task).
+                var mfEstTotalFrames = (int)((job.InputInfo?.Duration.TotalSeconds ?? 0) * effectiveFps);
+                using var mfPollerCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                var mfReportExtraction = !string.IsNullOrEmpty(job.Id) && mfEstTotalFrames > 0;
+                var mfPollerTask = mfReportExtraction
+                    ? Task.Run(async () =>
+                    {
+                        try
+                        {
+                            while (!mfPollerCts.Token.IsCancellationRequested)
+                            {
+                                await Task.Delay(TimeSpan.FromSeconds(2), mfPollerCts.Token);
+                                var n = Directory.Exists(framesDir)
+                                    ? Directory.GetFiles(framesDir, "frame_*.png").Length : 0;
+                                await _progressHub.SendExtractionProgress(job.Id, n, mfEstTotalFrames);
+                            }
+                        }
+                        catch (OperationCanceledException) { /* normal: extraction finished or cancelled */ }
+                    }, mfPollerCts.Token)
+                    : Task.CompletedTask;
+
+                try
+                {
+                    await Cli.Wrap(_ffmpegPath)
+                        .WithArguments(args => args
+                            .Add("-i").Add(inputPath)
+                            .Add("-vf").Add(mfVfArg)
+                            .Add(Path.Combine(framesDir, "frame_%06d.png")))
+                        .WithValidation(CommandResultValidation.ZeroExitCode)
+                        .ExecuteAsync(cancellationToken);
+                }
+                finally
+                {
+                    mfPollerCts.Cancel();
+                    try { await mfPollerTask; }
+                    catch (OperationCanceledException) { /* poller cancelled */ }
+                }
 
                 var frameFiles = Directory.GetFiles(framesDir, "*.png")
                     .OrderBy(f => f)
@@ -824,6 +858,24 @@ namespace JellyfinUpscalerPlugin.Services
             if (videoFilterChain != null)
             {
                 filters.Add(videoFilterChain);
+            }
+
+            // v1.8.2 - denoise-before-encode prefilter (Netflix lesson). Insert at the FRONT
+            // so it cleans the source before scaling/sharpening (sharpening noise is
+            // counter-productive). Only safe in the software filter graph — cuda/vaapi/qsv
+            // chains run on GPU surfaces and would need explicit hwdownload/hwupload.
+            var denoisePrefilter = new VideoFilterService().BuildDenoisePrefilter(Config);
+            if (denoisePrefilter != null)
+            {
+                var hw = options.HardwareAcceleration;
+                if (hw != "cuda" && hw != "vaapi" && hw != "qsv")
+                {
+                    filters.Insert(0, denoisePrefilter);
+                }
+                else
+                {
+                    _logger.LogDebug("Denoise prefilter skipped in {HW} hardware filter graph", hw);
+                }
             }
 
             if (filters.Count > 0)

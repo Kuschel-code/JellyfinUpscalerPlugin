@@ -3,7 +3,8 @@
 
 # === GPU Version (NVIDIA CUDA + cuDNN 9) ===
 # CUDA 12.8 supports RTX 5000 series (Blackwell, sm_120) + RTX 4000/3000/2000
-FROM nvidia/cuda:12.8.0-cudnn-runtime-ubuntu22.04
+# Pinned by digest for reproducible, supply-chain-safe builds (digest fetched 2026-06-18; bump tag+digest together).
+FROM nvidia/cuda:12.8.0-cudnn-runtime-ubuntu22.04@sha256:dab70d0872e15703b3ac7617471206902f6972007a9f514ca2eab8476863fbfd
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -16,7 +17,7 @@ ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 ENV SKIP_TENSORRT=true
 
 # Build-time metadata — pass via: --build-arg APP_VERSION=1.6.1.15 --build-arg APP_COMMIT=$(git rev-parse --short HEAD)
-ARG APP_VERSION=1.8.1
+ARG APP_VERSION=1.8.2
 ARG APP_COMMIT=unknown
 ENV APP_VERSION=${APP_VERSION} \
     APP_COMMIT=${APP_COMMIT}

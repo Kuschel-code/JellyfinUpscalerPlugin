@@ -7,11 +7,11 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.1</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.2</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container">
   <h1>AI model catalog</h1>
-  <p class="lead" style="color: var(--text-dim);">71 models registered, 5 marked <em>[self-host required]</em>. Weights are pulled on demand — none of them are bundled in the Docker image.</p>
+  <p class="lead" style="color: var(--text-dim);">73 models registered, 7 marked <em>[self-host required]</em>. Weights are pulled on demand — none of them are bundled in the Docker image.</p>
 
   <!-- AUTO-GENERATED FROM docker-ai-service/app/main.py:AVAILABLE_MODELS -->
   <!-- Generator: Scripts/sync-fallback-models.ps1 -->
@@ -151,7 +151,7 @@
     </tbody>
   </table>
 
-  <h2>Frame Interpolation (RIFE) <small>(4)</small></h2>
+  <h2>Frame Interpolation <small>(6)</small></h2>
   <table>
     <thead><tr><th>Model</th><th>Scale</th><th>Type</th><th>Status</th><th>Description</th></tr></thead>
     <tbody>
@@ -159,6 +159,8 @@
       <tr><td><code>rife-v4.8</code></td><td>—</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">RIFE v4.8 — Balanced Frame Interpolation (2x FPS). Middle ground between v4.7 (fast) and v4.9 (quali…</td></tr>
       <tr><td><code>rife-v4.9</code></td><td>—</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">RIFE v4.9 — Best-quality Real-Time Frame Interpolation (2x FPS). Ensemble enabled, scale=1. Recommen…</td></tr>
       <tr><td><code>rife-v4.25</code></td><td>—</td><td>onnx</td><td><span style="color: #6cc77a;">✓ available</span></td><td style="font-size: 0.85em; color: var(--text-dim);">RIFE v4.25 - current SOTA frame interpolation, better scene-bleeding handling than v4.7-4.9. Recomme…</td></tr>
+      <tr><td><code>ifrnet</code></td><td>—</td><td>onnx</td><td><span style="color: #d3a35c;">self-host</span></td><td style="font-size: 0.85em; color: var(--text-dim);">IFRNet — 2nd interpolation architecture beside RIFE, arbitrary-timestep capable. Experimental: self-host an ONNX export.</td></tr>
+      <tr><td><code>cain</code></td><td>—</td><td>onnx</td><td><span style="color: #d3a35c;">self-host</span></td><td style="font-size: 0.85em; color: var(--text-dim);">CAIN — channel-attention interpolation (fixed midpoint), 2-input. Experimental: self-host an ONNX export.</td></tr>
     </tbody>
   </table>
 
@@ -190,7 +192,7 @@ POST /models/{id}/unload           # free VRAM
 GET  /Upscaler/recommend-model     # plugin → service: pick per-video</code></pre>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.1</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.2</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

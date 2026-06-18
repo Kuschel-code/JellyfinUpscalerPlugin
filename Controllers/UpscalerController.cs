@@ -434,6 +434,48 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
+        /// <summary>Request body for <see cref="ComputeVmaf"/>.</summary>
+        public class VmafRequest
+        {
+            public string? Reference { get; set; }
+            public string? Distorted { get; set; }
+        }
+
+        /// <summary>
+        /// v1.8.2 — objective VMAF quality score (0–100) of an upscaled/distorted file
+        /// against a reference, via ffmpeg+libvmaf. Returns 501 if this ffmpeg build
+        /// lacks libvmaf. Admin-only — it reads arbitrary server file paths.
+        /// </summary>
+        [HttpPost("vmaf")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult> ComputeVmaf([FromBody] VmafRequest body)
+        {
+            if (body == null || string.IsNullOrWhiteSpace(body.Reference) || string.IsNullOrWhiteSpace(body.Distorted))
+                return BadRequest(new { error = "reference and distorted paths are required" });
+            if (body.Reference.Contains("..") || body.Distorted.Contains(".."))
+                return BadRequest(new { error = "invalid path" });
+            if (!System.IO.File.Exists(body.Reference) || !System.IO.File.Exists(body.Distorted))
+                return NotFound(new { error = "reference or distorted file not found" });
+
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+                var res = await new Services.VmafService()
+                    .ComputeVmafAsync(_mediaEncoder.EncoderPath, body.Distorted, body.Reference, cts.Token);
+                return Ok(new { vmaf = res.Mean, min = res.Min, max = res.Max, harmonic_mean = res.Harmonic });
+            }
+            catch (Services.VmafUnavailableException ex)
+            {
+                return StatusCode(501, new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "VMAF computation failed");
+                return StatusCode(500, new { error = "VMAF computation failed" });
+            }
+        }
+
         [HttpGet("info")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetPluginInfo()
@@ -1546,6 +1588,14 @@ namespace JellyfinUpscalerPlugin.Controllers
                 TryApply("FilterDenoise", val => config.FilterDenoise = val.GetDouble());
                 TryApply("FilterColorTemperature", val => config.FilterColorTemperature = val.GetInt32());
                 TryApply("FilterFilmGrain", val => config.FilterFilmGrain = val.GetInt32());
+                // v1.8.2 - denoise-before-encode prefilter
+                TryApply("EnableDenoisePrefilter", val => config.EnableDenoisePrefilter = val.GetBoolean());
+                TryApply("DenoisePrefilterMethod", val =>
+                {
+                    var m = val.GetString() ?? "hqdn3d";
+                    if (VideoFilterService.SupportedDenoiseMethods.Contains(m)) config.DenoisePrefilterMethod = m.ToLowerInvariant();
+                });
+                TryApply("DenoisePrefilterStrength", val => config.DenoisePrefilterStrength = val.GetDouble());
 
                 Plugin.Instance?.SaveConfiguration();
                 if (skipped.Count > 0)

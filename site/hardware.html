@@ -7,11 +7,31 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.1</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.2</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Hardware guide</h1>
   <p class="lead" style="color: var(--text-dim);">Which GPU + how much VRAM + which execution provider you actually need. No marketing fluff.</p>
+
+  <h2>Client-side VSR vs. server-side upscaling — which one?</h2>
+  <p>There are two fundamentally different ways to make a stream look sharper, and they are <em>not</em> interchangeable. Pick the wrong one and you either melt a Celeron NAS or get shader-grade results when you wanted Real-ESRGAN. This plugin is the <strong>server-side</strong> path; client-side VSR is the alternative you should reach for on weak hardware.</p>
+  <table>
+    <thead><tr><th></th><th>Server-side AI plugin (this project)</th><th>Client-side VSR (Anime4K / driver VSR)</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Runs on</strong></td><td>The Jellyfin server's GPU/CPU</td><td>The <em>playback device's</em> GPU (your TV box, phone, desktop)</td></tr>
+      <tr><td><strong>Engine</strong></td><td>Deep-learning SR (Real-ESRGAN, SwinIR, HAT, …)</td><td>Real-time shaders (Anime4K) or vendor VSR (NVIDIA RTX VSR, Intel, AMD)</td></tr>
+      <tr><td><strong>Quality ceiling</strong></td><td>Highest — true learned detail reconstruction</td><td>Good for anime/line-art; shader-grade, not learned</td></tr>
+      <tr><td><strong>Server cost</strong></td><td>High (GPU/CPU per stream)</td><td>Zero — the server just sends the original file</td></tr>
+      <tr><td><strong>Result is cached</strong></td><td>Yes — upscale once, replay free</td><td>No — recomputed on every device, every play</td></tr>
+      <tr><td><strong>Works on a weak server</strong></td><td>Only light models (fsrcnn-x2), batch/overnight</td><td>Yes — server load is unchanged</td></tr>
+      <tr><td><strong>Needs a capable client</strong></td><td>No — any client plays the re-encoded stream</td><td>Yes — modern GPU + WebGL/MPV-capable player</td></tr>
+    </tbody>
+  </table>
+  <div class="callout"><strong>Rule of thumb:</strong> strong server GPU → server-side (best quality, cached). Weak server (Celeron/N100/NAS) + good playback device → client-side VSR. This is exactly what the built-in <code>/recommend</code> endpoint encodes: on a weak-CPU box it points you at <strong>Anime4K on the client GPU</strong> instead of pushing Real-ESRGAN onto the server.</div>
+  <h3>Anime4K (built in)</h3>
+  <p>The plugin ships an embedded Anime4K tier — a WebGL shader that runs in the browser/player on the client GPU, zero server cost. Ideal for anime libraries served from a low-power box. Enable it in <a href="configuration.html">Config → Real-time</a>; it has no effect on clients without a capable GPU and silently falls back to the original stream.</p>
+  <h3>Vendor VSR (RTX VSR / Intel / AMD) — client-only by design</h3>
+  <p>NVIDIA RTX Video Super Resolution, DLSS, AMD FSR and Intel's equivalents are <em>driver/GPU features of the viewing device</em>. The server cannot invoke them — there is no API to drive another machine's display pipeline. If your client supports RTX VSR, turn it on in the GeForce/driver settings; it composes fine with a server that just streams the source untouched.</p>
 
   <h2>The four providers, ranked</h2>
   <table>
@@ -91,7 +111,7 @@
   <div class="callout"><strong>Prereq:</strong> password-less SSH from Jellyfin host to the GPU host, with <code>ffmpeg</code> on the <code>$PATH</code> at the remote end.</div>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.1</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.2</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

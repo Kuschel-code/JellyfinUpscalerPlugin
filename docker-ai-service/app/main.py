@@ -124,7 +124,7 @@ from . import token_store  # hashed, persistent multi-token store (lazy expiry)
 # Dockerfiles pass; fall back to a literal only for bare local runs.
 # (FIX-1: the hardcoded literal had drifted to 1.6.1.21 while the image
 # entrypoint banner correctly reported 1.7.7 — issue #69 screenshots.)
-VERSION = os.getenv("APP_VERSION", "1.8.1")
+VERSION = os.getenv("APP_VERSION", "1.8.2")
 
 # Global state
 class AppState:
@@ -312,6 +312,13 @@ _connections_lock = threading.Lock()
 # Per-model download lock — prevents concurrent downloads of the same model
 _download_locks: dict[str, asyncio.Lock] = {}
 _download_locks_guard = threading.Lock()
+
+# v1.8.2 — async download-job registry. The synchronous /models/download blocks the
+# HTTP request until a (possibly multi-GB) download finishes, which trips client/proxy
+# timeouts on big models. /models/download-async starts the download in the background
+# and returns a job id the caller polls via /models/download-status/{id}.
+_download_jobs: dict[str, dict] = {}
+_download_jobs_guard = threading.Lock()
 
 # AVAILABLE_MODELS mutations (upload, delete) are serialised by _model_lock.
 # The /models list endpoint takes a snapshot under _model_lock to prevent
@@ -806,6 +813,7 @@ AVAILABLE_MODELS = {
         "category": "video-sr",
         "model_type": "edvr",
         "input_frames": 5,
+        "self_host": True,
         # Multi-frame VSR has no public ONNX mirror. User must export from official PyTorch weights — see docs/MODEL-HOSTING.md.
         "available": False
     },
@@ -818,6 +826,7 @@ AVAILABLE_MODELS = {
         "category": "video-sr",
         "model_type": "realbasicvsr",
         "input_frames": 5,
+        "self_host": True,
         # Multi-frame VSR has no public ONNX mirror. User must export from official PyTorch weights — see docs/MODEL-HOSTING.md.
         "available": False
     },
@@ -830,6 +839,7 @@ AVAILABLE_MODELS = {
         "category": "video-sr",
         "model_type": "animesr",
         "input_frames": 5,
+        "self_host": True,
         # Multi-frame VSR has no public ONNX mirror. User must export from official PyTorch weights — see docs/MODEL-HOSTING.md.
         "available": False
     },
@@ -906,8 +916,47 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "interpolation",
         "model_type": "rife",
+        "arch": "rife",
         "input_frames": 2,
         "available": True
+    },
+
+    # ============================================================
+    # === Frame-Interpolation — second architectures (v1.8.2) ===
+    # RIFE (above) is the only self-hosted interpolation arch. IFRNet and CAIN
+    # are wired into the (architecture-adaptive) interpolation engine but are
+    # experimental + available:False: there is no checksum-verified public ONNX
+    # export to auto-download, so they are "bring-your-own / self-host" until we
+    # host one. The engine runs them correctly once the ONNX is in the models dir
+    # (IFRNet = 3-input incl. timestep; CAIN = 2-input, fixed midpoint).
+    # ============================================================
+    "ifrnet": {
+        "name": "IFRNet (Frame Interpolation — experimental)",
+        "url": "https://github.com/ltkong218/IFRNet",
+        "scale": 1,
+        "description": "IFRNet intermediate-flow interpolation (2x FPS). Second interpolation architecture beside RIFE — arbitrary-timestep capable. Experimental: self-host an ONNX export in the models dir (no verified public export yet).",
+        "type": "onnx",
+        "category": "interpolation",
+        "model_type": "ifrnet",
+        "arch": "ifrnet",
+        "input_frames": 2,
+        "experimental": True,
+        "self_host": True,
+        "available": False
+    },
+    "cain": {
+        "name": "CAIN (Frame Interpolation — experimental)",
+        "url": "https://github.com/myungsub/CAIN",
+        "scale": 1,
+        "description": "CAIN channel-attention interpolation (2x FPS, fixed midpoint). Second interpolation architecture beside RIFE — 2-input, no timestep. Experimental: self-host an ONNX export in the models dir (no verified public export yet).",
+        "type": "onnx",
+        "category": "interpolation",
+        "model_type": "cain",
+        "arch": "cain",
+        "input_frames": 2,
+        "experimental": True,
+        "self_host": True,
+        "available": False
     },
 
     # ============================================================
@@ -2890,7 +2939,12 @@ def load_rife_model(model_name: str = "rife-v4.9") -> bool:
 
 def interpolate_frame_rife(frame1: np.ndarray, frame2: np.ndarray,
                            session, timestep: float = 0.5) -> np.ndarray:
-    """Run RIFE interpolation between two frames.
+    """Run frame interpolation between two frames (architecture-adaptive).
+
+    Despite the name, this drives any interpolation ONNX whose I/O matches a
+    known shape: RIFE (1 concatenated input, or [combined, timestep]), IFRNet
+    ([img0, img1, timestep], 3 inputs) and CAIN ([img0, img1], 2x3ch inputs).
+    The feed dict is chosen from session.get_inputs() count + channel shape.
 
     Args:
         frame1: First frame as BGR numpy array (H, W, 3) uint8.
@@ -2933,10 +2987,18 @@ def interpolate_frame_rife(frame1: np.ndarray, frame2: np.ndarray,
         # Single input: concatenated frames (1, 6, H, W)
         feed = {input_names[0]: combined}
     elif len(input_names) == 2:
-        # Two inputs: frames + timestep
-        feed = {input_names[0]: combined, input_names[1]: ts}
+        # v1.8.2 — two-input models come in two architecture flavours; disambiguate by
+        # the first input's channel count instead of assuming RIFE:
+        #   * 6ch  -> RIFE-style [concatenated frames, timestep]
+        #   * 3ch  -> CAIN-style [img0, img1] (fixed midpoint, no timestep input)
+        first_shape = session.get_inputs()[0].shape
+        first_ch = first_shape[1] if len(first_shape) >= 2 and isinstance(first_shape[1], int) else None
+        if first_ch == 3:
+            feed = {input_names[0]: f1_t, input_names[1]: f2_t}
+        else:
+            feed = {input_names[0]: combined, input_names[1]: ts}
     elif len(input_names) == 3:
-        # Three inputs: frame1, frame2, timestep
+        # Three inputs: frame1, frame2, timestep — RIFE 3-input AND IFRNet (img0, img1, embt)
         feed = {input_names[0]: f1_t, input_names[1]: f2_t, input_names[2]: ts}
     else:
         # Fallback: try frames + timestep as first two inputs
@@ -4070,6 +4132,74 @@ async def download_model_endpoint(model_name: str = Form(...), request: Request 
     return {"status": "success", "model": model_name, "size_mb": round(size_mb, 2)}
 
 
+async def _run_download_job(job_id: str, model_name: str):
+    """Background worker for /models/download-async: runs the download and records
+    the outcome in the job registry so the caller can poll without holding a request."""
+    with _download_jobs_guard:
+        if job_id in _download_jobs:
+            _download_jobs[job_id]["status"] = "downloading"
+    try:
+        ok = await download_model(model_name)
+        model_path = get_model_path(model_name)
+        size_mb = model_path.stat().st_size / 1024 / 1024 if model_path.exists() else 0
+        with _download_jobs_guard:
+            job = _download_jobs.get(job_id)
+            if job is not None:
+                job["status"] = "completed" if ok else "failed"
+                job["size_mb"] = round(size_mb, 2)
+                if not ok:
+                    job["error"] = "download returned failure"
+        if ok:
+            _invalidate_models_cache()
+    except Exception as e:
+        logger.error(f"Async download job {job_id} for {model_name} failed: {e}")
+        with _download_jobs_guard:
+            job = _download_jobs.get(job_id)
+            if job is not None:
+                job["status"] = "failed"
+                job["error"] = str(e)
+
+
+@app.post("/models/download-async")
+async def download_model_async_endpoint(model_name: str = Form(...), request: Request = None):
+    """v1.8.2 — start a model download in the background and return a job id immediately.
+    Decouples big downloads from the HTTP request lifetime (no more client timeouts).
+    Poll /models/download-status/{job_id} for progress."""
+    _require_api_token(request)
+    model_name = _resolve_model_key(model_name)
+    if model_name not in AVAILABLE_MODELS:
+        raise HTTPException(status_code=404, detail=f"Model {model_name} not found")
+    if not AVAILABLE_MODELS[model_name].get("available", True):
+        raise HTTPException(status_code=400, detail=f"Model {model_name} is not yet available")
+
+    # already on disk -> short-circuit, no job needed
+    if get_model_path(model_name).exists():
+        return {"status": "completed", "model": model_name, "job_id": None, "already_present": True}
+
+    job_id = uuid.uuid4().hex
+    with _download_jobs_guard:
+        _download_jobs[job_id] = {
+            "job_id": job_id,
+            "model": model_name,
+            "status": "queued",
+            "error": None,
+            "started_at": time.time(),
+        }
+    asyncio.create_task(_run_download_job(job_id, model_name))
+    return {"status": "queued", "model": model_name, "job_id": job_id}
+
+
+@app.get("/models/download-status/{job_id}")
+async def download_status_endpoint(job_id: str, request: Request = None):
+    """Poll the state of an async download job (queued|downloading|completed|failed)."""
+    _require_api_token(request)
+    with _download_jobs_guard:
+        job = _download_jobs.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail=f"No download job {job_id}")
+        return dict(job)
+
+
 @app.post("/models/load")
 async def load_model_endpoint(
     model_name: str = Form(...),
@@ -5117,6 +5247,17 @@ async def interpolate_frames(request: Request):
         raise HTTPException(status_code=400, detail=f"Unknown model: {model_name}")
     if AVAILABLE_MODELS[model_name].get("category") != "interpolation":
         raise HTTPException(status_code=400, detail=f"Model {model_name} is not an interpolation model")
+
+    # v1.8.2 — experimental/self-host interpolation archs (IFRNet/CAIN) have no verified
+    # public ONNX to auto-download. If the user hasn't placed one in the models dir, return a
+    # clear 501 instead of a confusing 404 download failure. They run fine once self-hosted —
+    # the interpolation engine is architecture-adaptive (RIFE / IFRNet / CAIN).
+    if AVAILABLE_MODELS[model_name].get("self_host") and not get_model_path(model_name).exists():
+        raise HTTPException(
+            status_code=501,
+            detail=f"Model {model_name} is experimental/self-host: place its ONNX export in the models directory "
+                   f"(no verified public download yet)."
+        )
 
     # Read frame data
     frame1_bytes = await frame1_file.read()

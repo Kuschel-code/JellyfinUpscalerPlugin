@@ -206,7 +206,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.8.1 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.8.2 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -852,6 +852,24 @@
                         </div>
                     </div>
 
+                    <div class="checkboxContainer" style="margin-top:1.5rem;margin-bottom:0.4rem;">
+                        <label><input type="checkbox" id="EnableDenoisePrefilter" /> Denoise before upscale/encode
+                            <span style="color:var(--text-muted);font-size:0.75rem;">(pre-clean compression noise — independent of Video Filters)</span></label>
+                    </div>
+                    <div id="denoise-prefilter-options" style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:1rem;">
+                        <div class="field">
+                            <label style="font-size:0.8rem;">Denoise Engine</label>
+                            <select id="DenoisePrefilterMethod" style="width:100%;padding:0.4rem;background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;margin-top:0.3rem;">
+                                <option value="hqdn3d">hqdn3d — fast (default)</option>
+                                <option value="nlmeans">nlmeans — higher quality, slower</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label style="font-size:0.8rem;">Denoise Strength <span id="val-denoise-prefilter" style="color:var(--accent);">3.0</span></label>
+                            <input type="range" id="DenoisePrefilterStrength" min="0" max="10" step="0.5" value="3" style="width:100%;" />
+                        </div>
+                    </div>
+
                     <div style="margin-top:1.5rem;">
                         <button type="button" id="btn-save-filters" class="raised btn-primary">Save Settings</button>
                     </div>
@@ -1451,7 +1469,7 @@
                     'RealtimeCaptureWidth',
                     'FilterBrightness','FilterContrast','FilterSaturation','FilterGamma',
                     'FilterSharpness','FilterColorTemperature','FilterVignette','FilterFilmGrain',
-                    'FilterDenoise','FilterLutPath',
+                    'FilterDenoise','FilterLutPath','DenoisePrefilterStrength',
                     'FaceRestoreModel',
                     'EnabledLibraryIds'];
                 fields.forEach(function(f) {
@@ -1467,7 +1485,7 @@
                     'PauseQueueDuringPlayback','PersistQueueAcrossRestarts',
                     'WebhookOnComplete','WebhookOnFailure',
                     'RestrictToUnwatchedContent','SkipUpscaledOnRescan',
-                    'EnableRealtimeUpscaling','EnableVideoFilters',
+                    'EnableRealtimeUpscaling','EnableVideoFilters','EnableDenoisePrefilter',
                     'EnableFaceRestore'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
@@ -1478,7 +1496,7 @@
                     }
                 });
 
-                var selects = ['Model','QualityLevel','ButtonPosition','OutputCodec','RealtimeMode','ActiveFilterPreset','FaceRestoreModel'];
+                var selects = ['Model','QualityLevel','ButtonPosition','OutputCodec','RealtimeMode','ActiveFilterPreset','FaceRestoreModel','DenoisePrefilterMethod'];
                 selects.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el && config[f]) el.value = config[f];
@@ -1500,7 +1518,7 @@
                     FilterSaturation: 'val-saturation', FilterGamma: 'val-gamma',
                     FilterSharpness: 'val-sharpness', FilterColorTemperature: 'val-colortemp',
                     FilterVignette: 'val-vignette', FilterFilmGrain: 'val-filmgrain',
-                    FilterDenoise: 'val-denoise'
+                    FilterDenoise: 'val-denoise', DenoisePrefilterStrength: 'val-denoise-prefilter'
                 };
                 Object.keys(sliderMap).forEach(function(k) {
                     var slider = page.querySelector('#' + k);
@@ -1540,7 +1558,7 @@
                 });
 
                 var floats = ['FilterBrightness','FilterContrast','FilterSaturation','FilterGamma',
-                    'FilterSharpness','FilterVignette','FilterDenoise'];
+                    'FilterSharpness','FilterVignette','FilterDenoise','DenoisePrefilterStrength'];
                 floats.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) { var parsed = parseFloat(el.value); if (!isNaN(parsed)) config[f] = parsed; }
@@ -1552,7 +1570,7 @@
                     'PauseQueueDuringPlayback','PersistQueueAcrossRestarts',
                     'WebhookOnComplete','WebhookOnFailure',
                     'RestrictToUnwatchedContent','SkipUpscaledOnRescan',
-                    'EnableRealtimeUpscaling','EnableVideoFilters',
+                    'EnableRealtimeUpscaling','EnableVideoFilters','EnableDenoisePrefilter',
                     'EnableFaceRestore'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
@@ -1571,12 +1589,14 @@
                 config.OutputCodec = page.querySelector('#OutputCodec').value;
                 config.RealtimeMode = page.querySelector('#RealtimeMode').value;
                 config.ActiveFilterPreset = page.querySelector('#ActiveFilterPreset').value;
+                var denoiseMethodEl = page.querySelector('#DenoisePrefilterMethod');
+                if (denoiseMethodEl) config.DenoisePrefilterMethod = denoiseMethodEl.value;
                 var faceModelEl = page.querySelector('#FaceRestoreModel');
                 if (faceModelEl) config.FaceRestoreModel = faceModelEl.value;
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.8.1';
+                config.PluginVersion = '1.8.2';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -1949,7 +1969,8 @@
                 { id: 'FilterColorTemperature', display: 'val-colortemp', decimals: 0 },
                 { id: 'FilterVignette', display: 'val-vignette', decimals: 1 },
                 { id: 'FilterFilmGrain', display: 'val-filmgrain', decimals: 0 },
-                { id: 'FilterDenoise', display: 'val-denoise', decimals: 1 }
+                { id: 'FilterDenoise', display: 'val-denoise', decimals: 1 },
+                { id: 'DenoisePrefilterStrength', display: 'val-denoise-prefilter', decimals: 1 }
             ];
             sliders.forEach(function(s) {
                 var slider = page.querySelector('#' + s.id);

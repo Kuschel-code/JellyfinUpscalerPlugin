@@ -508,6 +508,27 @@ namespace JellyfinUpscalerPlugin
         /// <summary>Path to a .cube LUT file for color grading (empty = disabled). Only used when preset is "custom".</summary>
         public string FilterLutPath { get; set; } = "";
 
+        // ── Denoise prefilter (v1.8.2 — Netflix lesson: denoise before encode/upscale) ──
+
+        /// <summary>
+        /// Enable a dedicated denoise pass on the source BEFORE upscaling/encoding.
+        /// Independent of <see cref="EnableVideoFilters"/> (the camera-style system):
+        /// cleaning compression artifacts first improves SR reconstruction and lowers
+        /// the output bitrate (you don't spend bits encoding noise).
+        /// </summary>
+        public bool EnableDenoisePrefilter { get; set; } = false;
+
+        /// <summary>Denoise engine: "hqdn3d" (fast, default) or "nlmeans" (higher quality, much slower).</summary>
+        public string DenoisePrefilterMethod { get; set; } = "hqdn3d";
+
+        /// <summary>Denoise strength (0.0 off … 10.0 heavy). Mapped to hqdn3d / nlmeans parameters.</summary>
+        public double DenoisePrefilterStrength
+        {
+            get => _denoisePrefilterStrength;
+            set => _denoisePrefilterStrength = Math.Clamp(value, 0.0, 10.0);
+        }
+        private double _denoisePrefilterStrength = 3.0;
+
         // ── Face Restoration (v1.6.1.7 — GFPGAN / CodeFormer) ────────────
 
         /// <summary>Enable AI face restoration for low-quality / old content.</summary>

@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-06-03",
+  "generated_at": "2026-06-18",
   "source": "docker-ai-service/app/main.py:AVAILABLE_MODELS",
   "generator": "Scripts/sync-fallback-models.ps1",
   "notice": "AUTO-GENERATED - DO NOT EDIT BY HAND. Regenerate via the script when main.py changes.",
-  "total": 71,
+  "total": 73,
   "models": [
     {
       "id": "realesrgan-x4",
@@ -535,6 +535,32 @@
       "category": "interpolation",
       "type": "onnx",
       "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "ifrnet",
+      "name": "IFRNet (Frame Interpolation \u2014 experimental)",
+      "description": "IFRNet intermediate-flow interpolation (2x FPS). Second interpolation architecture beside RIFE \u2014 arbitrary-timestep capable. Experimental: self-host an ONNX export in the models dir (no verified publi",
+      "scale": [
+        1
+      ],
+      "category": "interpolation",
+      "type": "onnx",
+      "available": false,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "cain",
+      "name": "CAIN (Frame Interpolation \u2014 experimental)",
+      "description": "CAIN channel-attention interpolation (2x FPS, fixed midpoint). Second interpolation architecture beside RIFE \u2014 2-input, no timestep. Experimental: self-host an ONNX export in the models dir (no verifi",
+      "scale": [
+        1
+      ],
+      "category": "interpolation",
+      "type": "onnx",
+      "available": false,
       "downloaded": false,
       "loaded": false
     },

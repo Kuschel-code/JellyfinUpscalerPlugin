@@ -7,13 +7,25 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.1</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.2</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.1 — Live filter fix + hardware-aware recommendation <span class="tag success">latest</span></h2>
+  <h2>v1.8.2 — Quality + hardening pass <span class="tag success">latest</span></h2>
+  <p><em>2026-06.</em> Plugin + service update.</p>
+  <ul>
+    <li><strong>Denoise-before-encode prefilter.</strong> A dedicated source-clean pass (<code>hqdn3d</code> / <code>nlmeans</code>) that runs before upscaling/encoding — independent of the camera-style filters. Cleaner input means better SR and a smaller re-encode.</li>
+    <li><strong>VMAF quality scoring.</strong> New admin-only <code>POST /Upscaler/vmaf</code> objectively scores an upscaled file against a reference via ffmpeg+libvmaf (0–100).</li>
+    <li><strong>Second interpolation architecture.</strong> The frame-interpolation engine is now input-signature-adaptive (RIFE / IFRNet / CAIN); IFRNet + CAIN added to the catalog as experimental self-host.</li>
+    <li><strong>MultiFrame extraction progress.</strong> The multi-frame path now reports live extraction progress like the other pipelines.</li>
+    <li><strong>Decoupled model download.</strong> <code>POST /models/download-async</code> + <code>GET /models/download-status/{id}</code> run big downloads in the background so they no longer trip client timeouts.</li>
+    <li><strong>Supply-chain hardening.</strong> All six Docker base images pinned by <code>@sha256</code> digest + a pip-audit CVE sweep (0 known vulnerabilities).</li>
+    <li><strong>Docs + tests.</strong> New "client-VSR vs server-side" hardware chapter, a verified frame-stream coordinator, and new tests across detection, denoise, VMAF, interpolation, async download and multi-frame VSR.</li>
+  </ul>
+
+  <h2>v1.8.1 — Live filter fix + hardware-aware recommendation</h2>
   <p><em>2026-06.</em> Plugin + service update.</p>
   <ul>
     <li><strong>Live video filters fixed.</strong> In-player presets/sliders had no visible effect while realtime client-side upscaling was active — the upscaler renders to a canvas overlay that covered the filtered <code>&lt;video&gt;</code>. The CSS filter is now applied to the visible canvas too, so filters take effect again.</li>
@@ -309,7 +321,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.1</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.2</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>
