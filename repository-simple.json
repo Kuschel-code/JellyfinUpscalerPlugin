@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.8.3.0",
+        "changelog": "v1.8.3: Opt-in pipeline parallelism (plugin-only, no Docker change). New experimental setting 'Pipeline parallelism' (default OFF) overlaps frame extraction with upscaling instead of running them strictly back-to-back: while ffmpeg is still extracting later frames, already-extracted frames are upscaled concurrently. Built on a thread-safe FrameStreamCoordinator that hands a frame to the upscaler only once a successor frame proves it was fully written, and drops the unproven highest frame if extraction fails, so the output frame-count and ordering are identical to the sequential path. Default behaviour is unchanged; the overlap runs only when the box is ticked. Works with the existing docker7 AI-service images (no rebuild needed). Tests: xUnit 164 (incl. FrameStreamCoordinator COMPLETE-vs-FAILED asymmetry + terminal-first-wins), dotnet build clean.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.3/JellyfinUpscalerPlugin-v1.8.3.zip",
+        "checksum": "d2ce378aafe2a910edb778e04e600366",
+        "timestamp": "2026-06-18T21:00:00.000Z"
+      },
+      {
         "version": "1.8.2.0",
         "changelog": "v1.8.2: Quality + hardening pass. (1) Denoise-before-encode prefilter (hqdn3d/nlmeans) - a dedicated source-clean pass run BEFORE upscaling/encoding, independent of the camera-style filters (cleaner input -> better SR + smaller re-encode). (2) VMAF quality scoring - admin-only POST /Upscaler/vmaf scores an upscaled/distorted file against a reference via ffmpeg+libvmaf (501 if the build lacks libvmaf). (3) Second frame-interpolation architecture beside RIFE: the engine is now input-signature-adaptive (RIFE 1/2-input, IFRNet 3-input, CAIN 2-input); IFRNet+CAIN added as experimental self-host. (4) MultiFrame extraction now reports live progress (previously only FrameByFrame/Batch). (5) Decoupled model download: POST /models/download-async + GET /models/download-status/{id} run big downloads in the background so they no longer trip client/proxy timeouts. (6) Supply-chain: all 6 Docker base images pinned by @sha256 digest + pip-audit CVE sweep (0 known). (7) New client-VSR-vs-server hardware doc chapter + verified FrameStreamCoordinator. Needs AI service image >= v1.8.2 (docker7) for /vmaf, /recommend and async download. Tests: pytest 73, xUnit 159, dotnet build clean.",
         "targetAbi": "10.11.8.0",

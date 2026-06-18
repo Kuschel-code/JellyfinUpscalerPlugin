@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.2
+# Jellyfin AI Upscaler Plugin v1.8.3
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.8.2):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.8.3):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.2     │  │
+│  │  AI Upscaler Plugin v1.8.3     │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -300,6 +300,13 @@ Each tag is published three ways so you can pin precisely:
 ---
 
 ## Changelog
+
+### v1.8.3 (Opt-in pipeline parallelism)
+
+**Plugin-only release** (works with the existing docker7 AI-service images, no rebuild needed).
+
+- **Pipeline parallelism (experimental, default OFF).** A new setting overlaps frame extraction with upscaling instead of running them strictly back-to-back: while ffmpeg is still extracting later frames, already-extracted frames are upscaled concurrently. Built on a thread-safe `FrameStreamCoordinator` that hands a frame to the upscaler only once a successor frame proves it was fully written, and drops the unproven highest frame if extraction fails, so output frame-count and ordering are identical to the sequential path. Default behaviour is unchanged; the overlap runs only when you tick the box.
+- **Tests.** `FrameStreamCoordinator` state-machine coverage (COMPLETE-vs-FAILED asymmetry, terminal-first-wins); xUnit 164, dotnet build clean.
 
 ### v1.8.2 (Quality + hardening pass)
 
