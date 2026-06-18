@@ -7,13 +7,19 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.1</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3 - Opt-in pipeline parallelism <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.1 - Cancel-fix <span class="tag success">latest</span></h2>
+  <p><em>2026-06.</em> Plugin-only release.</p>
+  <ul>
+    <li><strong>Cancel actually stops a job now.</strong> The job-cancel endpoint reported success but never halted the running job: the per-job cancellation token was created and cancelled correctly, but the bare caller token (not the linked per-job token) was passed into the extraction/upscaling pipeline, so the signal never arrived. The semaphore wait, model load and the method executor now all receive the linked per-job token. Pre-existing across all processing methods.</li>
+  </ul>
+
+  <h2>v1.8.3 - Opt-in pipeline parallelism</h2>
   <p><em>2026-06.</em> Plugin-only release (works with the existing docker7 images, no rebuild needed).</p>
   <ul>
     <li><strong>Pipeline parallelism (experimental, default OFF).</strong> A new setting overlaps frame extraction with upscaling instead of running them strictly back-to-back: while ffmpeg is still extracting later frames, already-extracted frames are upscaled concurrently. Built on a thread-safe <code>FrameStreamCoordinator</code> that hands a frame to the upscaler only once a successor frame proves it was fully written, and drops the unproven highest frame if extraction fails, so the output frame-count and ordering match the sequential path exactly. Default behaviour is unchanged; the overlap runs only when you tick the box.</li>
@@ -328,7 +334,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.1</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

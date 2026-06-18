@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3
+# Jellyfin AI Upscaler Plugin v1.8.3.1
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.8.3):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.8.3.1):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3     │  │
+│  │  AI Upscaler Plugin v1.8.3.1   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -300,6 +300,12 @@ Each tag is published three ways so you can pin precisely:
 ---
 
 ## Changelog
+
+### v1.8.3.1 (Cancel-fix)
+
+**Plugin-only release.**
+
+- **`Cancel` now actually stops a job.** `jobs/{id}/cancel` reported success but never halted the running job: `ProcessVideoAsync` created a per-job `CancellationTokenSource` (the one `CancelJob` cancels) yet passed the bare caller token to the pipeline instead of the job's linked `cts.Token`, so cancellation never reached extraction/upscaling. The semaphore wait, model load and the method executor now all receive `cts.Token` (still linked to the caller token). Pre-existing across all processing methods.
 
 ### v1.8.3 (Opt-in pipeline parallelism)
 

@@ -209,7 +209,7 @@ namespace JellyfinUpscalerPlugin.Services
             var semaphoreAcquired = false;
             try
             {
-                if (!await _processingSemaphore.WaitAsync(SemaphoreTimeout, cancellationToken))
+                if (!await _processingSemaphore.WaitAsync(SemaphoreTimeout, cts.Token))
                 {
                     _logger.LogWarning("Video processing timed out waiting for semaphore: {FileName}", Path.GetFileName(inputPath));
                     return new VideoProcessingResult { Success = false, Error = "Processing queue timeout - too many concurrent jobs" };
@@ -239,7 +239,7 @@ namespace JellyfinUpscalerPlugin.Services
                 {
                     try
                     {
-                        var success = await _httpUpscalerService.EnsureModelLoadedAsync(candidateModel, cancellationToken);
+                        var success = await _httpUpscalerService.EnsureModelLoadedAsync(candidateModel, cts.Token);
                         if (success)
                         {
                             modelLoaded = true;
@@ -281,7 +281,7 @@ namespace JellyfinUpscalerPlugin.Services
 
                 // 6. Execute processing
                 job.Status = ProcessingStatus.Processing;
-                var result = await _methodExecutor.ExecuteProcessingAsync(inputPath, outputPath, job, inputFrames, cancellationToken);
+                var result = await _methodExecutor.ExecuteProcessingAsync(inputPath, outputPath, job, inputFrames, cts.Token); // v1.8.3.1: job's linked cancel token (cts), not the bare param, so jobs/{id}/cancel actually reaches the pipeline
 
                 job.Status = result.Success ? ProcessingStatus.Completed : ProcessingStatus.Failed;
                 job.EndTime = DateTime.UtcNow;
