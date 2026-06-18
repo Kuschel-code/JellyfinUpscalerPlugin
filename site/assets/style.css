@@ -976,6 +976,11 @@ tbody tr:hover { background: var(--paper-tint); }
 .hc-convo { display: none; flex-direction: column; gap: 1rem; margin-top: 1.4rem; }
 .home-console.has-msgs .hc-convo { display: flex; }
 .home-console.has-msgs .hc-head { padding-bottom: 1.1rem; border-bottom: 1px solid var(--rule); margin-bottom: 1.1rem; }
+/* Once a conversation starts, render the messages ABOVE the input bubble so the
+   newest reply sits directly above where you type — no scrolling back up. */
+.home-console.has-msgs .hc-frame { display: flex; flex-direction: column; }
+.home-console.has-msgs .hc-convo { order: -1; margin-top: 0; margin-bottom: 1.4rem; }
+.home-console.has-msgs .hc-form { order: 1; }
 
 .hc-msg { max-width: 100%; font-size: .96rem; line-height: 1.62; }
 .hc-msg-user {
