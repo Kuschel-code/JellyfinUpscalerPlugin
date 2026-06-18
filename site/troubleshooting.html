@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Troubleshooting — Jellyfin AI Upscaler</title>
+<title>Troubleshooting - Jellyfin AI Upscaler</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -12,11 +12,11 @@
 <main class="container-narrow">
   <h1>Troubleshooting</h1>
   <p class="lead" style="color: var(--text-dim);">Symptom-first. Scan the headings for what you're seeing, follow the steps in order.</p>
-  <p style="background:#0b1f2e;border:1px solid #164e63;border-radius:8px;padding:12px 14px;color:#a5f3fc;">💬 <strong>In a hurry?</strong> Click the <strong>Support Assistant</strong> button in the bottom-right corner and describe your problem — it answers instantly from every issue we've ever handled.</p>
+  <p style="background:#0b1f2e;border:1px solid #164e63;border-radius:8px;padding:12px 14px;color:#a5f3fc;">💬 <strong>In a hurry?</strong> Click the <strong>Support Assistant</strong> button in the bottom-right corner and describe your problem - it answers instantly from every issue we've ever handled.</p>
 
   <h2>Plugin disappears after restart ("tombstoned")</h2>
   <p><strong>Symptom:</strong> Plugin appears in the list for a second, then vanishes. Jellyfin log shows <code>NotSupportedException</code> or <code>FileNotFoundException</code> for a DLL like <code>FFMpegCore</code>, <code>CliWrap</code>, <code>Instances</code>, or <code>SixLabors.ImageSharp</code>.</p>
-  <p><strong>Cause:</strong> <code>dotnet build</code> only emits the main plugin DLL — transitive NuGet dependencies must ship inside the ZIP alongside it.</p>
+  <p><strong>Cause:</strong> <code>dotnet build</code> only emits the main plugin DLL - transitive NuGet dependencies must ship inside the ZIP alongside it.</p>
   <p><strong>Fix:</strong></p>
   <ol>
     <li>Verify the plugin folder contains <em>all</em> DLLs shipped in the official release ZIP (~15 files, not just one).</li>
@@ -27,13 +27,13 @@
 
   <h2>Ffprobe/FFmpeg: "Cannot start process because a file name has not been provided"</h2>
   <p><strong>Symptom:</strong> Scheduled task fails at 0% with <code>InvalidOperationException: Cannot start process because a file name has not been provided.</code></p>
-  <p><strong>Cause:</strong> Pre-v1.6.1.21 plugins captured <code>MediaEncoder.EncoderPath</code>/<code>ProbePath</code> at construction time. If the plugin was constructed before Jellyfin finished resolving these paths, the capture was an empty string — permanently.</p>
+  <p><strong>Cause:</strong> Pre-v1.6.1.21 plugins captured <code>MediaEncoder.EncoderPath</code>/<code>ProbePath</code> at construction time. If the plugin was constructed before Jellyfin finished resolving these paths, the capture was an empty string - permanently.</p>
   <p><strong>Fix:</strong> Upgrade to v1.6.1.21+. The fix applies to all three singletons (<code>VideoAnalyzer</code>, <code>VideoFrameProcessor</code>, <code>ProcessingMethodExecutor</code>) and late-resolves on every entry point.</p>
 
   <h2>AI service test connection fails</h2>
   <p><strong>Symptom:</strong> The Test Connection button in plugin config shows red.</p>
   <ol>
-    <li><strong>Check the URL:</strong> it must be reachable <em>from the Jellyfin container</em>, not from your browser. If Jellyfin runs in Docker, <code>localhost</code> means the Jellyfin container — use the LAN IP or Docker service name.</li>
+    <li><strong>Check the URL:</strong> it must be reachable <em>from the Jellyfin container</em>, not from your browser. If Jellyfin runs in Docker, <code>localhost</code> means the Jellyfin container - use the LAN IP or Docker service name.</li>
     <li><strong>Check the token:</strong> if <code>API_TOKEN</code> is set on the AI container, the plugin must send the same value. Mismatched token → <code>401</code>.</li>
     <li><strong>Check that port 5000 is exposed:</strong> <code>curl -f http://ai-host:5000/health</code> from the Jellyfin host.</li>
     <li><strong>CORS / proxy:</strong> if there's a reverse proxy in front, it must not strip the <code>X-Api-Token</code> header.</li>
@@ -42,7 +42,7 @@
   <h2>GPU not detected in the service</h2>
   <p><strong>Symptom:</strong> <code>/hardware</code> shows only CPU providers, or the dashboard "Detected Hardware" row is empty.</p>
   <ul>
-    <li><strong>NVIDIA:</strong> container must have <code>runtime: nvidia</code> (compose) or <code>--gpus all</code> (docker run). Run <code>docker exec ai-upscaler nvidia-smi</code> — if this fails, the NVIDIA Container Toolkit isn't installed on the host.</li>
+    <li><strong>NVIDIA:</strong> container must have <code>runtime: nvidia</code> (compose) or <code>--gpus all</code> (docker run). Run <code>docker exec ai-upscaler nvidia-smi</code> - if this fails, the NVIDIA Container Toolkit isn't installed on the host.</li>
     <li><strong>Intel (OpenVINO):</strong> container needs <code>--device /dev/dri</code>. On Unraid, the Intel GPU Plugin must be installed.</li>
     <li><strong>AMD (ROCm):</strong> needs <code>--device /dev/kfd</code> <em>and</em> <code>--device /dev/dri</code>, plus <code>--group-add video</code>.</li>
     <li><strong>Wrong image tag:</strong> make sure you're pulling <code>:latest-cuda</code> / <code>-openvino</code> / <code>-rocm</code>, not <code>:latest-cpu</code>.</li>
@@ -77,14 +77,14 @@
   <p><strong>Symptom:</strong> Compare tab shows "No processed videos" even though upscaled files exist.</p>
   <ul>
     <li>The comparison view only lists files named exactly <code>&lt;basename&gt;_upscaled.&lt;ext&gt;</code> sitting next to the source. Renamed files won't show.</li>
-    <li>Pre-processing cache is off — enable it so previous passes are tracked.</li>
+    <li>Pre-processing cache is off - enable it so previous passes are tracked.</li>
   </ul>
 
   <h2>Frame interpolation has visual artifacts</h2>
   <ul>
     <li>Source has hard scene cuts: enable <em>Scene Cut Detection</em> in the Motion tab.</li>
     <li>Anime with limited animation: try <code>rife-v4.7</code> (more conservative) instead of <code>v4.9</code>.</li>
-    <li>Framerate doubling on a 24fps → 48fps source with judder: your display may not handle 48Hz well — target 60fps instead.</li>
+    <li>Framerate doubling on a 24fps → 48fps source with judder: your display may not handle 48Hz well - target 60fps instead.</li>
   </ul>
 
   <h2>Reading logs</h2>

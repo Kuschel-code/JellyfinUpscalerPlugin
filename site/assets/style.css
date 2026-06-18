@@ -644,8 +644,8 @@ tbody tr:hover { background: var(--paper-tint); }
   align-items: baseline;
   gap: .9rem;
   border-top: 1px solid var(--rule-strong);
-  padding-top: 1.1rem;
-  margin: 4rem 0 1.6rem;
+  padding-top: 1.2rem;
+  margin: 4.75rem 0 1.7rem;
 }
 .ed-secnum .n {
   font-family: var(--mono);
@@ -834,6 +834,29 @@ tbody tr:hover { background: var(--paper-tint); }
   color: var(--ink-faint);
 }
 .ed-feat > a:hover .ef-go { color: var(--accent); }
+
+/* --- "get going" 2-up band — a layout family distinct from the .ed-feat stat grid --- */
+.ed-next {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--rule-strong);
+  border-bottom: 1px solid var(--rule-strong);
+}
+.ed-next > a {
+  display: block;
+  padding: 1.9rem 1.7rem;
+  text-decoration: none;
+  color: inherit;
+  transition: background .14s ease;
+}
+.ed-next > a:first-child { border-right: 1px solid var(--rule); }
+.ed-next > a:hover { background: var(--paper-tint); }
+.ed-next > a:hover .ef-h { color: var(--accent); }
+.ed-next .ef-h { font-size: 1.35rem; margin-top: .15rem; }
+@media (max-width: 768px) {
+  .ed-next { grid-template-columns: 1fr; }
+  .ed-next > a:first-child { border-right: none; border-bottom: 1px solid var(--rule); }
+}
 
 /* cursor-tilt cards */
 .tilt { transition: transform .25s cubic-bezier(.22,.61,.36,1); transform-style: preserve-3d; }

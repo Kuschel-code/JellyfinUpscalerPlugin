@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Contributing — Jellyfin AI Upscaler</title>
+<title>Contributing - Jellyfin AI Upscaler</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -11,7 +11,7 @@
 
 <main class="container-narrow">
   <h1>Contributing</h1>
-  <p class="lead" style="color: var(--text-dim);">Patches, docs, translations, model catalog entries — all welcome. Here's the short version of how to land a change cleanly.</p>
+  <p class="lead" style="color: var(--text-dim);">Patches, docs, translations, model catalog entries - all welcome. Here's the short version of how to land a change cleanly.</p>
 
   <h2>Repository layout</h2>
   <pre><code>JellyfinUpscalerPlugin/
@@ -42,7 +42,7 @@ dotnet test
 # Produce a ship-ready publish folder (main DLL + all transitive NuGets)
 dotnet publish -c Release -o ./publish</code></pre>
   <div class="callout warn">
-    <strong>Don't ship the plain <code>bin/Release</code> output.</strong> Only <code>dotnet publish</code> emits the full set of transitive NuGet DLLs the plugin needs at runtime. Shipping only the main DLL is what causes the "plugin tombstoned on restart" issue — see <a href="troubleshooting.html">Troubleshooting</a>.
+    <strong>Don't ship the plain <code>bin/Release</code> output.</strong> Only <code>dotnet publish</code> emits the full set of transitive NuGet DLLs the plugin needs at runtime. Shipping only the main DLL is what causes the "plugin tombstoned on restart" issue - see <a href="troubleshooting.html">Troubleshooting</a>.
   </div>
 
   <h2>Branch &amp; PR flow</h2>
@@ -58,14 +58,14 @@ dotnet publish -c Release -o ./publish</code></pre>
   <ul>
     <li><strong>C#:</strong> follow <code>.editorconfig</code>. Allman braces, four-space indent, <code>var</code> where the type is obvious.</li>
     <li><strong>Python (service):</strong> <code>ruff</code> + <code>black</code>. Type hints on all public functions.</li>
-    <li><strong>JS:</strong> no build step in the plugin — plain ES2020 that runs in Jellyfin's web view. Keep it that way.</li>
-    <li>Log messages use structured logging: <code>_logger.LogInformation("FFmpeg ready: path={Path}", path);</code> — not string interpolation.</li>
+    <li><strong>JS:</strong> no build step in the plugin - plain ES2020 that runs in Jellyfin's web view. Keep it that way.</li>
+    <li>Log messages use structured logging: <code>_logger.LogInformation("FFmpeg ready: path={Path}", path);</code> - not string interpolation.</li>
     <li>No fancy abstractions "for the future". CLAUDE.md rule: three similar lines is better than a premature abstraction.</li>
   </ul>
 
   <h2>Good first issues</h2>
   <ul>
-    <li>Add a translation for a language we don't yet cover — see <code>Web/i18n/</code>.</li>
+    <li>Add a translation for a language we don't yet cover - see <code>Web/i18n/</code>.</li>
     <li>Write a deployment recipe for a platform not listed on the <a href="deployment.html">Deployment</a> page.</li>
     <li>Contribute a ONNX export script for one of the <em>[self-host required]</em> models in the catalog.</li>
     <li>Add a test to <code>tests/VideoAnalyzerTests.cs</code> covering a failure mode you've hit.</li>
@@ -110,7 +110,7 @@ dotnet publish -c Release -o ./publish</code></pre>
   </ul>
 
   <h2>Code of conduct</h2>
-  <p>The short version: be kind. We accept contributions from all skill levels — assume good faith, ask clarifying questions, and don't pile-on new contributors for small mistakes. The full <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/CODE_OF_CONDUCT.md">Code of Conduct</a> lives in the repo.</p>
+  <p>The short version: be kind. We accept contributions from all skill levels - assume good faith, ask clarifying questions, and don't pile-on new contributors for small mistakes. The full <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/CODE_OF_CONDUCT.md">Code of Conduct</a> lives in the repo.</p>
 </main>
 
 <footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.2</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>

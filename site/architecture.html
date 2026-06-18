@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Architecture — Jellyfin AI Upscaler</title>
+<title>Architecture - Jellyfin AI Upscaler</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -52,9 +52,9 @@
 
   <h3>ScheduledTasks</h3>
   <ul>
-    <li><strong>LibraryUpscaleScanTask</strong> — nightly scan, fires on Jellyfin's daily trigger (default 03:00).</li>
-    <li><strong>LibraryImageScanTask</strong> — optional pass for cover/poster upscaling.</li>
-    <li><strong>Cache cleanup</strong> — prunes the pre-processing cache according to retention config.</li>
+    <li><strong>LibraryUpscaleScanTask</strong> - nightly scan, fires on Jellyfin's daily trigger (default 03:00).</li>
+    <li><strong>LibraryImageScanTask</strong> - optional pass for cover/poster upscaling.</li>
+    <li><strong>Cache cleanup</strong> - prunes the pre-processing cache according to retention config.</li>
   </ul>
 
   <h2>Service-side components</h2>
@@ -73,7 +73,7 @@
   <h2>Data flow: nightly library scan</h2>
   <ol>
     <li>Jellyfin scheduler fires <code>LibraryUpscaleScanTask.ExecuteAsync</code>.</li>
-    <li>Plugin calls <code>HttpUpscalerService.GetHealthAsync</code> — aborts if service is offline.</li>
+    <li>Plugin calls <code>HttpUpscalerService.GetHealthAsync</code> - aborts if service is offline.</li>
     <li>Plugin enumerates Jellyfin virtual folders, filters to those in <code>EnabledLibraryIds</code> (or all if empty).</li>
     <li>For each item: <code>VideoAnalyzer.AnalyzeVideoAsync</code> → resolution, fps, codec, HDR, interlaced.</li>
     <li>If below threshold: <code>VideoProcessor.ProcessVideoAsync</code> → <code>ProcessingMethodExecutor</code> picks pipeline → <code>VideoFrameProcessor.ExtractFramesAsync</code> dumps PNGs to a temp dir.</li>
@@ -86,8 +86,8 @@
   <ol>
     <li>User opens a video; Jellyfin web client loads <code>player-integration.js</code> from the plugin.</li>
     <li>Script injects the <em>Upscaler</em> button into the player toolbar.</li>
-    <li>On click, the tabbed overlay renders — fetches <code>/Upscaler/models</code> and <code>/Upscaler/filter-presets</code> in parallel.</li>
-    <li><strong>Filters tab</strong> sliders write directly to <code>&lt;video&gt;.style.filter</code> — 60fps, no round-trip.</li>
+    <li>On click, the tabbed overlay renders - fetches <code>/Upscaler/models</code> and <code>/Upscaler/filter-presets</code> in parallel.</li>
+    <li><strong>Filters tab</strong> sliders write directly to <code>&lt;video&gt;.style.filter</code> - 60fps, no round-trip.</li>
     <li><strong>Models tab</strong> calls <code>POST /Upscaler/models/{id}/load</code> which forwards to the AI service's <code>/models/{id}/load</code>. Service warms the model in GPU memory.</li>
     <li>Subsequent frames rendered by Jellyfin go through the loaded model when playback seeks (requires Real-Time AI processing mode).</li>
   </ol>

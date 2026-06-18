@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Jellyfin AI Upscaler — upscale every frame</title>
+<title>Jellyfin AI Upscaler - upscale every frame</title>
 <meta name="description" content="AI-powered video upscaling plugin for Jellyfin 10.11.x. 70+ models, 6 hardware backends, 15 filters. Ask the in-page console anything about setup, GPUs, models and Docker.">
 <meta property="og:title" content="Jellyfin AI Upscaler Plugin">
-<meta property="og:description" content="Dockerized AI upscaler for Jellyfin — 70+ models, NVIDIA/Intel/AMD acceleration, face restoration, camera-style filters. Ask the in-page console.">
-<link rel="stylesheet" href="assets/style.css?v=6">
+<meta property="og:description" content="Dockerized AI upscaler for Jellyfin - 70+ models, NVIDIA/Intel/AMD acceleration, face restoration, camera-style filters. Ask the in-page console.">
+<link rel="stylesheet" href="assets/style.css?v=7">
 </head>
 <body>
 <header class="topbar">
@@ -27,7 +27,7 @@
 <main class="home home-console" id="home-console">
 
   <!-- ===== Masthead ===== -->
-  <p class="ed-kicker reveal"><span class="dot"></span> Jellyfin Plugin · <b>v1.8.2</b>· MIT</p>
+  <p class="ed-kicker reveal">Jellyfin 10.11 plugin <b>v1.8.2</b></p>
 
   <header class="ed-masthead">
     <h1 class="ed-headline">
@@ -35,9 +35,9 @@
       <span class="reveal-line"><span>every <span class="vermilion">frame</span>.</span></span>
     </h1>
     <p class="ed-sub reveal">
-      A self-hosted AI upscaler that bolts onto Jellyfin 10.11.x — 70+ ONNX models,
-      six hardware backends, face restoration and camera-grade filters, all driven from
-      a Dockerized service you actually control.
+      A self-hosted AI upscaler for Jellyfin 10.11. 70+ ONNX models, six GPU
+      backends, face restoration and live camera filters, all from one Docker
+      service you control.
     </p>
     <div class="ed-actions reveal">
       <a class="btn btn-primary" href="installation.html">Install it</a>
@@ -45,17 +45,15 @@
     </div>
   </header>
 
-  <!-- ===== 01 — the giant chat search (Google-style) ===== -->
+  <!-- ===== the giant chat search (Google-style) ===== -->
   <div class="ed-secnum reveal">
-    <span class="n">01</span>
     <h2>Ask anything</h2>
-    <span class="meta">KB + live AI · free</span>
   </div>
 
   <div class="hc-frame hc-hero reveal" id="hc-frame">
     <form class="hc-form" id="hc-form" autocomplete="off">
       <input class="hc-input" id="hc-input" type="text" name="q"
-             placeholder="Ask anything — e.g. my GPU runs on CPU…"
+             placeholder="Ask anything - e.g. my GPU runs on CPU…"
              aria-label="Ask the AI Upscaler assistant">
       <button class="hc-send" id="hc-send" type="submit" aria-label="Send">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -73,16 +71,14 @@
     <div class="hc-convo" id="hc-convo" aria-live="polite"></div>
   </div>
 
-  <!-- ===== 02 — the signature before/after upscale demo ===== -->
+  <!-- ===== the signature before/after upscale demo ===== -->
   <div class="ed-secnum reveal">
-    <span class="n">02</span>
     <h2>The difference</h2>
-    <span class="meta">Drag the divider</span>
   </div>
 
   <figure class="ed-figure reveal" id="ed-figure">
     <div class="ba" id="ba" style="--split:50%;">
-      <!-- AFTER (crisp) — sits beneath -->
+      <!-- AFTER (crisp) - sits beneath -->
       <div class="ba-layer ba-after" aria-hidden="true">
         <svg viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -150,7 +146,7 @@
           </g>
         </svg>
       </div>
-      <!-- BEFORE (blurred + pixel grid) — clipped on top, shares the defs above -->
+      <!-- BEFORE (blurred + pixel grid) - clipped on top, shares the defs above -->
       <div class="ba-layer ba-before" aria-hidden="true">
         <svg viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
           <rect width="320" height="180" fill="url(#sky)"/>
@@ -176,58 +172,54 @@
       </div>
     </div>
     <figcaption class="ba-caption">
-      <span><b>Real-ESRGAN x4</b> — synthetic scene, rendered live in your browser</span>
-      <span>SVG · no external images</span>
+      <span><b>Real-ESRGAN x4.</b> Synthetic scene, rendered live in your browser.</span>
+      <span>Pure SVG, no images</span>
     </figcaption>
   </figure>
 
-  <!-- ===== 03 — numbered feature blocks (asymmetric) ===== -->
+  <!-- ===== feature blocks (asymmetric stat grid) ===== -->
   <div class="ed-secnum reveal">
-    <span class="n">03</span>
     <h2>What's inside</h2>
-    <span class="meta">By the numbers</span>
   </div>
 
   <div class="ed-feat reveal">
     <a href="models.html" class="tilt">
-      <div class="ef-idx">01 — MODELS</div>
+      <div class="ef-idx">Models</div>
       <div class="ef-big">70+</div>
       <div class="ef-h">ONNX model catalog</div>
-      <p class="ef-p">Real-ESRGAN, SwinIR, DAT2, HAT, OmniSR, RIFE frame-interpolation and more — pulled on demand, never bundled.</p>
+      <p class="ef-p">Real-ESRGAN, SwinIR, DAT2, HAT, OmniSR and RIFE frame interpolation. Pulled on demand, never bundled.</p>
       <span class="ef-go">Browse catalog →</span>
     </a>
     <a href="hardware.html" class="tilt">
-      <div class="ef-idx">02 — HARDWARE</div>
+      <div class="ef-idx">Hardware</div>
       <div class="ef-big">6</div>
       <div class="ef-h">Backends, auto-routed</div>
       <p class="ef-p">CUDA + TensorRT, Intel OpenVINO, AMD ROCm, Apple Silicon, Vulkan, CPU. Detected at startup, picked per-model.</p>
       <span class="ef-go">Hardware guide →</span>
     </a>
     <a href="features.html" class="tilt">
-      <div class="ef-idx">03 — FILTERS</div>
+      <div class="ef-idx">Filters</div>
       <div class="ef-big">15</div>
       <div class="ef-h">Camera-grade preset looks</div>
-      <p class="ef-p">Cinematic, Vintage, Cyberpunk, Teal &amp; Orange, Noir and ten more — live CSS sliders on the <code>&lt;video&gt;</code> at 60fps, plus GFPGAN/CodeFormer face restoration. Tune it without re-encoding.</p>
+      <p class="ef-p">Cinematic, Vintage, Cyberpunk, Teal &amp; Orange, Noir and ten more. Live CSS sliders on the <code>&lt;video&gt;</code> at 60fps, plus GFPGAN/CodeFormer face restoration, no re-encode.</p>
       <span class="ef-go">All features →</span>
     </a>
   </div>
 
-  <!-- ===== 04 — get going ===== -->
+  <!-- ===== get going (distinct 2-up band) ===== -->
   <div class="ed-secnum reveal">
-    <span class="n">04</span>
     <h2>Get going</h2>
-    <span class="meta">Docker · REST API</span>
   </div>
 
-  <div class="ed-feat reveal">
+  <div class="ed-next reveal">
     <a href="installation.html" class="tilt">
-      <div class="ef-idx">INSTALL</div>
+      <div class="ef-idx">Install</div>
       <div class="ef-h">Add the Jellyfin repository, install, restart</div>
       <p class="ef-p">Plugin catalog feed + Docker AI service. Checksums verified, no manual file shuffling.</p>
       <span class="ef-go">Installation →</span>
     </a>
     <a href="api.html" class="tilt">
-      <div class="ef-idx">AUTOMATE</div>
+      <div class="ef-idx">Automate</div>
       <div class="ef-h">Drive everything over REST</div>
       <p class="ef-p">Live OpenAPI explorer, Prometheus <code>/metrics</code>, model load/unload, per-job status.</p>
       <span class="ef-go">REST API →</span>

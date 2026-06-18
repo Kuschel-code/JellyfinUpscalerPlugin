@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Roadmap — Jellyfin AI Upscaler</title>
+<title>Roadmap - Jellyfin AI Upscaler</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -13,15 +13,15 @@
   <h1>Roadmap</h1>
   <p class="lead" style="color: var(--text-dim);">Direction, not commitments. These are the things that are queued for the next few releases and the larger tracks that follow.</p>
 
-  <h2>v1.6.2 — Stability &amp; configuration polish</h2>
+  <h2>v1.6.2 - Stability &amp; configuration polish</h2>
   <ul>
     <li><span class="tag accent">queued</span> Plugin config UI: replace the 6-tab pager with a sticky sidebar so config/filters/models are visible together.</li>
     <li><span class="tag accent">queued</span> First-run wizard that detects hardware, tests the AI service, and picks a sensible model set automatically.</li>
     <li><span class="tag accent">queued</span> Per-library profile presets (different settings for your anime library vs. your movies library).</li>
-    <li><span class="tag">investigation</span> Harden retry policy in <code>HttpUpscalerService</code> — some users report gateway timeouts under heavy batch load.</li>
+    <li><span class="tag">investigation</span> Harden retry policy in <code>HttpUpscalerService</code> - some users report gateway timeouts under heavy batch load.</li>
   </ul>
 
-  <h2>v1.7 — Pre-processing pipeline expansion</h2>
+  <h2>v1.7 - Pre-processing pipeline expansion</h2>
   <ul>
     <li><span class="tag">planned</span> VapourSynth-compatible filter graph as an alternative to the current ffmpeg filter chain.</li>
     <li><span class="tag">planned</span> Deinterlacing preset (QTGMC-equivalent ONNX model) for DVD/VHS sources.</li>
@@ -29,7 +29,7 @@
     <li><span class="tag">stretch</span> Multi-resolution output (generate both 1440p and 4K in one pass, share extraction).</li>
   </ul>
 
-  <h2>v1.8 — Model ecosystem</h2>
+  <h2>v1.8 - Model ecosystem</h2>
   <ul>
     <li><span class="tag">planned</span> First-class "bring your own ONNX" workflow: drop a file into a well-known folder, fill a small metadata form in-UI, model appears in the catalog.</li>
     <li><span class="tag">planned</span> Quantization-on-load (INT8) for older GPUs with 4 GB VRAM.</li>

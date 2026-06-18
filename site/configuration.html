@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Configuration — Jellyfin AI Upscaler</title>
-<meta name="description" content="Complete settings reference for the Jellyfin AI Upscaler plugin — every tab, every option, with recommended defaults.">
+<title>Configuration - Jellyfin AI Upscaler</title>
+<meta name="description" content="Complete settings reference for the Jellyfin AI Upscaler plugin - every tab, every option, with recommended defaults.">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -25,9 +25,9 @@
   <table>
     <thead><tr><th>Field</th><th>Default</th><th>Notes</th></tr></thead>
     <tbody>
-      <tr><td><code>AI Service URL</code></td><td>—</td><td>Full URL to the Docker AI service. Typically <code>http://localhost:5000</code> or <code>http://&lt;host&gt;:5000</code>.</td></tr>
+      <tr><td><code>AI Service URL</code></td><td>-</td><td>Full URL to the Docker AI service. Typically <code>http://localhost:5000</code> or <code>http://&lt;host&gt;:5000</code>.</td></tr>
       <tr><td><code>AI Service API Token</code></td><td>empty</td><td>Shared secret. Plugin attaches it as <code>X-Api-Token</code> to every call. Must match the container's <code>API_TOKEN</code> env var.</td></tr>
-      <tr><td><code>Test Connection</code></td><td>—</td><td>Fires <code>GET /health</code> — shows online/offline + auth posture.</td></tr>
+      <tr><td><code>Test Connection</code></td><td>-</td><td>Fires <code>GET /health</code> - shows online/offline + auth posture.</td></tr>
     </tbody>
   </table>
 
@@ -37,7 +37,7 @@
       <tr><td><code>Enabled Libraries</code></td><td>all</td><td>Chip picker. Empty = scan all; picks limit to specific virtual folders (added in v1.6.1.14 for issue #64).</td></tr>
       <tr><td><code>Min Width / Min Height</code></td><td>1920 / 1080</td><td>Threshold for what counts as "low-resolution". OR-logic: a video qualifies if <em>either</em> dimension is below.</td></tr>
       <tr><td><code>Output Codec</code></td><td>libx264</td><td>12 options: libx264/libx265/libsvtav1/libaom-av1/libvpx-vp9 (software), h264/hevc/av1_nvenc (NVIDIA), h264/hevc/av1_qsv (Intel), plus stream-copy.</td></tr>
-      <tr><td><code>Target Scale</code></td><td>2x</td><td>1x–4x. 3x is the sweet spot for 480p→1440p source material.</td></tr>
+      <tr><td><code>Target Scale</code></td><td>2x</td><td>1x-4x. 3x is the sweet spot for 480p→1440p source material.</td></tr>
     </tbody>
   </table>
 
@@ -54,10 +54,10 @@
   <h2>AI Models tab</h2>
   <p>Live model catalog pulled from <code>/models</code>. Each row shows:</p>
   <ul>
-    <li><strong>Status dot</strong> — available / downloaded / loaded / unavailable</li>
-    <li><strong>Scale factor</strong> — 2×, 3×, 4×</li>
-    <li><strong>VRAM estimate</strong> — based on benchmark</li>
-    <li><strong>Actions</strong> — Download, Load/Unload, Benchmark</li>
+    <li><strong>Status dot</strong> - available / downloaded / loaded / unavailable</li>
+    <li><strong>Scale factor</strong> - 2×, 3×, 4×</li>
+    <li><strong>VRAM estimate</strong> - based on benchmark</li>
+    <li><strong>Actions</strong> - Download, Load/Unload, Benchmark</li>
   </ul>
   <p>Filter bar: search-by-name + status filter (all / available / downloaded / loaded / unavailable). See the <a href="models.html">model catalog</a> for the full list.</p>
 
@@ -90,12 +90,12 @@
   <table>
     <thead><tr><th>Param</th><th>Range</th><th>FFmpeg filter</th></tr></thead>
     <tbody>
-      <tr><td>Gamma</td><td>0.5 – 2.0</td><td><code>eq=gamma=...</code></td></tr>
-      <tr><td>Sharpness</td><td>0 – 5</td><td><code>unsharp=5:5:...</code></td></tr>
-      <tr><td>Colour Temperature</td><td>-100 – +100 K</td><td><code>colortemperature</code></td></tr>
-      <tr><td>Vignette</td><td>0 – 1</td><td><code>vignette</code></td></tr>
-      <tr><td>Film Grain</td><td>0 – 30</td><td><code>noise=alls=...</code></td></tr>
-      <tr><td>Denoise</td><td>0 – 10</td><td><code>hqdn3d=...</code></td></tr>
+      <tr><td>Gamma</td><td>0.5 - 2.0</td><td><code>eq=gamma=...</code></td></tr>
+      <tr><td>Sharpness</td><td>0 - 5</td><td><code>unsharp=5:5:...</code></td></tr>
+      <tr><td>Colour Temperature</td><td>-100 - +100 K</td><td><code>colortemperature</code></td></tr>
+      <tr><td>Vignette</td><td>0 - 1</td><td><code>vignette</code></td></tr>
+      <tr><td>Film Grain</td><td>0 - 30</td><td><code>noise=alls=...</code></td></tr>
+      <tr><td>Denoise</td><td>0 - 10</td><td><code>hqdn3d=...</code></td></tr>
     </tbody>
   </table>
 
@@ -113,7 +113,7 @@
   <div class="callout warn"><strong>Compute cost:</strong> face restoration is a second model pass on top of upscaling. Budget ~2× the frame time per face.</div>
 
   <h2>Hardware tab</h2>
-  <p>Read-only view of what the AI service detected on the container host — useful for debugging why a model isn't loading.</p>
+  <p>Read-only view of what the AI service detected on the container host - useful for debugging why a model isn't loading.</p>
   <ul>
     <li>Execution providers (CUDA / OpenVINO / DirectML / ROCm / CPU) with version strings</li>
     <li>GPU list with VRAM, driver, CUDA/compute capability</li>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>REST API — Jellyfin AI Upscaler</title>
+<title>REST API - Jellyfin AI Upscaler</title>
 <link rel="stylesheet" href="assets/style.css?v=5">
 </head>
 <body>
@@ -20,33 +20,33 @@
   </ul>
 
   <h2 id="api-token">🔐 Securing the AI service (API token)</h2>
-  <p>The AI service on <code>:5000</code> does the GPU work and has <strong>no login of its own</strong>. If it's reachable beyond a fully trusted LAN, protect it with the <code>X-Api-Token</code> header. There are <strong>three</strong> distinct pieces — keep them apart and the rest is easy:</p>
+  <p>The AI service on <code>:5000</code> does the GPU work and has <strong>no login of its own</strong>. If it's reachable beyond a fully trusted LAN, protect it with the <code>X-Api-Token</code> header. There are <strong>three</strong> distinct pieces - keep them apart and the rest is easy:</p>
   <table>
     <thead><tr><th>Piece</th><th>Where you set it</th><th>Role</th></tr></thead>
     <tbody>
-      <tr><td><code>API_TOKEN</code> <em>(env)</em></td><td>Docker container environment variable</td><td><strong>Master / bootstrap secret.</strong> Read once at container startup. Always valid and <strong>cannot be revoked from the UI</strong> — so you can never lock yourself out.</td></tr>
+      <tr><td><code>API_TOKEN</code> <em>(env)</em></td><td>Docker container environment variable</td><td><strong>Master / bootstrap secret.</strong> Read once at container startup. Always valid and <strong>cannot be revoked from the UI</strong> - so you can never lock yourself out.</td></tr>
       <tr><td><em>AI Service API Token</em></td><td>Plugin → <strong>Settings</strong> tab (field)</td><td>What the <strong>plugin itself</strong> sends on every call. Must equal a value the service accepts (the env token, or a managed one).</td></tr>
       <tr><td><strong>Managed tokens</strong></td><td>Plugin → <strong>API Tokens</strong> tab</td><td>Named, optionally-expiring tokens for <strong>other clients</strong> (scripts, integrations) that hit <code>:5000</code> directly. Generated in the UI, stored hashed, individually revocable.</td></tr>
     </tbody>
   </table>
-  <p>A request is accepted when its <code>X-Api-Token</code> matches <strong>either</strong> the env <code>API_TOKEN</code> <strong>or</strong> any active (non-expired) managed token — both compared in constant time (<code>hmac.compare_digest</code>).</p>
+  <p>A request is accepted when its <code>X-Api-Token</code> matches <strong>either</strong> the env <code>API_TOKEN</code> <strong>or</strong> any active (non-expired) managed token - both compared in constant time (<code>hmac.compare_digest</code>).</p>
 
-  <h3>Turn auth on — 3 steps</h3>
+  <h3>Turn auth on - 3 steps</h3>
   <ol>
     <li>Generate a strong secret locally: <code>openssl rand -base64 32</code> (≈256 bit). <strong>Don't reuse it anywhere else.</strong></li>
     <li>Set it as <code>API_TOKEN</code> on the container (compose / run below) and <strong>restart the container</strong>.</li>
-    <li>Paste the <strong>identical</strong> value into <em>Plugin → Settings → AI Service API Token</em> and save. <strong>⚠️ If the two differ, every call returns <code>401/403</code></strong> — the #1 setup mistake. Then hit <strong>Test Connection</strong>: green means the tokens match.</li>
+    <li>Paste the <strong>identical</strong> value into <em>Plugin → Settings → AI Service API Token</em> and save. <strong>⚠️ If the two differ, every call returns <code>401/403</code></strong> - the #1 setup mistake. Then hit <strong>Test Connection</strong>: green means the tokens match.</li>
   </ol>
-  <div class="callout">💡 <strong>Trusted home LAN, no auth wanted?</strong> Set <code>API_TOKEN=disable</code> and leave the plugin field empty — the service runs open (the homelab default). You can still create managed tokens, but they are <strong>not enforced</strong> until you switch <code>disable</code> off.</div>
+  <div class="callout">💡 <strong>Trusted home LAN, no auth wanted?</strong> Set <code>API_TOKEN=disable</code> and leave the plugin field empty - the service runs open (the homelab default). You can still create managed tokens, but they are <strong>not enforced</strong> until you switch <code>disable</code> off.</div>
 
   <h3>Generating named tokens in Jellyfin (<em>API Tokens</em> tab)</h3>
   <p>Once auth is on, the plugin's <strong>API Tokens</strong> tab (Jellyfin <strong>admin only</strong>) mints extra tokens without ever touching the env var:</p>
   <ol>
     <li>Type a <strong>name</strong> (e.g. <em>Living-room TV</em>), pick an <strong>expiry</strong> (30 / 90 / 365 days, or never), click <strong>Create token</strong>.</li>
-    <li>The value is shown <strong>once</strong> — copy it immediately. Only a SHA-256 hash is stored; it can never be displayed again.</li>
+    <li>The value is shown <strong>once</strong> - copy it immediately. Only a SHA-256 hash is stored; it can never be displayed again.</li>
     <li><strong>Revoke</strong> any token individually; the others and the env bootstrap stay valid. Expired tokens stop working automatically (no sweep needed).</li>
   </ol>
-  <div class="callout">🔒 <strong>Why minting needs admin — and an env token first:</strong> the service has no identity of its own, so it can't safely hand out its own auth. The env <code>API_TOKEN</code> is the <em>bootstrap</em> that lets the plugin talk to the service; once that handshake works, the admin-gated <em>API Tokens</em> tab can issue the rest. Managed tokens live in a dedicated <code>/app/config</code> volume (not the cache) so they survive container recreates.</div>
+  <div class="callout">🔒 <strong>Why minting needs admin - and an env token first:</strong> the service has no identity of its own, so it can't safely hand out its own auth. The env <code>API_TOKEN</code> is the <em>bootstrap</em> that lets the plugin talk to the service; once that handshake works, the admin-gated <em>API Tokens</em> tab can issue the rest. Managed tokens live in a dedicated <code>/app/config</code> volume (not the cache) so they survive container recreates.</div>
 
   <h3>docker-compose</h3>
   <pre><code>services:
@@ -68,7 +68,7 @@
   kuscheltier/jellyfin-ai-upscaler:latest-cuda</code></pre>
 
   <h3>Confirm it's active</h3>
-  <p>Call <code>GET /status</code> on the service — <code>"api_token_configured": true</code> and <code>"auth_enabled": true</code> mean the token is enforced. The Operator Console at <code>:5000</code> shows the same on its <em>API</em> tab. Then click <strong>Test Connection</strong> in the plugin: a green result means the plugin's token matches the container's.</p>
+  <p>Call <code>GET /status</code> on the service - <code>"api_token_configured": true</code> and <code>"auth_enabled": true</code> mean the token is enforced. The Operator Console at <code>:5000</code> shows the same on its <em>API</em> tab. Then click <strong>Test Connection</strong> in the plugin: a green result means the plugin's token matches the container's.</p>
 
   <h2>Plugin controller endpoints (<code>/Upscaler/*</code>)</h2>
   <table>
@@ -79,7 +79,7 @@
       <tr><td><code>GET</code></td><td><code>/Upscaler/models</code></td><td>Model catalog proxied from service, merged with per-user preference marks.</td></tr>
       <tr><td><code>POST</code></td><td><code>/Upscaler/models/{id}/load</code></td><td>Warms the model in GPU memory via service. Admin only.</td></tr>
       <tr><td><code>POST</code></td><td><code>/Upscaler/models/{id}/download</code></td><td>Pulls ONNX weights. Admin only.</td></tr>
-      <tr><td><code>GET</code></td><td><code>/Upscaler/jobs</code></td><td>Active jobs list. <strong>Admin only</strong> — previously leaked paths to any authenticated user, fixed in v1.6.1.11.</td></tr>
+      <tr><td><code>GET</code></td><td><code>/Upscaler/jobs</code></td><td>Active jobs list. <strong>Admin only</strong> - previously leaked paths to any authenticated user, fixed in v1.6.1.11.</td></tr>
       <tr><td><code>POST</code></td><td><code>/Upscaler/upscale-frame</code></td><td>Base64-encoded frame in, upscaled frame out. Uses currently-loaded model.</td></tr>
       <tr><td><code>POST</code></td><td><code>/Upscaler/benchmark-frame</code></td><td>Single-frame benchmark pass; returns ms + provider used.</td></tr>
       <tr><td><code>GET</code></td><td><code>/Upscaler/filter-preview/frame/{itemId}</code></td><td>Extracts a real frame from a Jellyfin library item, applies the selected preset, returns before/after PNGs.</td></tr>
@@ -94,16 +94,16 @@
 
   <h2>AI service endpoints (<code>:5000</code>)</h2>
 
-  <div class="callout">🧪 <strong>Interactive docs (try-it-out):</strong> every running service auto-generates always-current API docs from its FastAPI handler signatures — open <code>http://&lt;your-host&gt;:5000/docs</code> (Swagger UI), <code>/redoc</code> (ReDoc) or <code>/openapi.json</code> right in the browser. The Operator Console's <em>API</em> tab links the same three. The table below is a hand-kept overview; the live schema is the source of truth.</div>
+  <div class="callout">🧪 <strong>Interactive docs (try-it-out):</strong> every running service auto-generates always-current API docs from its FastAPI handler signatures - open <code>http://&lt;your-host&gt;:5000/docs</code> (Swagger UI), <code>/redoc</code> (ReDoc) or <code>/openapi.json</code> right in the browser. The Operator Console's <em>API</em> tab links the same three. The table below is a hand-kept overview; the live schema is the source of truth.</div>
 
   <h3>System</h3>
   <table>
     <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
     <tbody>
-      <tr><td><code>GET</code></td><td><code>/health</code></td><td>Basic liveness — returns 200 once the FastAPI app is up.</td></tr>
+      <tr><td><code>GET</code></td><td><code>/health</code></td><td>Basic liveness - returns 200 once the FastAPI app is up.</td></tr>
       <tr><td><code>GET</code></td><td><code>/status</code></td><td>Detailed: service version, provider, <code>api_token_configured</code>, <code>auth_enabled</code>.</td></tr>
       <tr><td><code>GET</code></td><td><code>/features</code></td><td>Feature capability matrix (face-restore, rife, tensorrt, etc).</td></tr>
-      <tr><td><code>GET</code></td><td><code>/metrics</code></td><td>Prometheus-compatible — per-model latency, queue depth, VRAM, request counts.</td></tr>
+      <tr><td><code>GET</code></td><td><code>/metrics</code></td><td>Prometheus-compatible - per-model latency, queue depth, VRAM, request counts.</td></tr>
       <tr><td><code>GET</code></td><td><code>/openapi.json</code></td><td>Full OpenAPI 3.1 schema. Feed it to any generator.</td></tr>
       <tr><td><code>GET</code></td><td><code>/logs-stream</code></td><td>Server-Sent Events stream of service logs. Powers the in-UI Console tab.</td></tr>
       <tr><td><code>GET</code></td><td><code>/auth/tokens</code></td><td>List managed tokens (hash + secret never returned; each has a derived <code>expired</code> flag).</td></tr>
@@ -125,7 +125,7 @@
   <table>
     <tbody>
       <tr><td><code>GET</code></td><td><code>/models</code></td><td>Full catalog with per-model state.</td></tr>
-      <tr><td><code>GET</code></td><td><code>/models/{id}</code></td><td>Single model details — scale, input shape, provider compat, SHA.</td></tr>
+      <tr><td><code>GET</code></td><td><code>/models/{id}</code></td><td>Single model details - scale, input shape, provider compat, SHA.</td></tr>
       <tr><td><code>POST</code></td><td><code>/models/{id}/download</code></td><td>Fetch ONNX weights. Streams progress via <code>/models/{id}/progress</code>.</td></tr>
       <tr><td><code>POST</code></td><td><code>/models/{id}/load</code></td><td>Create inference session, preallocate tensors, optional TensorRT conversion.</td></tr>
       <tr><td><code>POST</code></td><td><code>/models/{id}/unload</code></td><td>Dispose session, free VRAM.</td></tr>
@@ -157,10 +157,10 @@ curl -X POST -H "X-Api-Token: $TOKEN" -H "Content-Type: application/json" \
   $BASE/upscale-frame | jq -r .image | base64 -d &gt; output.png</code></pre>
 
   <h2>Rate limiting &amp; concurrency</h2>
-  <p>The service has a single GPU serialiser — concurrent <code>/upscale-frame</code> requests queue behind one active inference. The <code>MaxConcurrentStreams</code> plugin config gates how many requests the plugin will have in-flight at once; tune this based on VRAM headroom.</p>
+  <p>The service has a single GPU serialiser - concurrent <code>/upscale-frame</code> requests queue behind one active inference. The <code>MaxConcurrentStreams</code> plugin config gates how many requests the plugin will have in-flight at once; tune this based on VRAM headroom.</p>
 
   <h2>ID validation regex</h2>
-  <p>Model IDs and filter preset IDs are validated against <code>^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*$</code> — dot-separated segments are allowed (for <code>rife-v4.9</code> etc) but traversal patterns (<code>..</code>, leading/trailing dots) are blocked.</p>
+  <p>Model IDs and filter preset IDs are validated against <code>^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*$</code> - dot-separated segments are allowed (for <code>rife-v4.9</code> etc) but traversal patterns (<code>..</code>, leading/trailing dots) are blocked.</p>
 </main>
 
 <footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.2</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>

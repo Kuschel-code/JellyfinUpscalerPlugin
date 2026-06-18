@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Installation — Jellyfin AI Upscaler</title>
+<title>Installation - Jellyfin AI Upscaler</title>
 <meta name="description" content="Step-by-step installation for the Jellyfin AI Upscaler plugin and Docker AI service. Covers repository install, manual ZIP install, and AI service deployment.">
 <link rel="stylesheet" href="assets/style.css">
 </head>
@@ -29,9 +29,9 @@
     <thead><tr><th>Component</th><th>Minimum</th><th>Recommended</th></tr></thead>
     <tbody>
       <tr><td>Jellyfin server</td><td>10.11.0</td><td>10.11.8+ (ABI 10.11.8.0)</td></tr>
-      <tr><td>.NET runtime</td><td>net9.0 (shipped with Jellyfin)</td><td>—</td></tr>
+      <tr><td>.NET runtime</td><td>net9.0 (shipped with Jellyfin)</td><td>-</td></tr>
       <tr><td>Host OS</td><td>Any Jellyfin-supported</td><td>Linux Docker host</td></tr>
-      <tr><td>GPU (optional)</td><td>—</td><td>NVIDIA ≥ 6GB VRAM / Intel Arc / AMD RDNA2+</td></tr>
+      <tr><td>GPU (optional)</td><td>-</td><td>NVIDIA ≥ 6GB VRAM / Intel Arc / AMD RDNA2+</td></tr>
       <tr><td>Docker</td><td>20.10+</td><td>24.x with NVIDIA Container Toolkit</td></tr>
       <tr><td>RAM</td><td>4 GB free</td><td>8 GB+ for heavy models</td></tr>
       <tr><td>Disk</td><td>5 GB</td><td>20 GB (full model catalog)</td></tr>
@@ -53,23 +53,23 @@
     <li>Confirm under <em>Plugins → My Plugins</em> the version reads <code>1.6.1.21</code>.</li>
   </ol>
   <div class="callout">
-    <strong>Note:</strong> the plugin uses MD5 checksums (required by Jellyfin's legacy manifest spec) — don't be alarmed that SHA isn't used for the manifest entry.
+    <strong>Note:</strong> the plugin uses MD5 checksums (required by Jellyfin's legacy manifest spec) - don't be alarmed that SHA isn't used for the manifest entry.
   </div>
 
   <h2>3 · Install the plugin (manual ZIP)</h2>
   <p>Use this if your Jellyfin host can't reach GitHub, or you want to pin a specific version.</p>
   <ol>
     <li>Download <code>JellyfinUpscalerPlugin-v1.6.1.21.zip</code> from <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases" target="_blank">GitHub Releases</a>.</li>
-    <li>Extract into Jellyfin's plugin folder: <code>&lt;config&gt;/plugins/AI Upscaler Plugin_1.6.1.4/</code>. The folder name is historical — don't rename it.</li>
+    <li>Extract into Jellyfin's plugin folder: <code>&lt;config&gt;/plugins/AI Upscaler Plugin_1.6.1.4/</code>. The folder name is historical - don't rename it.</li>
     <li><code>chown</code> the extracted files to Jellyfin's UID/GID (typically <code>568:568</code> on TrueNAS SCALE, <code>105:108</code> on LinuxServer.io images).</li>
     <li>Restart Jellyfin. The plugin will load the DLL + shipped transitive NuGet dependencies (<code>CliWrap.dll</code>, <code>FFMpegCore.dll</code>, <code>Instances.dll</code>, <code>SixLabors.ImageSharp.dll</code>).</li>
   </ol>
   <div class="callout warn">
-    <strong>All DLLs must be present.</strong> Jellyfin's plugin loader does <em>not</em> transitively resolve NuGets — if one of the four helper DLLs is missing, the plugin silently tombstones with <code>NotSupported</code>. Recovery: call <code>/Plugins/{id}/{version}/Enable</code> after adding the missing DLL.
+    <strong>All DLLs must be present.</strong> Jellyfin's plugin loader does <em>not</em> transitively resolve NuGets - if one of the four helper DLLs is missing, the plugin silently tombstones with <code>NotSupported</code>. Recovery: call <code>/Plugins/{id}/{version}/Enable</code> after adding the missing DLL.
   </div>
 
   <h2>4 · Install the Docker AI service</h2>
-  <p>Four image variants are published on Docker Hub — pick the one that matches your GPU.</p>
+  <p>Four image variants are published on Docker Hub - pick the one that matches your GPU.</p>
   <pre><code># NVIDIA CUDA (Turing+, 6GB+ VRAM recommended)
 docker run -d --name jellyfin-ai-upscaler \
   --gpus all -p 5000:5000 \
@@ -113,11 +113,11 @@ docker run -d --name jellyfin-ai-upscaler \
   </ol>
 
   <h2>6 · Download models</h2>
-  <p>Models are <strong>not</strong> shipped in the Docker image — they're pulled on demand to keep the base image small.</p>
+  <p>Models are <strong>not</strong> shipped in the Docker image - they're pulled on demand to keep the base image small.</p>
   <ol>
     <li>Open the plugin config → <em>AI Models</em> tab.</li>
     <li>Pick a starter set (the defaults suit most libraries): <code>realesrgan-x4plus</code> (general), <code>animesr-v2-x4</code> (anime), <code>fsrcnn-x2</code> (fast, low-VRAM).</li>
-    <li>Click <em>Download</em> — the service pulls ONNX weights to <code>/app/models/</code> (persisted on your mount volume).</li>
+    <li>Click <em>Download</em> - the service pulls ONNX weights to <code>/app/models/</code> (persisted on your mount volume).</li>
     <li>Once downloaded, click <em>Load</em> to warm the model in GPU memory.</li>
   </ol>
 

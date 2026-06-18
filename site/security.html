@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Security — Jellyfin AI Upscaler</title>
+<title>Security - Jellyfin AI Upscaler</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -24,7 +24,7 @@
   <h2>Authentication</h2>
   <h3>Plugin controller (<code>/Upscaler/*</code>)</h3>
   <ul>
-    <li>Standard Jellyfin auth — every endpoint requires a valid <code>X-Emby-Token</code>.</li>
+    <li>Standard Jellyfin auth - every endpoint requires a valid <code>X-Emby-Token</code>.</li>
     <li>Mutating / privileged endpoints additionally require the admin role via <code>[Authorize(Policy = "RequiresElevation")]</code>: model download, model load/unload, wrapper install, active-jobs list.</li>
     <li>Read-only endpoints used by the in-player menu (libraries, models, recommend-model) allow any authenticated user.</li>
   </ul>
@@ -32,12 +32,12 @@
   <h3>AI service (<code>:5000</code>)</h3>
   <ul>
     <li>Shared-secret token in <code>X-Api-Token</code>, configured via the <code>API_TOKEN</code> environment variable.</li>
-    <li>If <code>API_TOKEN</code> is unset, the service runs with <em>no</em> auth — fine inside a closed LAN, unacceptable if the port is reachable from the internet.</li>
+    <li>If <code>API_TOKEN</code> is unset, the service runs with <em>no</em> auth - fine inside a closed LAN, unacceptable if the port is reachable from the internet.</li>
     <li><code>/health</code> is intentionally public (for container orchestrator probes).</li>
   </ul>
 
   <div class="callout warn">
-    <strong>Never expose <code>:5000</code> directly to the internet</strong> even with a token. Put it behind a reverse proxy that enforces the token at the edge and rate-limits — see <a href="deployment.html">Deployment → Reverse proxy</a>.
+    <strong>Never expose <code>:5000</code> directly to the internet</strong> even with a token. Put it behind a reverse proxy that enforces the token at the edge and rate-limits - see <a href="deployment.html">Deployment → Reverse proxy</a>.
   </div>
 
   <h2>Input validation</h2>
@@ -60,7 +60,7 @@
       </tr>
       <tr>
         <td><code>v1.6.1.9</code></td>
-        <td>Model ID regex was permissive, allowed dot-segments without constraints — theoretical path escape.</td>
+        <td>Model ID regex was permissive, allowed dot-segments without constraints - theoretical path escape.</td>
         <td>Tightened regex to explicit dot-separated segments: <code>^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*$</code>.</td>
       </tr>
       <tr>
@@ -83,7 +83,7 @@
     <li>Disable FFmpeg Remote Transcoding if you don't use it; the SSH path is a potential sharp edge.</li>
     <li>Run the AI service container with <code>read_only: true</code> except for <code>/app/models</code>.</li>
     <li>Pin an explicit image tag (<code>kuscheltier/jellyfin-ai-upscaler:v1.6.1.21-cuda</code>), not <code>latest-cuda</code>.</li>
-    <li>Keep Jellyfin on 10.11.x — older LTS lines don't receive the auth-policy fixes the plugin depends on.</li>
+    <li>Keep Jellyfin on 10.11.x - older LTS lines don't receive the auth-policy fixes the plugin depends on.</li>
     <li>Review the weekly container digest against the published SHA before updating.</li>
   </ol>
 
@@ -97,8 +97,8 @@
 
   <h2>Out of scope</h2>
   <ul>
-    <li>Jellyfin core vulnerabilities — report to <a href="https://github.com/jellyfin/jellyfin/security">jellyfin/jellyfin</a>.</li>
-    <li>Docker / container-runtime escapes — upstream Docker/Moby issue.</li>
+    <li>Jellyfin core vulnerabilities - report to <a href="https://github.com/jellyfin/jellyfin/security">jellyfin/jellyfin</a>.</li>
+    <li>Docker / container-runtime escapes - upstream Docker/Moby issue.</li>
     <li>Social engineering, physical access, or any scenario requiring prior root on the host.</li>
     <li>Findings in deliberately-public info (weights on HuggingFace mirrors, public schema).</li>
   </ul>

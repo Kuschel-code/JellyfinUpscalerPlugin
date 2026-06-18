@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Deployment scenarios — Jellyfin AI Upscaler</title>
+<title>Deployment scenarios - Jellyfin AI Upscaler</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -35,13 +35,13 @@
     <li><strong>Jellyfin plugin config:</strong> <em>AI Service URL</em> = <code>http://&lt;truenas-ip&gt;:5000</code>, token matches.</li>
   </ol>
   <div class="callout warn">
-    <strong>TrueNAS 25.x gotcha:</strong> when editing a catalog app (Jellyfin), the <code>values</code> block is a <em>destructive merge</em> — if you only send one sub-block, TrueNAS replaces entire blocks. Always read the current config with <code>POST /app/config "jellyfin"</code>, merge deltas, then PUT the full block.
+    <strong>TrueNAS 25.x gotcha:</strong> when editing a catalog app (Jellyfin), the <code>values</code> block is a <em>destructive merge</em> - if you only send one sub-block, TrueNAS replaces entire blocks. Always read the current config with <code>POST /app/config "jellyfin"</code>, merge deltas, then PUT the full block.
   </div>
 
   <h2>Unraid (6.12+)</h2>
   <p>Install Jellyfin via Community Applications, then the AI service as a separate container.</p>
   <ol>
-    <li><em>Apps → Search "AI Upscaler"</em> — or add a manual container template.</li>
+    <li><em>Apps → Search "AI Upscaler"</em> - or add a manual container template.</li>
     <li>Template fields:
       <ul>
         <li><strong>Repository:</strong> <code>kuscheltier/jellyfin-ai-upscaler:latest-cuda</code></li>
@@ -57,7 +57,7 @@
   </ol>
 
   <h2>Synology DSM 7.x (CPU-only path)</h2>
-  <p>Container Manager (formerly Docker). Use the CPU image — no GPU passthrough on consumer NAS.</p>
+  <p>Container Manager (formerly Docker). Use the CPU image - no GPU passthrough on consumer NAS.</p>
   <pre><code>docker run -d --name ai-upscaler \
   --restart unless-stopped \
   -p 5000:5000 \
@@ -66,7 +66,7 @@
   kuscheltier/jellyfin-ai-upscaler:latest-cpu</code></pre>
   <ul>
     <li>Jellyfin plugin folder: <code>/var/packages/Jellyfin/var/plugins/AI Upscaler Plugin_1.6.1.4/</code> (location varies by DSM version).</li>
-    <li>Scheduled <em>Scan &amp; Upscale Library</em> at 3 AM only — CPU mode is batch-overnight territory.</li>
+    <li>Scheduled <em>Scan &amp; Upscale Library</em> at 3 AM only - CPU mode is batch-overnight territory.</li>
     <li>Use the lightest models: <code>fsrcnn-x2</code>, <code>espcn-x4</code>, <code>waifu2x-upconv-x2</code>.</li>
   </ul>
 

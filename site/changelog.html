@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Changelog — Jellyfin AI Upscaler</title>
+<title>Changelog - Jellyfin AI Upscaler</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -13,11 +13,11 @@
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.2 — Quality + hardening pass <span class="tag success">latest</span></h2>
+  <h2>v1.8.2 - Quality + hardening pass <span class="tag success">latest</span></h2>
   <p><em>2026-06.</em> Plugin + service update.</p>
   <ul>
-    <li><strong>Denoise-before-encode prefilter.</strong> A dedicated source-clean pass (<code>hqdn3d</code> / <code>nlmeans</code>) that runs before upscaling/encoding — independent of the camera-style filters. Cleaner input means better SR and a smaller re-encode.</li>
-    <li><strong>VMAF quality scoring.</strong> New admin-only <code>POST /Upscaler/vmaf</code> objectively scores an upscaled file against a reference via ffmpeg+libvmaf (0–100).</li>
+    <li><strong>Denoise-before-encode prefilter.</strong> A dedicated source-clean pass (<code>hqdn3d</code> / <code>nlmeans</code>) that runs before upscaling/encoding - independent of the camera-style filters. Cleaner input means better SR and a smaller re-encode.</li>
+    <li><strong>VMAF quality scoring.</strong> New admin-only <code>POST /Upscaler/vmaf</code> objectively scores an upscaled file against a reference via ffmpeg+libvmaf (0-100).</li>
     <li><strong>Second interpolation architecture.</strong> The frame-interpolation engine is now input-signature-adaptive (RIFE / IFRNet / CAIN); IFRNet + CAIN added to the catalog as experimental self-host.</li>
     <li><strong>MultiFrame extraction progress.</strong> The multi-frame path now reports live extraction progress like the other pipelines.</li>
     <li><strong>Decoupled model download.</strong> <code>POST /models/download-async</code> + <code>GET /models/download-status/{id}</code> run big downloads in the background so they no longer trip client timeouts.</li>
@@ -25,35 +25,35 @@
     <li><strong>Docs + tests.</strong> New "client-VSR vs server-side" hardware chapter, a verified frame-stream coordinator, and new tests across detection, denoise, VMAF, interpolation, async download and multi-frame VSR.</li>
   </ul>
 
-  <h2>v1.8.1 — Live filter fix + hardware-aware recommendation</h2>
+  <h2>v1.8.1 - Live filter fix + hardware-aware recommendation</h2>
   <p><em>2026-06.</em> Plugin + service update.</p>
   <ul>
-    <li><strong>Live video filters fixed.</strong> In-player presets/sliders had no visible effect while realtime client-side upscaling was active — the upscaler renders to a canvas overlay that covered the filtered <code>&lt;video&gt;</code>. The CSS filter is now applied to the visible canvas too, so filters take effect again.</li>
-    <li><strong>Hardware-aware model recommendation.</strong> New <code>/recommend</code> (service) and <code>/Upscaler/recommend</code> (plugin) pick a model + scale your detected hardware can actually run — a weak CPU gets fsrcnn-x2 @2x, a dedicated GPU gets Real-ESRGAN x4 — instead of letting you pick a heavy model that hits the seconds-per-frame wall.</li>
+    <li><strong>Live video filters fixed.</strong> In-player presets/sliders had no visible effect while realtime client-side upscaling was active - the upscaler renders to a canvas overlay that covered the filtered <code>&lt;video&gt;</code>. The CSS filter is now applied to the visible canvas too, so filters take effect again.</li>
+    <li><strong>Hardware-aware model recommendation.</strong> New <code>/recommend</code> (service) and <code>/Upscaler/recommend</code> (plugin) pick a model + scale your detected hardware can actually run - a weak CPU gets fsrcnn-x2 @2x, a dedicated GPU gets Real-ESRGAN x4 - instead of letting you pick a heavy model that hits the seconds-per-frame wall.</li>
   </ul>
 
-  <h2>v1.7.13 — Settings-page redesign + API-token guide</h2>
+  <h2>v1.7.13 - Settings-page redesign + API-token guide</h2>
   <p><em>2026-06.</em> Plugin release (no Docker functional change).</p>
   <ul>
-    <li><strong>Redesigned settings page.</strong> The plugin config page now uses the same clean "Operator Console" look as the Docker service UI — consistent dark theme, cards, KPI tiles, chips, blue accent, Inter typography. CSS-only re-theme: every setting and behaviour is unchanged.</li>
-    <li><strong>API-token setup, finally clear.</strong> New <a href="api.html#api-token">step-by-step guide</a> for securing the AI service: <code>API_TOKEN</code> is a container environment variable — set it in compose/run and paste the same value into the plugin's "AI Service API Token" field; or use <code>API_TOKEN=disable</code> on a trusted LAN. The plugin field's hint now spells out there's no "generate" button (you set the value in both places).</li>
+    <li><strong>Redesigned settings page.</strong> The plugin config page now uses the same clean "Operator Console" look as the Docker service UI - consistent dark theme, cards, KPI tiles, chips, blue accent, Inter typography. CSS-only re-theme: every setting and behaviour is unchanged.</li>
+    <li><strong>API-token setup, finally clear.</strong> New <a href="api.html#api-token">step-by-step guide</a> for securing the AI service: <code>API_TOKEN</code> is a container environment variable - set it in compose/run and paste the same value into the plugin's "AI Service API Token" field; or use <code>API_TOKEN=disable</code> on a trusted LAN. The plugin field's hint now spells out there's no "generate" button (you set the value in both places).</li>
   </ul>
 
-  <h2>v1.7.12 — First-load timeout fix + real error messages</h2>
+  <h2>v1.7.12 - First-load timeout fix + real error messages</h2>
   <p><em>2026-06.</em> Plugin release (no Docker functional change).</p>
   <ul>
     <li><strong>First-time downloads no longer fail with "Load failed".</strong> Loading a model that has to download (face-restore GFPGAN/CodeFormer/GPEN ~280-377MB, or large ONNX) hit a 120s proxy timeout mid-download. A dedicated 570s download client fixes it (just under the 600s UI wait so an over-long download surfaces a real error, not a blank browser timeout); the /models/load UI timeout was raised to match, benchmarks went 120s to 300s.</li>
     <li><strong>Real error messages.</strong> The UI error parsers now read detail || error || message, so the actual cause is shown instead of a generic "Load failed". A DI test guards the named-client timeouts so a typo can't silently fall back to the 100s default.</li>
   </ul>
 
-  <h2>v1.7.11 — Honest extraction progress + version-display guard</h2>
+  <h2>v1.7.11 - Honest extraction progress + version-display guard</h2>
   <p><em>2026-06.</em> Plugin release (no Docker functional change).</p>
   <ul>
     <li><strong>"Stuck at 95%" - now fixed for the extraction phase too.</strong> Batch progress shows real frame-extraction + upscale progress (frames done/total) instead of a time estimate that pinned at 95% during the long ffmpeg extraction on slow CPUs (#72); the dashboard shows the live phase (Extracting / Upscaling / Encoding) instead of "Idle". The pipe-encode path that could also pin at 95% is fixed (unknown-total sentinel).</li>
     <li><strong>Honest version display, guarded.</strong> configurationpage.html now shows the real plugin version (v1.7.10 shipped still rendering v1.7.9), and the release script asserts every user-visible version string matches the tag so it can't drift again.</li>
   </ul>
 
-  <h2>v1.7.10 — "Stuck at 95%" fix + sharper GPU diagnostics</h2>
+  <h2>v1.7.10 - "Stuck at 95%" fix + sharper GPU diagnostics</h2>
   <p><em>2026-06.</em> Docker + plugin release, both at <strong>v1.7.10</strong>.</p>
   <ul>
     <li><strong>"Stuck at 95%" fixed at the root.</strong> Job progress now reflects real frames processed (frames done/total + fps + ETA) instead of a time estimate that capped at 95% on slow hardware. A job with no AI model loaded now fails fast with a clear "load a model first" message instead of grinding to 95% and hanging. (#70 / #72)</li>
@@ -61,242 +61,242 @@
     <li><strong>Honest version display.</strong> The in-player menu + System-Diagnostics panel now show the real plugin version.</li>
   </ul>
 
-  <h2>v1.7.9 — Setup Doctor + Embedded Anime4K + GPU-State Fix</h2>
+  <h2>v1.7.9 - Setup Doctor + Embedded Anime4K + GPU-State Fix</h2>
   <p><em>2026-06.</em> Docker + plugin release, both at <strong>v1.7.9</strong>. Pull the refreshed <code>docker7</code> / <code>docker7-&lt;backend&gt;</code> images <strong>and</strong> update the plugin.</p>
   <ul>
-    <li><strong>Setup Doctor.</strong> New <code>GET /doctor</code> one-shot self-diagnostic — backend, GPU provider active, device passthrough, the right onnxruntime build (catches vendor-shadowing), API token, and a model smoke test, each row with a copy-paste fix — plus a "Setup Check" panel on the Docker dashboard's Hardware tab. Condenses the #66/#69/#70 setup-friction saga into one <code>curl</code>.</li>
+    <li><strong>Setup Doctor.</strong> New <code>GET /doctor</code> one-shot self-diagnostic - backend, GPU provider active, device passthrough, the right onnxruntime build (catches vendor-shadowing), API token, and a model smoke test, each row with a copy-paste fix - plus a "Setup Check" panel on the Docker dashboard's Hardware tab. Condenses the #66/#69/#70 setup-friction saga into one <code>curl</code>.</li>
     <li><strong>GPU-state fix.</strong> <code>run_benchmark()</code>, <code>/models/load</code> and <code>/benchmark-frame</code> still reported the <em>requested</em> GPU intent instead of the <em>active</em> provider truth; all three now use <code>gpu_is_active()</code>.</li>
-    <li><strong>Anime4K actually runs now.</strong> The "Anime4K (anime shader)" real-time tier previously loaded a dead CDN URL and silently fell back to Lanczos. It now ships a <strong>vendored, tree-shaken Anime4K.js</strong> (npm 1.1.2, Anime4K 4.0.1, WebGL, MIT, ~225 KB) <strong>embedded in the plugin DLL</strong> — offline, no CDN — with a WebGL2 float-texture support-gate and automatic Lanczos fallback. Honest label: an anime <em>shader</em>, not a neural net. Third-party licenses recorded in <code>THIRD-PARTY-NOTICES.md</code>.</li>
+    <li><strong>Anime4K actually runs now.</strong> The "Anime4K (anime shader)" real-time tier previously loaded a dead CDN URL and silently fell back to Lanczos. It now ships a <strong>vendored, tree-shaken Anime4K.js</strong> (npm 1.1.2, Anime4K 4.0.1, WebGL, MIT, ~225 KB) <strong>embedded in the plugin DLL</strong> - offline, no CDN - with a WebGL2 float-texture support-gate and automatic Lanczos fallback. Honest label: an anime <em>shader</em>, not a neural net. Third-party licenses recorded in <code>THIRD-PARTY-NOTICES.md</code>.</li>
     <li><strong>Docs honesty.</strong> Honest real-time tier ladder across README + site; the website support bot gained a Setup Doctor topic.</li>
   </ul>
 
-  <h2>v1.7.8 — Model Catalog +12 &amp; GPU / Benchmark / AMD Fixes</h2>
+  <h2>v1.7.8 - Model Catalog +12 &amp; GPU / Benchmark / AMD Fixes</h2>
   <p><em>2026-06.</em> Plugin bumped to <strong>v1.7.8</strong> (embedded offline model-fallback refreshed 59 → 71); all <em>functional</em> fixes ship in the Docker images. Pull the refreshed <code>docker7</code> / <code>docker7-&lt;backend&gt;</code> images (or pin <code>:v1.7.8-&lt;backend&gt;</code>). All changes are in <code>docker-ai-service/</code>.</p>
   <ul>
     <li><strong>Model catalog 59 → 71 (+12).</strong> New ONNX models from the curated <code>notaneimu/onnx-image-models</code> source, focused on compressed/streaming sources: <code>realesr-general-x4v3</code>/<code>-wdn</code> (tiny modern general default), <code>realwebphoto-v4-dat2-x4</code> + <code>nomoswebphoto-realplksr-x4</code> (trained on degraded web images), <code>dejpg-realplksr-1x</code> + <code>denoise-realplksr-1x</code> (1x artifact-cleanup pre-passes), <code>foolhardy-remacri-x4</code>, <code>nmkd-siax-x4</code>, <code>nomos8k-hat-l-x4</code> (full HAT-L), <code>textures-rgt-s-x4</code> (RGT-S, new architecture), <code>lsdir-compact-v2-x4</code>, <code>spanx2-ch48</code>.</li>
-    <li><strong>256px-model benchmark crash (#70):</strong> <code>run_benchmark()</code> now reads the loaded ONNX session's real input shape, so fixed-shape models (<code>realesrgan-x4-256</code>) benchmark at 256×256 instead of a 64px tile that raised a Reshape error during warmup — the "Reshape" failure Gemini misattributed to the GPU.</li>
-    <li><strong>GPU-active reporting (#69/#70):</strong> new <code>gpu_is_active()</code> derives "is the GPU really in use?" from the live execution-provider list (now counts OpenVINO/CoreML, not only CUDA/ROCm). <code>/health</code>, <code>/status</code>, <code>/hardware</code>, <code>/gpu-verify</code> report the honest value — the dashboard and System tab no longer disagree, and <code>/gpu-verify</code> no longer shows <code>using_gpu:false</code> while OpenVINO is active.</li>
-    <li><strong>AMD image ran on CPU:</strong> the build log proved the <code>onnxruntime-rocm</code> wheel installed fine, but plain <code>onnxruntime</code> (pulled by <code>requirements-amd.txt</code>) shadowed it — both ship the same <code>onnxruntime</code> module and the plain build won. Removed it from the AMD requirements and force-install <code>onnxruntime-rocm</code> as the sole provider in <code>Dockerfile.amd</code>.</li>
+    <li><strong>256px-model benchmark crash (#70):</strong> <code>run_benchmark()</code> now reads the loaded ONNX session's real input shape, so fixed-shape models (<code>realesrgan-x4-256</code>) benchmark at 256×256 instead of a 64px tile that raised a Reshape error during warmup - the "Reshape" failure Gemini misattributed to the GPU.</li>
+    <li><strong>GPU-active reporting (#69/#70):</strong> new <code>gpu_is_active()</code> derives "is the GPU really in use?" from the live execution-provider list (now counts OpenVINO/CoreML, not only CUDA/ROCm). <code>/health</code>, <code>/status</code>, <code>/hardware</code>, <code>/gpu-verify</code> report the honest value - the dashboard and System tab no longer disagree, and <code>/gpu-verify</code> no longer shows <code>using_gpu:false</code> while OpenVINO is active.</li>
+    <li><strong>AMD image ran on CPU:</strong> the build log proved the <code>onnxruntime-rocm</code> wheel installed fine, but plain <code>onnxruntime</code> (pulled by <code>requirements-amd.txt</code>) shadowed it - both ship the same <code>onnxruntime</code> module and the plain build won. Removed it from the AMD requirements and force-install <code>onnxruntime-rocm</code> as the sole provider in <code>Dockerfile.amd</code>.</li>
     <li><strong>Stale service version:</strong> the startup banner / <code>/status</code> reported a hardcoded <code>1.6.1.21</code>; <code>VERSION</code> now reads the <code>APP_VERSION</code> build arg.</li>
   </ul>
 
-  <h2>v1.7.7 — Docker Self-Verification Hardening</h2>
-  <p><em>Released May 2026.</em> Structural completion of the Intel-Arc saga (#45/#66/#67/#69). A dedicated docker-ai-service deep-analysis found no acute bugs left — but a missing verification layer. C# Plugin DLL bit-identical to v1.7.6 — all changes are in <code>docker-ai-service/</code>. Tests 123/123.</p>
+  <h2>v1.7.7 - Docker Self-Verification Hardening</h2>
+  <p><em>Released May 2026.</em> Structural completion of the Intel-Arc saga (#45/#66/#67/#69). A dedicated docker-ai-service deep-analysis found no acute bugs left - but a missing verification layer. C# Plugin DLL bit-identical to v1.7.6 - all changes are in <code>docker-ai-service/</code>. Tests 123/123.</p>
   <ul>
-    <li><strong>Build-time provider asserts (the core fix):</strong> No Dockerfile checked at build time whether its expected ONNX provider was actually installed. That gap is exactly what let the v1.7.5 Intel bug slip through (plain <code>onnxruntime</code> built fine but had no OpenVINO EP → CPU-only image despite a GPU dashboard). New: <code>Dockerfile</code> (NVIDIA) asserts <code>CUDAExecutionProvider</code>, <code>Dockerfile.intel</code> asserts <code>OpenVINOExecutionProvider</code> — both <strong>hard-fail</strong> (exit 1) if the provider is missing. The build goes red instead of publishing a working-looking CPU-only image.</li>
-    <li><strong>AMD provider visibility:</strong> <code>Dockerfile.amd</code> had a silent <code>|| pip install onnxruntime</code> CPU fallback. New: a <strong>warn-only</strong> assert (exit 0, because CPU is a valid fallback for AMD when ROCm wheels are yanked) — the CPU mode is now visible in the build log instead of slipping through unnoticed.</li>
+    <li><strong>Build-time provider asserts (the core fix):</strong> No Dockerfile checked at build time whether its expected ONNX provider was actually installed. That gap is exactly what let the v1.7.5 Intel bug slip through (plain <code>onnxruntime</code> built fine but had no OpenVINO EP → CPU-only image despite a GPU dashboard). New: <code>Dockerfile</code> (NVIDIA) asserts <code>CUDAExecutionProvider</code>, <code>Dockerfile.intel</code> asserts <code>OpenVINOExecutionProvider</code> - both <strong>hard-fail</strong> (exit 1) if the provider is missing. The build goes red instead of publishing a working-looking CPU-only image.</li>
+    <li><strong>AMD provider visibility:</strong> <code>Dockerfile.amd</code> had a silent <code>|| pip install onnxruntime</code> CPU fallback. New: a <strong>warn-only</strong> assert (exit 0, because CPU is a valid fallback for AMD when ROCm wheels are yanked) - the CPU mode is now visible in the build log instead of slipping through unnoticed.</li>
     <li><strong>entrypoint.sh WSL2 awareness:</strong> <code>detect_backend()</code> only checked <code>/dev/dri/renderD128</code> and falsely printed "Backend: cpu" (plus a false GPU-missing warning) on WSL2 setups, even though <code>main.py</code> correctly detects the GPU via <code>/dev/dxg</code> since v1.7.4. New: a <code>/dev/dxg</code> branch → banner is consistent with the real detection.</li>
-    <li><strong>Verification:</strong> <code>dotnet build</code> — 0/0. Build asserts run on every Docker rebuild. Quad-MD5 verified post-release.</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> - 0/0. Build asserts run on every Docker rebuild. Quad-MD5 verified post-release.</li>
   </ul>
 
-  <h2>v1.7.6 — Intel OpenVINO Provider Hotfix (Issue #69 Point 1)</h2>
-  <p><em>Released May 2026.</em> Hotfix release closing the last open point of issue #69 (Intel Arc GPU detected but inference ran on CPU). C# Plugin DLL bit-identical to v1.7.5 — fix is docker-ai-service only.</p>
+  <h2>v1.7.6 - Intel OpenVINO Provider Hotfix (Issue #69 Point 1)</h2>
+  <p><em>Released May 2026.</em> Hotfix release closing the last open point of issue #69 (Intel Arc GPU detected but inference ran on CPU). C# Plugin DLL bit-identical to v1.7.5 - fix is docker-ai-service only.</p>
   <ul>
-    <li><strong>Root cause — empirically verified via Laurent's <code>/gpu-verify</code>:</strong> His setup was correct (<code>group_add: render</code>, WSL2 mount, latest image), but <code>onnx_providers</code> contained only <code>[AzureExecutionProvider, CPUExecutionProvider]</code>. <strong>No <code>OpenVINOExecutionProvider</code> in the list</strong> — the plugin could not do GPU inference on Intel hardware at all, regardless of model. Gemini's diagnosis (Reshape node in realesrgan-x4) was symptom-treatment.</li>
+    <li><strong>Root cause - empirically verified via Laurent's <code>/gpu-verify</code>:</strong> His setup was correct (<code>group_add: render</code>, WSL2 mount, latest image), but <code>onnx_providers</code> contained only <code>[AzureExecutionProvider, CPUExecutionProvider]</code>. <strong>No <code>OpenVINOExecutionProvider</code> in the list</strong> - the plugin could not do GPU inference on Intel hardware at all, regardless of model. Gemini's diagnosis (Reshape node in realesrgan-x4) was symptom-treatment.</li>
     <li><strong>Plugin bug in <code>requirements-intel.txt</code>:</strong> The comment there wrongly claimed <em>"onnxruntime-openvino is deprecated, use onnxruntime + system OpenVINO"</em>. Wrong: plain <code>onnxruntime</code> from PyPI does NOT bundle the <code>OpenVINOExecutionProvider</code>, not even with system OpenVINO in the base image. The provider is only available in the dedicated <code>onnxruntime-openvino</code> PyPI variant.</li>
     <li><strong>Fix (1 line):</strong> <code>onnxruntime>=1.20.0,&lt;2.0.0</code> → <code>onnxruntime-openvino>=1.20.0,&lt;2.0.0</code> in <code>requirements-intel.txt</code>. Plus the wrong comment removed + an honest note about the empirical verification. After a Docker Hub image pull + container restart, <code>/gpu-verify</code> shows <code>OpenVINOExecutionProvider</code> as an active provider.</li>
-    <li><strong>AMD build retry:</strong> the v1.7.5 docker-publish had a Trivy timeout on the AMD ROCm scan (Triton kernel-dumps too large). v1.7.6 re-triggers all 6 backends — AMD should pass this time (transient infra issue).</li>
-    <li><strong>Verification:</strong> <code>dotnet build</code> — 0/0. <code>dotnet publish</code> mit identischen DLL-Bytes wie v1.7.5 (nur Versions-Strings ändern). Quad-MD5 post-release verifiziert.</li>
+    <li><strong>AMD build retry:</strong> the v1.7.5 docker-publish had a Trivy timeout on the AMD ROCm scan (Triton kernel-dumps too large). v1.7.6 re-triggers all 6 backends - AMD should pass this time (transient infra issue).</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> - 0/0. <code>dotnet publish</code> mit identischen DLL-Bytes wie v1.7.5 (nur Versions-Strings ändern). Quad-MD5 post-release verifiziert.</li>
   </ul>
 
-  <h2>v1.7.5 — Non-Admin User Support + 4:3 Aspect-Ratio Fix</h2>
+  <h2>v1.7.5 - Non-Admin User Support + 4:3 Aspect-Ratio Fix</h2>
   <p><em>Released May 2026.</em> Issue #69-driven release closing two bugs that blocked majority-of-users access to the plugin. C# Plugin DLL has minimal surgical changes (31 authorization-policy line removals, no logic change). Tests 123/123 unchanged. Build 0/0.</p>
   <ul>
-    <li><strong>Fix #69 (Auth) — Non-admin users blocked from the plugin.</strong> Audit found 47 of 52 endpoints in <code>UpscalerController.cs</code> were guarded with <code>[Authorize(Policy = "RequiresElevation")]</code> — Jellyfin's admin-only policy. Including all playback/upscale/queue endpoints. Normal Jellyfin users could see the model list but not load any model or trigger any upscale. v1.7.5 reclassifies <strong>31 endpoints to <code>[Authorize]</code></strong> (authenticated-user OK) while keeping <strong>16 admin-only</strong> by design: server-config (<code>service-config</code>, <code>settings/import</code>, <code>settings/export</code>, <code>filter-config</code>), destructive (<code>models/cleanup</code>, <code>cache/clear</code>), security (<code>ssh/test</code>), global queue control (<code>queue/pause</code>, <code>queue/resume</code>), detailed observability (<code>metrics</code>, <code>cache/stats</code>, <code>health/detailed</code>, <code>models/disk-usage</code>, <code>fallback</code>), and load-tests (<code>test</code>, <code>benchmark</code>). Class-level <code>[Authorize]</code> on <code>UpscalerController</code> (L33) ensures all 52 endpoints still require an authenticated session — only the elevation requirement was removed. Security note: GPU-intensive ops are now reachable by all authenticated users; existing <code>MaxConcurrentStreams</code> + <code>MaxQueueSize</code> clamps (v1.7.2) provide global DoS-cap. Per-user quota deferred to v1.7.6.</li>
-    <li><strong>Fix #69 (Aspect-Ratio) — 4:3 movies no longer stretched.</strong> Both real-time renderers (<code>Configuration/webgl-upscaler.js</code> + <code>Configuration/webgpu-ai-realtime.js</code>) set canvas-overlay CSS to <code>width:100%; height:100%</code> without <code>object-fit</code>, blindly stretching 4:3 source to 16:9 player container. Added <code>object-fit: contain</code> to both — canvas drawbuffer already carries the correct <code>videoWidth × videoHeight</code> aspect, so <code>contain</code> lets the browser letterbox correctly without extra geometry code. Zero risk to 16:9 content.</li>
-    <li><strong>Issue #45 closed</strong> as obsolete — same reporter (FrRene06) as #66, original Feb-2026 thread predating v1.7.4 WSL2 fixes.</li>
-    <li><strong>Verification:</strong> <code>dotnet build</code> — 0/0. <code>RequiresElevation</code> count went from 47 → 16 (verified via grep — exactly the 31 expected downgrades). Quad-MD5 verified post-release.</li>
+    <li><strong>Fix #69 (Auth) - Non-admin users blocked from the plugin.</strong> Audit found 47 of 52 endpoints in <code>UpscalerController.cs</code> were guarded with <code>[Authorize(Policy = "RequiresElevation")]</code> - Jellyfin's admin-only policy. Including all playback/upscale/queue endpoints. Normal Jellyfin users could see the model list but not load any model or trigger any upscale. v1.7.5 reclassifies <strong>31 endpoints to <code>[Authorize]</code></strong> (authenticated-user OK) while keeping <strong>16 admin-only</strong> by design: server-config (<code>service-config</code>, <code>settings/import</code>, <code>settings/export</code>, <code>filter-config</code>), destructive (<code>models/cleanup</code>, <code>cache/clear</code>), security (<code>ssh/test</code>), global queue control (<code>queue/pause</code>, <code>queue/resume</code>), detailed observability (<code>metrics</code>, <code>cache/stats</code>, <code>health/detailed</code>, <code>models/disk-usage</code>, <code>fallback</code>), and load-tests (<code>test</code>, <code>benchmark</code>). Class-level <code>[Authorize]</code> on <code>UpscalerController</code> (L33) ensures all 52 endpoints still require an authenticated session - only the elevation requirement was removed. Security note: GPU-intensive ops are now reachable by all authenticated users; existing <code>MaxConcurrentStreams</code> + <code>MaxQueueSize</code> clamps (v1.7.2) provide global DoS-cap. Per-user quota deferred to v1.7.6.</li>
+    <li><strong>Fix #69 (Aspect-Ratio) - 4:3 movies no longer stretched.</strong> Both real-time renderers (<code>Configuration/webgl-upscaler.js</code> + <code>Configuration/webgpu-ai-realtime.js</code>) set canvas-overlay CSS to <code>width:100%; height:100%</code> without <code>object-fit</code>, blindly stretching 4:3 source to 16:9 player container. Added <code>object-fit: contain</code> to both - canvas drawbuffer already carries the correct <code>videoWidth × videoHeight</code> aspect, so <code>contain</code> lets the browser letterbox correctly without extra geometry code. Zero risk to 16:9 content.</li>
+    <li><strong>Issue #45 closed</strong> as obsolete - same reporter (FrRene06) as #66, original Feb-2026 thread predating v1.7.4 WSL2 fixes.</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> - 0/0. <code>RequiresElevation</code> count went from 47 → 16 (verified via grep - exactly the 31 expected downgrades). Quad-MD5 verified post-release.</li>
   </ul>
 
-  <h2>v1.7.4 — Docker-Side Fixes: FP16 Type Detection + WSL2 GPU</h2>
-  <p><em>Released May 2026.</em> Two real-world bug reports closed in a single release. C# Plugin DLL is bit-identical to v1.7.3.1 — this release ships <strong>docker-ai-service Python fixes</strong> + updated docker-compose recipe.</p>
+  <h2>v1.7.4 - Docker-Side Fixes: FP16 Type Detection + WSL2 GPU</h2>
+  <p><em>Released May 2026.</em> Two real-world bug reports closed in a single release. C# Plugin DLL is bit-identical to v1.7.3.1 - this release ships <strong>docker-ai-service Python fixes</strong> + updated docker-compose recipe.</p>
   <ul>
-    <li><strong>Fix #67 — ONNX FP16/FP32 type mismatch</strong> (reported by @eparrish64 on 2026-05-19, same day). NVIDIA users hit <code>ONNXRuntimeError INVALID_ARGUMENT: Unexpected input data type. Actual: (tensor(float16)), expected: (tensor(float))</code> at every model warmup. Root cause: <code>_resolve_fp16_setting()</code> auto-enables FP16 on any NVIDIA with Compute Capability >=7.0 (Volta+), but most catalog ONNX models (Real-ESRGAN, SwinIR, HAT, …) are <strong>FP32-exported</strong>. New helper <code>_session_input_is_fp16(session)</code> checks the loaded model's input dtype before the cast in <code>_onnx_infer_tile()</code> and <code>_onnx_infer_multiframe_tile()</code> — FP16 only kicks in when both global flag AND model agree.</li>
-    <li><strong>Fix #66 — Docker / WSL2 / Intel Arc on Windows 11</strong> (reported by @FrRene06 on 2026-05-17). Dashboard stuck on "No GPU detected (CPU-only mode)" no matter which image tag was tried. Root cause: Intel-detection only searched <code>/dev/dri/renderD*</code>; WSL2 uses <code>/dev/dxg</code> (DirectX bridge). New WSL2 detection branch via <code>clinfo --list</code> + new <code>_parse_clinfo_intel_name()</code> helper; new commented <code>ai-upscaler-wsl2</code> section in <code>docker-compose.yml</code> with the verified Intel Arc A380 mount/devices recipe; <code>/gpu-verify</code> endpoint exposes a <code>wsl2</code> diagnostics block.</li>
-    <li><strong>Stale issues closed:</strong> #49 (Vulkan — already supported as <code>docker7-vulkan</code> image), #64 (Select Library — implemented v1.6.1.14), #62 + #63 (v1.5.x install bugs — obsolete after repo-feed sync). Repo now has <strong>0 open issues</strong>.</li>
-    <li><strong>Verification:</strong> <code>dotnet build</code> — 0/0. <code>dotnet test</code> — 123/123 unchanged from v1.7.3.1. Python syntax check on <code>main.py</code> passed. Quad-MD5 verified post-release.</li>
+    <li><strong>Fix #67 - ONNX FP16/FP32 type mismatch</strong> (reported by @eparrish64 on 2026-05-19, same day). NVIDIA users hit <code>ONNXRuntimeError INVALID_ARGUMENT: Unexpected input data type. Actual: (tensor(float16)), expected: (tensor(float))</code> at every model warmup. Root cause: <code>_resolve_fp16_setting()</code> auto-enables FP16 on any NVIDIA with Compute Capability >=7.0 (Volta+), but most catalog ONNX models (Real-ESRGAN, SwinIR, HAT, …) are <strong>FP32-exported</strong>. New helper <code>_session_input_is_fp16(session)</code> checks the loaded model's input dtype before the cast in <code>_onnx_infer_tile()</code> and <code>_onnx_infer_multiframe_tile()</code> - FP16 only kicks in when both global flag AND model agree.</li>
+    <li><strong>Fix #66 - Docker / WSL2 / Intel Arc on Windows 11</strong> (reported by @FrRene06 on 2026-05-17). Dashboard stuck on "No GPU detected (CPU-only mode)" no matter which image tag was tried. Root cause: Intel-detection only searched <code>/dev/dri/renderD*</code>; WSL2 uses <code>/dev/dxg</code> (DirectX bridge). New WSL2 detection branch via <code>clinfo --list</code> + new <code>_parse_clinfo_intel_name()</code> helper; new commented <code>ai-upscaler-wsl2</code> section in <code>docker-compose.yml</code> with the verified Intel Arc A380 mount/devices recipe; <code>/gpu-verify</code> endpoint exposes a <code>wsl2</code> diagnostics block.</li>
+    <li><strong>Stale issues closed:</strong> #49 (Vulkan - already supported as <code>docker7-vulkan</code> image), #64 (Select Library - implemented v1.6.1.14), #62 + #63 (v1.5.x install bugs - obsolete after repo-feed sync). Repo now has <strong>0 open issues</strong>.</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> - 0/0. <code>dotnet test</code> - 123/123 unchanged from v1.7.3.1. Python syntax check on <code>main.py</code> passed. Quad-MD5 verified post-release.</li>
   </ul>
 
-  <h2>v1.7.3.1 — Hotfix + Interface-Extraction + Adapter Test Coverage</h2>
+  <h2>v1.7.3.1 - Hotfix + Interface-Extraction + Adapter Test Coverage</h2>
   <p><em>Released May 2026.</em> Audit-caught release-vs-code inconsistency: v1.7.3 release notes announced deletion of <code>GET /Upscaler/js/{name}</code>, but a batch-edit interrupt during release left it intact at <code>UpscalerController.cs:261</code>. v1.7.3.1 actually deletes it (0 callers, user-impact: zero).</p>
   <ul>
-    <li><strong>Phase D — Interface Extraction.</strong> New <code>IUpscalerCore</code> (2 methods: <code>UpscaleImageAsync</code> + <code>DetectHardwareAsync</code>) as minimal-surface seam for <code>VideoFrameProcessor</code>. New <code>IUserManagerAdapter</code> (1 method: <code>IsAnyUserPlayed</code>) wraps <code>IUserManager</code> + <code>IUserDataManager</code> with fail-open semantics (DB exception → returns false → treat as unwatched). DI uses factory pattern <code>sp.GetRequiredService&lt;UpscalerCore&gt;()</code> — single shared instance, production code unchanged.</li>
-    <li><strong>Phase E (partial) — Test Coverage.</strong> New <code>UserManagerAdapterTests</code> regression-guard the fail-open contract: <code>IsAnyUserPlayed_ReturnsFalse_WhenItemIsNull</code> + <code>IsAnyUserPlayed_ReturnsFalse_WhenUsersEnumerableThrows</code>. If a future refactor flips the contract to fail-closed, the second test fails loudly. PlayCount/Played-flag scenarios deferred to v1.7.4 (needs Jellyfin.Data package-ref).</li>
+    <li><strong>Phase D - Interface Extraction.</strong> New <code>IUpscalerCore</code> (2 methods: <code>UpscaleImageAsync</code> + <code>DetectHardwareAsync</code>) as minimal-surface seam for <code>VideoFrameProcessor</code>. New <code>IUserManagerAdapter</code> (1 method: <code>IsAnyUserPlayed</code>) wraps <code>IUserManager</code> + <code>IUserDataManager</code> with fail-open semantics (DB exception → returns false → treat as unwatched). DI uses factory pattern <code>sp.GetRequiredService&lt;UpscalerCore&gt;()</code> - single shared instance, production code unchanged.</li>
+    <li><strong>Phase E (partial) - Test Coverage.</strong> New <code>UserManagerAdapterTests</code> regression-guard the fail-open contract: <code>IsAnyUserPlayed_ReturnsFalse_WhenItemIsNull</code> + <code>IsAnyUserPlayed_ReturnsFalse_WhenUsersEnumerableThrows</code>. If a future refactor flips the contract to fail-closed, the second test fails loudly. PlayCount/Played-flag scenarios deferred to v1.7.4 (needs Jellyfin.Data package-ref).</li>
     <li><strong>Polish:</strong> <code>docs/MODEL-HOSTING.md</code> annotation updated v1.6.1.18, registry size 48 → v1.7.3.1, registry size 59.</li>
-    <li><strong>Verification:</strong> <code>dotnet build</code> — 0 warnings, 0 errors. <code>dotnet test</code> — <strong>123/123 passing</strong> (was 121, +2 new). Saved v1.7.x configs are bit-for-bit compatible.</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> - 0 warnings, 0 errors. <code>dotnet test</code> - <strong>123/123 passing</strong> (was 121, +2 new). Saved v1.7.x configs are bit-for-bit compatible.</li>
   </ul>
 
-  <h2>v1.7.3 — meta.json-in-ZIP Verify + Dead-Code Purge + Site Sync</h2>
-  <p><em>Released May 2026.</em> External audit caught the v1.7.0 ZIP-version-mismatch class — meta.json said <code>1.6.1.23</code> while manifest said <code>1.7.0</code> because a Fact-Forcing-Gate interrupted the version-bump batch. Audit roadmap A+B+C closed in one mega-patch.</p>
+  <h2>v1.7.3 - meta.json-in-ZIP Verify + Dead-Code Purge + Site Sync</h2>
+  <p><em>Released May 2026.</em> External audit caught the v1.7.0 ZIP-version-mismatch class - meta.json said <code>1.6.1.23</code> while manifest said <code>1.7.0</code> because a Fact-Forcing-Gate interrupted the version-bump batch. Audit roadmap A+B+C closed in one mega-patch.</p>
   <ul>
-    <li><strong>NEW CI gate: <code>zip-version-check</code></strong> — unzips the build artifact, parses <code>meta.json</code> inside, asserts <code>.version</code> matches manifest. Adding a 5th workflow job alongside <code>verify-fallback-sync</code>, <code>audit-tryapply-lambdas</code>, <code>verify-site-sync</code>.</li>
-    <li><strong>Dead endpoint deletion:</strong> <code>POST /Upscaler/cache/config</code> removed — 0 callers (dead since v22's UI-cleanup pruned CacheManager toggles). <code>GET /Upscaler/js/{name}</code> was also announced as deleted but missed due to batch-edit interrupt — closed in v1.7.3.1 hotfix.</li>
-    <li><strong>Dead class purge:</strong> <code>UpscalerSettings</code> class removed; <code>CPUInfo</code> + <code>MemoryInfo</code> kept (transitively reachable via <code>BenchmarkResults</code> properties — audit was wrong on those two, dotnet build catches it).</li>
+    <li><strong>NEW CI gate: <code>zip-version-check</code></strong> - unzips the build artifact, parses <code>meta.json</code> inside, asserts <code>.version</code> matches manifest. Adding a 5th workflow job alongside <code>verify-fallback-sync</code>, <code>audit-tryapply-lambdas</code>, <code>verify-site-sync</code>.</li>
+    <li><strong>Dead endpoint deletion:</strong> <code>POST /Upscaler/cache/config</code> removed - 0 callers (dead since v22's UI-cleanup pruned CacheManager toggles). <code>GET /Upscaler/js/{name}</code> was also announced as deleted but missed due to batch-edit interrupt - closed in v1.7.3.1 hotfix.</li>
+    <li><strong>Dead class purge:</strong> <code>UpscalerSettings</code> class removed; <code>CPUInfo</code> + <code>MemoryInfo</code> kept (transitively reachable via <code>BenchmarkResults</code> properties - audit was wrong on those two, dotnet build catches it).</li>
     <li><strong>Site sync:</strong> <code>site/models.html</code> extended with 11 missing entries (Next-Gen, Film Restoration, Face Restoration sections) to match Python catalog (48 → 59). New <code>Scripts/sync-site-topbar-versions.ps1</code> mirrors <code>meta.json</code> version into <code>&lt;span class="brand-version"&gt;</code> across all 14 site HTML files.</li>
-    <li><strong>Verification:</strong> <code>dotnet build</code> — 0/0. <code>dotnet test</code> — 121/121.</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> - 0/0. <code>dotnet test</code> - 121/121.</li>
   </ul>
 
-  <h2>v1.7.2 — Math.Clamp DoS-Hardening + 6 New Models + ProcessingStatus Cleanup</h2>
+  <h2>v1.7.2 - Math.Clamp DoS-Hardening + 6 New Models + ProcessingStatus Cleanup</h2>
   <p><em>Released May 2026.</em> Hardening release closing the int.MaxValue payload class.</p>
   <ul>
-    <li><strong>18 numeric Property setters</strong> in <code>PluginConfiguration</code> upgraded from <code>Math.Max(value, lower)</code> to <code>Math.Clamp(value, lower, upper)</code> — Settings-Import or REST PUT with <code>int.MaxValue</code> payload can no longer corrupt saved configs. 3 lower-bound drift fixes en passant: <code>RealtimeCaptureWidth</code> (240→320 min sane), <code>HealthCheckIntervalSeconds</code> (10s→30s min), <code>CircuitBreakerResetSeconds</code> (30s→60s min).</li>
+    <li><strong>18 numeric Property setters</strong> in <code>PluginConfiguration</code> upgraded from <code>Math.Max(value, lower)</code> to <code>Math.Clamp(value, lower, upper)</code> - Settings-Import or REST PUT with <code>int.MaxValue</code> payload can no longer corrupt saved configs. 3 lower-bound drift fixes en passant: <code>RealtimeCaptureWidth</code> (240→320 min sane), <code>HealthCheckIntervalSeconds</code> (10s→30s min), <code>CircuitBreakerResetSeconds</code> (30s→60s min).</li>
     <li><strong>Catalog 53 → 59:</strong> +MAN-x2/x4, +CRAFT-x2/x4, +GPEN-512, +NAFNet-denoise. <code>Resources/models-fallback.json</code> regenerated via <code>Scripts/sync-fallback-models.ps1</code>; <code>verify-fallback-sync</code> CI-job validates.</li>
-    <li><strong>Dead-enum purge:</strong> <code>ProcessingStatus.Analyzing</code> removed — never emitted anywhere, holdover from v1.5 design.</li>
+    <li><strong>Dead-enum purge:</strong> <code>ProcessingStatus.Analyzing</code> removed - never emitted anywhere, holdover from v1.5 design.</li>
     <li><strong>+4 tests:</strong> new <code>ProcessingQueueTests</code> (reflection-injected <code>_persistPath</code>) covers the debounced-Timer + SemaphoreSlim non-overlapping persist pattern from v1.7.0. Tests 117 → 121.</li>
-    <li><strong>Verification:</strong> <code>dotnet build</code> — 0/0. <code>dotnet test</code> — 121/121.</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> - 0/0. <code>dotnet test</code> - 121/121.</li>
   </ul>
 
-  <h2>v1.7.1 — RealtimeModeRegistry + WebGPU AI Mode + Drift-Lock Tests</h2>
-  <p><em>Released May 2026.</em> Drift-prevention closure — fifth and final registry pattern, generic <code>[Theory]</code>-based drift-lock test covers all 5 dropdowns at once.</p>
+  <h2>v1.7.1 - RealtimeModeRegistry + WebGPU AI Mode + Drift-Lock Tests</h2>
+  <p><em>Released May 2026.</em> Drift-prevention closure - fifth and final registry pattern, generic <code>[Theory]</code>-based drift-lock test covers all 5 dropdowns at once.</p>
   <ul>
-    <li><strong>NEW <code>RealtimeModeRegistry</code></strong> with three sets: <code>UiModes</code> (5: auto / bilinear / lanczos / anime4k / webgpuai), <code>BackwardsCompatAliases</code> ({webgl}), <code>AcceptedAtImport</code> = union of both. Old saved configs with <code>webgl</code> still load and silently migrate to <code>lanczos</code> — no breakage.</li>
-    <li><strong>NEW <code>Configuration/webgpu-ai-realtime.js</code></strong> (~258 LoC). Loads <a href="https://www.npmjs.com/package/onnxruntime-web">onnxruntime-web@1.20.1</a> + Real-ESRGAN compact ONNX via 4-stage defensive CDN fallback (jsdelivr primary, unpkg secondary, then Lanczos fallback). 5th option <strong>"AI WebGPU"</strong> added to RealtimeMode dropdown. Browser-side AI realtime — no Docker round-trip.</li>
-    <li><strong>NEW <code>RegistryDriftLockTests</code></strong> — single generic <code>[Theory]</code> over 5 dropdowns (Codec / Quality / ButtonPosition / RealtimeMode / FilterPreset). Parses embedded <code>configurationpage.html</code>, asserts set-equality against the matching registry HashSet. Adding a UI option without registry-update fails the build. Tests 102 → 117.</li>
-    <li><strong>Verification:</strong> <code>dotnet build</code> — 0/0. <code>dotnet test</code> — 117/117.</li>
+    <li><strong>NEW <code>RealtimeModeRegistry</code></strong> with three sets: <code>UiModes</code> (5: auto / bilinear / lanczos / anime4k / webgpuai), <code>BackwardsCompatAliases</code> ({webgl}), <code>AcceptedAtImport</code> = union of both. Old saved configs with <code>webgl</code> still load and silently migrate to <code>lanczos</code> - no breakage.</li>
+    <li><strong>NEW <code>Configuration/webgpu-ai-realtime.js</code></strong> (~258 LoC). Loads <a href="https://www.npmjs.com/package/onnxruntime-web">onnxruntime-web@1.20.1</a> + Real-ESRGAN compact ONNX via 4-stage defensive CDN fallback (jsdelivr primary, unpkg secondary, then Lanczos fallback). 5th option <strong>"AI WebGPU"</strong> added to RealtimeMode dropdown. Browser-side AI realtime - no Docker round-trip.</li>
+    <li><strong>NEW <code>RegistryDriftLockTests</code></strong> - single generic <code>[Theory]</code> over 5 dropdowns (Codec / Quality / ButtonPosition / RealtimeMode / FilterPreset). Parses embedded <code>configurationpage.html</code>, asserts set-equality against the matching registry HashSet. Adding a UI option without registry-update fails the build. Tests 102 → 117.</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> - 0/0. <code>dotnet test</code> - 117/117.</li>
   </ul>
 
-  <h2>v1.7.0 — Anime4K Realtime + Frame-Loop CT Propagation + Debounced Persist</h2>
+  <h2>v1.7.0 - Anime4K Realtime + Frame-Loop CT Propagation + Debounced Persist</h2>
   <p><em>Released May 2026.</em> Substantial release: <strong>NEW Anime4K realtime tier</strong> (MIT-licensed <a href="https://github.com/monyone/Anime4K.js">Anime4K.js</a>, jsdelivr CDN with Lanczos fallback). The old "WebGL" mode is honestly rebranded to "Lanczos + Sharpen" (it was always classical, never AI).</p>
   <ul>
-    <li><strong>Frame-Loop CancellationToken propagation</strong> — closes the v20/v21 outer-loop adoption hole at <code>VideoFrameProcessor.cs:252</code>. Scheduler-cancel now flows down to <code>UpscaleImageAsync(..., cancellationToken)</code>.</li>
-    <li><strong>Process.WaitForExitAsync + linked CTS</strong> — <code>ProcessingMethodExecutor</code> L619-621 replaces <code>Task.Run(() =&gt; proc.WaitForExit(60000), ct)</code> with proper async pattern combining timeout + caller CT.</li>
-    <li><strong>Debounced async PersistQueue</strong> — Timer-based <code>RequestPersist()</code> + <code>SemaphoreSlim</code> non-overlapping writer, 500ms quiet window. 5 sync callers migrated. No more disk-I/O waits on hot path.</li>
-    <li><strong>Settings-Import +18 missing TryApply lambdas</strong> — filter properties (brightness/contrast/saturation/gamma/sharpness/temperature/vignette/grain/denoise/lutPath), face-restore (model/weight), library-IDs, AI-service token. Previously these silently fell back to defaults on Import.</li>
-    <li><strong>NEW <code>QualityLevelRegistry</code> + <code>ButtonPositionRegistry</code></strong> — same drift-lock pattern as v23's <code>CodecRegistry</code>. <code>UpscalerController</code> TryApply lambdas reference the registries.</li>
-    <li><strong>Verification:</strong> <code>dotnet build</code> — 0/0. <code>dotnet test</code> — 115/115. <strong>RealtimeMode dropdown:</strong> Auto / Lanczos+Sharpen / Anime4K / Server-AI (WebGPU+ONNX path added in v1.7.1). Saved v1.6.x configs are bit-for-bit compatible.</li>
+    <li><strong>Frame-Loop CancellationToken propagation</strong> - closes the v20/v21 outer-loop adoption hole at <code>VideoFrameProcessor.cs:252</code>. Scheduler-cancel now flows down to <code>UpscaleImageAsync(..., cancellationToken)</code>.</li>
+    <li><strong>Process.WaitForExitAsync + linked CTS</strong> - <code>ProcessingMethodExecutor</code> L619-621 replaces <code>Task.Run(() =&gt; proc.WaitForExit(60000), ct)</code> with proper async pattern combining timeout + caller CT.</li>
+    <li><strong>Debounced async PersistQueue</strong> - Timer-based <code>RequestPersist()</code> + <code>SemaphoreSlim</code> non-overlapping writer, 500ms quiet window. 5 sync callers migrated. No more disk-I/O waits on hot path.</li>
+    <li><strong>Settings-Import +18 missing TryApply lambdas</strong> - filter properties (brightness/contrast/saturation/gamma/sharpness/temperature/vignette/grain/denoise/lutPath), face-restore (model/weight), library-IDs, AI-service token. Previously these silently fell back to defaults on Import.</li>
+    <li><strong>NEW <code>QualityLevelRegistry</code> + <code>ButtonPositionRegistry</code></strong> - same drift-lock pattern as v23's <code>CodecRegistry</code>. <code>UpscalerController</code> TryApply lambdas reference the registries.</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> - 0/0. <code>dotnet test</code> - 115/115. <strong>RealtimeMode dropdown:</strong> Auto / Lanczos+Sharpen / Anime4K / Server-AI (WebGPU+ONNX path added in v1.7.1). Saved v1.6.x configs are bit-for-bit compatible.</li>
   </ul>
 
-  <h2>v1.6.1.23 — OutputCodec Save-Validation Fix</h2>
-  <p><em>Released May 2026.</em> Hotfix for a P0 user-impact bug surfaced in the v22 deep-audit: the <code>#OutputCodec</code> dropdown offered 12 codec choices but the save endpoint accepted only 3 — picking AV1/NVENC/QSV silently fell back to libx264.</p>
+  <h2>v1.6.1.23 - OutputCodec Save-Validation Fix</h2>
+  <p><em>Released May 2026.</em> Hotfix for a P0 user-impact bug surfaced in the v22 deep-audit: the <code>#OutputCodec</code> dropdown offered 12 codec choices but the save endpoint accepted only 3 - picking AV1/NVENC/QSV silently fell back to libx264.</p>
   <ul>
-    <li><strong>Bug class:</strong> four codec allowlists drifting across <code>UpscalerController.cs:1437</code> (3 entries), <code>VideoFrameProcessor.cs:400</code> (7), <code>ProcessingMethodExecutor.cs:477</code> realtime (6, no copy), <code>ProcessingMethodExecutor.cs:803</code> batch (12). User-impact worst case: NVIDIA RTX 40 user picks <code>av1_nvenc</code>, gets libx264 silently — 5-20× slower encoding.</li>
-    <li><strong>Fix:</strong> new <code>Services/CodecRegistry.cs</code> with two HashSets — <code>OutputCodecs</code> (all 12, used by save + reconstruct + batch) and <code>RealtimeOutputCodecs</code> (HW-encoders + libx264/265, used by the realtime pipe path). All 4 sites now reference one of these sets.</li>
+    <li><strong>Bug class:</strong> four codec allowlists drifting across <code>UpscalerController.cs:1437</code> (3 entries), <code>VideoFrameProcessor.cs:400</code> (7), <code>ProcessingMethodExecutor.cs:477</code> realtime (6, no copy), <code>ProcessingMethodExecutor.cs:803</code> batch (12). User-impact worst case: NVIDIA RTX 40 user picks <code>av1_nvenc</code>, gets libx264 silently - 5-20× slower encoding.</li>
+    <li><strong>Fix:</strong> new <code>Services/CodecRegistry.cs</code> with two HashSets - <code>OutputCodecs</code> (all 12, used by save + reconstruct + batch) and <code>RealtimeOutputCodecs</code> (HW-encoders + libx264/265, used by the realtime pipe path). All 4 sites now reference one of these sets.</li>
     <li><strong>Drift-lock:</strong> new <code>CodecRegistryTests.cs</code> parses the embedded <code>configurationpage.html</code> at test time, extracts every <code>&lt;option value="X"&gt;</code> inside <code>#OutputCodec</code>, and asserts set-equality against <code>CodecRegistry.OutputCodecs</code>. Adding a UI codec without bumping the registry (or vice versa) fails the build.</li>
-    <li><strong>+17 new tests</strong> — 12 codec InlineData + 5 facts (HaveCount, case-insensitive, subset, exclusions, HTML-parse). Tests grew 85 → 102.</li>
-    <li><strong>Verification:</strong> <code>dotnet build</code> — 0 warnings, 0 errors. <code>dotnet test</code> — 102/102 passing. Zero deletions: existing inline lists replaced with <code>CodecRegistry.*</code> references.</li>
-    <li><strong>Methodical lesson:</strong> the v22 deep-audit identified the bug class — TryApply lambdas with non-trivial bodies can contain validation that silently discards user choices. Future audits should grep for multi-line <code>TryApply</code> blocks specifically and review their decision logic against the corresponding UI surface.</li>
+    <li><strong>+17 new tests</strong> - 12 codec InlineData + 5 facts (HaveCount, case-insensitive, subset, exclusions, HTML-parse). Tests grew 85 → 102.</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> - 0 warnings, 0 errors. <code>dotnet test</code> - 102/102 passing. Zero deletions: existing inline lists replaced with <code>CodecRegistry.*</code> references.</li>
+    <li><strong>Methodical lesson:</strong> the v22 deep-audit identified the bug class - TryApply lambdas with non-trivial bodies can contain validation that silently discards user choices. Future audits should grep for multi-line <code>TryApply</code> blocks specifically and review their decision logic against the corresponding UI surface.</li>
   </ul>
 
-  <h2>v1.6.1.22 — UI Honesty Cleanup (No-Op Toggles Removed)</h2>
-  <p><em>Released May 2026.</em> Follow-through on the v1.6.1.21 honest-disclosure principle: <strong>30 dead-backend config controls removed from the settings page</strong> after a triple-pass over all <strong>88 properties</strong> (v21's audit only enumerated 54 — the regex missed property-bodies).</p>
+  <h2>v1.6.1.22 - UI Honesty Cleanup (No-Op Toggles Removed)</h2>
+  <p><em>Released May 2026.</em> Follow-through on the v1.6.1.21 honest-disclosure principle: <strong>30 dead-backend config controls removed from the settings page</strong> after a triple-pass over all <strong>88 properties</strong> (v21's audit only enumerated 54 - the regex missed property-bodies).</p>
   <ul>
-    <li><strong>5 entirely-dead <code>&lt;details&gt;</code> sections removed</strong> — Quality Metrics, Face Enhancement, Film Grain Management, Health &amp; Circuit Breaker, Model Management.</li>
-    <li><strong>18 individual fields removed from mixed-live sections</strong> — <code>PlayerButton</code>, <code>Notifications</code>, <code>AutoRetryButton</code>, <code>EnableProcessingQueue</code>, <code>EnableProgressNotifications</code>, <code>EnableModelPreloading</code>, <code>EnableModelAutoCleanup</code>, <code>EnableHealthMonitoring</code>, <code>EnableGpuFallbackToCpu</code>, <code>EnableComparisonView</code>, <code>EnableCustomModelUpload</code>, <code>EnableApiDocs</code>, <code>EnablePreProcessingCache</code>, <code>MaxVRAMUsage</code>, <code>CpuThreads</code>, <code>MaxUpscaledFileSizeMB</code>, <code>RealtimeTargetFps</code> + 2 dead Face-Restore sliders.</li>
-    <li><strong>JS load/save arrays pruned in lockstep</strong> — <code>fields</code>, <code>nums</code>, <code>floats</code>, <code>checks</code>, <code>sliderMap</code>, <code>longs</code>. 3 orphan slider event listeners removed.</li>
-    <li><strong>Properties + Controller <code>TryApply</code> kept</strong> — saved user configs continue to load without crash. Removed inputs simply don't get edited via the page anymore. Backwards-compatible.</li>
-    <li><strong>Deliberately preserved</strong> — <code>ButtonPosition</code>, <code>EnableRealtimeUpscaling</code>, <code>RealtimeMode</code>, <code>RealtimeCaptureWidth</code> (player-integration.js consumers — false-positive in algo's first pass), <code>EnableFaceRestore</code> + <code>FaceRestoreModel</code> (UI-direct-to-<code>/face-restore/load</code> REST consumers).</li>
-    <li><strong>Discovery methodology</strong> — pass 1: multi-line aware regex; pass 2: per-property consumer count across <code>Services/</code>, <code>ScheduledTasks/</code>, <code>Controllers/</code>, <code>Plugin.cs</code>, <code>Configuration/*.{js,html}</code>, <code>docker-ai-service/app/main.py</code>; pass 3: line-level inspection of every DEAD-CTRL-ONLY with js&gt;=1 to distinguish real consumers from save/load array entries.</li>
-    <li><strong>Verification:</strong> <code>dotnet build</code> — 0 warnings, 0 errors. <code>dotnet test</code> — 85/85 passing (unchanged). <code>configurationpage.html</code> 2807 → 2680 lines. Zero behavior change, zero new code paths.</li>
+    <li><strong>5 entirely-dead <code>&lt;details&gt;</code> sections removed</strong> - Quality Metrics, Face Enhancement, Film Grain Management, Health &amp; Circuit Breaker, Model Management.</li>
+    <li><strong>18 individual fields removed from mixed-live sections</strong> - <code>PlayerButton</code>, <code>Notifications</code>, <code>AutoRetryButton</code>, <code>EnableProcessingQueue</code>, <code>EnableProgressNotifications</code>, <code>EnableModelPreloading</code>, <code>EnableModelAutoCleanup</code>, <code>EnableHealthMonitoring</code>, <code>EnableGpuFallbackToCpu</code>, <code>EnableComparisonView</code>, <code>EnableCustomModelUpload</code>, <code>EnableApiDocs</code>, <code>EnablePreProcessingCache</code>, <code>MaxVRAMUsage</code>, <code>CpuThreads</code>, <code>MaxUpscaledFileSizeMB</code>, <code>RealtimeTargetFps</code> + 2 dead Face-Restore sliders.</li>
+    <li><strong>JS load/save arrays pruned in lockstep</strong> - <code>fields</code>, <code>nums</code>, <code>floats</code>, <code>checks</code>, <code>sliderMap</code>, <code>longs</code>. 3 orphan slider event listeners removed.</li>
+    <li><strong>Properties + Controller <code>TryApply</code> kept</strong> - saved user configs continue to load without crash. Removed inputs simply don't get edited via the page anymore. Backwards-compatible.</li>
+    <li><strong>Deliberately preserved</strong> - <code>ButtonPosition</code>, <code>EnableRealtimeUpscaling</code>, <code>RealtimeMode</code>, <code>RealtimeCaptureWidth</code> (player-integration.js consumers - false-positive in algo's first pass), <code>EnableFaceRestore</code> + <code>FaceRestoreModel</code> (UI-direct-to-<code>/face-restore/load</code> REST consumers).</li>
+    <li><strong>Discovery methodology</strong> - pass 1: multi-line aware regex; pass 2: per-property consumer count across <code>Services/</code>, <code>ScheduledTasks/</code>, <code>Controllers/</code>, <code>Plugin.cs</code>, <code>Configuration/*.{js,html}</code>, <code>docker-ai-service/app/main.py</code>; pass 3: line-level inspection of every DEAD-CTRL-ONLY with js&gt;=1 to distinguish real consumers from save/load array entries.</li>
+    <li><strong>Verification:</strong> <code>dotnet build</code> - 0 warnings, 0 errors. <code>dotnet test</code> - 85/85 passing (unchanged). <code>configurationpage.html</code> 2807 → 2680 lines. Zero behavior change, zero new code paths.</li>
   </ul>
 
-  <h2>v1.6.1.21 — Adoption v2 + Compute-Waste Fixes + Honest Dead-Config</h2>
+  <h2>v1.6.1.21 - Adoption v2 + Compute-Waste Fixes + Honest Dead-Config</h2>
   <p><em>Released May 2026.</em> Follow-up patch closing 8 findings of the v1.6.1.20 external audit.</p>
   <ul>
-    <li><strong><code>RestrictToUnwatchedContent</code> + <code>SkipUpscaledOnRescan</code> finally wired</strong> — both toggles existed since v1.6.1.14 with 0 consumers. <code>LibraryUpscaleScanTask</code> now consults a new <code>IsAnyUserPlayed(BaseItem)</code> helper (DI extended with <code>IUserManager</code> + <code>IUserDataManager</code>). User compute-waste-protection finally honored.</li>
-    <li><strong>6 remaining HttpClient calls now use <code>HttpContext.RequestAborted</code></strong> — 16/16 coverage including hot-path <code>/upscale-frame</code> and <code>/upscale-video-chunk</code>. No more 120s server hangs when client disconnects mid-playback.</li>
-    <li><strong>ProcessingStrategySelector substring-matcher tightened</strong> — v1.6.1.18 <code>compact</code> and <code>realplksr</code> matchers were too broad. <code>anime-compact-x4</code> (anime-category) and <code>nomos2-realplksr-x4</code> (video-quality DAT2-class) no longer falsely accepted for RealTime — no more frame drops mid-playback.</li>
-    <li><strong>4 frame-loop <code>File.Copy</code> → async streaming</strong> — <code>VideoFrameProcessor</code> + <code>ProcessingMethodExecutor</code> error-fallback paths now use <code>FileStream + CopyToAsync</code> with <code>useAsync:true</code>. NAS-mount thread-block eliminated.</li>
-    <li><strong>FaceRestore backend allowlist symmetric to frontend</strong> — backend <code>FaceRestoreLoad</code> reads <code>category="face_restore"</code> from same embedded JSON as the v1.6.1.19 frontend dropdown. New face-restore models won't get HTTP 400 from backend anymore.</li>
-    <li><strong>Filter-preset list deduplicated 4× → 1×</strong> — new <code>_validFilterPresets</code> static readonly in <code>UpscalerController</code>.</li>
-    <li><strong>Honest XML-doc disclosure of 6 dead-config toggles</strong> — <code>EnableModelPreloading</code>, <code>EnableHealthMonitoring</code>, <code>EnableModelAutoCleanup</code>, <code>EnableQualityMetrics</code>, <code>EnableFaceEnhancement</code>, <code>EnableGrainManagement</code> now flagged as "no-op pending v1.7.0 pipeline implementation". No silent UI-lying.</li>
-    <li><strong>+13 regression tests</strong> — new <code>ProcessingStrategySelectorTests.cs</code>. Tests grew 72 → 85.</li>
-    <li><strong>Verification:</strong> <code>dotnet build -c Release</code> — 0 warnings, 0 errors. <code>dotnet test</code> — 85/85 passing. v1.6.1.20 saved configs are bit-for-bit compatible.</li>
+    <li><strong><code>RestrictToUnwatchedContent</code> + <code>SkipUpscaledOnRescan</code> finally wired</strong> - both toggles existed since v1.6.1.14 with 0 consumers. <code>LibraryUpscaleScanTask</code> now consults a new <code>IsAnyUserPlayed(BaseItem)</code> helper (DI extended with <code>IUserManager</code> + <code>IUserDataManager</code>). User compute-waste-protection finally honored.</li>
+    <li><strong>6 remaining HttpClient calls now use <code>HttpContext.RequestAborted</code></strong> - 16/16 coverage including hot-path <code>/upscale-frame</code> and <code>/upscale-video-chunk</code>. No more 120s server hangs when client disconnects mid-playback.</li>
+    <li><strong>ProcessingStrategySelector substring-matcher tightened</strong> - v1.6.1.18 <code>compact</code> and <code>realplksr</code> matchers were too broad. <code>anime-compact-x4</code> (anime-category) and <code>nomos2-realplksr-x4</code> (video-quality DAT2-class) no longer falsely accepted for RealTime - no more frame drops mid-playback.</li>
+    <li><strong>4 frame-loop <code>File.Copy</code> → async streaming</strong> - <code>VideoFrameProcessor</code> + <code>ProcessingMethodExecutor</code> error-fallback paths now use <code>FileStream + CopyToAsync</code> with <code>useAsync:true</code>. NAS-mount thread-block eliminated.</li>
+    <li><strong>FaceRestore backend allowlist symmetric to frontend</strong> - backend <code>FaceRestoreLoad</code> reads <code>category="face_restore"</code> from same embedded JSON as the v1.6.1.19 frontend dropdown. New face-restore models won't get HTTP 400 from backend anymore.</li>
+    <li><strong>Filter-preset list deduplicated 4× → 1×</strong> - new <code>_validFilterPresets</code> static readonly in <code>UpscalerController</code>.</li>
+    <li><strong>Honest XML-doc disclosure of 6 dead-config toggles</strong> - <code>EnableModelPreloading</code>, <code>EnableHealthMonitoring</code>, <code>EnableModelAutoCleanup</code>, <code>EnableQualityMetrics</code>, <code>EnableFaceEnhancement</code>, <code>EnableGrainManagement</code> now flagged as "no-op pending v1.7.0 pipeline implementation". No silent UI-lying.</li>
+    <li><strong>+13 regression tests</strong> - new <code>ProcessingStrategySelectorTests.cs</code>. Tests grew 72 → 85.</li>
+    <li><strong>Verification:</strong> <code>dotnet build -c Release</code> - 0 warnings, 0 errors. <code>dotnet test</code> - 85/85 passing. v1.6.1.20 saved configs are bit-for-bit compatible.</li>
   </ul>
 
-  <h2>v1.6.1.20 — Adoption Completion + Cancellation + Async-IO</h2>
+  <h2>v1.6.1.20 - Adoption Completion + Cancellation + Async-IO</h2>
   <p><em>Released May 2026.</em> Follow-up patch closing the gaps the v1.6.1.19 post-release self-audit found. The v1.6.1.19 refactor introduced the <code>ModelAvailability</code> source-of-truth class but didn't adopt it everywhere. Plus 3 new bug classes (Cancellation, Sync-IO, csproj Self-Reference) that surfaced during the deep-scan.</p>
   <ul>
-    <li><strong>Adoption: HardwareBenchmarkService.cs:123</strong> — <code>status.CurrentModel ?? "realesrgan-x4"</code> was bypassing <code>EnsureModelAvailable</code>. Now wrapped. If the Docker service ever reports a self-host model as <code>current_model</code>, it falls back to plugin default instead of being silently propagated.</li>
-    <li><strong>Adoption: UpscalerCore.cs Single-Frame returns</strong> — 7 hardcoded returns now route through <code>PickAvailable</code>. Today no behavior change (none of these IDs are in KnownUnavailable); regression-guard for future additions, symmetric to multi-frame paths gated since v1.6.1.17.</li>
+    <li><strong>Adoption: HardwareBenchmarkService.cs:123</strong> - <code>status.CurrentModel ?? "realesrgan-x4"</code> was bypassing <code>EnsureModelAvailable</code>. Now wrapped. If the Docker service ever reports a self-host model as <code>current_model</code>, it falls back to plugin default instead of being silently propagated.</li>
+    <li><strong>Adoption: UpscalerCore.cs Single-Frame returns</strong> - 7 hardcoded returns now route through <code>PickAvailable</code>. Today no behavior change (none of these IDs are in KnownUnavailable); regression-guard for future additions, symmetric to multi-frame paths gated since v1.6.1.17.</li>
     <li><strong>NEW BUG CLASS: 9× HttpContext.RequestAborted</strong> added to UpscalerController HttpClient calls (<code>/gpus</code>, <code>/models/load</code>, <code>/benchmark</code>, <code>/face-restore/{load,status,unload}</code>, <code>/metrics</code>, <code>/gpu-verify</code>, <code>/health/detailed</code>). Prevents 120s server-side hangs when client disconnects.</li>
-    <li><strong>NEW BUG CLASS: CacheManager.cs:307 async streaming</strong> — synchronous <code>File.Copy</code> replaced with <code>FileStream + CopyToAsync</code> (<code>useAsync:true</code>). Was blocking thread-pool thread 5-30s on NAS-mounted disks per cached frame.</li>
-    <li><strong>NEW BUG CLASS: csproj-Comments timeless</strong> — removed explicit <code>v1.6.1.19</code> version-strings from <code>JellyfinUpscalerPlugin.csproj</code> comments. Pauschal version-bump regex would have falsely re-attributed v1.6.1.19 features to v1.6.1.20.</li>
-    <li><strong>+7 new tests</strong> — <code>SingleFramePaths_AlwaysRouteThroughPickAvailable [Theory]</code> with 7 InlineData cases. Tests grew 65 → 72 passing.</li>
-    <li><strong>Verification:</strong> <code>dotnet build -c Release</code> — 0 warnings, 0 errors. <code>dotnet test</code> — 72/72 passing. No model changes, no schema changes — v1.6.1.19 saved configs are bit-for-bit compatible.</li>
+    <li><strong>NEW BUG CLASS: CacheManager.cs:307 async streaming</strong> - synchronous <code>File.Copy</code> replaced with <code>FileStream + CopyToAsync</code> (<code>useAsync:true</code>). Was blocking thread-pool thread 5-30s on NAS-mounted disks per cached frame.</li>
+    <li><strong>NEW BUG CLASS: csproj-Comments timeless</strong> - removed explicit <code>v1.6.1.19</code> version-strings from <code>JellyfinUpscalerPlugin.csproj</code> comments. Pauschal version-bump regex would have falsely re-attributed v1.6.1.19 features to v1.6.1.20.</li>
+    <li><strong>+7 new tests</strong> - <code>SingleFramePaths_AlwaysRouteThroughPickAvailable [Theory]</code> with 7 InlineData cases. Tests grew 65 → 72 passing.</li>
+    <li><strong>Verification:</strong> <code>dotnet build -c Release</code> - 0 warnings, 0 errors. <code>dotnet test</code> - 72/72 passing. No model changes, no schema changes - v1.6.1.19 saved configs are bit-for-bit compatible.</li>
   </ul>
 
-  <h2>v1.6.1.19 — Single-Source-of-Truth for Model Availability</h2>
+  <h2>v1.6.1.19 - Single-Source-of-Truth for Model Availability</h2>
   <p><em>Released May 2026.</em> Structural fix for the drift class that v1.6.1.17 and v1.6.1.18 patched point-by-point. Three audit-driven cleanups, plus a refactor that collapses 3+ duplicate hardcoded model-availability lists into one source-of-truth.</p>
   <ul>
-    <li><strong>New <code>ModelAvailability</code> static class</strong> — extracted the <code>KnownUnavailable</code> HashSet (5 self-host model IDs) and <code>PickAvailable()</code> picker out of <code>UpscalerCore</code> into <code>Services/ModelAvailability.cs</code>. <code>UpscalerCore</code> now wraps with logging, <code>HardwareBenchmarkService</code> consults the same source via a new <code>EnsureModelAvailable()</code> helper. Closes the sibling-bug class the v1.6.1.18 audit identified.</li>
-    <li><strong>HardwareBenchmarkService hardened</strong> — the 7 hardcoded <code>RecommendedModel</code>/<code>FallbackModel</code> assignments in <code>CalculateOptimalSettings</code> + <code>CreateDefaultHardwareProfile</code> now route through <code>EnsureModelAvailable</code>. Today this is a regression-guard (both <code>realesrgan-x4</code> and <code>fsrcnn-x2</code> are always-available); if either is ever flipped to self-host, the helper warns + falls back instead of recommending an unreachable model.</li>
-    <li><strong>Face-Restore dropdown auto-populated</strong> — was hardcoded HTML <code>&lt;option&gt;</code>s with <code>gfpgan-v1.4</code> / <code>codeformer</code>. Now <code>loadModels()</code> populates <code>#FaceRestoreModel</code> from <code>category=face_restore</code> on Settings page open (preserves saved value, falls back gracefully if the registry has 0 face-restore entries).</li>
-    <li><strong>site/index.html homepage card content fix</strong> — the v1.6.1.18 card on the homepage incorrectly showed the v1.6.1.16 FFmpeg-fix description because the v17/v18 version-bump scripts <code>s/1.6.1.16/1.6.1.18/g</code> bumped the title without rewriting the body text. Card now shows the actual v1.6.1.19 release content (and the version-bump pattern is documented as a known issue to be replaced by an autogen script).</li>
-    <li><strong>+28 new tests</strong> — <code>JellyfinUpscalerPlugin.Tests/Services/ModelAvailabilityTests.cs</code> covers contract assertions, case-insensitivity, fallback-chain semantics, and an explicit <code>HaveCount(5)</code> drift-lock that forces review on any HashSet edit. Tests grew 37 → 65 passing.</li>
-    <li><strong>Verification:</strong> <code>dotnet build -c Release</code> — 0 warnings, 0 errors. <code>dotnet test</code> — 65/65 passing. No new models, no schema changes — v1.6.1.18 saved configs are bit-for-bit compatible.</li>
+    <li><strong>New <code>ModelAvailability</code> static class</strong> - extracted the <code>KnownUnavailable</code> HashSet (5 self-host model IDs) and <code>PickAvailable()</code> picker out of <code>UpscalerCore</code> into <code>Services/ModelAvailability.cs</code>. <code>UpscalerCore</code> now wraps with logging, <code>HardwareBenchmarkService</code> consults the same source via a new <code>EnsureModelAvailable()</code> helper. Closes the sibling-bug class the v1.6.1.18 audit identified.</li>
+    <li><strong>HardwareBenchmarkService hardened</strong> - the 7 hardcoded <code>RecommendedModel</code>/<code>FallbackModel</code> assignments in <code>CalculateOptimalSettings</code> + <code>CreateDefaultHardwareProfile</code> now route through <code>EnsureModelAvailable</code>. Today this is a regression-guard (both <code>realesrgan-x4</code> and <code>fsrcnn-x2</code> are always-available); if either is ever flipped to self-host, the helper warns + falls back instead of recommending an unreachable model.</li>
+    <li><strong>Face-Restore dropdown auto-populated</strong> - was hardcoded HTML <code>&lt;option&gt;</code>s with <code>gfpgan-v1.4</code> / <code>codeformer</code>. Now <code>loadModels()</code> populates <code>#FaceRestoreModel</code> from <code>category=face_restore</code> on Settings page open (preserves saved value, falls back gracefully if the registry has 0 face-restore entries).</li>
+    <li><strong>site/index.html homepage card content fix</strong> - the v1.6.1.18 card on the homepage incorrectly showed the v1.6.1.16 FFmpeg-fix description because the v17/v18 version-bump scripts <code>s/1.6.1.16/1.6.1.18/g</code> bumped the title without rewriting the body text. Card now shows the actual v1.6.1.19 release content (and the version-bump pattern is documented as a known issue to be replaced by an autogen script).</li>
+    <li><strong>+28 new tests</strong> - <code>JellyfinUpscalerPlugin.Tests/Services/ModelAvailabilityTests.cs</code> covers contract assertions, case-insensitivity, fallback-chain semantics, and an explicit <code>HaveCount(5)</code> drift-lock that forces review on any HashSet edit. Tests grew 37 → 65 passing.</li>
+    <li><strong>Verification:</strong> <code>dotnet build -c Release</code> - 0 warnings, 0 errors. <code>dotnet test</code> - 65/65 passing. No new models, no schema changes - v1.6.1.18 saved configs are bit-for-bit compatible.</li>
   </ul>
 
-  <h2>v1.6.1.18 — Live-Action Resolver + RealTime-AI Whitelist</h2>
-  <p><em>Released May 2026.</em> Follow-up patch fixing 3 sibling bugs an external audit caught after v1.6.1.17 shipped. The v1.6.1.17 review fixed the anime-side of these bugs but missed the symmetric live-action twin and the compact-family RealTime-AI rejection. No new models, no schema changes — surgical patch.</p>
+  <h2>v1.6.1.18 - Live-Action Resolver + RealTime-AI Whitelist</h2>
+  <p><em>Released May 2026.</em> Follow-up patch fixing 3 sibling bugs an external audit caught after v1.6.1.17 shipped. The v1.6.1.17 review fixed the anime-side of these bugs but missed the symmetric live-action twin and the compact-family RealTime-AI rejection. No new models, no schema changes - surgical patch.</p>
   <ul>
-    <li><strong>PreferredLiveActionModel was Dead-Config</strong> — exact symmetric twin of the v1.6.1.17 anime fix. Field defined, UI dropdown rendered + persisted, but <code>ResolveModelForVideo()</code> never read it. Symmetric hook added: setting "Preferred Live-Action Model" to e.g. <code>drct-l-x4</code> in Settings now actually does what the UI says it does. Fallback chain: <code>override → ultrasharp-v2-x4 → nomos2-realplksr-x4 → realesrgan-x4</code>.</li>
-    <li><strong>RealTime-AI rejected v1.6.1.17's "Speed Champion"</strong> — <code>ProcessingStrategySelector.IsRealTimeAIFeasible()</code> had a hardcoded 9-entry HashSet that drifted from the 14-entry registry. <code>bhi-realplksr-x4</code>, <code>nomosuni-compact-x2</code>, <code>lsdir-compact-x4</code>, <code>swinir-small-x2/x4</code> were all silently rejected. HashSet expanded to 14 + substring safety-net (<code>compact</code>, <code>realplksr</code>).</li>
-    <li><strong>docs/MODEL-HOSTING.md was 5 releases out of date</strong> — still referenced "v1.6.1.12 catalog". Now points to v1.6.1.17's <code>drct-l-x4</code> as a HAT alternative and <code>real-cugan-x4</code> as APISR alternative for users who don't want to self-host.</li>
+    <li><strong>PreferredLiveActionModel was Dead-Config</strong> - exact symmetric twin of the v1.6.1.17 anime fix. Field defined, UI dropdown rendered + persisted, but <code>ResolveModelForVideo()</code> never read it. Symmetric hook added: setting "Preferred Live-Action Model" to e.g. <code>drct-l-x4</code> in Settings now actually does what the UI says it does. Fallback chain: <code>override → ultrasharp-v2-x4 → nomos2-realplksr-x4 → realesrgan-x4</code>.</li>
+    <li><strong>RealTime-AI rejected v1.6.1.17's "Speed Champion"</strong> - <code>ProcessingStrategySelector.IsRealTimeAIFeasible()</code> had a hardcoded 9-entry HashSet that drifted from the 14-entry registry. <code>bhi-realplksr-x4</code>, <code>nomosuni-compact-x2</code>, <code>lsdir-compact-x4</code>, <code>swinir-small-x2/x4</code> were all silently rejected. HashSet expanded to 14 + substring safety-net (<code>compact</code>, <code>realplksr</code>).</li>
+    <li><strong>docs/MODEL-HOSTING.md was 5 releases out of date</strong> - still referenced "v1.6.1.12 catalog". Now points to v1.6.1.17's <code>drct-l-x4</code> as a HAT alternative and <code>real-cugan-x4</code> as APISR alternative for users who don't want to self-host.</li>
     <li><strong>Drift-protection:</strong> +1 new <code>[Theory]</code> in <code>UpscalerCoreAutoModelTests</code> locks down the live-action path. Future contributor who flips <code>realbasicvsr-x4</code> available without updating <code>_knownUnavailable</code> gets a red CI build.</li>
-    <li><strong>Verification:</strong> <code>dotnet build -c Release</code> — 0 warnings, 0 errors. <code>dotnet test</code> — 37/37 passing (was 33). v1.6.1.17 saved configs are bit-for-bit compatible.</li>
+    <li><strong>Verification:</strong> <code>dotnet build -c Release</code> - 0 warnings, 0 errors. <code>dotnet test</code> - 37/37 passing (was 33). v1.6.1.17 saved configs are bit-for-bit compatible.</li>
   </ul>
 
-  <h2>v1.6.1.17 — Auto-Mode Drift Fix + 5 New SOTA Models</h2>
+  <h2>v1.6.1.17 - Auto-Mode Drift Fix + 5 New SOTA Models</h2>
   <p><em>Released May 2026.</em> Fixes a critical Auto-Mode bug, eliminates 4 cases of model-catalog drift, and adds 5 new SOTA upscaler models. Catalog grew 43 → 48 models.</p>
   <ul>
-    <li><strong>Auto-Mode multi-frame VSR was silently broken:</strong> <code>ResolveModelForVideo()</code> returned <code>animesr-v2-x4</code> / <code>realbasicvsr-x4</code> / <code>edvr-m-x4</code> unconditionally for multi-frame batch jobs — but all three are <code>available: False</code> upstream (no public ONNX mirror). New <code>PickAvailable()</code> helper consults a <code>_knownUnavailable</code> HashSet and walks fallback chains. Anime+multi-frame → <code>realesrgan-animevideo-x4</code>; very-low-res → <code>ultrasharp-v2-x4</code>; general → <code>ultrasharp-v2-x4</code> → <code>nomos2-realplksr-x4</code> → <code>realesrgan-x4</code>.</li>
+    <li><strong>Auto-Mode multi-frame VSR was silently broken:</strong> <code>ResolveModelForVideo()</code> returned <code>animesr-v2-x4</code> / <code>realbasicvsr-x4</code> / <code>edvr-m-x4</code> unconditionally for multi-frame batch jobs - but all three are <code>available: False</code> upstream (no public ONNX mirror). New <code>PickAvailable()</code> helper consults a <code>_knownUnavailable</code> HashSet and walks fallback chains. Anime+multi-frame → <code>realesrgan-animevideo-x4</code>; very-low-res → <code>ultrasharp-v2-x4</code>; general → <code>ultrasharp-v2-x4</code> → <code>nomos2-realplksr-x4</code> → <code>realesrgan-x4</code>.</li>
     <li><strong>PreferredAnimeModel was Dead-Config:</strong> default was <code>""</code>, and the resolver never read the field. Fixed in two parts: default → <code>anime-compact-x4</code>, plus the resolver now actually reads <code>Config.PreferredAnimeModel</code> and routes through <code>PickAvailable</code>.</li>
     <li><strong>4 catalog drifts cleaned up:</strong> Controller fallback list 12 → 48 models via embedded <code>Resources/models-fallback.json</code>; <code>site/models.html</code> auto-generated from registry (removed 8 fictional models like <code>waifu2x-cunet-x2</code>, <code>hat-l-x4</code>, <code>swinir-l-x4</code>); <code>Services/ModelManager.cs</code> removed (200 LoC dead code, header still claimed v1.5.5.4); Docker service VERSION bumped 1.6.1.15 → 1.6.1.17 (was missed in v1.6.1.16).</li>
     <li><strong>5 new SOTA models:</strong> <code>real-cugan-x2</code>/<code>real-cugan-x4</code> (Bilibili anime, cleaner linework than Real-ESRGAN-anime), <code>drct-l-x4</code> (Phips/aaronespasa, sharper than DAT2 on photo content), <code>bhi-realplksr-x4</code> (Phhofm, 2× throughput vs DAT2), <code>rife-v4.25</code> (yuvraj108c, current SOTA frame interpolation).</li>
-    <li><strong>UI polish:</strong> Upscale-Model dropdown filters out <code>category=interpolation</code> (RIFE) and <code>category=face_restore</code> (GFPGAN/CodeFormer) — these have separate endpoints. <code>PreferredAnimeModel</code> + <code>PreferredLiveActionModel</code> are now proper dropdowns (was free-text, prone to typos).</li>
+    <li><strong>UI polish:</strong> Upscale-Model dropdown filters out <code>category=interpolation</code> (RIFE) and <code>category=face_restore</code> (GFPGAN/CodeFormer) - these have separate endpoints. <code>PreferredAnimeModel</code> + <code>PreferredLiveActionModel</code> are now proper dropdowns (was free-text, prone to typos).</li>
     <li><strong>Drift-protection:</strong> 11 new unit tests in <code>UpscalerCoreAutoModelTests</code> lock down all multi-frame fallback chains. Future contributors who flip <code>realbasicvsr-x4</code> to <code>available: True</code> without updating <code>_knownUnavailable</code> get a red CI build instead of a silent regression. New <code>Scripts/sync-fallback-models.ps1</code> regenerates the JSON resource from <code>app/main.py</code>.</li>
-    <li><strong>Verification:</strong> <code>dotnet build -c Release</code> — 0 warnings, 0 errors. <code>dotnet test</code> — 33/33 passing (was 22). DLL size dropped 1.60 MB → 1.41 MB.</li>
+    <li><strong>Verification:</strong> <code>dotnet build -c Release</code> - 0 warnings, 0 errors. <code>dotnet test</code> - 33/33 passing (was 22). DLL size dropped 1.60 MB → 1.41 MB.</li>
   </ul>
 
-  <h2>v1.6.1.16 — Three singletons, not one</h2>
+  <h2>v1.6.1.16 - Three singletons, not one</h2>
   <p><em>Released April 2026.</em> Issue #64 fix: <code>LibraryUpscaleScanTask</code> failing with <code>Cannot start process because a file name has not been provided</code>.</p>
   <ul>
-    <li><strong>Root cause:</strong> three service singletons (<code>VideoAnalyzer</code>, <code>VideoFrameProcessor</code>, <code>ProcessingMethodExecutor</code>) each captured <code>MediaEncoder.EncoderPath</code>/<code>ProbePath</code> as <code>readonly</code> strings at construction. When Jellyfin constructed the plugin before <code>MediaEncoder</code> finished resolving paths, those strings were empty — forever.</li>
+    <li><strong>Root cause:</strong> three service singletons (<code>VideoAnalyzer</code>, <code>VideoFrameProcessor</code>, <code>ProcessingMethodExecutor</code>) each captured <code>MediaEncoder.EncoderPath</code>/<code>ProbePath</code> as <code>readonly</code> strings at construction. When Jellyfin constructed the plugin before <code>MediaEncoder</code> finished resolving paths, those strings were empty - forever.</li>
     <li><strong>Fix:</strong> made the cached paths mutable, added <code>UpdateFFmpegPath()</code> / <code>UpdateFFprobePath()</code> entry points, and introduced <code>EnsureFFmpegReady()</code> in <code>VideoProcessor</code> that re-queries <code>MediaEncoder</code> and propagates to every sub-service on every job entry.</li>
     <li><strong>Verification:</strong> Pre-fix: nightly scan failed at 0/70 files. Post-fix (live-tested on Jellyfin 10.11.8): scan reached 31% with per-file <code>Video analysis: 1280x720 @ 30.0fps</code> log lines and <code>FFmpeg ready: ffmpeg=/usr/lib/jellyfin-ffmpeg/ffmpeg</code>.</li>
   </ul>
 
-  <h2>v1.6.1.14 — Admin gates for jobs endpoint</h2>
+  <h2>v1.6.1.14 - Admin gates for jobs endpoint</h2>
   <ul>
     <li>Security fix: <code>/Upscaler/jobs</code> no longer returns absolute file paths to non-admin authenticated users. Gated with <code>RequiresElevation</code>.</li>
-    <li>Improved Test Connection diagnostics — now reports whether the failure was network-level, auth-level, or token-mismatch.</li>
+    <li>Improved Test Connection diagnostics - now reports whether the failure was network-level, auth-level, or token-mismatch.</li>
   </ul>
 
-  <h2>v1.6.1.12 — RIFE v4.7/v4.8/v4.9</h2>
+  <h2>v1.6.1.12 - RIFE v4.7/v4.8/v4.9</h2>
   <ul>
     <li>New RIFE frame-interpolation catalog: v4.9 (quality), v4.8 (balanced), v4.7 (fast).</li>
     <li>Old references to <code>rife-v4.6</code> and <code>rife-v4.6-lite</code> in saved configs are auto-mapped via <code>MODEL_ALIASES</code>; no user action needed.</li>
-    <li>Scene cut detection toggle on the Motion tab — avoids ghosting across hard cuts.</li>
+    <li>Scene cut detection toggle on the Motion tab - avoids ghosting across hard cuts.</li>
   </ul>
 
-  <h2>v1.6.1.10 — HAT family</h2>
+  <h2>v1.6.1.10 - HAT family</h2>
   <ul>
     <li>Added <code>hat-s-x4</code>, <code>hat-m-x4</code>, <code>hat-l-x4</code> to the catalog for live-action at higher quality than Real-ESRGAN.</li>
     <li>Nomos8k-trained HAT variant (<code>nomos8k-hat-x4</code>) as <em>[self-host required]</em>.</li>
   </ul>
 
-  <h2>v1.6.1.8 — Face restoration pipeline</h2>
+  <h2>v1.6.1.8 - Face restoration pipeline</h2>
   <ul>
     <li>GFPGAN v1.4 and CodeFormer added as first-class models.</li>
-    <li>Full end-to-end pipeline <code>/face-restore/pipeline</code> — detects faces, restores them, upscales the surrounding frame, feathered paste-back.</li>
+    <li>Full end-to-end pipeline <code>/face-restore/pipeline</code> - detects faces, restores them, upscales the surrounding frame, feathered paste-back.</li>
     <li>Toggle on the player quick-menu (Face Restore tab) for opt-in per-stream use.</li>
   </ul>
 
-  <h2>v1.6.1.5 — Filter presets + live preview</h2>
+  <h2>v1.6.1.5 - Filter presets + live preview</h2>
   <ul>
     <li>Six filter sliders (gamma, sharpness, temperature, vignette, grain, denoise) applied live via <code>&lt;video&gt;.style.filter</code>.</li>
-    <li>Filter preview endpoint <code>/Upscaler/filter-preview/frame/{itemId}</code> — extracts a real frame from your library and renders before/after PNGs for the selected preset.</li>
+    <li>Filter preview endpoint <code>/Upscaler/filter-preview/frame/{itemId}</code> - extracts a real frame from your library and renders before/after PNGs for the selected preset.</li>
     <li>Seven shipped presets: Cinema, Anime, Retro, Vivid, HDR-SDR, Soft, Documentary.</li>
   </ul>
 
-  <h2>v1.6.1.4 — Service auth rework</h2>
+  <h2>v1.6.1.4 - Service auth rework</h2>
   <ul>
     <li>All service endpoints behind a single <code>X-Api-Token</code>. Previously, <code>/logs-stream</code> was unauthenticated when the token was unset.</li>
     <li>Dashboard shows <code>api_token_configured</code> and <code>auth_enabled</code> prominently.</li>
     <li>Console tab in the plugin UI streams service logs via SSE, token-gated.</li>
   </ul>
 
-  <h2>v1.6.1.0 — Split into plugin + service</h2>
+  <h2>v1.6.1.0 - Split into plugin + service</h2>
   <p>The architectural rewrite that the current generation is based on.</p>
   <ul>
     <li>Plugin-side: .NET 9, Jellyfin 10.11.x-targeted, HTTP-only contract with the service.</li>
