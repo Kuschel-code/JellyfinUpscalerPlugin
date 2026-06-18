@@ -508,6 +508,16 @@ namespace JellyfinUpscalerPlugin
         /// <summary>Path to a .cube LUT file for color grading (empty = disabled). Only used when preset is "custom".</summary>
         public string FilterLutPath { get; set; } = "";
 
+        // ── Pipeline parallelism (v1.8.3, experimental) ──
+
+        /// <summary>
+        /// Overlap frame EXTRACTION with UPSCALING instead of running them as two sequential
+        /// phases (extract all, then upscale all). Off by default; when off, the pipeline is
+        /// byte-identical to before. Experimental: the throughput win shows on fast hardware;
+        /// verify on your box before relying on it.
+        /// </summary>
+        public bool EnablePipelineParallelism { get; set; } = false;
+
         // ── Denoise prefilter (v1.8.2 — Netflix lesson: denoise before encode/upscale) ──
 
         /// <summary>

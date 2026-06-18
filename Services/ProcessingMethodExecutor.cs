@@ -132,6 +132,10 @@ namespace JellyfinUpscalerPlugin.Services
             ProcessingJob job,
             CancellationToken cancellationToken)
         {
+            // v1.8.3 - opt-in: overlap extraction with upscaling. The default path below is unchanged.
+            if (Config.EnablePipelineParallelism)
+                return await ProcessFrameByFrameOverlappedAsync(inputPath, outputPath, job, cancellationToken);
+
             try
             {
                 _logger.LogInformation("Starting frame-by-frame processing");
@@ -205,6 +209,186 @@ namespace JellyfinUpscalerPlugin.Services
                     Method = ProcessingMethod.FrameByFrame
                 };
             }
+        }
+
+        /// <summary>
+        /// v1.8.3 (experimental, opt-in via EnablePipelineParallelism) - overlaps frame extraction
+        /// with upscaling through the FrameStreamCoordinator. Producer = extraction Task that records
+        /// the terminal state on the coordinator and never rethrows (the error is owned by the
+        /// coordinator and surfaces once, via the consumer). Watcher = reports the monotonic high-water
+        /// frame count during extraction. Consumer = upscales proven frames as they appear, deletes
+        /// each after (peak disk stays &lt;= the sequential path), and on a FAILED extraction surfaces
+        /// the cause exactly once. The default ProcessFrameByFrameAsync path is untouched.
+        /// </summary>
+        private async Task<VideoProcessingResult> ProcessFrameByFrameOverlappedAsync(
+            string inputPath,
+            string outputPath,
+            ProcessingJob job,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                _logger.LogInformation("Starting frame-by-frame processing (pipeline-parallel)");
+
+                var tempDir = Path.Combine(Path.GetTempPath(), "JellyfinUpscaler", job.Id);
+                Directory.CreateDirectory(tempDir);
+
+                var driveInfo = new DriveInfo(Path.GetPathRoot(tempDir) ?? "/");
+                var estimatedSpaceNeeded = (long)((job.InputInfo?.Duration.TotalSeconds ?? 300) * 25 * 500_000);
+                if (driveInfo.AvailableFreeSpace < estimatedSpaceNeeded)
+                {
+                    _logger.LogError("Insufficient disk space. Need ~{Need}GB, have {Have}GB",
+                        estimatedSpaceNeeded / 1_000_000_000.0, driveInfo.AvailableFreeSpace / 1_000_000_000.0);
+                    throw new InvalidOperationException("Insufficient disk space for frame extraction");
+                }
+
+                try
+                {
+                    var framesDir = Path.Combine(tempDir, "frames");
+                    var processedDir = Path.Combine(tempDir, "processed");
+                    Directory.CreateDirectory(framesDir);
+                    Directory.CreateDirectory(processedDir);
+
+                    var framesFps = job.InputInfo?.FrameRate ?? 30.0;
+                    var isInterlaced = job.InputInfo?.IsInterlaced ?? false;
+                    var isHDR = job.InputInfo?.IsHDR ?? false;
+                    var estTotalFrames = (int)((job.InputInfo?.Duration.TotalSeconds ?? 0) * framesFps);
+
+                    var coord = new FrameStreamCoordinator();
+                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    var ct = linkedCts.Token;
+
+                    job.Phase = "Upscaling"; // extraction + upscaling run together now
+
+                    // PRODUCER - extraction. Reports the FINAL frame count BEFORE the terminal mark (so the
+                    // consumer can never see a stale count + completed = premature AllDone), then records
+                    // the terminal state. Never rethrows: the error is owned by the coordinator.
+                    var producer = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _frameProcessor.ExtractFramesAsync(inputPath, framesDir, framesFps, ct, isInterlaced, isHDR, job.Id, estTotalFrames);
+                            coord.UpdateAvailable(MaxFrameNumber(framesDir));
+                            coord.MarkExtractionComplete();
+                        }
+                        catch (Exception ex)
+                        {
+                            coord.UpdateAvailable(MaxFrameNumber(framesDir)); // count what was written (the partial highest is dropped by FAILED)
+                            coord.MarkExtractionFailed(ex);
+                        }
+                    }, ct);
+
+                    // WATCHER - during extraction, report the monotonic high-water frame number, robust to
+                    // the consumer deleting already-upscaled low-index frames. The producer owns the final count.
+                    var watcher = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            while (!ct.IsCancellationRequested && !coord.ExtractionComplete && !coord.ExtractionFailed)
+                            {
+                                coord.UpdateAvailable(MaxFrameNumber(framesDir));
+                                await Task.Delay(500, ct);
+                            }
+                        }
+                        catch (OperationCanceledException) { /* normal on cancel */ }
+                    }, ct);
+
+                    // CONSUMER - upscale proven frames as they appear (the awaited body).
+                    int processed = 0, failed = 0;
+                    var startTime = DateTime.UtcNow;
+                    try
+                    {
+                        while (true)
+                        {
+                            int idx = coord.Next();
+                            if (idx == FrameStreamCoordinator.AllDone) break;
+                            if (idx == FrameStreamCoordinator.Failed)
+                                throw coord.Error ?? new InvalidOperationException("Frame extraction failed");
+                            if (idx == FrameStreamCoordinator.NoneReady)
+                            {
+                                await Task.Delay(150, ct); // bounded poll = the liveness/correctness guarantee
+                                continue;
+                            }
+
+                            while (_pausedJobs.GetValueOrDefault(job.Id, false))
+                                await Task.Delay(500, ct);
+
+                            var frameFile = Path.Combine(framesDir, $"frame_{idx + 1:D6}.png");
+                            try
+                            {
+                                await _frameProcessor.UpscaleSingleFrameAsync(frameFile, processedDir, job.OptimizedOptions, isHDR, ct);
+                            }
+                            catch (OperationCanceledException) { throw; }
+                            catch (Exception ex)
+                            {
+                                failed++;
+                                _logger.LogWarning(ex, "Pipeline: frame {Frame} upscale failed, using original", Path.GetFileName(frameFile));
+                                try
+                                {
+                                    var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFile));
+                                    if (File.Exists(frameFile)) File.Copy(frameFile, outputFile, true);
+                                }
+                                catch { /* best-effort original passthrough */ }
+                                if (estTotalFrames > 0 && failed > estTotalFrames / 2)
+                                    throw new InvalidOperationException($"Too many frame failures: {failed}");
+                            }
+
+                            try { File.Delete(frameFile); } catch { /* drain so peak disk stays <= the sequential path */ }
+
+                            processed++;
+                            var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
+                            await _progressHub.SendFrameProgress(job.Id, Path.GetFileName(frameFile),
+                                processed, estTotalFrames > 0 ? estTotalFrames : processed, elapsed > 0 ? processed / elapsed : 0);
+                        }
+                    }
+                    finally
+                    {
+                        linkedCts.Cancel();
+                        try { await Task.WhenAll(producer, watcher); }
+                        catch { /* both tasks are terminal by now; never throw from finally over a live exception */ }
+                    }
+
+                    job.Phase = "Encoding";
+                    await _frameProcessor.ReconstructVideoAsync(processedDir, inputPath, outputPath, job.OptimizedOptions, framesFps, cancellationToken, job.InputInfo);
+
+                    return new VideoProcessingResult
+                    {
+                        Success = true,
+                        OutputPath = outputPath,
+                        ProcessingTime = DateTime.UtcNow - job.StartTime,
+                        Method = ProcessingMethod.FrameByFrame
+                    };
+                }
+                finally
+                {
+                    try { Directory.Delete(tempDir, true); }
+                    catch (Exception ex) { _logger.LogWarning(ex, "Failed to cleanup temp directory"); }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Pipeline-parallel processing failed");
+                return new VideoProcessingResult
+                {
+                    Success = false,
+                    Error = ex.Message,
+                    Method = ProcessingMethod.FrameByFrame
+                };
+            }
+        }
+
+        // v1.8.3 - highest frame_NNNNNN number currently in framesDir (= 1-based count of frames the
+        // producer has written). Monotonic at the coordinator; consumer deletes (low indices) can't lower it.
+        private static int MaxFrameNumber(string framesDir)
+        {
+            int max = 0;
+            foreach (var f in Directory.GetFiles(framesDir, "frame_*.png"))
+            {
+                var name = Path.GetFileNameWithoutExtension(f);
+                int us = name.LastIndexOf('_');
+                if (us >= 0 && int.TryParse(name.Substring(us + 1), out int n) && n > max) max = n;
+            }
+            return max;
         }
 
         /// <summary>

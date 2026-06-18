@@ -243,6 +243,41 @@ namespace JellyfinUpscalerPlugin.Services
         /// <summary>
         /// Process frames with AI upscaling
         /// </summary>
+        /// <summary>
+        /// v1.8.3 — upscale ONE frame: read -> AI upscale -> write to processedDir; on a null/empty
+        /// AI result, copy the original through (the same fallback the batch loop always used).
+        /// Extracted so the sequential loop below AND the opt-in overlapped pipeline call the
+        /// identical per-frame path. Returns true if the AI result was used, false if the original
+        /// was copied. Throws on I/O or service errors so the caller decides how to count the failure.
+        /// </summary>
+        public async Task<bool> UpscaleSingleFrameAsync(
+            string frameFile,
+            string processedDir,
+            VideoProcessingOptions options,
+            bool isHDR,
+            CancellationToken cancellationToken)
+        {
+            var frameData = await File.ReadAllBytesAsync(frameFile, cancellationToken);
+            byte[]? upscaledData = isHDR
+                ? await UpscaleHDRFrameAsync(frameData, options.ScaleFactor, cancellationToken)
+                : await _upscalerCore.UpscaleImageAsync(frameData, options.Model, options.ScaleFactor, cancellationToken);
+
+            var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFile));
+            if (upscaledData != null && upscaledData.Length > 0)
+            {
+                await File.WriteAllBytesAsync(outputFile, upscaledData, cancellationToken);
+                return true;
+            }
+
+            _logger.LogWarning("AI service returned null for frame {Frame}, using original", Path.GetFileName(frameFile));
+            await using (var src = new FileStream(frameFile, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 81920, useAsync: true))
+            await using (var dst = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920, useAsync: true))
+            {
+                await src.CopyToAsync(dst, cancellationToken);
+            }
+            return false;
+        }
+
         public async Task ProcessFramesAsync(
             string framesDir,
             string processedDir,
@@ -289,38 +324,10 @@ namespace JellyfinUpscalerPlugin.Services
                             await Task.Delay(500, cancellationToken);
                         }
 
-                        var frameData = await File.ReadAllBytesAsync(frameFile, cancellationToken);
-                        byte[]? upscaledData;
-                        if (isHDR)
-                        {
-                            upscaledData = await UpscaleHDRFrameAsync(frameData, options.ScaleFactor, cancellationToken);
-                        }
-                        else
-                        {
-                            // v1.7.0 - cancellationToken now propagates from frame-loop to AI call.
-                            // v20/v21 added RequestAborted to 16 HttpClient sites; this is the outer
-                            // loop that feeds them. Previously dropping the token here meant cancel
-                            // had to wait for the HTTP timeout per frame instead of bailing immediately.
-                            upscaledData = await _upscalerCore.UpscaleImageAsync(frameData, options.Model, options.ScaleFactor, cancellationToken);
-                        }
-
-                        var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFile));
-                        if (upscaledData != null && upscaledData.Length > 0)
-                        {
-                            await File.WriteAllBytesAsync(outputFile, upscaledData, cancellationToken);
-                        }
-                        else
-                        {
-                            _logger.LogWarning("AI service returned null for frame {Frame}, using original", Path.GetFileName(frameFile));
-                            // v1.6.1.21 - async streaming (P1a). Was sync File.Copy on frame-loop hot-path:
-                            // blocked the thread-pool thread for 5-30s per frame on NAS-mounted disks.
-                            // Symmetric to the CacheManager:307 fix in v1.6.1.20.
-                            await using (var src = new FileStream(frameFile, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 81920, useAsync: true))
-                            await using (var dst = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920, useAsync: true))
-                            {
-                                await src.CopyToAsync(dst, cancellationToken);
-                            }
-                        }
+                        // v1.8.3 - per-frame upscale extracted to UpscaleSingleFrameAsync so the
+                        // opt-in overlapped pipeline reuses the identical path (read -> upscale ->
+                        // write, copy the original through on a null AI result). Behaviour unchanged here.
+                        await UpscaleSingleFrameAsync(frameFile, processedDir, options, isHDR, cancellationToken);
 
                         Interlocked.Increment(ref processedFrames);
 
