@@ -558,6 +558,7 @@
                         <div class="details-body">
                             <div class="checkboxContainer"><label><input type="checkbox" id="EnablePerformanceMetrics" /> Performance Metrics</label></div>
                             <div class="checkboxContainer"><label><input type="checkbox" id="EnableAutoBenchmarking" /> Auto-Benchmarking</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnablePipelineParallelism" /> Pipeline parallelism (experimental: overlap extract + upscale)</label></div>
                         </div>
                     </details>
 
@@ -1485,7 +1486,7 @@
                     'PauseQueueDuringPlayback','PersistQueueAcrossRestarts',
                     'WebhookOnComplete','WebhookOnFailure',
                     'RestrictToUnwatchedContent','SkipUpscaledOnRescan',
-                    'EnableRealtimeUpscaling','EnableVideoFilters','EnableDenoisePrefilter',
+                    'EnableRealtimeUpscaling','EnableVideoFilters','EnableDenoisePrefilter','EnablePipelineParallelism',
                     'EnableFaceRestore'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
@@ -1570,7 +1571,7 @@
                     'PauseQueueDuringPlayback','PersistQueueAcrossRestarts',
                     'WebhookOnComplete','WebhookOnFailure',
                     'RestrictToUnwatchedContent','SkipUpscaledOnRescan',
-                    'EnableRealtimeUpscaling','EnableVideoFilters','EnableDenoisePrefilter',
+                    'EnableRealtimeUpscaling','EnableVideoFilters','EnableDenoisePrefilter','EnablePipelineParallelism',
                     'EnableFaceRestore'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
