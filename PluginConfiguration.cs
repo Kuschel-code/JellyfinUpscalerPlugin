@@ -24,7 +24,6 @@ namespace JellyfinUpscalerPlugin
         private const int DefaultHealthCheckIntervalSeconds = 60;
         private const int DefaultMinResolutionWidth = 1920;
         private const int DefaultMinResolutionHeight = 1080;
-        private const int DefaultRemoteSshPort = 2222;
         private const int DefaultRealtimeTargetFps = 24;
         private const int DefaultRealtimeCaptureWidth = 480;
         private const int DefaultModelDiskQuotaMB = 2048;
@@ -38,7 +37,6 @@ namespace JellyfinUpscalerPlugin
         private int _maxCacheAgeDays = DefaultMaxCacheAgeDays;
         private int _cacheSizeMB = DefaultCacheSizeMB;
         private int _gpuDeviceIndex;
-        private int _remoteSshPort = DefaultRemoteSshPort;
         private int _minResolutionWidth = DefaultMinResolutionWidth;
         private int _minResolutionHeight = DefaultMinResolutionHeight;
         private int _maxItemsPerScan;
@@ -156,36 +154,6 @@ namespace JellyfinUpscalerPlugin
             get => _gpuDeviceIndex;
             set => _gpuDeviceIndex = Math.Clamp(value, 0, 64); // v1.7.2 - sane upper-cap (no realistic 64+ GPU systems)
         }
-
-        // ── Remote Transcoding Configuration (SSH/rffmpeg style) ─────────
-
-        /// <summary>Enable SSH-based remote transcoding to the Docker container.</summary>
-        public bool EnableRemoteTranscoding { get; set; } = false;
-
-        /// <summary>Remote host address for SSH transcoding.</summary>
-        public string RemoteHost { get; set; } = "localhost";
-
-        /// <summary>SSH port for remote transcoding (1-65535).</summary>
-        public int RemoteSshPort
-        {
-            get => _remoteSshPort;
-            set => _remoteSshPort = Math.Clamp(value, 1, 65535);
-        }
-
-        /// <summary>SSH username for remote transcoding.</summary>
-        public string RemoteUser { get; set; } = "root";
-
-        /// <summary>Path to SSH private key file for remote authentication.</summary>
-        public string RemoteSshKeyFile { get; set; } = "";
-
-        /// <summary>Local media mount point for path mapping (e.g. "C:\Media").</summary>
-        public string LocalMediaMountPoint { get; set; } = "";
-
-        /// <summary>Remote media mount point for path mapping (e.g. "/media").</summary>
-        public string RemoteMediaMountPoint { get; set; } = "";
-
-        /// <summary>Shared transcode directory on the remote host.</summary>
-        public string RemoteTranscodePath { get; set; } = "/transcode";
 
         // ── Scheduled Task: Library Scan ─────────────────────────────────
 

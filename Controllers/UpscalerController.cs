@@ -304,7 +304,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             var config = Plugin.Instance?.Configuration;
             if (config == null) return BadRequest();
-            // Return only non-sensitive operational state (not full config with SSH paths etc.)
+            // Return only non-sensitive operational state (not the full config).
             return Ok(new
             {
                 status = "Active",
@@ -1078,16 +1078,11 @@ namespace JellyfinUpscalerPlugin.Controllers
                 var inputParent = Path.GetFullPath(Path.GetDirectoryName(inputPath) ?? string.Empty);
                 var outputParent = Path.GetFullPath(Path.GetDirectoryName(outputPath) ?? string.Empty);
                 var inputParentWithSep = inputParent.EndsWith(Path.DirectorySeparatorChar) ? inputParent : inputParent + Path.DirectorySeparatorChar;
-                var transcodePath = Plugin.Instance?.Configuration?.RemoteTranscodePath ?? "";
-                var validTranscode = !string.IsNullOrEmpty(transcodePath) && Path.IsPathRooted(transcodePath);
-                var transcodeWithSep = validTranscode ? (transcodePath.EndsWith(Path.DirectorySeparatorChar) ? transcodePath : transcodePath + Path.DirectorySeparatorChar) : "";
 
                 if (!outputParent.Equals(inputParent, StringComparison.OrdinalIgnoreCase) &&
-                    !outputParent.StartsWith(inputParentWithSep, StringComparison.OrdinalIgnoreCase) &&
-                    !(validTranscode && (outputParent.Equals(transcodePath, StringComparison.OrdinalIgnoreCase) ||
-                      outputParent.StartsWith(transcodeWithSep, StringComparison.OrdinalIgnoreCase))))
+                    !outputParent.StartsWith(inputParentWithSep, StringComparison.OrdinalIgnoreCase))
                 {
-                    return BadRequest(new { success = false, error = "Output path must be under the input directory or transcode path" });
+                    return BadRequest(new { success = false, error = "Output path must be under the input directory" });
                 }
             }
 
@@ -1319,14 +1314,6 @@ namespace JellyfinUpscalerPlugin.Controllers
                         config.MaxVRAMUsage,
                         config.CpuThreads,
                         config.AiServiceUrl,
-                        config.EnableRemoteTranscoding,
-                        RemoteHost = "[REDACTED]",
-                        RemoteSshPort = "[REDACTED]",
-                        RemoteUser = "[REDACTED]",
-                        RemoteSshKeyFile = "[REDACTED]",
-                        config.LocalMediaMountPoint,
-                        config.RemoteMediaMountPoint,
-                        config.RemoteTranscodePath,
                         config.PlayerButton,
                         config.Notifications,
                         config.AutoRetryButton,
@@ -1448,29 +1435,6 @@ namespace JellyfinUpscalerPlugin.Controllers
                     if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && (uri.Scheme == "http" || uri.Scheme == "https"))
                         config.AiServiceUrl = url;
                 });
-                TryApply("EnableRemoteTranscoding", val => config.EnableRemoteTranscoding = val.GetBoolean());
-                TryApply("RemoteHost", val =>
-                {
-                    var host = val.GetString() ?? "";
-                    if (System.Text.RegularExpressions.Regex.IsMatch(host, @"^[a-zA-Z0-9.\-:]+$"))
-                        config.RemoteHost = host;
-                });
-                TryApply("RemoteSshPort", val => config.RemoteSshPort = val.GetInt32());
-                TryApply("RemoteUser", val =>
-                {
-                    var user = val.GetString() ?? "";
-                    if (System.Text.RegularExpressions.Regex.IsMatch(user, @"^[a-zA-Z0-9._\-]+$"))
-                        config.RemoteUser = user;
-                });
-                TryApply("RemoteSshKeyFile", val =>
-                {
-                    var keyFile = val.GetString() ?? "";
-                    if (!string.IsNullOrEmpty(keyFile) && !keyFile.Contains("..") && Path.IsPathRooted(keyFile))
-                        config.RemoteSshKeyFile = keyFile;
-                });
-                TryApply("LocalMediaMountPoint", val => { var path = val.GetString() ?? ""; if (!path.Contains("..")) config.LocalMediaMountPoint = path; });
-                TryApply("RemoteMediaMountPoint", val => { var path = val.GetString() ?? ""; if (!path.Contains("..")) config.RemoteMediaMountPoint = path; });
-                TryApply("RemoteTranscodePath", val => { var path = val.GetString() ?? ""; if (!path.Contains("..")) config.RemoteTranscodePath = path; });
                 TryApply("PlayerButton", val => config.PlayerButton = val.GetBoolean());
                 TryApply("Notifications", val => config.Notifications = val.GetBoolean());
                 TryApply("AutoRetryButton", val => config.AutoRetryButton = val.GetBoolean());
@@ -2142,105 +2106,6 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
-        /// <summary>
-        /// Test SSH connection to remote transcoding host (admin only)
-        /// </summary>
-        [HttpPost("ssh/test")]
-        [Authorize(Policy = "RequiresElevation")]
-        [Produces(MediaTypeNames.Application.Json)]
-        public async Task<ActionResult<object>> TestSshConnection([FromBody] SshTestRequest request)
-        {
-            try
-            {
-                // Security: Validate inputs to prevent command injection
-                if (!Regex.IsMatch(request.Host, @"^[a-zA-Z0-9._\-]+$"))
-                    return BadRequest(new { success = false, message = "Invalid host format. Only alphanumeric, dots, hyphens allowed." });
-
-                if (!Regex.IsMatch(request.User, @"^[a-zA-Z0-9._\-]+$"))
-                    return BadRequest(new { success = false, message = "Invalid user format. Only alphanumeric, dots, hyphens allowed." });
-
-                if (request.Port < 1 || request.Port > 65535)
-                    return BadRequest(new { success = false, message = "Invalid port. Must be 1-65535." });
-
-                _logger.LogInformation("Testing SSH connection to {User}@{Host}:{Port}", request.User, request.Host, request.Port);
-
-                var psi = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "ssh",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
-
-                // Use ArgumentList to prevent shell injection
-                if (!string.IsNullOrWhiteSpace(request.KeyFile))
-                {
-                    var resolvedKeyPath = Path.GetFullPath(request.KeyFile);
-                    if (!IOFile.Exists(resolvedKeyPath))
-                        return BadRequest(new { success = false, message = "SSH key file not found." });
-
-                    // Security: Reject symbolic links to prevent symlink bypass
-                    var keyFileInfo = new FileInfo(resolvedKeyPath);
-                    if (keyFileInfo.LinkTarget != null)
-                    {
-                        return BadRequest(new { success = false, message = "Symbolic links are not allowed for SSH key files." });
-                    }
-
-                    // Security: Restrict key file to .ssh directories or plugin data path
-                    var sshDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh");
-                    var pluginDir = Plugin.Instance != null ? Path.GetDirectoryName(Plugin.Instance.ConfigurationFilePath) ?? "" : "";
-                    if (!resolvedKeyPath.StartsWith(sshDir, StringComparison.OrdinalIgnoreCase) &&
-                        !resolvedKeyPath.StartsWith(pluginDir, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return BadRequest(new { success = false, message = "SSH key file must be in ~/.ssh/ or plugin data directory." });
-                    }
-
-                    psi.ArgumentList.Add("-i");
-                    psi.ArgumentList.Add(resolvedKeyPath);
-                }
-
-                psi.ArgumentList.Add("-o");
-                psi.ArgumentList.Add("BatchMode=yes");
-                psi.ArgumentList.Add("-o");
-                psi.ArgumentList.Add("StrictHostKeyChecking=accept-new");
-                psi.ArgumentList.Add("-o");
-                psi.ArgumentList.Add("ConnectTimeout=5");
-                psi.ArgumentList.Add("-p");
-                psi.ArgumentList.Add(request.Port.ToString());
-                psi.ArgumentList.Add($"{request.User}@{request.Host}");
-                psi.ArgumentList.Add("echo 'SSH_TEST_SUCCESS'");
-
-                using var process = new System.Diagnostics.Process { StartInfo = psi };
-                process.Start();
-
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-                var output = await process.StandardOutput.ReadToEndAsync(cts.Token);
-                var error = await process.StandardError.ReadToEndAsync(cts.Token);
-                await process.WaitForExitAsync(cts.Token);
-
-                if (process.ExitCode == 0 && output.Contains("SSH_TEST_SUCCESS"))
-                {
-                    _logger.LogInformation("SSH connection test successful");
-                    return Ok(new { success = true, message = "SSH connection successful" });
-                }
-                else
-                {
-                    _logger.LogWarning("SSH connection test failed: {Error}", error);
-                    return Ok(new { success = false, message = "SSH connection failed" });
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                return Ok(new { success = false, message = "SSH connection timed out after 15 seconds" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "SSH connection test error");
-                return Ok(new { success = false, message = "SSH test error" });
-            }
-        }
-
         // v1.7.1 - The local _validFilterPresets array previously here moved to
         // VideoFilterService.SupportedPresets (single source of truth, semantically lives where
         // the preset implementations live). 5 inline references in this file now go through there.
@@ -2430,17 +2295,6 @@ namespace JellyfinUpscalerPlugin.Controllers
                 return StatusCode(500, new { message = "Filter preview failed", error = "Internal server error" });
             }
         }
-    }
-
-    /// <summary>
-    /// Request model for SSH connection test
-    /// </summary>
-    public class SshTestRequest
-    {
-        public string Host { get; set; } = "localhost";
-        public int Port { get; set; } = 2222;
-        public string User { get; set; } = "root";
-        public string KeyFile { get; set; } = "";
     }
 
     /// <summary>

@@ -7,13 +7,20 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.1</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.2</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.1 - Cancel-fix <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.2 - Remove dead SSH remote transcoding <span class="tag success">latest</span></h2>
+  <p><em>2026-06.</em> Plugin-only release (closes #73).</p>
+  <ul>
+    <li><strong>Removed the stale SSH remote-transcoding path.</strong> The docker7 image dropped sshd long ago (non-root appuser hardening), but the plugin still shipped SSH config + UI, a <code>/Upscaler/ssh/test</code> endpoint that ran <code>ssh</code>, and an FFmpeg-wrapper installer. All of it is gone, including the now-orphaned PlatformDetectionService.</li>
+    <li><strong>Offload over HTTP instead.</strong> Point <strong>AI Service URL</strong> at <code>http://&lt;host&gt;:5000</code> - no SSH, no wrapper script. Removes an admin endpoint that executed <code>ssh</code>. Existing docker7 images unaffected.</li>
+  </ul>
+
+  <h2>v1.8.3.1 - Cancel-fix</h2>
   <p><em>2026-06.</em> Plugin-only release.</p>
   <ul>
     <li><strong>Cancel actually stops a job now.</strong> The job-cancel endpoint reported success but never halted the running job: the per-job cancellation token was created and cancelled correctly, but the bare caller token (not the linked per-job token) was passed into the extraction/upscaling pipeline, so the signal never arrived. The semaphore wait, model load and the method executor now all receive the linked per-job token. Pre-existing across all processing methods.</li>
@@ -334,7 +341,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.1</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.2</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

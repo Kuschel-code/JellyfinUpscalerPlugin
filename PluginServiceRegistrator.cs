@@ -50,10 +50,6 @@ namespace JellyfinUpscalerPlugin
             // Video Filters (Camera-Style)
             serviceCollection.AddSingleton<VideoFilterService>();
 
-            // Platform & Interop
-            serviceCollection.AddSingleton<IPlatformDetectionService, PlatformDetectionService>();
-            serviceCollection.AddSingleton<IFFmpegWrapperService, FFmpegWrapperService>();
-
             // v1.7.3.1 - test-seam adapters (extracted to make Jellyfin-API-dependent
             // logic mockable in unit tests).
             serviceCollection.AddSingleton<IUserManagerAdapter, UserManagerAdapter>();

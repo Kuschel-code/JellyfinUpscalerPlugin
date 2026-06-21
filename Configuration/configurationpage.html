@@ -206,7 +206,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.8.3.1 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.8.3.2 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -365,33 +365,6 @@
                                 <button type="button" id="btn-test-connection" class="raised">Test Connection</button>
                                 <button type="button" id="btn-test-upscale" class="raised" style="margin-left:0.5rem;">Test Upscale</button>
                                 <span id="connection-status" style="font-size:0.85rem;margin-left:0.5rem;"></span>
-                            </div>
-                        </div>
-                    </details>
-
-                    <!-- Remote Transcoding (SSH) -->
-                    <details>
-                        <summary>Remote Transcoding (SSH)</summary>
-                        <div class="details-body">
-                            <div class="checkboxContainer">
-                                <label><input type="checkbox" id="EnableRemoteTranscoding" /> Enable Remote Transcoding</label>
-                            </div>
-                            <div id="ssh-fields" class="form-row" style="margin-top:0.5rem;">
-                                <div class="form-col inputContainer"><label class="inputLabel" for="RemoteHost">Host</label><input type="text" id="RemoteHost" /></div>
-                                <div class="form-col inputContainer"><label class="inputLabel" for="RemoteSshPort">SSH Port</label><input type="number" id="RemoteSshPort" /></div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-col inputContainer"><label class="inputLabel" for="RemoteUser">User</label><input type="text" id="RemoteUser" /></div>
-                                <div class="form-col inputContainer"><label class="inputLabel" for="RemoteSshKeyFile">SSH Key File</label><input type="text" id="RemoteSshKeyFile" /></div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-col inputContainer"><label class="inputLabel" for="LocalMediaMountPoint">Local Media Path</label><input type="text" id="LocalMediaMountPoint" /></div>
-                                <div class="form-col inputContainer"><label class="inputLabel" for="RemoteMediaMountPoint">Remote Media Path</label><input type="text" id="RemoteMediaMountPoint" /></div>
-                            </div>
-                            <div class="inputContainer"><label class="inputLabel" for="RemoteTranscodePath">Remote Transcode Path</label><input type="text" id="RemoteTranscodePath" /></div>
-                            <div style="margin-top:0.5rem;">
-                                <button type="button" id="btn-test-ssh" class="raised">Test SSH</button>
-                                <span id="ssh-status" style="font-size:0.85rem;margin-left:0.5rem;"></span>
                             </div>
                         </div>
                     </details>
@@ -559,26 +532,6 @@
                             <div class="checkboxContainer"><label><input type="checkbox" id="EnablePerformanceMetrics" /> Performance Metrics</label></div>
                             <div class="checkboxContainer"><label><input type="checkbox" id="EnableAutoBenchmarking" /> Auto-Benchmarking</label></div>
                             <div class="checkboxContainer"><label><input type="checkbox" id="EnablePipelineParallelism" /> Pipeline parallelism (experimental: overlap extract + upscale)</label></div>
-                        </div>
-                    </details>
-
-                    <!-- FFmpeg Wrapper -->
-                    <details>
-                        <summary>FFmpeg Wrapper</summary>
-                        <div class="details-body">
-                            <div style="margin-bottom:0.5rem;">
-                                <span style="color:var(--text-secondary);font-size:0.85rem;">Status: </span>
-                                <span id="wrapper-status" style="font-weight:bold;font-size:0.85rem;">...</span>
-                                <span id="wrapper-platform" style="color:var(--text-muted);font-size:0.78rem;margin-left:0.5rem;"></span>
-                            </div>
-                            <div id="wrapper-path-container" style="display:none;margin-bottom:0.5rem;font-size:0.78rem;color:var(--text-muted);">
-                                Path: <code id="wrapper-path"></code>
-                            </div>
-                            <div>
-                                <button type="button" id="btn-install-wrapper" class="raised">Install</button>
-                                <button type="button" id="btn-uninstall-wrapper" class="raised">Uninstall</button>
-                                <button type="button" id="btn-regenerate-wrapper" class="raised">Regenerate</button>
-                            </div>
                         </div>
                     </details>
 
@@ -1461,8 +1414,7 @@
                 // Store config globally for perf monitor / benchmark fetch calls
                 window._pluginConfig = config;
 
-                var fields = ['AiServiceUrl','AiServiceApiToken','RemoteHost','RemoteSshPort','RemoteUser','RemoteSshKeyFile',
-                    'LocalMediaMountPoint','RemoteMediaMountPoint','RemoteTranscodePath',
+                var fields = ['AiServiceUrl','AiServiceApiToken',
                     'MaxConcurrentStreams','MaxCacheAgeDays','CacheSizeMB',
                     'ModelFallbackChain','PreferredAnimeModel','PreferredLiveActionModel','WebhookUrl',
                     'MinResolutionWidth','MinResolutionHeight','MaxItemsPerScan',
@@ -1482,7 +1434,7 @@
 
                 var checks = ['EnablePlugin','HardwareAcceleration',
                     'EnablePerformanceMetrics','EnableAutoBenchmarking',
-                    'EnableRemoteTranscoding','EnableAutoModelSelection',
+                    'EnableAutoModelSelection',
                     'PauseQueueDuringPlayback','PersistQueueAcrossRestarts',
                     'WebhookOnComplete','WebhookOnFailure',
                     'RestrictToUnwatchedContent','SkipUpscaledOnRescan',
@@ -1541,15 +1493,14 @@
                 saveBtn.textContent = 'Saving...';
             }
             ApiClient.getPluginConfiguration(pluginId).then(function(config) {
-                var fields = ['AiServiceUrl','AiServiceApiToken','RemoteHost','RemoteSshKeyFile','LocalMediaMountPoint',
-                    'RemoteMediaMountPoint','RemoteTranscodePath',
+                var fields = ['AiServiceUrl','AiServiceApiToken',
                     'ModelFallbackChain','PreferredAnimeModel','PreferredLiveActionModel','WebhookUrl'];
                 fields.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) config[f] = el.value;
                 });
 
-                var nums = ['RemoteSshPort','MaxConcurrentStreams','MaxCacheAgeDays','CacheSizeMB','ScaleFactor','GpuDeviceIndex',
+                var nums = ['MaxConcurrentStreams','MaxCacheAgeDays','CacheSizeMB','ScaleFactor','GpuDeviceIndex',
                     'MinResolutionWidth','MinResolutionHeight','MaxItemsPerScan','MaxQueueSize',
                     'RealtimeCaptureWidth',
                     'FilterColorTemperature','FilterFilmGrain'];
@@ -1567,7 +1518,7 @@
 
                 var checks = ['EnablePlugin','HardwareAcceleration',
                     'EnablePerformanceMetrics','EnableAutoBenchmarking',
-                    'EnableRemoteTranscoding','EnableAutoModelSelection',
+                    'EnableAutoModelSelection',
                     'PauseQueueDuringPlayback','PersistQueueAcrossRestarts',
                     'WebhookOnComplete','WebhookOnFailure',
                     'RestrictToUnwatchedContent','SkipUpscaledOnRescan',
@@ -1597,7 +1548,7 @@
                 config.RemoteUser = page.querySelector('#RemoteUser').value;
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.8.3.1';
+                config.PluginVersion = '1.8.3.2';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -1609,27 +1560,6 @@
             }).catch(function() {
                 showToast('Failed to load current settings', '#f87171');
                 if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Settings'; }
-            });
-        }
-
-        // ===== WRAPPER =====
-        function loadWrapperStatus(page) {
-            ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('upscaler/wrapper/status'), dataType: 'json' }).then(function(data) {
-                var status = page.querySelector('#wrapper-status');
-                if (data.IsInstalled) {
-                    status.textContent = 'Installed & Active';
-                    status.style.color = '#4ade80';
-                    page.querySelector('#wrapper-path-container').style.display = '';
-                    page.querySelector('#wrapper-path').textContent = data.WrapperPath;
-                } else {
-                    status.textContent = 'Not installed';
-                    status.style.color = '#f87171';
-                    page.querySelector('#wrapper-path-container').style.display = 'none';
-                }
-                page.querySelector('#wrapper-platform').textContent = (data.Platform || '') + ' ' + (data.RuntimeIdentifier || '');
-            }).catch(function() {
-                page.querySelector('#wrapper-status').textContent = 'Not configured';
-                page.querySelector('#wrapper-status').style.color = '#94a3b8';
             });
         }
 
@@ -2151,41 +2081,6 @@
                 });
             });
 
-            page.querySelector('#btn-test-ssh').addEventListener('click', function() {
-                var status = page.querySelector('#ssh-status');
-                status.textContent = 'Testing...';
-                status.style.color = '#fbbf24';
-                var body = JSON.stringify({
-                    Host: page.querySelector('#RemoteHost').value,
-                    Port: parseInt(page.querySelector('#RemoteSshPort').value) || 22,
-                    User: page.querySelector('#RemoteUser').value,
-                    KeyFile: page.querySelector('#RemoteSshKeyFile').value
-                });
-                ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('Upscaler/ssh/test'), data: body, contentType: 'application/json', dataType: 'json' }).then(function(data) {
-                    status.textContent = data.success ? 'Connected!' : data.message || 'Failed';
-                    status.style.color = data.success ? '#4ade80' : '#f87171';
-                }).catch(function() { status.textContent = 'AI service not connected'; status.style.color = '#94a3b8'; });
-            });
-
-            page.querySelector('#btn-install-wrapper').addEventListener('click', function() {
-                ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('upscaler/wrapper/install'), dataType: 'json' }).then(function(data) {
-                    showToast(data.Message || 'Wrapper installed');
-                    loadWrapperStatus(page);
-                }).catch(function() { showToast('Install failed', '#f87171'); });
-            });
-            page.querySelector('#btn-uninstall-wrapper').addEventListener('click', function() {
-                ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('upscaler/wrapper/uninstall'), dataType: 'json' }).then(function(data) {
-                    showToast(data.Message || 'Wrapper uninstalled');
-                    loadWrapperStatus(page);
-                }).catch(function() { showToast('Uninstall failed', '#f87171'); });
-            });
-            page.querySelector('#btn-regenerate-wrapper').addEventListener('click', function() {
-                ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('upscaler/wrapper/regenerate'), dataType: 'json' }).then(function(data) {
-                    showToast(data.Message || 'Wrapper regenerated');
-                    loadWrapperStatus(page);
-                }).catch(function() { showToast('Regenerate failed', '#f87171'); });
-            });
-
             page.querySelector('#btn-refresh-status').addEventListener('click', function() { refreshDashboard(page); });
             page.querySelector('#btn-refresh-jobs').addEventListener('click', function() { refreshJobs(page); });
             page.querySelector('#btn-refresh-cache').addEventListener('click', function() { refreshCache(page); });
@@ -2641,7 +2536,6 @@
             }).catch(function() {
                 loadConfig(page);
             });
-            loadWrapperStatus(page);
             loadMediaItems(page);
             loadGpuList(page);
             refreshDashboard(page);

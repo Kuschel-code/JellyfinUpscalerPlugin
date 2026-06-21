@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.1
+# Jellyfin AI Upscaler Plugin v1.8.3.2
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.8.3.1):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.8.3.2):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.1   │  │
+│  │  AI Upscaler Plugin v1.8.3.2   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -220,7 +220,6 @@ To batch-upscale your low-resolution content:
 - **Docker Microservice**: AI runs isolated in a container (no DLL conflicts, ~1.6 MB plugin)
 - **6 GPU Architectures**: NVIDIA CUDA/TensorRT, AMD ROCm, Intel OpenVINO, Vulkan/ncnn, Apple Silicon, CPU
 - **Player Integration**: In-player button with quick settings menu, FPS overlay, keyboard shortcuts (Alt+U, Alt+M)
-- **SSH Remote Transcoding**: Offload FFmpeg to GPU containers via SSH
 - **Web UI**: Model management at `http://YOUR_SERVER_IP:5000`
 
 ---
@@ -277,7 +276,6 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 | **Real-Time Upscaling** | Enable/disable real-time enhancement during playback |
 | **Output Codec** | Codec for upscaled videos: H.264, H.265, or copy |
 | **MaxItemsPerScan** | Limit items per scan run (default: unlimited) |
-| **Remote Transcoding** | Enable SSH-based remote transcoding |
 
 ---
 
@@ -300,6 +298,14 @@ Each tag is published three ways so you can pin precisely:
 ---
 
 ## Changelog
+
+### v1.8.3.2 (Remove dead SSH remote transcoding)
+
+**Plugin-only release** (closes [#73](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/73)).
+
+- **Removed the stale SSH remote-transcoding path.** The `docker7` image dropped `sshd` long ago (non-root `appuser` hardening), but the plugin still shipped SSH config fields, a UI section, a `/Upscaler/ssh/test` endpoint that shelled out to `ssh`, and an FFmpeg-wrapper-script installer (`/Upscaler/wrapper/*`). All of it is gone: 8 config fields, both endpoint groups, `FFmpegWrapperService` + `FFmpegWrapperController` + the now-orphaned `PlatformDetectionService`, and the matching config-page sections.
+- **Use the HTTP path instead.** Offloading to a GPU host is done by pointing **AI Service URL** at `http://<host>:5000` - no SSH, no wrapper script.
+- **Security.** Removes an admin endpoint that executed `ssh` and an installer that wrote a script next to the plugin DLL. Existing `docker7` images are unaffected. Tests: xUnit 164, build clean.
 
 ### v1.8.3.1 (Cancel-fix)
 

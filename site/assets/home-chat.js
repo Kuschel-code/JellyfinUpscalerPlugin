@@ -86,7 +86,7 @@
   }
 
   function issueUrl(q) {
-    var body = "**Problem:**\n" + (q || "") + "\n\n**Plugin version:** v1.8.3.1\n**Docker image tag:** (e.g. docker7-intel)\n**Hardware / GPU:** \n**Jellyfin version:** \n**/gpu-verify output:** \n**Relevant logs:** ";
+    var body = "**Problem:**\n" + (q || "") + "\n\n**Plugin version:** v1.8.3.2\n**Docker image tag:** (e.g. docker7-intel)\n**Hardware / GPU:** \n**Jellyfin version:** \n**/gpu-verify output:** \n**Relevant logs:** ";
     return NEWISSUE + "?title=" + encodeURIComponent((q || "Support request").slice(0, 80)) + "&body=" + encodeURIComponent(body);
   }
 

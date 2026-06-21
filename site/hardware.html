@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.1</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.2</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Hardware guide</h1>
@@ -101,17 +101,9 @@
     <li><strong>Encoders:</strong> the plugin exposes 12 codec options with tuned defaults (see <a href="configuration.html">Config → Output Codec</a>).</li>
     <li><strong>Tonemap:</strong> HDR→SDR via <code>tonemap_cuda</code> / <code>tonemap_opencl</code> handled by Jellyfin's stream path, runs before the upscale filter.</li>
   </ul>
-
-  <h2>Remote transcoding (optional)</h2>
-  <p>Set <code>Enable Remote Transcoding</code> and the plugin installs a wrapper script that redirects Jellyfin's FFmpeg invocations to the AI service host over SSH. Use this when your Jellyfin server has no GPU but a separate desktop on the LAN does.</p>
-  <pre><code>POST /Upscaler/wrapper/install
-# generates on-disk next to the plugin DLL:
-#   Linux : upscale-wrapper.sh
-#   Win   : upscale-wrapper.bat + upscale-logic.ps1</code></pre>
-  <div class="callout"><strong>Prereq:</strong> password-less SSH from Jellyfin host to the GPU host, with <code>ffmpeg</code> on the <code>$PATH</code> at the remote end.</div>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.1</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.2</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>
