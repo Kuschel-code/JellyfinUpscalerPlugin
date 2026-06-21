@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.8.3.3",
+        "changelog": "v1.8.3.3: Fix config-page Save (regression in v1.8.3.2). The v1.8.3.2 SSH cleanup left one stale, unguarded line in the settings Save handler (config.RemoteUser referencing the removed #RemoteUser input) that threw a TypeError, so saving plugin settings failed. Removed that line; no other change. Tests: xUnit 164, build clean.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.3.3/JellyfinUpscalerPlugin-v1.8.3.3.zip",
+        "checksum": "5aefaa7325e1a387e65e08e5bfab3561",
+        "timestamp": "2026-06-21T13:00:00.000Z"
+      },
+      {
         "version": "1.8.3.2",
         "changelog": "v1.8.3.2: Remove dead SSH remote-transcoding (Issue #73). The docker7 image dropped sshd long ago (non-root appuser hardening), but the plugin still shipped SSH remote-transcoding config + UI, a /Upscaler/ssh/test endpoint that shelled out to ssh, and an FFmpeg-wrapper-script installer (/Upscaler/wrapper/*). All removed: 8 SSH config fields, the ssh/test + wrapper endpoints, FFmpegWrapperService + FFmpegWrapperController + the now-orphaned PlatformDetectionService, and the config-page sections. Offloading to a GPU host now uses the existing HTTP path only (set AI Service URL to http://host:5000, no SSH). Security: removes an admin endpoint that executed ssh and an on-disk script installer. Plugin-only; existing docker7 images unaffected. Tests: xUnit 164, build clean.",
         "targetAbi": "10.11.8.0",

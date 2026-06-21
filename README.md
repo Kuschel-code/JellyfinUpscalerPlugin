@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.2
+# Jellyfin AI Upscaler Plugin v1.8.3.3
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.8.3.2):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.8.3.3):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.2   │  │
+│  │  AI Upscaler Plugin v1.8.3.3   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -298,6 +298,10 @@ Each tag is published three ways so you can pin precisely:
 ---
 
 ## Changelog
+
+### v1.8.3.3 (Fix config-page Save)
+
+**Plugin-only hotfix.** The v1.8.3.2 SSH cleanup left one stale, unguarded line in the settings **Save** handler (`config.RemoteUser = page.querySelector('#RemoteUser').value`) that referenced the now-removed input and threw a `TypeError`, so saving plugin settings failed. Removed that line; no other change. Tests: xUnit 164, build clean.
 
 ### v1.8.3.2 (Remove dead SSH remote transcoding)
 

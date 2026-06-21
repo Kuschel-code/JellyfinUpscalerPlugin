@@ -6,7 +6,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.8.3.2';
+    const PLUGIN_VERSION = '1.8.3.3';
 
     // Quick menu actions
     const QuickMenuActions = {

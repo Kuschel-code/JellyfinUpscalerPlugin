@@ -7,13 +7,19 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.2</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.3</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.2 - Remove dead SSH remote transcoding <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.3 - Fix config-page Save <span class="tag success">latest</span></h2>
+  <p><em>2026-06.</em> Plugin-only hotfix.</p>
+  <ul>
+    <li><strong>Save works again.</strong> The v1.8.3.2 SSH cleanup left one stale, unguarded line in the settings Save handler that referenced a removed input and threw a <code>TypeError</code>, so saving plugin settings failed. Removed that line; no other change.</li>
+  </ul>
+
+  <h2>v1.8.3.2 - Remove dead SSH remote transcoding</h2>
   <p><em>2026-06.</em> Plugin-only release (closes #73).</p>
   <ul>
     <li><strong>Removed the stale SSH remote-transcoding path.</strong> The docker7 image dropped sshd long ago (non-root appuser hardening), but the plugin still shipped SSH config + UI, a <code>/Upscaler/ssh/test</code> endpoint that ran <code>ssh</code>, and an FFmpeg-wrapper installer. All of it is gone, including the now-orphaned PlatformDetectionService.</li>
@@ -341,7 +347,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.2</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.3</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>
