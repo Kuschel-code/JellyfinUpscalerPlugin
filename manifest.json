@@ -9,6 +9,62 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.8.3.3",
+        "changelog": "v1.8.3.3: Fix config-page Save (regression in v1.8.3.2). The v1.8.3.2 SSH cleanup left one stale, unguarded line in the settings Save handler (config.RemoteUser referencing the removed #RemoteUser input) that threw a TypeError, so saving plugin settings failed. Removed that line; no other change. Tests: xUnit 164, build clean.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.3.3/JellyfinUpscalerPlugin-v1.8.3.3.zip",
+        "checksum": "5aefaa7325e1a387e65e08e5bfab3561",
+        "timestamp": "2026-06-21T13:00:00.000Z"
+      },
+      {
+        "version": "1.8.3.2",
+        "changelog": "v1.8.3.2: Remove dead SSH remote-transcoding (Issue #73). The docker7 image dropped sshd long ago (non-root appuser hardening), but the plugin still shipped SSH remote-transcoding config + UI, a /Upscaler/ssh/test endpoint that shelled out to ssh, and an FFmpeg-wrapper-script installer (/Upscaler/wrapper/*). All removed: 8 SSH config fields, the ssh/test + wrapper endpoints, FFmpegWrapperService + FFmpegWrapperController + the now-orphaned PlatformDetectionService, and the config-page sections. Offloading to a GPU host now uses the existing HTTP path only (set AI Service URL to http://host:5000, no SSH). Security: removes an admin endpoint that executed ssh and an on-disk script installer. Plugin-only; existing docker7 images unaffected. Tests: xUnit 164, build clean.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.3.2/JellyfinUpscalerPlugin-v1.8.3.2.zip",
+        "checksum": "fd6c79f4cd266daa8d3a2126dc3977ba",
+        "timestamp": "2026-06-21T12:00:00.000Z"
+      },
+      {
+        "version": "1.8.3.1",
+        "changelog": "v1.8.3.1: Cancel-fix (plugin-only, no Docker change). jobs/{id}/cancel reported success but never stopped a running job - VideoProcessor.ProcessVideoAsync created a per-job CancellationTokenSource (the token CancelJob cancels) but passed the bare caller token to the processing pipeline instead of the job's linked cts.Token, so cancellation never reached extraction/upscaling. The semaphore wait, model-load and the method executor now all receive cts.Token (still linked to the caller token), so Cancel stops the job promptly. Pre-existing across all processing methods. Tests: xUnit 164, build clean.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.3.1/JellyfinUpscalerPlugin-v1.8.3.1.zip",
+        "checksum": "de4d4070e7053bdabaef74af6906c254",
+        "timestamp": "2026-06-18T22:00:00.000Z"
+      },
+      {
+        "version": "1.8.3.0",
+        "changelog": "v1.8.3: Opt-in pipeline parallelism (plugin-only, no Docker change). New experimental setting 'Pipeline parallelism' (default OFF) overlaps frame extraction with upscaling instead of running them strictly back-to-back: while ffmpeg is still extracting later frames, already-extracted frames are upscaled concurrently. Built on a thread-safe FrameStreamCoordinator that hands a frame to the upscaler only once a successor frame proves it was fully written, and drops the unproven highest frame if extraction fails, so the output frame-count and ordering are identical to the sequential path. Default behaviour is unchanged; the overlap runs only when the box is ticked. Works with the existing docker7 AI-service images (no rebuild needed). Tests: xUnit 164 (incl. FrameStreamCoordinator COMPLETE-vs-FAILED asymmetry + terminal-first-wins), dotnet build clean.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.3/JellyfinUpscalerPlugin-v1.8.3.zip",
+        "checksum": "d2ce378aafe2a910edb778e04e600366",
+        "timestamp": "2026-06-18T21:00:00.000Z"
+      },
+      {
+        "version": "1.8.2.0",
+        "changelog": "v1.8.2: Quality + hardening pass. (1) Denoise-before-encode prefilter (hqdn3d/nlmeans) - a dedicated source-clean pass run BEFORE upscaling/encoding, independent of the camera-style filters (cleaner input -> better SR + smaller re-encode). (2) VMAF quality scoring - admin-only POST /Upscaler/vmaf scores an upscaled/distorted file against a reference via ffmpeg+libvmaf (501 if the build lacks libvmaf). (3) Second frame-interpolation architecture beside RIFE: the engine is now input-signature-adaptive (RIFE 1/2-input, IFRNet 3-input, CAIN 2-input); IFRNet+CAIN added as experimental self-host. (4) MultiFrame extraction now reports live progress (previously only FrameByFrame/Batch). (5) Decoupled model download: POST /models/download-async + GET /models/download-status/{id} run big downloads in the background so they no longer trip client/proxy timeouts. (6) Supply-chain: all 6 Docker base images pinned by @sha256 digest + pip-audit CVE sweep (0 known). (7) New client-VSR-vs-server hardware doc chapter + verified FrameStreamCoordinator. Needs AI service image >= v1.8.2 (docker7) for /vmaf, /recommend and async download. Tests: pytest 73, xUnit 159, dotnet build clean.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.2/JellyfinUpscalerPlugin-v1.8.2.zip",
+        "checksum": "a6b4658da828392485b0549e0ad17d61",
+        "timestamp": "2026-06-18T13:00:00.000Z"
+      },
+      {
+        "version": "1.8.1.0",
+        "changelog": "v1.8.1: Live filter fix + hardware-aware model recommendation. (1) In-player live filters (presets/sliders) had no visible effect while realtime client-side upscaling (Anime4K/WebGL/WebGPU) was active - the upscaler renders to a canvas overlay that covered the filtered <video>, so the CSS filter sat on a hidden element; it is now applied to the visible canvas too. (2) New GET /recommend (service) and GET /Upscaler/recommend (plugin, admin) pick a model + scale the detected hardware can actually run (weak CPU -> fsrcnn-x2 @2x, dedicated GPU -> realesrgan-x4), avoiding the wrong-model-on-weak-hardware wall. The recommend endpoint needs the AI service image >= v1.8.1 (docker7). Tests: pytest 50, xUnit 137, dotnet build clean.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.1/JellyfinUpscalerPlugin-v1.8.1.zip",
+        "checksum": "5d0de2aa78a4a69308ff84993677d8de",
+        "timestamp": "2026-06-18T12:00:00.000Z"
+      },
+      {
+        "version": "1.8.0.0",
+        "changelog": "v1.8.0: Managed API tokens. A new 'API Tokens' tab (Jellyfin admin) mints named tokens for the AI service with an optional expiry (30 / 90 / 365 days or never); each is shown once, stored only as a SHA-256 hash, and revocable individually. The service keeps them in a persistent /app/config volume and validates X-Api-Token against the env API_TOKEN (now a non-revocable bootstrap) OR any active managed token - both timing-safe, expiry checked lazily (no background sweep). New endpoints: service /auth/tokens (GET/POST/DELETE), plugin /Upscaler/tokens (admin-only proxy). Requires the AI service image >= v1.8.0 (docker7) so /auth/tokens exists. Tests: pytest 22, build clean.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.0/JellyfinUpscalerPlugin-v1.8.0.zip",
+        "checksum": "3aaab63da49ef9e4fae52a817ccdf355",
+        "timestamp": "2026-06-17T12:00:00.000Z"
+      },
+      {
         "version": "1.7.13.0",
         "changelog": "v1.7.13: Settings-page redesign + API-token guide (plugin-only, no Docker functional change). The plugin config page now adopts the Docker service's 'Operator Console' design - one consistent dark theme, cards, KPI tiles, chips, blue accent, Inter typography - as a CSS-only re-theme, so every setting and behaviour is unchanged (verified: field counts identical to v1.7.12). Plus a clear API-token setup guide on the website's API page and a sharper plugin field hint: API_TOKEN is a container environment variable you also paste into the plugin's 'AI Service API Token' field (or set API_TOKEN=disable on a trusted LAN); there is no 'generate' button. Tests 137/137.",
         "targetAbi": "10.11.8.0",
