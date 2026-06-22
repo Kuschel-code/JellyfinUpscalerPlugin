@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Jellyfin AI Upscaler - upscale every frame</title>
+<title>Jellyfin AI Upscaler - ask anything</title>
 <meta name="description" content="AI-powered video upscaling plugin for Jellyfin 10.11.x. 70+ models, 6 hardware backends, 15 filters. Ask the in-page console anything about setup, GPUs, models and Docker.">
 <meta property="og:title" content="Jellyfin AI Upscaler Plugin">
 <meta property="og:description" content="Dockerized AI upscaler for Jellyfin - 70+ models, NVIDIA/Intel/AMD acceleration, face restoration, camera-style filters. Ask the in-page console.">
-<link rel="stylesheet" href="assets/style.css?v=7">
+<link rel="stylesheet" href="assets/style.css?v=8">
 </head>
 <body>
 <header class="topbar">
@@ -19,213 +19,40 @@
     </a>
     <nav class="nav" data-nav></nav>
     <div class="nav-cta">
-      <a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank" rel="noopener">GitHub →</a>
+      <a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank" rel="noopener">GitHub &#8599;</a>
     </div>
   </div>
 </header>
 
-<main class="home home-console" id="home-console">
+<main class="home-hero">
+  <div class="hero-inner home-console" id="home-console">
 
-  <!-- ===== Masthead ===== -->
-  <p class="ed-kicker reveal">Jellyfin 10.11 plugin <b>v1.8.3.3</b></p>
+    <p class="hero-eyebrow">Jellyfin 10.11 plugin</p>
+    <h1 class="hero-title">Ask <span class="acc">AI</span></h1>
+    <p class="hero-sub">Setup, GPUs, models, Docker — ask the plugin directly. Open the menu for the full docs.</p>
 
-  <header class="ed-masthead">
-    <h1 class="ed-headline">
-      <span class="reveal-line"><span>Upscale</span></span>
-      <span class="reveal-line"><span>every <span class="vermilion">frame</span>.</span></span>
-    </h1>
-    <p class="ed-sub reveal">
-      A self-hosted AI upscaler for Jellyfin 10.11. 70+ ONNX models, six GPU
-      backends, face restoration and live camera filters, all from one Docker
-      service you control.
-    </p>
-    <div class="ed-actions reveal">
-      <a class="btn btn-primary" href="installation.html">Install it</a>
-      <a class="btn btn-ghost" href="features.html">See what it does</a>
-    </div>
-  </header>
-
-  <!-- ===== the giant chat search (Google-style) ===== -->
-  <div class="ed-secnum reveal">
-    <h2>Ask anything</h2>
-  </div>
-
-  <div class="hc-frame hc-hero reveal" id="hc-frame">
-    <form class="hc-form" id="hc-form" autocomplete="off">
-      <input class="hc-input" id="hc-input" type="text" name="q"
-             placeholder="Ask anything - e.g. my GPU runs on CPU…"
-             aria-label="Ask the AI Upscaler assistant">
-      <button class="hc-send" id="hc-send" type="submit" aria-label="Send">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M5 12h14M13 6l6 6-6 6"/>
-        </svg>
-      </button>
-    </form>
-    <div class="hc-suggest" id="hc-suggest">
-      <button type="button" class="hc-chip">GPU runs on CPU</button>
-      <button type="button" class="hc-chip">Install / checksum error</button>
-      <button type="button" class="hc-chip">Set the API token</button>
-      <button type="button" class="hc-chip">Which model should I use?</button>
-    </div>
-    <div class="hc-convo" id="hc-convo" aria-live="polite"></div>
-  </div>
-
-  <!-- ===== the signature before/after upscale demo ===== -->
-  <div class="ed-secnum reveal">
-    <h2>The difference</h2>
-  </div>
-
-  <figure class="ed-figure reveal" id="ed-figure">
-    <div class="ba" id="ba" style="--split:50%;">
-      <!-- AFTER (crisp) - sits beneath -->
-      <div class="ba-layer ba-after" aria-hidden="true">
-        <svg viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#0a1330"/>
-              <stop offset="0.42" stop-color="#27407a"/>
-              <stop offset="0.72" stop-color="#7a6a9c"/>
-              <stop offset="1" stop-color="#e1a074"/>
-            </linearGradient>
-            <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
-              <stop offset="0" stop-color="#ffe9c8" stop-opacity="0.95"/>
-              <stop offset="0.45" stop-color="#ffb070" stop-opacity="0.5"/>
-              <stop offset="1" stop-color="#ffb070" stop-opacity="0"/>
-            </radialGradient>
-            <radialGradient id="core" cx="0.5" cy="0.45" r="0.55">
-              <stop offset="0" stop-color="#fff6e8"/>
-              <stop offset="0.7" stop-color="#ffd9a1"/>
-              <stop offset="1" stop-color="#ffc070"/>
-            </radialGradient>
-            <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#3a4f86"/>
-              <stop offset="0.5" stop-color="#1c2c54"/>
-              <stop offset="1" stop-color="#0a1228"/>
-            </linearGradient>
-            <linearGradient id="refl" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#ffd9a1" stop-opacity="0.55"/>
-              <stop offset="1" stop-color="#ffd9a1" stop-opacity="0"/>
-            </linearGradient>
-          </defs>
-          <rect width="320" height="180" fill="url(#sky)"/>
-          <!-- stars -->
-          <g fill="#ffffff">
-            <circle cx="30" cy="22" r="0.9" opacity="0.7"/>
-            <circle cx="58" cy="38" r="0.7" opacity="0.5"/>
-            <circle cx="86" cy="18" r="0.8" opacity="0.6"/>
-            <circle cx="120" cy="30" r="0.6" opacity="0.45"/>
-            <circle cx="150" cy="15" r="0.9" opacity="0.6"/>
-            <circle cx="265" cy="26" r="0.7" opacity="0.5"/>
-            <circle cx="292" cy="44" r="0.8" opacity="0.55"/>
-            <circle cx="44" cy="60" r="0.6" opacity="0.4"/>
-          </g>
-          <!-- sun -->
-          <circle cx="214" cy="92" r="54" fill="url(#glow)"/>
-          <circle cx="214" cy="92" r="17" fill="url(#core)"/>
-          <!-- cloud streaks -->
-          <g fill="#1d2546" opacity="0.5">
-            <ellipse cx="150" cy="70" rx="72" ry="3.2"/>
-            <ellipse cx="232" cy="57" rx="48" ry="2.4"/>
-            <ellipse cx="118" cy="49" rx="38" ry="2"/>
-          </g>
-          <!-- mountains (smooth, layered) -->
-          <path d="M0 102 Q70 84 140 96 Q185 103 214 101 Q270 92 320 100 L320 130 L0 130 Z" fill="#33406e" opacity="0.9"/>
-          <path d="M0 110 Q70 96 130 107 Q185 116 245 103 Q290 96 320 105 L320 140 L0 140 Z" fill="#232d54"/>
-          <path d="M0 116 Q55 106 120 113 Q185 120 250 108 Q296 102 320 111 L320 140 L0 140 Z" fill="#151c39"/>
-          <!-- water -->
-          <rect y="112" width="320" height="68" fill="url(#water)"/>
-          <rect y="109" width="320" height="6" fill="#e1a074" opacity="0.18"/>
-          <!-- sun reflection + ripples -->
-          <rect x="200" y="112" width="28" height="62" fill="url(#refl)"/>
-          <g stroke="#ffd9a1" stroke-linecap="round">
-            <line x1="206" y1="122" x2="222" y2="122" stroke-width="1.4" opacity="0.55"/>
-            <line x1="201" y1="132" x2="227" y2="132" stroke-width="1.4" opacity="0.4"/>
-            <line x1="197" y1="144" x2="231" y2="144" stroke-width="1.6" opacity="0.3"/>
-            <line x1="192" y1="158" x2="236" y2="158" stroke-width="1.8" opacity="0.22"/>
-          </g>
-        </svg>
-      </div>
-      <!-- BEFORE (blurred + pixel grid) - clipped on top, shares the defs above -->
-      <div class="ba-layer ba-before" aria-hidden="true">
-        <svg viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-          <rect width="320" height="180" fill="url(#sky)"/>
-          <circle cx="214" cy="92" r="54" fill="url(#glow)"/>
-          <circle cx="214" cy="92" r="17" fill="url(#core)"/>
-          <path d="M0 102 Q70 84 140 96 Q185 103 214 101 Q270 92 320 100 L320 130 L0 130 Z" fill="#33406e" opacity="0.9"/>
-          <path d="M0 110 Q70 96 130 107 Q185 116 245 103 Q290 96 320 105 L320 140 L0 140 Z" fill="#232d54"/>
-          <path d="M0 116 Q55 106 120 113 Q185 120 250 108 Q296 102 320 111 L320 140 L0 140 Z" fill="#151c39"/>
-          <rect y="112" width="320" height="68" fill="url(#water)"/>
-          <rect x="200" y="112" width="28" height="62" fill="url(#refl)"/>
-        </svg>
-      </div>
-
-      <span class="ba-tag ba-tag-before">480p · source</span>
-      <span class="ba-tag ba-tag-after">4K · upscaled</span>
-
-      <div class="ba-divider" id="ba-divider">
-        <span class="ba-handle">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M9 6l-6 6 6 6M15 6l6 6-6 6"/>
+    <div class="hc-frame hc-hero" id="hc-frame">
+      <form class="hc-form" id="hc-form" autocomplete="off">
+        <input class="hc-input" id="hc-input" type="text" name="q"
+               placeholder="Ask anything - e.g. my GPU runs on CPU…"
+               aria-label="Ask the AI Upscaler assistant">
+        <button class="hc-send" id="hc-send" type="submit" aria-label="Send">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12h14M13 6l6 6-6 6"/>
           </svg>
-        </span>
+        </button>
+      </form>
+      <div class="hc-suggest" id="hc-suggest">
+        <button type="button" class="hc-chip">GPU runs on CPU</button>
+        <button type="button" class="hc-chip">Install / checksum error</button>
+        <button type="button" class="hc-chip">Set the API token</button>
+        <button type="button" class="hc-chip">Which model should I use?</button>
       </div>
+      <div class="hc-convo" id="hc-convo" aria-live="polite"></div>
     </div>
-    <figcaption class="ba-caption">
-      <span><b>Real-ESRGAN x4.</b> Synthetic scene, rendered live in your browser.</span>
-      <span>Pure SVG, no images</span>
-    </figcaption>
-  </figure>
 
-  <!-- ===== feature blocks (asymmetric stat grid) ===== -->
-  <div class="ed-secnum reveal">
-    <h2>What's inside</h2>
   </div>
-
-  <div class="ed-feat reveal">
-    <a href="models.html" class="tilt">
-      <div class="ef-idx">Models</div>
-      <div class="ef-big">70+</div>
-      <div class="ef-h">ONNX model catalog</div>
-      <p class="ef-p">Real-ESRGAN, SwinIR, DAT2, HAT, OmniSR and RIFE frame interpolation. Pulled on demand, never bundled.</p>
-      <span class="ef-go">Browse catalog →</span>
-    </a>
-    <a href="hardware.html" class="tilt">
-      <div class="ef-idx">Hardware</div>
-      <div class="ef-big">6</div>
-      <div class="ef-h">Backends, auto-routed</div>
-      <p class="ef-p">CUDA + TensorRT, Intel OpenVINO, AMD ROCm, Apple Silicon, Vulkan, CPU. Detected at startup, picked per-model.</p>
-      <span class="ef-go">Hardware guide →</span>
-    </a>
-    <a href="features.html" class="tilt">
-      <div class="ef-idx">Filters</div>
-      <div class="ef-big">15</div>
-      <div class="ef-h">Camera-grade preset looks</div>
-      <p class="ef-p">Cinematic, Vintage, Cyberpunk, Teal &amp; Orange, Noir and ten more. Live CSS sliders on the <code>&lt;video&gt;</code> at 60fps, plus GFPGAN/CodeFormer face restoration, no re-encode.</p>
-      <span class="ef-go">All features →</span>
-    </a>
-  </div>
-
-  <!-- ===== get going (distinct 2-up band) ===== -->
-  <div class="ed-secnum reveal">
-    <h2>Get going</h2>
-  </div>
-
-  <div class="ed-next reveal">
-    <a href="installation.html" class="tilt">
-      <div class="ef-idx">Install</div>
-      <div class="ef-h">Add the Jellyfin repository, install, restart</div>
-      <p class="ef-p">Plugin catalog feed + Docker AI service. Checksums verified, no manual file shuffling.</p>
-      <span class="ef-go">Installation →</span>
-    </a>
-    <a href="api.html" class="tilt">
-      <div class="ef-idx">Automate</div>
-      <div class="ef-h">Drive everything over REST</div>
-      <p class="ef-p">Live OpenAPI explorer, Prometheus <code>/metrics</code>, model load/unload, per-job status.</p>
-      <span class="ef-go">REST API →</span>
-    </a>
-  </div>
-
 </main>
 
 <footer class="footer">
@@ -237,8 +64,7 @@
     <div>Co-engineered with <a href="https://claude.com/claude-code">Claude Opus 4.8</a></div>
   </div>
 </footer>
-<script src="assets/nav.js?v=2"></script>
-<script src="assets/home-fx.js?v=2"></script>
+<script src="assets/nav.js?v=3"></script>
 <script src="assets/home-chat.js?v=3"></script>
 </body>
 </html>
