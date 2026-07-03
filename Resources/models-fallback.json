@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-06-18",
+  "generated_at": "2026-07-03",
   "source": "docker-ai-service/app/main.py:AVAILABLE_MODELS",
   "generator": "Scripts/sync-fallback-models.ps1",
   "notice": "AUTO-GENERATED - DO NOT EDIT BY HAND. Regenerate via the script when main.py changes.",
-  "total": 73,
+  "total": 76,
   "models": [
     {
       "id": "realesrgan-x4",
@@ -255,7 +255,7 @@
     {
       "id": "clearreality-x4",
       "name": "ClearReality x4 (Ultra-Fast Video)",
-      "description": "SPAN architecture, only 1.7MB. Real-time 4x for clean video. Best for faces, nature, hair.",
+      "description": "SPAN architecture, only 1.7MB. Real-time 4x for clean video. Best for faces, nature, hair. Measured 32x faster than realesrgan-x4 on CPU (4ms vs 129ms per 64px tile).",
       "scale": [
         4
       ],
@@ -319,8 +319,8 @@
     },
     {
       "id": "ultrasharp-v2-x4",
-      "name": "UltraSharp V2 x4 (Best Photo/Video)",
-      "description": "DAT2 Transformer \u2014 best overall quality for photos and video. 49MB.",
+      "name": "UltraSharp V2 x4 (Best Photo/Video) [non-commercial license]",
+      "description": "DAT2 Transformer \u2014 best overall quality for photos and video. 49MB. License CC-BY-NC-SA-4.0: personal/home use only, no commercial deployments.",
       "scale": [
         4
       ],
@@ -418,6 +418,45 @@
       "category": "nextgen",
       "type": "onnx",
       "available": false,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "purephoto-realplksr-x4",
+      "name": "PurePhoto RealPLKSR x4 (Photo/Portrait)",
+      "description": "RealPLKSR tuned for realistic photos and portraits. 30MB, 67ms/64px-tile CPU. ('RealPLSKR' in the URL is the author's original file name.)",
+      "scale": [
+        4
+      ],
+      "category": "nextgen",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "nomos8kdat-x4",
+      "name": "Nomos8k DAT x4 (JPEG Restoration)",
+      "description": "DAT trained on Nomos8k \u2014 restores heavily JPEG-compressed sources (old rips). 86MB, heavy on CPU (486ms/64px-tile), GPU recommended.",
+      "scale": [
+        4
+      ],
+      "category": "film-restore",
+      "type": "onnx",
+      "available": true,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "fallin-soft-x2",
+      "name": "Fallin Soft x2 (Anime Real-Time)",
+      "description": "Real-CUGAN-arch anime 2x by the Adore author, permissively licensed. 5.7MB, 17ms/64px-tile CPU \u2014 real-time 1080p anime.",
+      "scale": [
+        2
+      ],
+      "category": "anime",
+      "type": "onnx",
+      "available": true,
       "downloaded": false,
       "loaded": false
     },
@@ -592,60 +631,60 @@
     },
     {
       "id": "real-cugan-x2",
-      "name": "Real-CUGAN x2 (Anime Quality)",
-      "description": "Real-CUGAN x2 - Bilibili AI Lab. Cascaded U-Net, conservative variant preserves linework. Best general-purpose anime 2x. ~12MB.",
+      "name": "Real-CUGAN x2 (Anime Quality) [self-host required]",
+      "description": "Real-CUGAN x2 - Bilibili AI Lab. Original HF mirror is gone; the only public ONNX exports (styler00dollar op18) declare opset 18 but keep the pre-18 ReduceMean 'axes' attribute, so onnxruntime rejects",
       "scale": [
         2
       ],
       "category": "anime",
       "type": "onnx",
-      "available": true,
+      "available": false,
       "downloaded": false,
       "loaded": false
     },
     {
       "id": "real-cugan-x4",
-      "name": "Real-CUGAN x4 (Anime Quality)",
-      "description": "Real-CUGAN x4 - Bilibili AI Lab. Cleaner than realesrgan-animevideo-x4 on linework, slower than anime-compact-x4 but higher quality. ~12MB.",
+      "name": "Real-CUGAN x4 (Anime Quality) [self-host required]",
+      "description": "Real-CUGAN x4 - Bilibili AI Lab. Original HF mirror is gone; the only public ONNX exports (styler00dollar op18) fail onnxruntime load (INVALID_GRAPH, TensorRT-oriented export). Use fallin-soft-x2 (cug",
       "scale": [
         4
       ],
       "category": "anime",
       "type": "onnx",
-      "available": true,
+      "available": false,
       "downloaded": false,
       "loaded": false
     },
     {
       "id": "drct-l-x4",
-      "name": "DRCT-L x4 (SOTA Photo)",
-      "description": "DRCT-L x4 - Dense-Residual Connected Transformer. Sharper than DAT2 on photo content, ~3GB VRAM for 1080p input. Recommended for poster/backdrop refresh. ~80MB.",
+      "name": "DRCT-L x4 (SOTA Photo) [self-host required]",
+      "description": "DRCT-L x4 - Dense-Residual Connected Transformer. The only verified public ONNX (Phhofm RealWebPhoto v4 DRCT-L) is a FIXED 1x3x64x64-input export, which this pipeline's dynamic tiler cannot feed (edge",
       "scale": [
         4
       ],
       "category": "video-quality",
       "type": "onnx",
-      "available": true,
+      "available": false,
       "downloaded": false,
       "loaded": false
     },
     {
       "id": "bhi-realplksr-x4",
-      "name": "BHI-RealPLKSR x4 (Speed Champion)",
-      "description": "BHI-RealPLKSR x4 - 2x faster than DAT2 at comparable quality. ~5fps@256 on RTX 3060. New default for mid-tier batch. ~30MB.",
+      "name": "BHI-RealPLKSR x4 (Speed Champion) [self-host required]",
+      "description": "BHI-RealPLKSR x4 - 2x faster than DAT2 at comparable quality. Release asset renamed upstream; no stable ONNX URL. See docs/MODEL-HOSTING.md. Alternative: purephoto-realplksr-x4 (same architecture).",
       "scale": [
         4
       ],
       "category": "video-fast",
       "type": "onnx",
-      "available": true,
+      "available": false,
       "downloaded": false,
       "loaded": false
     },
     {
       "id": "rife-v4.25",
       "name": "RIFE v4.25 (Frame Interpolation - Latest)",
-      "description": "RIFE v4.25 - current SOTA frame interpolation, better scene-bleeding handling than v4.7-4.9. Recommended new default for 24-60fps. ~22MB.",
+      "description": "RIFE v4.25 - current SOTA frame interpolation, better scene-bleeding handling than v4.7-4.9. Recommended new default for 24-60fps. ~22MB (fp32 op21 slim export; needs onnxruntime >= 1.20).",
       "scale": [
         1
       ],
@@ -658,7 +697,7 @@
     {
       "id": "omnisr-x2",
       "name": "OmniSR x2 (Compact SOTA)",
-      "description": "OmniSR x2 - CVPR 2023, omni-axis self-attention. ~10MB, faster than SwinIR at comparable PSNR. Good for 720p->1440p.",
+      "description": "OmniSR x2 - CVPR 2023, omni-axis self-attention. HFA2k training set (anime-leaning), ~4.6MB. Faster than SwinIR at comparable PSNR; good for 720p->1440p.",
       "scale": [
         2
       ],
@@ -671,7 +710,7 @@
     {
       "id": "omnisr-x4",
       "name": "OmniSR x4 (Compact SOTA)",
-      "description": "OmniSR x4 - CVPR 2023. ~10MB. Sweet spot between SwinIR and FSRCNN for 480p->1920p.",
+      "description": "OmniSR x4 - CVPR 2023 official weights (epoch895 export). ~5.6MB. Sweet spot between SwinIR and FSRCNN for 480p->1920p.",
       "scale": [
         4
       ],
@@ -683,34 +722,34 @@
     },
     {
       "id": "dat-light-x2",
-      "name": "DAT-light x2 (Production Transformer)",
-      "description": "DAT-light x2 - smaller/faster sibling of DAT2. ~15MB. Good general-purpose model.",
+      "name": "DAT-light x2 (Production Transformer) [self-host required]",
+      "description": "DAT-light x2 - smaller/faster sibling of DAT2. Upstream HF repo removed; no ONNX mirror found. See docs/MODEL-HOSTING.md.",
       "scale": [
         2
       ],
       "category": "nextgen",
       "type": "onnx",
-      "available": true,
+      "available": false,
       "downloaded": false,
       "loaded": false
     },
     {
       "id": "dat-light-x4",
-      "name": "DAT-light x4 (Production Transformer)",
-      "description": "DAT-light x4 - smaller/faster sibling of DAT2. ~15MB.",
+      "name": "DAT-light x4 (Production Transformer) [self-host required]",
+      "description": "DAT-light x4 - smaller/faster sibling of DAT2. Upstream HF repo removed; no ONNX mirror found. See docs/MODEL-HOSTING.md. Alternative: nomos8kdat-x4 (DAT) or nomos2-dat2-x4.",
       "scale": [
         4
       ],
       "category": "nextgen",
       "type": "onnx",
-      "available": true,
+      "available": false,
       "downloaded": false,
       "loaded": false
     },
     {
       "id": "restoreformer-plus-plus",
       "name": "RestoreFormer++ (Face Restoration)",
-      "description": "RestoreFormer++ - state-of-the-art face restoration, better than GFPGAN/CodeFormer for severely degraded faces. ~50MB.",
+      "description": "RestoreFormer++ - state-of-the-art face restoration, better than GFPGAN/CodeFormer for severely degraded faces. ~294MB (fp32).",
       "scale": [
         1
       ],
@@ -722,60 +761,60 @@
     },
     {
       "id": "man-x2",
-      "name": "MAN x2 (Multi-scale Attention)",
-      "description": "MAN x2 - Multi-scale Attention Network, ICME 2023. Lightweight transformer, ~8MB. Competitive with SwinIR at half the cost.",
+      "name": "MAN x2 (Multi-scale Attention) [self-host required]",
+      "description": "MAN x2 - Multi-scale Attention Network, ICME 2023. Upstream HF repo removed; no ONNX mirror found. See docs/MODEL-HOSTING.md.",
       "scale": [
         2
       ],
       "category": "nextgen",
       "type": "onnx",
-      "available": true,
+      "available": false,
       "downloaded": false,
       "loaded": false
     },
     {
       "id": "man-x4",
-      "name": "MAN x4 (Multi-scale Attention)",
-      "description": "MAN x4 - Multi-scale Attention Network, ICME 2023. ~8MB. Strong PSNR-per-MB ratio.",
+      "name": "MAN x4 (Multi-scale Attention) [self-host required]",
+      "description": "MAN x4 - Multi-scale Attention Network, ICME 2023. Upstream HF repo removed; no ONNX mirror found. See docs/MODEL-HOSTING.md.",
       "scale": [
         4
       ],
       "category": "nextgen",
       "type": "onnx",
-      "available": true,
+      "available": false,
       "downloaded": false,
       "loaded": false
     },
     {
       "id": "craft-x2",
-      "name": "CRAFT x2 (Compositional Refinement)",
-      "description": "CRAFT x2 - Compositional Refinement texture-aware SR, 2023. ~12MB. Especially good on high-frequency detail recovery.",
+      "name": "CRAFT x2 (Compositional Refinement) [self-host required]",
+      "description": "CRAFT x2 - Compositional Refinement texture-aware SR, 2023. Upstream ships only .pth via Google Drive; no public ONNX export exists. See docs/MODEL-HOSTING.md.",
       "scale": [
         2
       ],
       "category": "nextgen",
       "type": "onnx",
-      "available": true,
+      "available": false,
       "downloaded": false,
       "loaded": false
     },
     {
       "id": "craft-x4",
-      "name": "CRAFT x4 (Compositional Refinement)",
-      "description": "CRAFT x4 - Compositional Refinement, 2023. ~12MB.",
+      "name": "CRAFT x4 (Compositional Refinement) [self-host required]",
+      "description": "CRAFT x4 - Compositional Refinement, 2023. Upstream ships only .pth via Google Drive; no public ONNX export exists. See docs/MODEL-HOSTING.md.",
       "scale": [
         4
       ],
       "category": "nextgen",
       "type": "onnx",
-      "available": true,
+      "available": false,
       "downloaded": false,
       "loaded": false
     },
     {
       "id": "gpen-512",
       "name": "GPEN-512 (Face Restoration Alternative)",
-      "description": "GPEN-512 - face restoration with GAN prior. Different visual style than GFPGAN (more conservative). ~280MB.",
+      "description": "GPEN-512 - face restoration with GAN prior. Different visual style than GFPGAN (more conservative). ~284MB.",
       "scale": [
         1
       ],
@@ -787,8 +826,8 @@
     },
     {
       "id": "nafnet-denoise",
-      "name": "NAFNet (Denoising / Restoration Pre-Pass)",
-      "description": "NAFNet - non-AI baseline for image denoising / restoration. ECCV 2022. Use as pre-pass before upscaling on noisy source material. ~17MB.",
+      "name": "NAFNet SIDD (Denoising / Restoration Pre-Pass)",
+      "description": "NAFNet (SIDD width64) - ECCV 2022 image denoiser. Use as pre-pass before upscaling on noisy source material. Large export (~446MB) - prefer the hqdn3d/nlmeans denoise prefilter on weak hardware.",
       "scale": [
         1
       ],

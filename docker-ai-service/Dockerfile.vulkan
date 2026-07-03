@@ -3,7 +3,7 @@
 # Uses ncnn framework with Vulkan compute shaders for super-resolution
 
 # Pinned by digest for reproducible, supply-chain-safe builds (digest fetched 2026-06-18; bump tag+digest together).
-FROM python:3.12-slim-bookworm@sha256:76d4b7b6305788c6b4c6a19d6a22a3921bf802e9af4d5e1e5bd771208dba74bf
+FROM python:3.12-slim-bookworm@sha256:8a7e7cc04fd3e2bd787f7f24e22d5d119aa590d429b50c95dfe12b3abe52f48b
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1

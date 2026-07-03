@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.3
+# Jellyfin AI Upscaler Plugin v1.8.3.4
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -104,6 +104,10 @@ The in-player button lets you:
 - Quick access via keyboard shortcuts (Alt+U, Alt+M)
 
 ---
+
+## Jellyfin 12.0 (RC) compatibility
+
+Jellyfin 12.0 is in release-candidate phase. Static analysis against `Jellyfin.Controller 12.0.0-rc2` found **exactly one** API break (`IUserManager.Users` removed) — fixed in v1.8.3.4 with a version-adaptive lookup, so one DLL targets 10.11.x and is expected to load on 12.0. The plugin's web code already uses only the modern `Authorization: MediaBrowser` scheme, so 12.0's default rejection of legacy auth does not affect it. Runtime verification on an RC box is pending — see [docs/JELLYFIN-12-READINESS.md](docs/JELLYFIN-12-READINESS.md) for the full break list and test plan. Do not upgrade your production server to an RC just for this.
 
 ## Installation
 

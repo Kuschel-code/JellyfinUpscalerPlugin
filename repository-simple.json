@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.8.3.4",
+        "changelog": "v1.8.3.4: Jellyfin 12.0 readiness + model-catalog integrity pass. (1) 12.0 RC: static analysis against Jellyfin.Controller 12.0.0-rc2 found exactly ONE API break (IUserManager.Users removed in 12.0) - the user lookup now adapts at runtime via reflection, so one DLL serves 10.11.x AND 12.x; the embedded web code already uses the modern 'Authorization: MediaBrowser' scheme, so 12.0's default rejection of legacy auth does not affect the plugin. Break list + RC test plan: docs/JELLYFIN-12-READINESS.md. (2) Catalog integrity: all 73 model download URLs HEAD-checked - 16 were dead (8 HuggingFace repos deleted upstream); 6 repointed to verified mirrors (omnisr-x2/x4, gpen-512, restoreformer-plus-plus, nafnet SIDD, rife-v4.25 op21) and 10 marked [self-host required] (craft/bhi/dat-light/man: no public ONNX exists; real-cugan x2/x4: only exports fail onnxruntime load; drct-l: fixed-shape export). (3) Three new license-checked models, sha256-pinned + CPU-benchmarked: purephoto-realplksr-x4 (CC-BY-SA-4.0), nomos8kdat-x4 (CC-BY-4.0, JPEG restoration), fallin-soft-x2 (CC-BY-4.0, real-time anime); clearreality-x4 repinned to the author's Apache-2.0 opset17 build (measured 32x faster than realesrgan-x4 on CPU); ultrasharp-v2-x4 now flagged CC-BY-NC-SA-4.0. New catalog fields license/attribution/sha256; the service now VERIFIES the sha256 before a downloaded model is activated. Details: docs/MODEL-EVAL-2026-07.md. (4) Docker supply-chain: explicit starlette>=1.0.1 floor (BadHost auth-bypass CVE-2026-48710) + Pillow>=12.2.0 + python-multipart>=0.0.30 + opencv-contrib-python>=4.12.0 across all 7 requirement sets; base images re-pinned (python:3.12-slim digest x3, CUDA 12.8.0->12.8.1); docker-publish now also updates :latest (was stuck on a v1.7.8-era image). Tests: xUnit 164, dotnet build clean.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.3.4/JellyfinUpscalerPlugin-v1.8.3.4.zip",
+        "checksum": "2b41c7e9816b7bd3f2036891cb2ceaea",
+        "timestamp": "2026-07-03T14:00:00.000Z"
+      },
+      {
         "version": "1.8.3.3",
         "changelog": "v1.8.3.3: Fix config-page Save (regression in v1.8.3.2). The v1.8.3.2 SSH cleanup left one stale, unguarded line in the settings Save handler (config.RemoteUser referencing the removed #RemoteUser input) that threw a TypeError, so saving plugin settings failed. Removed that line; no other change. Tests: xUnit 164, build clean.",
         "targetAbi": "10.11.8.0",

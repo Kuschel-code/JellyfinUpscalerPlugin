@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.8.3.3';
+    const PLUGIN_VERSION = '1.8.3.4';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;

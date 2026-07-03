@@ -7,13 +7,23 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.3</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.4</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.3 - Fix config-page Save <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.4 - Jellyfin 12.0 readiness + catalog integrity <span class="tag success">latest</span></h2>
+  <p><em>2026-07.</em> Compatibility + curation release.</p>
+  <ul>
+    <li><strong>Jellyfin 12.0 ready (RC-tested statically).</strong> Building against <code>Jellyfin.Controller 12.0.0-rc2</code> surfaced exactly one API break (<code>IUserManager.Users</code> removed); the user lookup now adapts at runtime, so one DLL serves 10.11.x and 12.x. The web code already uses the modern <code>Authorization: MediaBrowser</code> scheme, so 12.0's legacy-auth rejection does not affect the plugin. Full break list + RC test plan: <code>docs/JELLYFIN-12-READINESS.md</code>.</li>
+    <li><strong>Catalog integrity sweep.</strong> All 73 model URLs HEAD-checked: 16 were dead (8 HuggingFace repos deleted upstream). 9 repointed to verified mirrors, 7 marked <em>[self-host required]</em> because no public ONNX exists.</li>
+    <li><strong>3 new license-checked models</strong> (sha256-pinned, CPU-benchmarked): <code>purephoto-realplksr-x4</code>, <code>nomos8kdat-x4</code> (JPEG restoration), <code>fallin-soft-x2</code> (real-time anime). <code>clearreality-x4</code> repinned to the author's Apache-2.0 build — measured 32× faster than realesrgan-x4 on CPU. <code>ultrasharp-v2-x4</code> now carries its CC-BY-NC-SA flag.</li>
+    <li><strong>Downloads are hash-verified.</strong> New <code>license</code>/<code>attribution</code>/<code>sha256</code> catalog fields; the service verifies the sha256 before a downloaded model is activated.</li>
+    <li><strong>Docker supply-chain.</strong> Explicit <code>starlette&gt;=1.0.1</code> floor (BadHost auth-bypass fix) + Pillow/python-multipart/opencv floors raised in all 7 requirement sets; base images re-pinned (python-slim digest, CUDA 12.8.1); <code>:latest</code> now updates with every publish (was stuck on a v1.7.8-era image).</li>
+  </ul>
+
+  <h2>v1.8.3.3 - Fix config-page Save</h2>
   <p><em>2026-06.</em> Plugin-only hotfix.</p>
   <ul>
     <li><strong>Save works again.</strong> The v1.8.3.2 SSH cleanup left one stale, unguarded line in the settings Save handler that referenced a removed input and threw a <code>TypeError</code>, so saving plugin settings failed. Removed that line; no other change.</li>
@@ -347,7 +357,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.3</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.4</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

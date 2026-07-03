@@ -116,6 +116,11 @@ jobs:
           TAGS="${IMG}:${FAMILY}${S}"
           TAGS="${TAGS},${IMG}:${FAMILY}-v${V}${S}"
           TAGS="${TAGS},${IMG}:v${V}${S}"
+          # :latest follows the NVIDIA variant (empty suffix). Without this the
+          # latest tag went stale (stuck on a v1.7.8-era image while v1.8.x shipped).
+          if [ -z "$S" ]; then
+            TAGS="${TAGS},${IMG}:latest"
+          fi
           echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
           echo "primary=${IMG}:${FAMILY}${S}" >> "$GITHUB_OUTPUT"
           echo "Will publish tags:"

@@ -17,6 +17,7 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import hashlib
 import hmac
 import socket
 import urllib.parse
@@ -663,12 +664,15 @@ AVAILABLE_MODELS = {
     # --- Video Real-Time (Ultra-Fast, <3MB) ---
     "clearreality-x4": {
         "name": "ClearReality x4 (Ultra-Fast Video)",
-        "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/4x-ClearRealityV1.onnx",
+        "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4x-ClearRealityV1-fp32-opset17.onnx",
         "scale": 4,
-        "description": "SPAN architecture, only 1.7MB. Real-time 4x for clean video. Best for faces, nature, hair.",
+        "description": "SPAN architecture, only 1.7MB. Real-time 4x for clean video. Best for faces, nature, hair. Measured 32x faster than realesrgan-x4 on CPU (4ms vs 129ms per 64px tile).",
         "type": "onnx",
         "category": "video-fast",
         "model_type": "span",
+        "license": "Apache-2.0",
+        "attribution": "Kim2091 (huggingface.co/Kim2091/ClearRealityV1)",
+        "sha256": "bbce9d5a653281cfae07788d620bd4ec45712709bdf6349a06a893159efd97ce",
         "available": True
     },
     "nomosuni-compact-x2": {
@@ -714,13 +718,15 @@ AVAILABLE_MODELS = {
 
     # --- Video Quality (Best single-frame for video content) ---
     "ultrasharp-v2-x4": {
-        "name": "UltraSharp V2 x4 (Best Photo/Video)",
+        "name": "UltraSharp V2 x4 (Best Photo/Video) [non-commercial license]",
         "url": "https://huggingface.co/Kim2091/UltraSharpV2/resolve/main/4x-UltraSharpV2_fp32_op17.onnx",
         "scale": 4,
-        "description": "DAT2 Transformer — best overall quality for photos and video. 49MB.",
+        "description": "DAT2 Transformer — best overall quality for photos and video. 49MB. License CC-BY-NC-SA-4.0: personal/home use only, no commercial deployments.",
         "type": "onnx",
         "category": "video-quality",
         "model_type": "dat2",
+        "license": "CC-BY-NC-SA-4.0",
+        "attribution": "Kim2091 (huggingface.co/Kim2091/UltraSharpV2)",
         "available": True
     },
     "nomos2-dat2-x4": {
@@ -799,6 +805,53 @@ AVAILABLE_MODELS = {
         "model_type": "rrdb",
         # Xenova repo returns 401 anonymously — gated or removed upstream. See docs/MODEL-HOSTING.md for self-hosting instructions.
         "available": False
+    },
+
+    # ============================================================
+    # === NEW v1.8.3.4 — License-checked additions (sha256-pinned) ===
+    # Each entry was download-verified, ONNX-sanity-checked (dynamic H/W,
+    # correct output scale) and CPU-benchmarked before adoption.
+    # NC-licensed candidates (UltraSharp V2 stays flagged, Adore 2x) were
+    # rejected or flagged; see docs/MODEL-EVAL-2026-07.md.
+    # ============================================================
+    "purephoto-realplksr-x4": {
+        "name": "PurePhoto RealPLKSR x4 (Photo/Portrait)",
+        "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4xPurePhoto-RealPLSKR.onnx",
+        "scale": 4,
+        "description": "RealPLKSR tuned for realistic photos and portraits. 30MB, 67ms/64px-tile CPU. ('RealPLSKR' in the URL is the author's original file name.)",
+        "type": "onnx",
+        "category": "nextgen",
+        "model_type": "realplksr",
+        "license": "CC-BY-SA-4.0",
+        "attribution": "asterixcool (openmodeldb.info/models/4x-PurePhoto-RealPLSKR)",
+        "sha256": "c03da555c9c7ff58425fb9e6f812b7c23c40e06efc31c13145fab78e44b8aad8",
+        "available": True
+    },
+    "nomos8kdat-x4": {
+        "name": "Nomos8k DAT x4 (JPEG Restoration)",
+        "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4xNomos8kDAT.onnx",
+        "scale": 4,
+        "description": "DAT trained on Nomos8k — restores heavily JPEG-compressed sources (old rips). 86MB, heavy on CPU (486ms/64px-tile), GPU recommended.",
+        "type": "onnx",
+        "category": "film-restore",
+        "model_type": "dat",
+        "license": "CC-BY-4.0",
+        "attribution": "Philip Hofmann / Helaman (openmodeldb.info/models/4x-Nomos8kDAT)",
+        "sha256": "e5c10de92a14544764ca4e4dc0269f7de3cd2e4975b1d149ad687fd195eb9de1",
+        "available": True
+    },
+    "fallin-soft-x2": {
+        "name": "Fallin Soft x2 (Anime Real-Time)",
+        "url": "https://github.com/renarchi/Re-SISR/releases/download/Fallin/2x_Fallin_soft_renarchi_fp32.onnx",
+        "scale": 2,
+        "description": "Real-CUGAN-arch anime 2x by the Adore author, permissively licensed. 5.7MB, 17ms/64px-tile CPU — real-time 1080p anime.",
+        "type": "onnx",
+        "category": "anime",
+        "model_type": "cugan",
+        "license": "CC-BY-4.0",
+        "attribution": "renarchi (openmodeldb.info/models/2x-Fallin-Soft)",
+        "sha256": "487792c65406a6851a6bd48d5cbdcee75317fdc3e241f02fe7054936b9914d15",
+        "available": True
     },
 
     # ============================================================
@@ -996,64 +1049,78 @@ AVAILABLE_MODELS = {
     # Cleaner anime line-art than Real-ESRGAN-AnimeVideo, sharper than waifu2x.
     # ONNX mirror: mayhug/Real-CUGAN. Closes the long-standing gap users complained about.
     "real-cugan-x2": {
-        "name": "Real-CUGAN x2 (Anime Quality)",
-        "url": "https://huggingface.co/mayhug/Real-CUGAN/resolve/main/up2x-latest-conservative.onnx",
+        "name": "Real-CUGAN x2 (Anime Quality) [self-host required]",
+        "url": "https://github.com/styler00dollar/VSGAN-tensorrt-docker/releases/download/models/cugan_up2x-latest-conservative_op18_clamp.onnx",
         "scale": 2,
-        "description": "Real-CUGAN x2 - Bilibili AI Lab. Cascaded U-Net, conservative variant preserves linework. Best general-purpose anime 2x. ~12MB.",
+        "description": "Real-CUGAN x2 - Bilibili AI Lab. Original HF mirror is gone; the only public ONNX exports (styler00dollar op18) declare opset 18 but keep the pre-18 ReduceMean 'axes' attribute, so onnxruntime rejects them (INVALID_GRAPH; they target TensorRT). Use fallin-soft-x2 (same cugan architecture, verified) or self-host: docs/MODEL-HOSTING.md.",
         "type": "onnx",
         "category": "anime",
         "model_type": "cugan",
-        "available": True
+        "license": "MIT",
+        "attribution": "bilibili/ailab Real-CUGAN",
+        # 2026-07: mayhug HF repo gone; styler00dollar op18 exports fail ORT load (verified locally: InvalidGraph ReduceMean axes).
+        "available": False
     },
     "real-cugan-x4": {
-        "name": "Real-CUGAN x4 (Anime Quality)",
-        "url": "https://huggingface.co/mayhug/Real-CUGAN/resolve/main/up4x-latest-conservative.onnx",
+        "name": "Real-CUGAN x4 (Anime Quality) [self-host required]",
+        "url": "https://github.com/styler00dollar/VSGAN-tensorrt-docker/releases/download/models/cugan_up4x-latest-conservative_op18_clamp.onnx",
         "scale": 4,
-        "description": "Real-CUGAN x4 - Bilibili AI Lab. Cleaner than realesrgan-animevideo-x4 on linework, slower than anime-compact-x4 but higher quality. ~12MB.",
+        "description": "Real-CUGAN x4 - Bilibili AI Lab. Original HF mirror is gone; the only public ONNX exports (styler00dollar op18) fail onnxruntime load (INVALID_GRAPH, TensorRT-oriented export). Use fallin-soft-x2 (cugan arch) or realesrgan-animevideo-x4, or self-host: docs/MODEL-HOSTING.md.",
         "type": "onnx",
         "category": "anime",
         "model_type": "cugan",
-        "available": True
+        "license": "MIT",
+        "attribution": "bilibili/ailab Real-CUGAN",
+        # 2026-07: mayhug HF repo gone; styler00dollar op18 exports fail ORT load (verified locally: InvalidGraph ReduceMean axes).
+        "available": False
     },
 
     # DRCT-L (Phips/aaronespasa) - Dense-Residual Connected Transformer.
     # Sharper than DAT2/UltraSharp on real-world photo content, same VRAM class.
     # Trained on 4xRealWebPhoto_v4 dataset - robust against streaming JPG/WebP artefacts.
     "drct-l-x4": {
-        "name": "DRCT-L x4 (SOTA Photo)",
-        "url": "https://huggingface.co/aaronespasa/drct-super-resolution/resolve/main/4xDRCT_L.onnx",
+        "name": "DRCT-L x4 (SOTA Photo) [self-host required]",
+        "url": "https://github.com/Phhofm/models/releases/download/4xRealWebPhoto_v4_drct-l/4xRealWebPhoto_v4_drct-l_fp32.onnx",
         "scale": 4,
-        "description": "DRCT-L x4 - Dense-Residual Connected Transformer. Sharper than DAT2 on photo content, ~3GB VRAM for 1080p input. Recommended for poster/backdrop refresh. ~80MB.",
+        "description": "DRCT-L x4 - Dense-Residual Connected Transformer. The only verified public ONNX (Phhofm RealWebPhoto v4 DRCT-L) is a FIXED 1x3x64x64-input export, which this pipeline's dynamic tiler cannot feed (edge tiles are smaller than 64px). Needs a dynamic-axes re-export - see docs/MODEL-HOSTING.md.",
         "type": "onnx",
         "category": "video-quality",
         "model_type": "drct",
-        "available": True
+        "license": "CC-BY-4.0",
+        "attribution": "Philip Hofmann / Helaman (4xRealWebPhoto_v4_drct-l)",
+        # 2026-07: original URL had no ONNX; Phhofm export verified to LOAD but has a fixed 64px input shape — incompatible with dynamic tiling. Candidate alternative (unverified): huggingworld 4xNomos2_hq_drct-l.onnx (184MB).
+        "available": False
     },
 
     # BHI-RealPLKSR (Phhofm) - RealPLKSR architecture trained on BHI dataset.
     # ~2x throughput vs DAT2 at comparable quality. Sweet spot for mid-tier GPU
     # library batch processing. Fast enough for near-realtime on RTX 3060+.
     "bhi-realplksr-x4": {
-        "name": "BHI-RealPLKSR x4 (Speed Champion)",
+        "name": "BHI-RealPLKSR x4 (Speed Champion) [self-host required]",
         "url": "https://github.com/Phhofm/models/releases/download/4xbhi_realplksr/4xBHI_realplksr.onnx",
         "scale": 4,
-        "description": "BHI-RealPLKSR x4 - 2x faster than DAT2 at comparable quality. ~5fps@256 on RTX 3060. New default for mid-tier batch. ~30MB.",
+        "description": "BHI-RealPLKSR x4 - 2x faster than DAT2 at comparable quality. Release asset renamed upstream; no stable ONNX URL. See docs/MODEL-HOSTING.md. Alternative: purephoto-realplksr-x4 (same architecture).",
         "type": "onnx",
         "category": "video-fast",
         "model_type": "realplksr",
-        "available": True
+        # 2026-07 URL sweep: GitHub release asset 404 (assets renamed upstream).
+        "available": False
     },
 
     # RIFE 4.25 (hzwer/Practical-RIFE) - current SOTA real-life frame interpolation.
     # Replaces v4.7-4.9 as Auto-Mode default. Better scene-cut detection (less ghosting).
     "rife-v4.25": {
         "name": "RIFE v4.25 (Frame Interpolation - Latest)",
-        "url": "https://huggingface.co/yuvraj108c/rife-onnx/resolve/main/rife425.onnx",
+        "url": "https://github.com/NevermindNilas/TAS-Models-Host/releases/download/main/rife425_fp32_op21_slim.onnx",
         "scale": 1,
-        "description": "RIFE v4.25 - current SOTA frame interpolation, better scene-bleeding handling than v4.7-4.9. Recommended new default for 24-60fps. ~22MB.",
+        "description": "RIFE v4.25 - current SOTA frame interpolation, better scene-bleeding handling than v4.7-4.9. Recommended new default for 24-60fps. ~22MB (fp32 op21 slim export; needs onnxruntime >= 1.20).",
         "type": "onnx",
         "category": "interpolation",
         "model_type": "rife",
+        "license": "MIT",
+        "attribution": "hzwer/Practical-RIFE; TAS-Models-Host ONNX export",
+        "sha256": "7fa9a1aee51299fa6b3b92da4fe0c6c3dc74a9cdb3cf956e2702d401fe5ca87d",
+        # 2026-07: yuvraj108c repo only hosts rife 4.7-4.9 — repointed to the TAS op21-slim export (ORT load verified; 1-input 7-channel signature).
         "available": True
     },
 
@@ -1064,56 +1131,70 @@ AVAILABLE_MODELS = {
     # OmniSR (CVPR 2023) - omni-axis self-attention for compact-but-strong SR.
     "omnisr-x2": {
         "name": "OmniSR x2 (Compact SOTA)",
-        "url": "https://huggingface.co/Phhofm/models-omnisr/resolve/main/omnisr-x2.onnx",
+        "url": "https://github.com/Phhofm/models/releases/download/2xHFA2kOmniSR/2xHFA2kOmniSR_fp32_opset17.onnx",
         "scale": 2,
-        "description": "OmniSR x2 - CVPR 2023, omni-axis self-attention. ~10MB, faster than SwinIR at comparable PSNR. Good for 720p->1440p.",
+        "description": "OmniSR x2 - CVPR 2023, omni-axis self-attention. HFA2k training set (anime-leaning), ~4.6MB. Faster than SwinIR at comparable PSNR; good for 720p->1440p.",
         "type": "onnx",
         "category": "nextgen",
         "model_type": "omnisr",
+        "license": "CC-BY-4.0",
+        "attribution": "Philip Hofmann / Helaman (2xHFA2kOmniSR)",
+        "sha256": "54a53c3af07620222eeda969468415d76c19a4b1b9f209e8803f5575e5b87bbe",
+        # 2026-07: Phhofm/models-omnisr HF repo gone — repointed to the author's own GitHub release export (ORT load+infer verified).
         "available": True
     },
     "omnisr-x4": {
         "name": "OmniSR x4 (Compact SOTA)",
-        "url": "https://huggingface.co/Phhofm/models-omnisr/resolve/main/omnisr-x4.onnx",
+        "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/epoch895_OmniSR.onnx",
         "scale": 4,
-        "description": "OmniSR x4 - CVPR 2023. ~10MB. Sweet spot between SwinIR and FSRCNN for 480p->1920p.",
+        "description": "OmniSR x4 - CVPR 2023 official weights (epoch895 export). ~5.6MB. Sweet spot between SwinIR and FSRCNN for 480p->1920p.",
         "type": "onnx",
         "category": "nextgen",
         "model_type": "omnisr",
+        "license": "Apache-2.0",
+        "attribution": "Francis0625/Omni-SR official weights; huggingworld ONNX export",
+        "sha256": "c82256a5b8ac7543ed5ddbbc4ff531233d0b42ef159ea6c31060c5ed5924fd1e",
+        # 2026-07: Phhofm/models-omnisr HF repo gone — repointed to the official-weights export.
         "available": True
     },
 
     # DAT-light (2023) - smaller and faster than DAT2 at slightly lower PSNR.
     "dat-light-x2": {
-        "name": "DAT-light x2 (Production Transformer)",
+        "name": "DAT-light x2 (Production Transformer) [self-host required]",
         "url": "https://huggingface.co/zhengchen1999/DAT/resolve/main/dat-light-x2.onnx",
         "scale": 2,
-        "description": "DAT-light x2 - smaller/faster sibling of DAT2. ~15MB. Good general-purpose model.",
+        "description": "DAT-light x2 - smaller/faster sibling of DAT2. Upstream HF repo removed; no ONNX mirror found. See docs/MODEL-HOSTING.md.",
         "type": "onnx",
         "category": "nextgen",
         "model_type": "dat",
-        "available": True
+        # 2026-07 URL sweep: HF repo gone (401), no ONNX mirror found.
+        "available": False
     },
     "dat-light-x4": {
-        "name": "DAT-light x4 (Production Transformer)",
+        "name": "DAT-light x4 (Production Transformer) [self-host required]",
         "url": "https://huggingface.co/zhengchen1999/DAT/resolve/main/dat-light-x4.onnx",
         "scale": 4,
-        "description": "DAT-light x4 - smaller/faster sibling of DAT2. ~15MB.",
+        "description": "DAT-light x4 - smaller/faster sibling of DAT2. Upstream HF repo removed; no ONNX mirror found. See docs/MODEL-HOSTING.md. Alternative: nomos8kdat-x4 (DAT) or nomos2-dat2-x4.",
         "type": "onnx",
         "category": "nextgen",
         "model_type": "dat",
-        "available": True
+        # 2026-07 URL sweep: HF repo gone (401), no ONNX mirror found.
+        "available": False
     },
 
     # RestoreFormer++ (MM 2023) - face restore for severely degraded faces.
     "restoreformer-plus-plus": {
         "name": "RestoreFormer++ (Face Restoration)",
-        "url": "https://huggingface.co/wzhouxiff/RestoreFormerPlusPlus/resolve/main/restoreformer-plus-plus.onnx",
+        "url": "https://huggingface.co/facefusion/models-3.0.0/resolve/main/restoreformer_plus_plus.onnx",
         "scale": 1,
-        "description": "RestoreFormer++ - state-of-the-art face restoration, better than GFPGAN/CodeFormer for severely degraded faces. ~50MB.",
+        "description": "RestoreFormer++ - state-of-the-art face restoration, better than GFPGAN/CodeFormer for severely degraded faces. ~294MB (fp32).",
         "type": "onnx",
         "category": "face_restore",
         "model_type": "face_restore",
+        "license": "Apache-2.0",
+        "attribution": "wzhouxiff/RestoreFormerPlusPlus; FaceFusion models mirror",
+        "sha256": "1aba559333b60fce0270e3436699ebf56bbc602e8fefe9502f027b1b5fe4eead",
+        # 2026-07: upstream HF repo gone — repointed to the FaceFusion assets mirror. Size corrected (~294MB, not 50MB).
         "available": True
     },
 
@@ -1122,63 +1203,75 @@ AVAILABLE_MODELS = {
     # ============================================================
 
     "man-x2": {
-        "name": "MAN x2 (Multi-scale Attention)",
+        "name": "MAN x2 (Multi-scale Attention) [self-host required]",
         "url": "https://huggingface.co/icandle/MAN/resolve/main/man-x2.onnx",
         "scale": 2,
-        "description": "MAN x2 - Multi-scale Attention Network, ICME 2023. Lightweight transformer, ~8MB. Competitive with SwinIR at half the cost.",
+        "description": "MAN x2 - Multi-scale Attention Network, ICME 2023. Upstream HF repo removed; no ONNX mirror found. See docs/MODEL-HOSTING.md.",
         "type": "onnx",
         "category": "nextgen",
         "model_type": "man",
-        "available": True
+        # 2026-07 URL sweep: HF repo gone (401), no ONNX mirror found.
+        "available": False
     },
     "man-x4": {
-        "name": "MAN x4 (Multi-scale Attention)",
+        "name": "MAN x4 (Multi-scale Attention) [self-host required]",
         "url": "https://huggingface.co/icandle/MAN/resolve/main/man-x4.onnx",
         "scale": 4,
-        "description": "MAN x4 - Multi-scale Attention Network, ICME 2023. ~8MB. Strong PSNR-per-MB ratio.",
+        "description": "MAN x4 - Multi-scale Attention Network, ICME 2023. Upstream HF repo removed; no ONNX mirror found. See docs/MODEL-HOSTING.md.",
         "type": "onnx",
         "category": "nextgen",
         "model_type": "man",
-        "available": True
+        # 2026-07 URL sweep: HF repo gone (401), no ONNX mirror found.
+        "available": False
     },
     "craft-x2": {
-        "name": "CRAFT x2 (Compositional Refinement)",
+        "name": "CRAFT x2 (Compositional Refinement) [self-host required]",
         "url": "https://huggingface.co/AVC2-UESTC/CRAFT-SR/resolve/main/craft-x2.onnx",
         "scale": 2,
-        "description": "CRAFT x2 - Compositional Refinement texture-aware SR, 2023. ~12MB. Especially good on high-frequency detail recovery.",
+        "description": "CRAFT x2 - Compositional Refinement texture-aware SR, 2023. Upstream ships only .pth via Google Drive; no public ONNX export exists. See docs/MODEL-HOSTING.md.",
         "type": "onnx",
         "category": "nextgen",
         "model_type": "craft",
-        "available": True
+        # 2026-07 URL sweep: HF repo gone (401), no ONNX mirror found anywhere.
+        "available": False
     },
     "craft-x4": {
-        "name": "CRAFT x4 (Compositional Refinement)",
+        "name": "CRAFT x4 (Compositional Refinement) [self-host required]",
         "url": "https://huggingface.co/AVC2-UESTC/CRAFT-SR/resolve/main/craft-x4.onnx",
         "scale": 4,
-        "description": "CRAFT x4 - Compositional Refinement, 2023. ~12MB.",
+        "description": "CRAFT x4 - Compositional Refinement, 2023. Upstream ships only .pth via Google Drive; no public ONNX export exists. See docs/MODEL-HOSTING.md.",
         "type": "onnx",
         "category": "nextgen",
         "model_type": "craft",
-        "available": True
+        # 2026-07 URL sweep: HF repo gone (401), no ONNX mirror found anywhere.
+        "available": False
     },
     "gpen-512": {
         "name": "GPEN-512 (Face Restoration Alternative)",
-        "url": "https://huggingface.co/yangxy/GPEN/resolve/main/gpen-bfr-512.onnx",
+        "url": "https://huggingface.co/facefusion/models-3.0.0/resolve/main/gpen_bfr_512.onnx",
         "scale": 1,
-        "description": "GPEN-512 - face restoration with GAN prior. Different visual style than GFPGAN (more conservative). ~280MB.",
+        "description": "GPEN-512 - face restoration with GAN prior. Different visual style than GFPGAN (more conservative). ~284MB.",
         "type": "onnx",
         "category": "face_restore",
         "model_type": "face_restore",
+        "license": "Apache-2.0",
+        "attribution": "Alibaba DAMO GPEN; FaceFusion models mirror",
+        "sha256": "c6dd20daa7dd4313b83cb5bfb2a50a534b2f217afcd383b77862859d829d7f1a",
+        # 2026-07: yangxy/GPEN HF repo gone — repointed to the FaceFusion assets mirror (same weights family as gfpgan/codeformer entries).
         "available": True
     },
     "nafnet-denoise": {
-        "name": "NAFNet (Denoising / Restoration Pre-Pass)",
-        "url": "https://huggingface.co/megvii-research/NAFNet/resolve/main/nafnet-denoise.onnx",
+        "name": "NAFNet SIDD (Denoising / Restoration Pre-Pass)",
+        "url": "https://huggingface.co/deepghs/image_restoration/resolve/main/NAFNet-SIDD-width64.onnx",
         "scale": 1,
-        "description": "NAFNet - non-AI baseline for image denoising / restoration. ECCV 2022. Use as pre-pass before upscaling on noisy source material. ~17MB.",
+        "description": "NAFNet (SIDD width64) - ECCV 2022 image denoiser. Use as pre-pass before upscaling on noisy source material. Large export (~446MB) - prefer the hqdn3d/nlmeans denoise prefilter on weak hardware.",
         "type": "onnx",
         "category": "film-restore",
         "model_type": "restoration",
+        "license": "MIT",
+        "attribution": "megvii-research/NAFNet; deepghs ONNX export",
+        "sha256": "a31bd8339fd8664c1e7253d8d762dc04a8f6c8d0a3a7f7a71d19922f1c282b67",
+        # 2026-07: megvii HF repo gone — repointed to the deepghs image_restoration export (SIDD width64). Size corrected.
         "available": True
     },
 
@@ -2409,6 +2502,22 @@ async def download_model(model_name: str) -> bool:
                     with open(temp_path, "wb") as f:
                         async for chunk in response.aiter_bytes(chunk_size=65536):
                             f.write(chunk)
+
+            # Integrity gate — catalog entries may pin a sha256; verify BEFORE the
+            # file becomes visible as a valid model (supply-chain / corruption guard).
+            expected_sha = (model_info.get("sha256") or "").strip().lower()
+            if expected_sha:
+                h = hashlib.sha256()
+                with open(temp_path, "rb") as f:
+                    for chunk in iter(lambda: f.read(1 << 20), b""):
+                        h.update(chunk)
+                actual_sha = h.hexdigest()
+                if actual_sha != expected_sha:
+                    raise ValueError(
+                        f"sha256 mismatch for {model_name}: expected {expected_sha}, got {actual_sha} "
+                        "(corrupted download or upstream file changed)"
+                    )
+                logger.info(f"Model {model_name} sha256 verified")
 
             # Atomic rename — prevents partial files surviving crashes
             temp_path.rename(model_path)
