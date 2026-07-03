@@ -11,7 +11,7 @@ python-multipart>=0.0.30,<1.0
 # returned onnx_providers: ["AzureExecutionProvider", "CPUExecutionProvider"] without
 # OpenVINO despite running on openvino/ubuntu22_runtime:2025.4.1).
 onnxruntime-openvino>=1.20.0,<2.0.0
-numpy>=1.24.0,<2.0.0
+numpy>=1.24.0,<3.0.0
 
 # Image Processing - OpenCV with DNN Super Resolution
 opencv-contrib-python>=4.12.0,<5.0
