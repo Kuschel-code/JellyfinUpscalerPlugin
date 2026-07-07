@@ -197,7 +197,7 @@
   function detectIssueRef(q) {
     var m = q.match(new RegExp("github\\.com/" + REPO.replace(/[/.]/g, "\\$&") + "/issues/(\\d+)", "i")) ||
             q.match(/\bissue\s*#?(\d+)\b/i) ||
-            q.match(/(?:^|\s)#(\d+)(?:\s|$)/);
+            q.trim().match(/^#(\d+)$/);   // bare "#75" only as the whole message
     return m ? parseInt(m[1], 10) : null;
   }
   function fetchIssue(num, cb) {
@@ -413,6 +413,8 @@
     activate();
     addEl(esc(q), "user");
     input.value = "";
+    input.style.height = "";                    // collapse an expanded log box
+    form.classList.remove("hc-multiline");      // regardless of send path
     setTimeout(function () { respond(q); }, 120);
   }
 
