@@ -1544,19 +1544,25 @@ section.container-narrow { max-width: 780px; }
 
 /* ====================================================================
    v8.1 — chat console accepts multi-line log pastes (textarea input)
+   Single-line = identical to the old <input>: fixed height, no inner
+   scrolling, centered pill. Only true multi-line content (pasted logs,
+   detected via newlines in JS) expands the field.
    ==================================================================== */
 textarea.hc-input {
   resize: none;
-  overflow-y: auto;
-  max-height: 180px;
+  overflow: hidden;
+  white-space: nowrap;
+  height: auto;
   line-height: 1.5;
-  font-family: var(--mono);
   scrollbar-width: thin;
   scrollbar-color: var(--rule-strong) transparent;
 }
-.home-hero textarea.hc-input { font-family: var(--sans); }
-/* single-line: stay a pill; grown to multiple lines: soften + pin send button bottom-right */
-.hc-form { align-items: flex-end; }
+.hc-form.hc-multiline textarea.hc-input {
+  overflow-y: auto;
+  white-space: pre;
+  max-height: 180px;
+  font-family: var(--mono);
+  font-size: .85rem;
+}
 .hc-form.hc-multiline,
-.home-hero .hc-form.hc-multiline { border-radius: 22px; }
-.hc-form.hc-multiline textarea.hc-input { font-size: .85rem; font-family: var(--mono); }
+.home-hero .hc-form.hc-multiline { border-radius: 22px; align-items: flex-end; }

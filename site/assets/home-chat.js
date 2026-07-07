@@ -189,6 +189,46 @@
     return picked.slice(0, 1500);
   }
 
+  // --- GitHub issue links -------------------------------------------
+  // "https://github.com/<this repo>/issues/75" (or "issue #75") in a message:
+  // fetch the issue via GitHub's CORS-enabled API and analyze it - known log
+  // signatures in the issue body answer instantly, everything else goes to the
+  // AI with the issue content as context.
+  function detectIssueRef(q) {
+    var m = q.match(new RegExp("github\\.com/" + REPO.replace(/[/.]/g, "\\$&") + "/issues/(\\d+)", "i")) ||
+            q.match(/\bissue\s*#?(\d+)\b/i) ||
+            q.match(/(?:^|\s)#(\d+)(?:\s|$)/);
+    return m ? parseInt(m[1], 10) : null;
+  }
+  function fetchIssue(num, cb) {
+    var api = "https://api.github.com/repos/" + REPO + "/issues/" + num;
+    fetch(api).then(function (r) { if (!r.ok) throw r.status; return r.json(); })
+      .then(function (issue) {
+        if (!issue || !issue.title) { cb(null); return; }
+        if (issue.comments > 0) {
+          fetch(api + "/comments?per_page=2&sort=created&direction=desc")
+            .then(function (r) { return r.ok ? r.json() : []; })
+            .then(function (cs) { cb(issue, cs || []); })
+            .catch(function () { cb(issue, []); });
+        } else { cb(issue, []); }
+      })
+      .catch(function () { cb(null); });
+  }
+  function renderIssueCard(issue) {
+    var state = issue.state === "open" ? "open" : "closed";
+    return srcLabel("kb", "GitHub issue") +
+      "<strong>#" + issue.number + " · " + state + " — " + esc(issue.title) + "</strong>" +
+      '<div class="hc-rel"><a href="' + esc(issue.html_url) + '" target="_blank" rel="noopener">View on GitHub</a></div>';
+  }
+  function issueDigest(issue, comments) {
+    var out = "GITHUB ISSUE #" + issue.number + " (" + issue.state + "): " + issue.title + "\n" +
+      String(issue.body || "").slice(0, 1000);
+    (comments || []).forEach(function (c) {
+      out += "\nCOMMENT by " + (c.user && c.user.login || "?") + ": " + String(c.body || "").slice(0, 450);
+    });
+    return out.slice(0, 1750);
+  }
+
   // deterministic answer for "what's the latest version?" style questions
   function isVersionQuestion(q) {
     if (q.length > 90 || looksLikeLog(q)) return false;
@@ -286,7 +326,43 @@
       }
       // feed not loaded (yet/offline) -> fall through to the AI
     }
-    // 2) pasted log -> match known failure signatures first (instant, exact)
+    // 2) GitHub issue link/reference -> fetch it and analyze
+    var issueNum = looksLikeLog(query) ? null : detectIssueRef(query);
+    if (issueNum) {
+      var ti = typingEl();
+      fetchIssue(issueNum, function (issue, comments) {
+        if (!issue) {
+          ti.innerHTML = srcLabel("err", "Not found") +
+            "I couldn't load issue #" + issueNum + " from GitHub (it may not exist, or the API rate limit is reached). " +
+            '<a href="https://github.com/' + REPO + '/issues/' + issueNum + '" target="_blank" rel="noopener">Try opening it directly</a>.';
+          finish();
+          return;
+        }
+        ti.innerHTML = renderIssueCard(issue);
+        var issueText = issue.title + "\n" + String(issue.body || "");
+        var kbHits = matchLogPatterns(issueText);
+        var extra = query.replace(/https?:\/\/\S+/g, " ").replace(/\bissue\s*#?\d+\b/ig, " ").trim();
+        if (kbHits.length && extra.length < 12) {
+          // the issue body carries a known failure signature and the user asked
+          // nothing beyond the link -> answer deterministically from the KB.
+          kbHits.forEach(function (e) { addEl(renderKb(e), "bot"); });
+          remember("issue #" + issue.number, kbHits.map(function (e) { return e.title; }).join("; "));
+          finish();
+          return;
+        }
+        var t2 = typingEl();
+        var q2 = "Help with this GitHub issue of the plugin. Explain the problem and the fix." +
+          (extra ? " The user also asks: " + extra.slice(0, 220) : "") + "\n\n" + issueDigest(issue, comments);
+        askWorker(q2, function (answer) {
+          if (answer) { t2.innerHTML = renderAi(answer); remember("issue #" + issue.number + (extra ? " - " + extra.slice(0, 120) : ""), answer); }
+          else { t2.innerHTML = renderError(); }
+          t2.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          finish();
+        });
+      });
+      return;
+    }
+    // 3) pasted log -> match known failure signatures first (instant, exact)
     if (looksLikeLog(query)) {
       var logHits = matchLogPatterns(query);
       if (logHits.length) {
@@ -309,7 +385,7 @@
       });
       return;
     }
-    // 3) confident KB hit -> answer immediately from the knowledge base.
+    // 4) confident KB hit -> answer immediately from the knowledge base.
     var hits = search(query);
     if (hits.length && hits[0].s >= KB_MIN_SCORE && KB) {
       addEl(renderKb(hits[0].e), "bot");
@@ -317,7 +393,7 @@
       finish();
       return;
     }
-    // 4) otherwise ask the Worker (LLM), graceful fallback on failure.
+    // 5) otherwise ask the Worker (LLM), graceful fallback on failure.
     var t = typingEl();
     askWorker(query, function (answer) {
       if (answer) { t.innerHTML = renderAi(answer); remember(query, answer); }
@@ -346,19 +422,28 @@
     submit(input.value);
   });
 
-  // textarea behaviour: Enter sends, Shift+Enter = newline (for pasting logs);
-  // auto-grow up to a few lines so multi-line logs stay visible.
+  // textarea behaviour: Enter sends, Shift+Enter = newline (for pasting logs).
+  // While typing normally the field stays a fixed single line (exactly like the
+  // old <input>); it only expands when the content actually contains newlines
+  // (a pasted log). Keying growth off the CONTENT - not off measured heights -
+  // avoids feedback loops (style changes -> new height -> class flips back).
   function autoGrow() {
-    input.style.height = "auto";
-    input.style.height = Math.min(input.scrollHeight, 180) + "px";
-    form.classList.toggle("hc-multiline", input.scrollHeight > 52);
+    var multi = input.value.indexOf("\n") !== -1;
+    form.classList.toggle("hc-multiline", multi);
+    if (multi) {
+      input.style.height = "auto";
+      input.style.height = Math.min(input.scrollHeight, 180) + "px";
+    } else {
+      input.style.height = ""; // back to the CSS single-line height
+    }
   }
   input.addEventListener("input", autoGrow);
   input.addEventListener("keydown", function (e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       submit(input.value);
-      input.style.height = "auto";
+      input.style.height = "";
+      form.classList.remove("hc-multiline");
     }
   });
 
