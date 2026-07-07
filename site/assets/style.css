@@ -1541,3 +1541,22 @@ section.container-narrow { max-width: 780px; }
   .navov-panel, .navov-link, .navov-scrim { transition: none !important; }
   .home-hero .hero-inner > * { animation: none !important; }
 }
+
+/* ====================================================================
+   v8.1 — chat console accepts multi-line log pastes (textarea input)
+   ==================================================================== */
+textarea.hc-input {
+  resize: none;
+  overflow-y: auto;
+  max-height: 180px;
+  line-height: 1.5;
+  font-family: var(--mono);
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-strong) transparent;
+}
+.home-hero textarea.hc-input { font-family: var(--sans); }
+/* single-line: stay a pill; grown to multiple lines: soften + pin send button bottom-right */
+.hc-form { align-items: flex-end; }
+.hc-form.hc-multiline,
+.home-hero .hc-form.hc-multiline { border-radius: 22px; }
+.hc-form.hc-multiline textarea.hc-input { font-size: .85rem; font-family: var(--mono); }

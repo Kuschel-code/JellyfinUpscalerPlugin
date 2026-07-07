@@ -73,21 +73,135 @@
       .filter(function (r) { return r.s > 0; }).sort(function (a, b) { return b.s - a.s; });
   }
 
-  // context for the Worker — top KB entries' title+answer (mirrors haikuContext).
+  // --- live release facts (fetched once from the plugin feed; the feed is the
+  // source of truth, so the AI can never quote a stale "latest" version) ---
+  var LATEST = null; // { version, date, abi, changelog }
+  function loadLatest() {
+    fetch("https://raw.githubusercontent.com/" + REPO + "/main/repository-jellyfin.json", { cache: "no-cache" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var v = d && d[0] && d[0].versions && d[0].versions[0];
+        if (v && v.version) {
+          LATEST = {
+            version: String(v.version),
+            date: String(v.timestamp || "").slice(0, 10),
+            abi: String(v.targetAbi || ""),
+            changelog: String(v.changelog || "").split(" | ")[0].slice(0, 900)
+          };
+        }
+      })
+      .catch(function () {
+        // fallback: GitHub releases API
+        fetch("https://api.github.com/repos/" + REPO + "/releases/latest")
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (d && d.tag_name) {
+              LATEST = { version: String(d.tag_name).replace(/^v/, ""), date: String(d.published_at || "").slice(0, 10), abi: "", changelog: String(d.body || "").slice(0, 900) };
+            }
+          })
+          .catch(function () { LATEST = null; });
+      });
+  }
+  loadLatest();
+
+  // authoritative live facts, prepended to every Worker prompt
+  function currentFacts() {
+    var out = "CURRENT FACTS (live, authoritative - always prefer these over anything below):\n";
+    if (LATEST) {
+      out += "- Latest plugin release: v" + LATEST.version + (LATEST.date ? " (" + LATEST.date + ")" : "") +
+        (LATEST.abi ? ", targetAbi " + LATEST.abi : "") +
+        ". Users on older versions should update via Jellyfin Dashboard -> Plugins -> Catalog.\n";
+      if (LATEST.changelog) out += "- What's new: " + LATEST.changelog + "\n";
+    }
+    out += "- Docker images: docker.io/kuscheltier/jellyfin-ai-upscaler - rolling tags docker7 (NVIDIA), docker7-cpu, docker7-intel, docker7-amd, docker7-vulkan, docker7-apple (auto-update targets); ':latest' = NVIDIA variant; version pins vX.Y.Z-<variant>. The AI service listens on port 5000. The PLUGIN updates through the Jellyfin catalog; the DOCKER image updates via docker pull.\n";
+    return out + "\n";
+  }
+
+  // conversation memory for follow-up questions (last few turns, truncated)
+  var HISTORY = [];
+  function remember(q, a) {
+    HISTORY.push({ q: String(q).slice(0, 240), a: String(a).replace(/<[^>]+>/g, " ").slice(0, 320) });
+    if (HISTORY.length > 4) HISTORY.shift();
+  }
+
+  // context for the Worker — live facts + conversation + top KB entries.
   function workerContext(query) {
-    if (!KB || !KB.entries) return "";
+    var out = currentFacts();
+    if (HISTORY.length) {
+      out += "CONVERSATION SO FAR (for follow-up questions):\n";
+      for (var h = 0; h < HISTORY.length; h++) {
+        out += "User: " + HISTORY[h].q + "\nAssistant: " + HISTORY[h].a + "\n";
+      }
+      out += "\n";
+    }
+    if (!KB || !KB.entries) return out.slice(0, 5900);
     var ranked = KB.entries.map(function (e) { return { e: e, s: scoreEntry(e, tokenize(query), query.toLowerCase()) }; })
       .sort(function (a, b) { return b.s - a.s; });
-    var out = "All support topics: " + KB.entries.map(function (e) { return e.title; }).join("; ") + "\n\n";
-    for (var i = 0; i < ranked.length && out.length < 5200; i++) {
+    out += "All support topics: " + KB.entries.map(function (e) { return e.title; }).join("; ") + "\n\n";
+    for (var i = 0; i < ranked.length && out.length < 5300; i++) {
       out += "## " + ranked[i].e.title + "\n" + ranked[i].e.answer + "\n\n";
     }
-    return out.slice(0, 5800);
+    return out.slice(0, 5900);
   }
 
   function issueUrl(q) {
-    var body = "**Problem:**\n" + (q || "") + "\n\n**Plugin version:** v1.8.3.3\n**Docker image tag:** (e.g. docker7-intel)\n**Hardware / GPU:** \n**Jellyfin version:** \n**/gpu-verify output:** \n**Relevant logs:** ";
+    var ver = LATEST ? "v" + LATEST.version : "(your version)";
+    var body = "**Problem:**\n" + (q || "") + "\n\n**Plugin version:** " + ver + "\n**Docker image tag:** (e.g. docker7-intel)\n**Hardware / GPU:** \n**Jellyfin version:** \n**/gpu-verify output:** \n**Relevant logs:** ";
     return NEWISSUE + "?title=" + encodeURIComponent((q || "Support request").slice(0, 80)) + "&body=" + encodeURIComponent(body);
+  }
+
+  // --- log analysis -------------------------------------------------
+  // Pasted logs are detected, matched against known failure signatures first
+  // (instant, deterministic), otherwise distilled + sent to the AI.
+  var LOG_PATTERNS = [
+    { re: /cannot write to .*read-only|could not inject player script|access to the path .*index\.html.*denied/i, kb: "player-button-missing" },
+    { re: /sha256 mismatch/i, kb: "model-sha256-mismatch" },
+    { re: /checksum (mismatch|failed|did not match)|package .*checksum/i, kb: "install-checksum" },
+    { re: /not supported.*abi|targetabi|abi.*mismatch/i, kb: "not-supported-abi" },
+    { re: /azureexecutionprovider(?![\s\S]*cudaexecutionprovider)/i, kb: "gpu-on-cpu" },
+    { re: /ai service unreachable|connection refused.*:5000|unable to connect.*(docker|:5000)|econnrefused.*5000/i, kb: "docker-unreachable" },
+    { re: /missingmethodexception|typeloadexception/i, kb: "jellyfin-12" },
+    { re: /invalid_graph|invalidgraph/i, kb: "models-self-host" },
+    { re: /reshape.*(fp16|input)|invalid_argument.*onnx/i, kb: "onnx-reshape-fp16" },
+    { re: /ffmpeg.*(exited|crash|code 1)|no such file.*ffmpeg/i, kb: "ffmpeg-crash" }
+  ];
+  function looksLikeLog(q) {
+    var lines = q.split("\n");
+    if (lines.length >= 3 && /\[(WRN|ERR|INF|WARN|ERROR|FTL)\]|\d{2}:\d{2}:\d{2}|Exception|Traceback/i.test(q)) return true;
+    return q.length > 350 && /error|exception|failed|denied|refused/i.test(q);
+  }
+  function matchLogPatterns(q) {
+    var hits = [];
+    for (var i = 0; i < LOG_PATTERNS.length && hits.length < 2; i++) {
+      if (LOG_PATTERNS[i].re.test(q)) {
+        var id = LOG_PATTERNS[i].kb;
+        var entry = KB && KB.entries && KB.entries.filter(function (e) { return e.id === id; })[0];
+        if (entry && hits.indexOf(entry) === -1) hits.push(entry);
+      }
+    }
+    return hits;
+  }
+  // keep the interesting lines (errors first) and fit the Worker's question cap
+  function distillLog(q) {
+    var lines = q.split("\n");
+    var bad = lines.filter(function (l) { return /\[(WRN|ERR|FTL|WARN|ERROR)\]|error|exception|failed|denied|refused|mismatch/i.test(l); });
+    var picked = (bad.length ? bad : lines).slice(0, 18).join("\n");
+    return picked.slice(0, 1500);
+  }
+
+  // deterministic answer for "what's the latest version?" style questions
+  function isVersionQuestion(q) {
+    if (q.length > 90 || looksLikeLog(q)) return false;
+    return /(latest|newest|current|aktuellste?|neueste?|new)\s+(version|release)|version.*(latest|newest|current|out|available)|what'?s new|which version|welche version|neue version/i.test(q.toLowerCase());
+  }
+  function renderVersion() {
+    if (!LATEST) return null;
+    var txt = "**Latest release: v" + LATEST.version + "**" + (LATEST.date ? " (" + LATEST.date + ")" : "") + "\n\n" +
+      (LATEST.changelog ? LATEST.changelog + "\n\n" : "") +
+      "**Update:** Jellyfin Dashboard → Plugins → Catalog → AI Upscaler → Update, then restart Jellyfin. " +
+      "Docker images: `docker pull kuscheltier/jellyfin-ai-upscaler:docker7-<variant>`.";
+    return srcLabel("kb", "Live release info") + md(txt) +
+      '<div class="hc-rel"><a href="https://github.com/' + REPO + '/releases" target="_blank" rel="noopener">All releases</a></div>';
   }
 
   // --- DOM refs ---
@@ -161,17 +275,52 @@
   // irrelevant KB entry.
   var KB_MIN_SCORE = 6;
   function respond(query) {
+    // 1) version questions -> answered live from the release feed (never stale)
+    if (isVersionQuestion(query)) {
+      var v = renderVersion();
+      if (v) {
+        addEl(v, "bot");
+        remember(query, "Latest release is v" + LATEST.version + (LATEST.date ? " (" + LATEST.date + ")" : ""));
+        finish();
+        return;
+      }
+      // feed not loaded (yet/offline) -> fall through to the AI
+    }
+    // 2) pasted log -> match known failure signatures first (instant, exact)
+    if (looksLikeLog(query)) {
+      var logHits = matchLogPatterns(query);
+      if (logHits.length) {
+        var html = srcLabel("kb", "Log analysis") +
+          "<strong>Found " + (logHits.length === 1 ? "a known signature" : logHits.length + " known signatures") + " in your log:</strong>";
+        addEl(html, "bot");
+        logHits.forEach(function (e) { addEl(renderKb(e), "bot"); });
+        remember("(pasted log)", logHits.map(function (e) { return e.title; }).join("; "));
+        finish();
+        return;
+      }
+      // unknown log -> distill the interesting lines and let the AI analyze it
+      var tl = typingEl();
+      var distilled = "Analyze this Jellyfin AI Upscaler log excerpt. Identify the problem and give a concrete fix:\n" + distillLog(query);
+      askWorker(distilled, function (answer) {
+        if (answer) { tl.innerHTML = renderAi(answer); remember("(pasted log)", answer); }
+        else { tl.innerHTML = renderError(); }
+        tl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        finish();
+      });
+      return;
+    }
+    // 3) confident KB hit -> answer immediately from the knowledge base.
     var hits = search(query);
     if (hits.length && hits[0].s >= KB_MIN_SCORE && KB) {
-      // confident KB hit -> answer immediately from the knowledge base.
       addEl(renderKb(hits[0].e), "bot");
+      remember(query, hits[0].e.title);
       finish();
       return;
     }
-    // no KB hit -> ask the Worker (Claude), graceful fallback on failure.
+    // 4) otherwise ask the Worker (LLM), graceful fallback on failure.
     var t = typingEl();
     askWorker(query, function (answer) {
-      if (answer) { t.innerHTML = renderAi(answer); }
+      if (answer) { t.innerHTML = renderAi(answer); remember(query, answer); }
       else { t.innerHTML = renderError(); }
       t.scrollIntoView({ behavior: "smooth", block: "nearest" });
       finish();
@@ -195,6 +344,22 @@
   form.addEventListener("submit", function (e) {
     e.preventDefault();
     submit(input.value);
+  });
+
+  // textarea behaviour: Enter sends, Shift+Enter = newline (for pasting logs);
+  // auto-grow up to a few lines so multi-line logs stay visible.
+  function autoGrow() {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 180) + "px";
+    form.classList.toggle("hc-multiline", input.scrollHeight > 52);
+  }
+  input.addEventListener("input", autoGrow);
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      submit(input.value);
+      input.style.height = "auto";
+    }
   });
 
   suggest.addEventListener("click", function (e) {

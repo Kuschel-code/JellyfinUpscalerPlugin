@@ -18,6 +18,25 @@
   var NEWISSUE = "https://github.com/" + REPO + "/issues/new";
   var KB = null;
 
+  // live release facts from the plugin feed — keeps AI answers version-accurate
+  var LATEST = null;
+  fetch("https://raw.githubusercontent.com/" + REPO + "/main/repository-jellyfin.json", { cache: "no-cache" })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      var v = d && d[0] && d[0].versions && d[0].versions[0];
+      if (v && v.version) LATEST = { version: String(v.version), date: String(v.timestamp || "").slice(0, 10), changelog: String(v.changelog || "").split(" | ")[0].slice(0, 700) };
+    })
+    .catch(function () { LATEST = null; });
+  function currentFacts() {
+    var out = "CURRENT FACTS (live, authoritative - always prefer these over anything below):\n";
+    if (LATEST) {
+      out += "- Latest plugin release: v" + LATEST.version + (LATEST.date ? " (" + LATEST.date + ")" : "") + ". Users on older versions should update via Jellyfin Dashboard -> Plugins -> Catalog.\n";
+      if (LATEST.changelog) out += "- What's new: " + LATEST.changelog + "\n";
+    }
+    out += "- Docker images: docker.io/kuscheltier/jellyfin-ai-upscaler - rolling tags docker7 (NVIDIA), docker7-cpu, docker7-intel, docker7-amd, docker7-vulkan, docker7-apple; ':latest' = NVIDIA variant. AI service port 5000; the plugin updates via the Jellyfin catalog, the Docker image via docker pull.\n";
+    return out + "\n";
+  }
+
   // Optional Claude Haiku fallback. Leave "" to keep the bot fully client-side
   // (KB + live GitHub search only). Set this to your Cloudflare Worker URL to let
   // Haiku answer questions the KB can't. The Anthropic API key lives ONLY as the
@@ -100,7 +119,7 @@
       .catch(function () { cb(null); });
   }
   function issueUrl(q) {
-    var body = "**Problem:**\n" + (q || "") + "\n\n**Plugin version:** v1.8.3.3\n**Docker image tag:** (e.g. docker7-intel)\n**Hardware / GPU:** \n**Jellyfin version:** \n**/gpu-verify output:** \n**Relevant logs:** ";
+    var body = "**Problem:**\n" + (q || "") + "\n\n**Plugin version:** " + (LATEST ? "v" + LATEST.version : "(your version)") + "\n**Docker image tag:** (e.g. docker7-intel)\n**Hardware / GPU:** \n**Jellyfin version:** \n**/gpu-verify output:** \n**Relevant logs:** ";
     return NEWISSUE + "?title=" + encodeURIComponent((q || "Support request").slice(0, 80)) + "&body=" + encodeURIComponent(body);
   }
   function issueCta(q) { return '<div class="sb-rel"><a href="' + esc(issueUrl(q)) + '" target="_blank" rel="noopener">' + esc(t("prefill")) + "</a></div>"; }
@@ -165,14 +184,15 @@
   }
   // --- Claude Haiku fallback (only when HAIKU_ENDPOINT is configured) ---
   function haikuContext(query) {
-    if (!KB || !KB.entries) return "";
+    var out = currentFacts();
+    if (!KB || !KB.entries) return out.slice(0, 5900);
     var ranked = KB.entries.map(function (e) { return { e: e, s: scoreEntry(e, tokenize(query), query.toLowerCase()) }; })
       .sort(function (a, b) { return b.s - a.s; });
-    var out = "All support topics: " + KB.entries.map(function (e) { return e.title; }).join("; ") + "\n\n";
-    for (var i = 0; i < ranked.length && out.length < 5200; i++) {
+    out += "All support topics: " + KB.entries.map(function (e) { return e.title; }).join("; ") + "\n\n";
+    for (var i = 0; i < ranked.length && out.length < 5300; i++) {
       out += "## " + ranked[i].e.title + "\n" + ranked[i].e.answer + "\n\n";
     }
-    return out.slice(0, 5800);
+    return out.slice(0, 5900);
   }
   function askHaiku(query, cb) {
     fetch(HAIKU_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" },

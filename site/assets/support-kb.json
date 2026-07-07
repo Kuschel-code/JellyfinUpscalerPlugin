@@ -1,6 +1,6 @@
 {
-  "version": "1.8.3.3",
-  "updated": "2026-06-18",
+  "version": "1.8.3.4",
+  "updated": "2026-07-07",
   "repo": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin",
   "newIssueUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/new",
   "intro": "Hi! I'm the AI Upscaler support assistant. I answer from every support topic we've ever handled (each with a step-by-step guide), and I can search all GitHub issues live. Ask about install errors, GPU not used, Docker/NAS setup, API tokens, models, and more.",
@@ -8,177 +8,632 @@
     {
       "id": "install-checksum",
       "title": "Plugin won't install / checksum mismatch",
-      "issues": [51, 52, 54, 57, 62, 63, 43, 37, 33, 29, 28, 24, 9, 7],
-      "keywords": ["install", "installation", "checksum", "mismatch", "didn't match", "doesn't match", "invaliddataexception", "error occurred installing", "corrupt", "cannot install", "failed to install", "package installation failed", "catalog", "manifest"],
-      "answer": "Jellyfin checks the plugin ZIP's MD5 against the repo manifest and rejects any mismatch. A checksum error on a current version almost always means a **stale cached repo**. Step by step:\n1. Use the official repo URL: `https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/repository-jellyfin.json`\n2. Dashboard → Plugins → **Repositories** → remove the AI Upscaler repo.\n3. Re-add the repository (same URL).\n4. **Restart Jellyfin** (this clears the cached manifest).\n5. Catalog → AI Upscaler → install the latest (**v1.7.8**).\n6. Still failing? Paste the exact error + your Jellyfin version."
+      "issues": [
+        51,
+        52,
+        54,
+        57,
+        62,
+        63,
+        43,
+        37,
+        33,
+        29,
+        28,
+        24,
+        9,
+        7
+      ],
+      "keywords": [
+        "install",
+        "installation",
+        "checksum",
+        "mismatch",
+        "didn't match",
+        "doesn't match",
+        "invaliddataexception",
+        "error occurred installing",
+        "corrupt",
+        "cannot install",
+        "failed to install",
+        "package installation failed",
+        "catalog",
+        "manifest"
+      ],
+      "answer": "Jellyfin checks the plugin ZIP's MD5 against the repo manifest and rejects any mismatch. A checksum error on a current version almost always means a **stale cached repo**. Step by step:\n1. Use the official repo URL: `https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/repository-jellyfin.json`\n2. Dashboard → Plugins → **Repositories** → remove the AI Upscaler repo.\n3. Re-add the repository (same URL).\n4. **Restart Jellyfin** (this clears the cached manifest).\n5. Catalog → AI Upscaler → install the **latest version** shown.\n6. Still failing? Paste the exact error + your Jellyfin version."
     },
     {
       "id": "no-newer-version",
       "title": "\"No newer version available\" / can't update",
-      "issues": [65, 54, 30],
-      "keywords": ["no newer version", "newer version", "update", "cant update", "can't update", "outdated", "latest version", "no update", "stuck on old"],
-      "answer": "Jellyfin caches the plugin catalog. Step by step:\n1. Dashboard → Plugins → **Repositories**.\n2. Remove the AI Upscaler repository.\n3. Re-add it (URL: `.../main/repository-jellyfin.json`).\n4. **Restart Jellyfin**.\n5. Hard-refresh the dashboard (Ctrl+F5).\n6. Catalog now shows the latest (**v1.7.8**)."
+      "issues": [
+        65,
+        54,
+        30
+      ],
+      "keywords": [
+        "no newer version",
+        "newer version",
+        "update",
+        "cant update",
+        "can't update",
+        "outdated",
+        "latest version",
+        "no update",
+        "stuck on old"
+      ],
+      "answer": "Jellyfin caches the plugin catalog. Step by step:\n1. Dashboard → Plugins → **Repositories**.\n2. Remove the AI Upscaler repository.\n3. Re-add it (URL: `.../main/repository-jellyfin.json`).\n4. **Restart Jellyfin**.\n5. Hard-refresh the dashboard (Ctrl+F5).\n6. Catalog now shows the latest release.\n\nIf you added the repository long ago with the `.../main/manifest.json` URL: that feed briefly lagged behind in mid-2026 (issue #74) — it is synced again, so a refresh now shows the latest version on any of the repo URLs."
     },
     {
       "id": "not-supported-abi",
       "title": "Plugin \"Not Supported\" / incompatible with my Jellyfin",
-      "issues": [58, 47, 30],
-      "keywords": ["not supported", "unsupported", "incompatible", "compatible", "abi", "targetabi", "10.11", "won't load", "disabled", "wrong version"],
-      "answer": "The plugin targets Jellyfin ABI **10.11.8**. Step by step:\n1. Check your Jellyfin version (Dashboard, bottom of the page).\n2. On Jellyfin **10.11.x** → install plugin **v1.7.8**.\n3. On older Jellyfin → update Jellyfin first, then install.\n4. Restart Jellyfin after installing.\n5. Still \"Not Supported\"? Check the server log for the ABI line and match the versions."
+      "issues": [
+        58,
+        47,
+        30
+      ],
+      "keywords": [
+        "not supported",
+        "unsupported",
+        "incompatible",
+        "compatible",
+        "abi",
+        "targetabi",
+        "10.11",
+        "won't load",
+        "disabled",
+        "wrong version"
+      ],
+      "answer": "The plugin targets Jellyfin ABI **10.11.8**. Step by step:\n1. Check your Jellyfin version (Dashboard, bottom of the page).\n2. On Jellyfin **10.11.x** → install the **latest plugin version**.\n3. On older Jellyfin → update Jellyfin first, then install.\n4. Restart Jellyfin after installing.\n5. Still \"Not Supported\"? Check the server log for the ABI line and match the versions."
     },
     {
       "id": "docker-unreachable",
       "title": "Unable to connect to the Docker AI service",
-      "issues": [62, 36],
-      "keywords": ["unable to connect", "cant connect", "can't connect", "docker service", "ai service", "unavailable", "503", "connection refused", "offline", "not reachable", "service unavailable", "standalone", "test connection"],
+      "issues": [
+        62,
+        36
+      ],
+      "keywords": [
+        "unable to connect",
+        "cant connect",
+        "can't connect",
+        "docker service",
+        "ai service",
+        "unavailable",
+        "503",
+        "connection refused",
+        "offline",
+        "not reachable",
+        "service unavailable",
+        "standalone",
+        "test connection"
+      ],
       "answer": "The plugin reaches the Docker container over HTTP. Step by step:\n1. Confirm the container is **running**.\n2. Confirm port **5000** is published (`-p 5000:5000`).\n3. In a browser open `http://YOUR-SERVER-IP:5000/health` → expect `{\"status\":\"healthy\"}`.\n4. In the plugin set **AI Service URL** = `http://YOUR-SERVER-IP:5000` (use the LAN IP, not `localhost`, if Jellyfin runs in its own container).\n5. Make sure no firewall / reverse proxy blocks port 5000.\n6. Click **Test Connection** in the plugin config."
     },
     {
       "id": "gpu-on-cpu",
       "title": "GPU detected but inference runs on CPU (slow)",
-      "issues": [66, 67, 69, 70, 44],
-      "keywords": ["gpu", "cpu", "not used", "using_gpu", "runs on cpu", "slow", "no gpu", "azureexecutionprovider", "gpu not working", "not using gpu", "inference cpu"],
+      "issues": [
+        66,
+        67,
+        69,
+        70,
+        44
+      ],
+      "keywords": [
+        "gpu",
+        "cpu",
+        "not used",
+        "using_gpu",
+        "runs on cpu",
+        "slow",
+        "no gpu",
+        "azureexecutionprovider",
+        "gpu not working",
+        "not using gpu",
+        "inference cpu"
+      ],
       "answer": "If `/gpu-verify` shows `AzureExecutionProvider`, you're on the wrong/old image (plain onnxruntime, no GPU provider). Step by step:\n1. Choose the right image: `docker7-intel` / `docker7-amd` / `docker7` (NVIDIA).\n2. Force a fresh pull:\n```\ndocker compose pull\ndocker compose up -d --force-recreate\n```\n3. Pass the GPU device: `--gpus all` (NVIDIA), `/dev/dri` (Intel/AMD Linux), or `/dev/dxg` (WSL2).\n4. On native Linux also add `group_add: render`.\n5. Re-check `http://IP:5000/gpu-verify` → `active_providers` should list a non-CPU provider.\n(v1.7.8 also fixed a display bug where `using_gpu:false` showed even with OpenVINO active — trust `active_providers`.)"
     },
     {
       "id": "intel-arc-wsl2",
       "title": "Intel Arc / iGPU on Windows or WSL2 not used",
-      "issues": [66, 69, 70, 32],
-      "keywords": ["intel", "arc", "wsl2", "wsl", "windows", "dxg", "openvino", "a380", "a310", "a750", "igpu", "docker desktop"],
+      "issues": [
+        66,
+        69,
+        70,
+        32
+      ],
+      "keywords": [
+        "intel",
+        "arc",
+        "wsl2",
+        "wsl",
+        "windows",
+        "dxg",
+        "openvino",
+        "a380",
+        "a310",
+        "a750",
+        "igpu",
+        "docker desktop"
+      ],
       "answer": "Step by step for Intel Arc / iGPU on Windows/WSL2:\n1. Use the **`docker7-intel`** image (it bundles `onnxruntime-openvino`).\n2. Pass **`/dev/dxg`** (NOT `/dev/dri/renderD128`) and mount `/usr/lib/wsl`.\n3. Force a fresh image: `docker compose pull` (plain `up` reuses the cached old one).\n4. `docker compose up -d --force-recreate`.\n5. Check `http://IP:5000/gpu-verify` → should show `OpenVINOExecutionProvider`.\n6. For full-length files use **batch** mode — live 4x HD is too heavy for an A380."
     },
     {
       "id": "onnx-reshape-fp16",
       "title": "ONNX error / \"Reshape\" / wrong input type / FP16 crash",
-      "issues": [67, 70, 46],
-      "keywords": ["onnx", "reshape", "fp16", "input type", "invalid_argument", "warmup", "runtime_exception", "onnxruntimeerror", "non-zero status", "libonnxruntime_providers"],
-      "answer": "Both ONNX warmup errors are fixed. Step by step:\n1. Update to the **v1.7.8** Docker images: `docker compose pull && docker compose up -d --force-recreate`.\n2. The FP16-on-FP32 crash (`INVALID_ARGUMENT`) was fixed in v1.7.4 — FP16 is only used when the loaded model agrees.\n3. The `Reshape` warmup error on `realesrgan-x4-256` was fixed in v1.7.8 — the benchmark now reads the model's real input shape.\n4. Restart the container and retry the model."
+      "issues": [
+        67,
+        70,
+        46
+      ],
+      "keywords": [
+        "onnx",
+        "reshape",
+        "fp16",
+        "input type",
+        "invalid_argument",
+        "warmup",
+        "runtime_exception",
+        "onnxruntimeerror",
+        "non-zero status",
+        "libonnxruntime_providers"
+      ],
+      "answer": "Both ONNX warmup errors are fixed. Step by step:\n1. Update to the **latest** Docker images: `docker compose pull && docker compose up -d --force-recreate`.\n2. The FP16-on-FP32 crash (`INVALID_ARGUMENT`) was fixed in v1.7.4 — FP16 is only used when the loaded model agrees.\n3. The `Reshape` warmup error on `realesrgan-x4-256` was fixed in v1.7.8 — the benchmark now reads the model's real input shape.\n4. Restart the container and retry the model."
     },
     {
       "id": "api-token",
       "title": "Set the API token / \"not configured\" / 401 Unauthorized",
-      "issues": [71],
-      "keywords": ["api token", "api_token", "x-api-token", "not configured", "token", "401", "403", "secure", "authentication", "unauthorized", "generate token", "where do i set the token", "disable auth", "shared secret", "managed token", "named token", "create token", "revoke token", "expire", "expiry", "30 days"],
+      "issues": [
+        71
+      ],
+      "keywords": [
+        "api token",
+        "api_token",
+        "x-api-token",
+        "not configured",
+        "token",
+        "401",
+        "403",
+        "secure",
+        "authentication",
+        "unauthorized",
+        "generate token",
+        "where do i set the token",
+        "disable auth",
+        "shared secret",
+        "managed token",
+        "named token",
+        "create token",
+        "revoke token",
+        "expire",
+        "expiry",
+        "30 days"
+      ],
       "answer": "The API token is a **shared secret you choose** that gates the Docker AI service so only your plugin can use it. For the env secret there's **no \"generate\" button** — you set the **same value in two places** (or pick the no-auth path); the plugin's *API Tokens* tab can additionally mint named tokens (see below).\n\n**Home/LAN (simplest)** — turn auth off:\n1. Set `API_TOKEN=disable` on the container.\n2. Restart the container. The \"not configured\" message is gone and model downloads work.\n\n**Secure it instead** — same secret in both places:\n1. On the Docker container set `API_TOKEN=your-secret` (docker-compose: `environment:` → `- API_TOKEN=your-secret`).\n2. In the plugin: **Settings → AI Service API Token** — paste the identical value, then Save.\n3. Restart the container. If the two differ, the service returns **401/403**.\n4. Verify: open `http://YOUR-IP:5000/status` → expect `api_token_configured: true` and `auth_enabled: true`.\n\n**Named / expiring tokens (v1.8+)**: the plugin's **API Tokens** tab (Jellyfin admin) also mints named tokens with an optional expiry (30 days / 90 days / 1 year / never). Each is shown once, stored only as a hash, and revocable individually; the `API_TOKEN` env value stays valid as a non-revocable bootstrap.\nFull walkthrough: the **API** page on the project website."
     },
     {
       "id": "non-admin-users",
       "title": "Non-admin users can't use the plugin (models won't load)",
-      "issues": [69],
-      "keywords": ["non-admin", "non admin", "normal user", "regular user", "permission", "elevation", "models won't show", "cant load model", "only admin", "authorize"],
-      "answer": "Fixed in **v1.7.5** (31 endpoints downgraded from admin-only to authenticated-user). Step by step:\n1. Update the plugin to **v1.7.8**.\n2. Restart Jellyfin.\n3. Have the non-admin user reload the player — they can now load/use models."
+      "issues": [
+        69
+      ],
+      "keywords": [
+        "non-admin",
+        "non admin",
+        "normal user",
+        "regular user",
+        "permission",
+        "elevation",
+        "models won't show",
+        "cant load model",
+        "only admin",
+        "authorize"
+      ],
+      "answer": "Fixed in **v1.7.5** (31 endpoints downgraded from admin-only to authenticated-user). Step by step:\n1. Update the plugin to the **latest version**.\n2. Restart Jellyfin.\n3. Have the non-admin user reload the player — they can now load/use models."
     },
     {
       "id": "aspect-ratio-43",
       "title": "4:3 video is stretched to fill the screen",
-      "issues": [69],
-      "keywords": ["aspect", "4:3", "stretched", "ratio", "distorted", "16:9", "letterbox", "squished"],
-      "answer": "Fixed in **v1.7.5** (`object-fit: contain` on the real-time overlay). Step by step:\n1. Update the plugin to **v1.7.8**.\n2. Restart Jellyfin.\n3. Reload the video player — 4:3 sources now letterbox correctly instead of stretching."
+      "issues": [
+        69
+      ],
+      "keywords": [
+        "aspect",
+        "4:3",
+        "stretched",
+        "ratio",
+        "distorted",
+        "16:9",
+        "letterbox",
+        "squished"
+      ],
+      "answer": "Fixed in **v1.7.5** (`object-fit: contain` on the real-time overlay). Step by step:\n1. Update the plugin to the **latest version**.\n2. Restart Jellyfin.\n3. Reload the video player — 4:3 sources now letterbox correctly instead of stretching."
     },
     {
       "id": "amd-vulkan",
       "title": "AMD GPU support (ROCm / Vulkan)",
-      "issues": [49, 59],
-      "keywords": ["amd", "rocm", "vulkan", "radeon", "rx", "ncnn", "amd gpu", "miopen"],
+      "issues": [
+        49,
+        59
+      ],
+      "keywords": [
+        "amd",
+        "rocm",
+        "vulkan",
+        "radeon",
+        "rx",
+        "ncnn",
+        "amd gpu",
+        "miopen"
+      ],
       "answer": "Two AMD paths. **ROCm (`docker7-amd`)** — step by step:\n1. Use the `docker7-amd` image (v1.7.8 fixed it actually using the GPU; earlier it ran on CPU).\n2. Pass `/dev/kfd` **and** `/dev/dri`, plus `--group-add video`.\n3. Check `/gpu-verify` → `ROCMExecutionProvider`.\n\n**Vulkan (`docker7-vulkan`, best for older cards)** — step by step:\n1. Use the `docker7-vulkan` image.\n2. Pass `/dev/dri`.\n3. ncnn-Vulkan runs on most AMD/Intel GPUs."
     },
     {
       "id": "nvidia-error",
       "title": "NVIDIA / RTX error, crash, or provider load failure",
-      "issues": [46, 67],
-      "keywords": ["nvidia", "rtx", "cuda", "tensorrt", "a2000", "random error", "crash", "geforce", "nvenc", "libonnxruntime_providers", "failed to load library"],
-      "answer": "Step by step for NVIDIA:\n1. Use the **`docker7`** (NVIDIA) image.\n2. Install the NVIDIA Container Toolkit on the host.\n3. Run with `--gpus all` (or `runtime: nvidia` in compose).\n4. Verify GPU passthrough: `docker exec <container> nvidia-smi` must succeed.\n5. If you saw `INVALID_ARGUMENT` or a `libonnxruntime_providers` load error, update to **v1.7.8** (FP16 + provider fixes) and re-pull.\n6. Check `/gpu-verify` → `CUDAExecutionProvider` / `TensorrtExecutionProvider`."
+      "issues": [
+        46,
+        67
+      ],
+      "keywords": [
+        "nvidia",
+        "rtx",
+        "cuda",
+        "tensorrt",
+        "a2000",
+        "random error",
+        "crash",
+        "geforce",
+        "nvenc",
+        "libonnxruntime_providers",
+        "failed to load library"
+      ],
+      "answer": "Step by step for NVIDIA:\n1. Use the **`docker7`** (NVIDIA) image.\n2. Install the NVIDIA Container Toolkit on the host.\n3. Run with `--gpus all` (or `runtime: nvidia` in compose).\n4. Verify GPU passthrough: `docker exec <container> nvidia-smi` must succeed.\n5. If you saw `INVALID_ARGUMENT` or a `libonnxruntime_providers` load error, update to the **latest version** (v1.7.8 brought FP16 + provider fixes) and re-pull.\n6. Check `/gpu-verify` → `CUDAExecutionProvider` / `TensorrtExecutionProvider`."
     },
     {
       "id": "realtime-webgl",
       "title": "Real-time keeps falling back to WebGL / poor playback",
-      "issues": [70],
-      "keywords": ["real-time", "realtime", "webgl", "fallback", "performance", "fps", "stutter", "slow playback", "switches back", "server mode"],
+      "issues": [
+        70
+      ],
+      "keywords": [
+        "real-time",
+        "realtime",
+        "webgl",
+        "fallback",
+        "performance",
+        "fps",
+        "stutter",
+        "slow playback",
+        "switches back",
+        "server mode"
+      ],
       "answer": "Real-time server upscaling drops to WebGL when the GPU can't sustain the FPS — by design. Step by step for real quality:\n1. Don't rely on live 4x HD (too heavy for most GPUs, even an Arc A380).\n2. Use the **scheduled task** (batch) to pre-process the file once.\n3. Play the resulting `<name>_upscaled` file normally.\n4. For live playback, keep it light: a fast model (`realesr-general-x4v3`) and/or 2x scale."
     },
     {
       "id": "job-stuck-95",
       "title": "Batch upscale job stuck at 95% / where are the files?",
-      "issues": [70],
-      "keywords": ["stuck", "95%", "95 percent", "job", "hangs", "never finishes", "temp", "temporary", "partial", "output file", "where", "scheduled task"],
+      "issues": [
+        70
+      ],
+      "keywords": [
+        "stuck",
+        "95%",
+        "95 percent",
+        "job",
+        "hangs",
+        "never finishes",
+        "temp",
+        "temporary",
+        "partial",
+        "output file",
+        "where",
+        "scheduled task"
+      ],
       "answer": "95% is the final **re-mux** stage. Step by step to diagnose:\n1. The finished file is `<name>_upscaled.<ext>` next to the source; a failed partial is auto-deleted (so nothing's left to find).\n2. Intermediate frames live in the container's `/tmp` (not host-visible).\n3. While it's stuck, run `docker logs --tail 80 <container>` and `docker exec <container> df -h /tmp`.\n4. If `/tmp` is ~100% full, add a volume in compose: `- ai-tmp:/tmp`.\n5. Recreate the container and re-run the job."
     },
     {
       "id": "choose-model",
       "title": "Which model should I use?",
-      "issues": [70],
-      "keywords": ["which model", "best model", "recommend", "model choice", "what model", "fast model", "quality model", "anime model", "models"],
+      "issues": [
+        70
+      ],
+      "keywords": [
+        "which model",
+        "best model",
+        "recommend",
+        "model choice",
+        "what model",
+        "fast model",
+        "quality model",
+        "anime model",
+        "models"
+      ],
       "answer": "Pick by goal. Step by step:\n1. **Fast / low-VRAM:** `realesr-general-x4v3` (~5MB), `lsdir-compact-v2-x4`, `spanx2-ch48`.\n2. **Best quality:** `nomos2-dat2-x4`, `drct-l-x4`, `nomos8k-hat-l-x4` (heavy — poster/backdrop).\n3. **Compressed / streaming sources:** `realwebphoto-v4-dat2-x4`.\n4. **Anime:** `real-cugan-x4`, `apisr-anime-x2`.\n5. Download it from the `http://IP:5000` dashboard, then select it in the player overlay or set `DEFAULT_MODEL`."
     },
     {
       "id": "nas-setup",
       "title": "Setup on ZimaOS / CasaOS / Synology / TrueNAS / Unraid",
-      "issues": [71],
-      "keywords": ["zimaos", "casaos", "nas", "synology", "truenas", "unraid", "qnap", "setup", "docker compose", "how to install", "docker run", "container"],
+      "issues": [
+        71
+      ],
+      "keywords": [
+        "zimaos",
+        "casaos",
+        "nas",
+        "synology",
+        "truenas",
+        "unraid",
+        "qnap",
+        "setup",
+        "docker compose",
+        "how to install",
+        "docker run",
+        "container"
+      ],
       "answer": "Deploy with docker compose. Step by step:\n1. In your NAS app manager, add a custom app / import a Docker Compose:\n```\nservices:\n  ai-upscaler:\n    image: kuscheltier/jellyfin-ai-upscaler:docker7-cpu\n    ports: [\"5000:5000\"]\n    environment: [\"API_TOKEN=disable\"]\n    volumes: [\"ai-models:/app/models\"]\n    restart: unless-stopped\nvolumes:\n  ai-models:\n```\n2. Intel iGPU? Use `docker7-intel` and add `devices: [\"/dev/dri:/dev/dri\"]`.\n3. Start it, open `http://NAS-IP:5000` to confirm it's up.\n4. In the plugin set **AI Service URL** = `http://NAS-IP:5000`.\n5. Download a model. (TrueNAS: a ready compose is in `docker-ai-service/truenas/`.)"
     },
     {
       "id": "select-library",
       "title": "Scan only specific libraries (not everything)",
-      "issues": [64],
-      "keywords": ["select library", "specific library", "scan all", "library picker", "which library", "only one library", "enabledlibraryids"],
-      "answer": "Implemented in v1.6.1.14+. Step by step:\n1. Update to **v1.7.8**.\n2. Dashboard → Plugins → AI Upscaler → **Settings** tab.\n3. In the **library picker**, tick the libraries you want scanned.\n4. Save. (Leave all unticked = scan everything, the default.)"
+      "issues": [
+        64
+      ],
+      "keywords": [
+        "select library",
+        "specific library",
+        "scan all",
+        "library picker",
+        "which library",
+        "only one library",
+        "enabledlibraryids"
+      ],
+      "answer": "Implemented in v1.6.1.14+. Step by step:\n1. Update to the **latest version** (feature exists since v1.6.1.14).\n2. Dashboard → Plugins → AI Upscaler → **Settings** tab.\n3. In the **library picker**, tick the libraries you want scanned.\n4. Save. (Leave all unticked = scan everything, the default.)"
     },
     {
       "id": "old-docker-tag",
       "title": "Old docker5 / docker6 tag missing",
-      "issues": [59],
-      "keywords": ["docker5", "docker6", "docker4", "tag missing", "old tag", "pull failed", "manifest unknown", "not found tag"],
-      "answer": "The old tag families (`docker4/5/6/6.1`) are retired. Step by step:\n1. In your compose/run, change the image tag to **`docker7-<backend>`** (e.g. `docker7-intel`), or pin **`:v1.7.8-<backend>`**.\n2. `docker compose pull`.\n3. `docker compose up -d`."
+      "issues": [
+        59
+      ],
+      "keywords": [
+        "docker5",
+        "docker6",
+        "docker4",
+        "tag missing",
+        "old tag",
+        "pull failed",
+        "manifest unknown",
+        "not found tag"
+      ],
+      "answer": "The old tag families (`docker4/5/6/6.1`) are retired. Step by step:\n1. In your compose/run, change the image tag to **`docker7-<backend>`** (e.g. `docker7-intel`), or pin a specific version tag **`:vX.Y.Z-<backend>`**.\n2. `docker compose pull`.\n3. `docker compose up -d`."
     },
     {
       "id": "getting-started",
       "title": "Getting started / is the plugin usable?",
-      "issues": [48, 18, 17],
-      "keywords": ["usable", "getting started", "how to use", "beginner", "overview", "what is", "first time", "setup guide", "how does it work"],
+      "issues": [
+        48,
+        18,
+        17
+      ],
+      "keywords": [
+        "usable",
+        "getting started",
+        "how to use",
+        "beginner",
+        "overview",
+        "what is",
+        "first time",
+        "setup guide",
+        "how does it work"
+      ],
       "answer": "From zero. Step by step:\n1. Deploy the **Docker AI service** (compose — see the NAS/setup topic).\n2. Open `http://server:5000` → confirm the dashboard loads and **download a model**.\n3. In Jellyfin, install the plugin from the repo.\n4. Plugin config → **AI Service URL** = `http://server:5000` → Save.\n5. Use it: **batch** mode (nightly scheduled task) upscales your library; **real-time** mode enhances during playback.\n6. See the Installation and Configuration pages for details."
     },
     {
       "id": "plugin-wont-enable",
       "title": "Plugin won't enable / \"Failed to load assembly\" / disappears (tombstoned)",
-      "issues": [25, 34, 30, 58],
-      "keywords": ["failed to load assembly", "won't enable", "wont enable", "not supported", "notsupportedexception", "filenotfoundexception", "tombstone", "disappears", "vanishes", "ffmpegcore", "cliwrap", "instances", "imagesharp", "missing dll", "could not load", "plugin error"],
-      "answer": "Almost always **missing transitive DLLs** (`dotnet build` emits only the main DLL). Step by step:\n1. Install the **official release ZIP** — it contains all required DLLs. Don't hand-copy a single DLL.\n2. If you built from source, use `dotnet publish -c Release` (NOT `dotnet build`) and ship the full publish output.\n3. Confirm the plugin folder has: `JellyfinUpscalerPlugin.dll`, `FFMpegCore.dll`, `CliWrap.dll`, `Instances.dll`, `SixLabors.ImageSharp.dll`, `meta.json`.\n4. Re-enable via REST: `POST /Plugins/{id}/{version}/Enable` with an admin `X-Emby-Token`.\n5. Restart Jellyfin; ensure the version matches ABI 10.11.8 (v1.7.8)."
+      "issues": [
+        25,
+        34,
+        30,
+        58
+      ],
+      "keywords": [
+        "failed to load assembly",
+        "won't enable",
+        "wont enable",
+        "not supported",
+        "notsupportedexception",
+        "filenotfoundexception",
+        "tombstone",
+        "disappears",
+        "vanishes",
+        "ffmpegcore",
+        "cliwrap",
+        "instances",
+        "imagesharp",
+        "missing dll",
+        "could not load",
+        "plugin error"
+      ],
+      "answer": "Almost always **missing transitive DLLs** (`dotnet build` emits only the main DLL). Step by step:\n1. Install the **official release ZIP** — it contains all required DLLs. Don't hand-copy a single DLL.\n2. If you built from source, use `dotnet publish -c Release` (NOT `dotnet build`) and ship the full publish output.\n3. Confirm the plugin folder has: `JellyfinUpscalerPlugin.dll`, `FFMpegCore.dll`, `CliWrap.dll`, `Instances.dll`, `SixLabors.ImageSharp.dll`, `meta.json`.\n4. Re-enable via REST: `POST /Plugins/{id}/{version}/Enable` with an admin `X-Emby-Token`.\n5. Restart Jellyfin; ensure the plugin version targets ABI 10.11.8 (any release since v1.7.8 does)."
     },
     {
       "id": "settings-wont-save",
       "title": "Plugin settings won't save / changes don't apply",
-      "issues": [8, 39],
-      "keywords": ["save", "settings won't save", "settings wont save", "save configuration", "doesn't save", "can't change", "defaults back", "reverts", "save button", "config not saving", "localhost reverts"],
-      "answer": "An old bug where saving dropped fields (Docker URL/IP/port reset to defaults), **fixed in v1.6.1.14**. Step by step:\n1. Update the plugin to **v1.7.8**.\n2. Restart Jellyfin.\n3. Dashboard → Plugins → AI Upscaler → re-enter your settings.\n4. Click **Save**.\n5. If a field still resets on the latest version, open an issue naming that field."
+      "issues": [
+        8,
+        39
+      ],
+      "keywords": [
+        "save",
+        "settings won't save",
+        "settings wont save",
+        "save configuration",
+        "doesn't save",
+        "can't change",
+        "defaults back",
+        "reverts",
+        "save button",
+        "config not saving",
+        "localhost reverts"
+      ],
+      "answer": "An old bug where saving dropped fields (Docker URL/IP/port reset to defaults), **fixed in v1.6.1.14**. Step by step:\n1. Update the plugin to the **latest version**.\n2. Restart Jellyfin.\n3. Dashboard → Plugins → AI Upscaler → re-enter your settings.\n4. Click **Save**.\n5. If a field still resets on the latest version, open an issue naming that field."
     },
     {
       "id": "no-settings-tab",
       "title": "No Settings / config page after installing",
-      "issues": [26, 27],
-      "keywords": ["no settings", "settings tab", "settings option", "no config", "can't configure", "missing settings", "where is settings", "configuration page", "no settings tab"],
-      "answer": "Step by step:\n1. The config lives at **Dashboard → Plugins → AI Upscaler** (click the plugin name).\n2. No entry there? The plugin didn't load — see the \"Plugin won't enable\" topic (install the official ZIP, restart Jellyfin).\n3. Update to **v1.7.8** and restart Jellyfin.\n4. Hard-refresh the browser (Ctrl+F5)."
+      "issues": [
+        26,
+        27
+      ],
+      "keywords": [
+        "no settings",
+        "settings tab",
+        "settings option",
+        "no config",
+        "can't configure",
+        "missing settings",
+        "where is settings",
+        "configuration page",
+        "no settings tab"
+      ],
+      "answer": "Step by step:\n1. The config lives at **Dashboard → Plugins → AI Upscaler** (click the plugin name).\n2. No entry there? The plugin didn't load — see the \"Plugin won't enable\" topic (install the official ZIP, restart Jellyfin).\n3. Update to the **latest version** and restart Jellyfin.\n4. Hard-refresh the browser (Ctrl+F5)."
     },
     {
       "id": "ffmpeg-crash",
       "title": "FFmpeg/ffprobe crash — \"Cannot start process / file name not provided\"",
-      "issues": [42],
-      "keywords": ["ffmpeg", "ffprobe", "crash", "cannot start process", "file name has not been provided", "playback crash", "invalidoperationexception", "scan task fails", "fails at 0%", "no models list"],
-      "answer": "An old ffmpeg cold-start bug (paths captured before Jellyfin resolved them), **fixed in v1.6.1.21**. Step by step:\n1. Update to **v1.7.8**.\n2. Dashboard → Playback → confirm Jellyfin's bundled FFmpeg is detected.\n3. Restart Jellyfin.\n4. Re-run the scheduled task — paths are now late-resolved on every entry point."
+      "issues": [
+        42
+      ],
+      "keywords": [
+        "ffmpeg",
+        "ffprobe",
+        "crash",
+        "cannot start process",
+        "file name has not been provided",
+        "playback crash",
+        "invalidoperationexception",
+        "scan task fails",
+        "fails at 0%",
+        "no models list"
+      ],
+      "answer": "An old ffmpeg cold-start bug (paths captured before Jellyfin resolved them), **fixed in v1.6.1.21**. Step by step:\n1. Update to the **latest version**.\n2. Dashboard → Playback → confirm Jellyfin's bundled FFmpeg is detected.\n3. Restart Jellyfin.\n4. Re-run the scheduled task — paths are now late-resolved on every entry point."
     },
     {
       "id": "setup-doctor",
       "title": "Run the Setup Doctor (one-shot self-diagnosis)",
-      "issues": [66, 69, 70],
-      "keywords": ["doctor", "diagnose", "diagnostic", "setup check", "why cpu", "gpu not used", "is my gpu working", "self test", "health check"],
+      "issues": [
+        66,
+        69,
+        70
+      ],
+      "keywords": [
+        "doctor",
+        "diagnose",
+        "diagnostic",
+        "setup check",
+        "why cpu",
+        "gpu not used",
+        "is my gpu working",
+        "self test",
+        "health check"
+      ],
       "answer": "v1.7.9 adds a one-shot Setup Doctor that inspects YOUR running AI service and tells you exactly what to fix. Step by step:\n1. Open http://YOUR-SERVER-IP:5000/doctor in a browser (or run: curl http://IP:5000/doctor | jq). The Docker dashboard also has a 'Setup Check' button on the Hardware tab.\n2. Read the rows top to bottom - each is green (ok) / amber (warn) / red (fail) with a copy-paste fix.\n3. backend: which image/GPU was detected (info only).\n4. gpu_provider_active: red means you are on CPU - pull the matching docker7-<nvidia|amd|intel> image and pass the GPU device.\n5. device_passthrough: red prints the exact line for your backend (--gpus all, or /dev/dri, or WSL2 /dev/dxg + group_add).\n6. onnx_provider_pkg: red means the wrong onnxruntime build (a plain onnxruntime shadows the GPU one) - pull the clean docker7-<backend> image.\n7. api_token: warn if no token is set - use API_TOKEN=disable for a trusted LAN, or the same token on both the plugin and the service.\n8. model_smoke: runs a tiny inference on the loaded model; 'no model loaded yet' is fine on a fresh start, not an error.\nPaste the /doctor output into a GitHub issue and we can pinpoint the problem in one reply."
     },
     {
       "id": "anime4k",
       "title": "Anime4K mode (anime shader) - how to use it / it does nothing",
       "issues": [],
-      "keywords": ["anime4k", "anime", "anime mode", "anime shader", "anime upscale", "shader", "anime4k not working", "nothing happens", "webgl2", "cartoon"],
+      "keywords": [
+        "anime4k",
+        "anime",
+        "anime mode",
+        "anime shader",
+        "anime upscale",
+        "shader",
+        "anime4k not working",
+        "nothing happens",
+        "webgl2",
+        "cartoon"
+      ],
       "answer": "Anime4K is a real-time WebGL anime SHADER (Anime4K 4.0.1) - not a neural net, and it needs no server. As of v1.7.9 it actually runs; older builds loaded a dead CDN and silently fell back to plain sharpening. Step by step:\n1. Update the plugin to v1.7.9 or newer.\n2. In a WEB client (browser, not a native app) start an anime title.\n3. Plugin settings -> Realtime Mode -> 'Anime4K (anime shader)' (or switch it in the in-player quick-menu), then play.\n4. Confirm in the browser console (F12): success shows 'AI Upscaler RT: Anime4K (embedded, SIMPLE_M 2x) started'. In the Network tab, 'configurationpage?name=UPSCALERAnime4K' should return 200.\n5. If your client lacks WebGL2 float textures, the console shows 'Anime4K unsupported ... using Lanczos' and it auto-falls back to the sharpen shader (no error, just not anime upscaling).\nNotes: it runs client-side, so no Docker/GPU server is needed; it's best on anime/cartoon content. For live-action or guaranteed maximum quality, use Server AI or the batch scheduled task instead."
+    },
+    {
+      "id": "player-button-missing",
+      "title": "Player button missing / \"Could not inject player script\" (read-only web root)",
+      "issues": [
+        75
+      ],
+      "keywords": [
+        "player button",
+        "no button",
+        "button missing",
+        "inject",
+        "injection",
+        "read-only",
+        "read only",
+        "index.html",
+        "access to the path",
+        "is denied",
+        "usr/share/jellyfin/web",
+        "player script",
+        "web player",
+        "button not showing"
+      ],
+      "answer": "The plugin adds the player button by writing one `<script>` tag into jellyfin-web's `index.html`. If the log shows `Cannot write to ... (read-only): Access to the path '.../index.html' is denied`, the Jellyfin service user has no write access to the web root (typical for the native Debian/Ubuntu package, where `/usr/share/jellyfin/web` is owned by root).\n\nFix (native package):\n```\nsudo chown jellyfin /usr/share/jellyfin/web/index.html\nsudo systemctl restart jellyfin\n```\nThe log should then say `Player script injected via /usr/share/jellyfin/web` and the button is permanent.\n\nNotes:\n- Visiting the plugin config page only activates the button for your **current browser tab** — after a refresh or on another device it is gone again. Only the index.html injection is permanent.\n- A `jellyfin-web` package update replaces index.html (owner root again) — repeat the chown once if the warning returns; the plugin re-injects on the next restart.\n- Official Docker image: web root is writable, works out of the box. Deliberately read-only containers: overlay a patched `index.html` via bind mount."
+    },
+    {
+      "id": "model-sha256-mismatch",
+      "title": "Model download fails with \"sha256 mismatch\"",
+      "issues": [],
+      "keywords": [
+        "sha256",
+        "checksum",
+        "mismatch",
+        "model download failed",
+        "corrupted download",
+        "hash",
+        "integrity",
+        "upstream file changed"
+      ],
+      "answer": "Since v1.8.3.4 the AI service verifies a pinned sha256 checksum **before** activating a downloaded model (supply-chain guard). A `sha256 mismatch` error means the downloaded file does not match the catalog pin:\n1. Usually a **corrupted/interrupted download** — just retry the download.\n2. If it keeps failing, the **upstream file changed** (the hosting repo replaced the file). That is worth reporting: open a GitHub issue with the model id so the catalog pin gets updated.\nThe failed file is never activated — your existing models are unaffected."
+    },
+    {
+      "id": "jellyfin-12",
+      "title": "Does it work with Jellyfin 12.0 (RC)?",
+      "issues": [],
+      "keywords": [
+        "jellyfin 12",
+        "12.0",
+        "rc",
+        "release candidate",
+        "net10",
+        "upgrade jellyfin",
+        "new jellyfin",
+        "compatible 12"
+      ],
+      "answer": "Short version: **prepared, but the RC is not officially supported yet.**\n- Static analysis against Jellyfin 12.0.0-rc2 found exactly **one** API break, and it is already fixed since **v1.8.3.4** (version-adaptive user lookup) — one DLL targets 10.11.x and is expected to load on 12.x.\n- The plugin's web code already uses the modern `Authorization: MediaBrowser` scheme, so 12.0's rejection of legacy auth does not affect it.\n- Full runtime verification on an RC box is still pending (see `docs/JELLYFIN-12-READINESS.md` in the repo).\nRecommendation: don't upgrade a production server to an RC just for this plugin. On Jellyfin 10.11.x everything is fully supported."
+    },
+    {
+      "id": "models-self-host",
+      "title": "Why are some models marked [self-host required]?",
+      "issues": [],
+      "keywords": [
+        "self-host",
+        "self host",
+        "model unavailable",
+        "model not available",
+        "greyed out",
+        "cannot download model",
+        "dat-light",
+        "craft",
+        "real-cugan",
+        "drct",
+        "missing model"
+      ],
+      "answer": "Models marked **[self-host required]** have **no working public ONNX download** — community HuggingFace repos get deleted, some published exports are broken (fail to load in onnxruntime), and some models were only ever released as .pth weights. The catalog keeps them listed honestly instead of serving dead links.\n- A 2026-07 health sweep checked every catalog URL: broken entries were either re-pointed to verified mirrors or marked self-host with the reason in the catalog entry.\n- To use one anyway: export/convert the weights to ONNX yourself and drop the file into the service's model directory — see `docs/MODEL-HOSTING.md` in the repo.\n- In most cases a listed alternative covers the same niche (e.g. `fallin-soft-x2` for anime real-time, `nomos8kdat-x4` for JPEG restoration)."
     }
   ]
 }
