@@ -298,11 +298,11 @@
 
   var busy = false, lastQuery = "";
 
-  function askWorker(query, cb) {
+  function askWorker(query, cb, extraContext) {
     fetch(WORKER, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: query, context: workerContext(query) })
+      body: JSON.stringify({ question: query, context: ((extraContext || "") + workerContext(query)).slice(0, 5900) })
     })
       .then(function (r) { if (!r.ok) throw r.status; return r.json(); })
       .then(function (d) { cb(d && d.answer ? String(d.answer) : null); })
