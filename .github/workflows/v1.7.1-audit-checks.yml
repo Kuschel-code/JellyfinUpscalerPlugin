@@ -93,6 +93,20 @@ jobs:
           fi
           echo "PASS: meta.json $PUB_VERSION matches manifest $MAN_VERSION"
 
+  ui-field-consistency:
+    name: JS element-id references must exist in the HTML
+    # v1.8.3.5 - kills the v1.8.3.3 regression class: configurationpage.html is an
+    # EmbeddedResource, so a save-handler referencing a removed element id builds
+    # clean and only crashes at runtime. Phantom id references fail this job.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check querySelector/getElementById ids against defined ids
+        run: python3 Scripts/check_ui_field_consistency.py
+
   verify-site-sync:
     name: site/*.html brand-version must match meta.json
     # v1.7.3 - catches the brand-version drift class: pre-v1.7.3, 14 site/*.html pages

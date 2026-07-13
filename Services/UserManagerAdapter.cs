@@ -86,14 +86,20 @@ namespace JellyfinUpscalerPlugin.Services
             return null;
         }
 
+        // Resolved once per user entity type: the reflection lookup otherwise runs
+        // N_users x N_items times during a library scan. Benign race - concurrent
+        // resolvers compute the same MethodInfo.
+        private static MethodInfo? _getUserDataMethod;
+
         /// <summary>
         /// GetUserData(user, item) bound at runtime so the call survives the user
         /// entity type moving between assemblies across server versions.
         /// </summary>
         private dynamic? GetUserDataFor(object user, BaseItem item)
         {
-            var method = typeof(IUserDataManager).GetMethod(
-                "GetUserData", new[] { user.GetType(), typeof(BaseItem) })
+            var method = _getUserDataMethod ??=
+                typeof(IUserDataManager).GetMethod(
+                    "GetUserData", new[] { user.GetType(), typeof(BaseItem) })
                 ?? FindGetUserData(user);
             return method?.Invoke(_userDataManager, new[] { user, (object)item });
         }

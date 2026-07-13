@@ -3,7 +3,7 @@
 (function() {
     'use strict';
 
-    const PLUGIN_VERSION = '1.8.3.4';
+    const PLUGIN_VERSION = '1.8.3.5';
     var _observer = null;
     var _observerAttached = false;
 

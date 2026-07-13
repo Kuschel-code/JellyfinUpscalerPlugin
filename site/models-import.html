@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Importable models - Jellyfin AI Upscaler</title>
+<meta name="description" content="Community upscaling models from OpenModelDB that can be imported into the Jellyfin AI Upscaler plugin - 60 ready-to-use ONNX models plus 600+ convertible PyTorch models, with license and checksum info.">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+/* page-local: license badges + import controls, on site tokens */
+.mi-badge{font-family:var(--mono);font-size:.72rem;border:1px solid var(--rule-strong);border-radius:6px;padding:1px 7px;white-space:nowrap}
+.mi-badge.ok{color:var(--ok);border-color:var(--ok)}
+.mi-badge.nc{color:var(--danger);border-color:var(--danger)}
+.mi-badge.warn{color:var(--warn);border-color:var(--warn)}
+.mi-note{background:var(--paper-tint);border:1px solid var(--rule);border-left:3px solid var(--warn);border-radius:8px;padding:12px 16px;margin:1.2rem 0;font-size:.95rem}
+.mi-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:1.2rem 0 .4rem}
+.mi-controls input[type=search]{flex:1;min-width:220px;background:var(--paper-deep);border:1px solid var(--rule-strong);border-radius:8px;color:var(--ink);padding:8px 12px;font-size:.95rem}
+.mi-controls select{background:var(--paper-deep);border:1px solid var(--rule-strong);border-radius:8px;color:var(--ink);padding:8px 10px;font-size:.9rem}
+.mi-controls label{font-size:.88rem;color:var(--ink-dim);display:flex;gap:6px;align-items:center;white-space:nowrap}
+.mi-count{font-family:var(--mono);font-size:.8rem;color:var(--ink-faint)}
+#mi-direct td{vertical-align:top}
+#mi-direct details summary{cursor:pointer;color:var(--accent-ink);font-size:.85rem}
+#mi-direct details p{font-size:.85rem;color:var(--ink-dim);margin:.4rem 0 0;max-width:60ch;white-space:pre-line}
+.mi-sha{font-family:var(--mono);font-size:.72rem;color:var(--ink-faint)}
+.mi-dl{white-space:nowrap}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.5</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+
+<main class="container">
+  <h1>Importable models</h1>
+  <p class="lead" style="color: var(--text-dim);">Community models from <a href="https://openmodeldb.info" target="_blank" rel="noopener">OpenModelDB</a> that can be used with the plugin, on top of the <a href="models.html">curated catalog</a>. <span id="mi-lead-counts">Loading catalog…</span></p>
+
+  <div class="mi-note">⚠ <strong>Check the license.</strong> Every model carries its author's license — <span class="mi-badge nc" style="display:inline">NC</span> models are <em>non-commercial</em>. Imported models are <strong>not curated or benchmarked</strong> by the plugin team; use them at your own discretion. A one-click in-plugin importer is planned for v1.9 — today, download the ONNX file and drop it into the AI service's model directory as described in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/MODEL-HOSTING.md" target="_blank" rel="noopener">MODEL-HOSTING.md</a>.</div>
+
+  <h2>Ready to use (ONNX) <small id="mi-direct-count"></small></h2>
+  <div class="mi-controls">
+    <input type="search" id="mi-search" placeholder="Filter by name, architecture or tag…" aria-label="Filter models">
+    <select id="mi-scale" aria-label="Filter by scale">
+      <option value="">Any scale</option>
+      <option value="1">1×</option>
+      <option value="2">2×</option>
+      <option value="4">4×</option>
+    </select>
+    <label><input type="checkbox" id="mi-hide-nc"> Hide non-commercial</label>
+    <span class="mi-count" id="mi-shown"></span>
+  </div>
+  <table id="mi-direct">
+    <thead><tr><th>Model</th><th>Scale</th><th>Architecture</th><th>License</th><th>Size</th><th>Links</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Convertible (PyTorch / NCNN) <small id="mi-conv-count"></small></h2>
+  <p style="color: var(--text-dim); font-size: .95rem;">These exist only as <code>.pth</code>/<code>.safetensors</code> or NCNN weights and would need an ONNX export first (planned importer phase 2). Listed for completeness — each name links to its OpenModelDB page.</p>
+  <details id="mi-conv-details"><summary>Show all convertible models</summary>
+    <table id="mi-conv">
+      <thead><tr><th>Scale</th><th>Model</th><th>Architecture</th><th>License</th><th>Format</th><th>Size</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </details>
+
+  <p style="color: var(--text-dim); font-size: .85rem; margin-top: 2rem;">Data generated <code id="mi-generated">…</code> from <a href="https://github.com/OpenModelDB/open-model-database" target="_blank" rel="noopener">OpenModelDB/open-model-database</a> by <code>Scripts/generate-import-catalog.py</code> — refreshed automatically. This page renders <code>models-import.json</code> client-side; nothing here is hand-maintained.</p>
+  <noscript><p>This page needs JavaScript to render the model list. The raw data is available as <a href="models-import.json">models-import.json</a>.</p></noscript>
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <strong>Jellyfin AI Upscaler Plugin</strong> · MIT License · v1.8.3.5 · not affiliated with the Jellyfin project
+      <div style="margin-top: 4px;"><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a> · <a href="https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler">Docker Hub</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues">Issues</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">Releases</a></div>
+    </div>
+    <div>Co-engineered with <a href="https://claude.com/claude-code">Claude Opus 4.8</a></div>
+  </div>
+</footer>
+<script src="assets/nav.js?v=3"></script>
+<script>
+(function () {
+  "use strict";
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function safeUrl(u) { return /^https?:\/\//i.test(String(u)) ? String(u) : ""; }
+  function humanSize(n) {
+    if (!n) return "?";
+    var units = ["B", "KB", "MB", "GB"], i = 0;
+    while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+    return (i === 0 ? n.toFixed(0) : n.toFixed(1)) + " " + units[i];
+  }
+  function licBadge(lic) {
+    if (!lic) return '<span class="mi-badge warn" title="License unclear - verify with the author before use">unclear</span>';
+    var cls = /NC/i.test(lic) ? "nc" : "ok";
+    var title = cls === "nc" ? "Non-commercial - not allowed for commercial use" : "";
+    return '<span class="mi-badge ' + cls + '"' + (title ? ' title="' + title + '"' : "") + '>' + esc(lic) + "</span>";
+  }
+
+  var DATA = null;
+
+  function directRow(m) {
+    var dl = safeUrl(m.download_url);
+    var omdb = safeUrl(m.omdb_url);
+    var desc = (m.description || "").slice(0, 600);
+    var tags = (m.tags || []).slice(0, 5).join(", ");
+    return "<tr data-name=\"" + esc((m.name + " " + m.architecture + " " + (m.tags || []).join(" ")).toLowerCase()) + "\"" +
+      " data-scale=\"" + esc(m.scale) + "\" data-nc=\"" + (/NC/i.test(m.license || "") ? "1" : "0") + "\">" +
+      "<td><strong>" + esc(m.name) + "</strong>" +
+      (desc ? "<details><summary>details</summary><p>" + esc(desc) + (tags ? "\n\nTags: " + esc(tags) : "") + "</p></details>" : "") + "</td>" +
+      "<td>" + esc(m.scale) + "×</td>" +
+      "<td><code>" + esc(m.architecture) + "</code></td>" +
+      "<td>" + licBadge(m.license) + "</td>" +
+      "<td>" + humanSize(m.size_bytes) + "</td>" +
+      "<td class=\"mi-dl\">" + (dl ? "<a href=\"" + esc(dl) + "\" rel=\"noopener\" target=\"_blank\">⬇ ONNX</a> · " : "") +
+      (omdb ? "<a href=\"" + esc(omdb) + "\" rel=\"noopener\" target=\"_blank\">OpenModelDB</a>" : "") +
+      (m.sha256 ? "<br><span class=\"mi-sha\" title=\"sha256: " + esc(m.sha256) + "\">sha256 " + esc(m.sha256.slice(0, 12)) + "…</span>" : "") +
+      "</td></tr>";
+  }
+
+  function convRow(m) {
+    var omdb = safeUrl(m.omdb_url);
+    return "<tr><td>" + esc(m.scale) + "×</td>" +
+      "<td>" + (omdb ? "<a href=\"" + esc(omdb) + "\" rel=\"noopener\" target=\"_blank\">" + esc(m.name) + "</a>" : esc(m.name)) + "</td>" +
+      "<td><code>" + esc(m.architecture) + "</code></td>" +
+      "<td>" + licBadge(m.license) + "</td>" +
+      "<td>" + esc(m.source_platform || "?") + "</td>" +
+      "<td>" + humanSize(m.size_bytes) + "</td></tr>";
+  }
+
+  function applyFilters() {
+    var q = document.getElementById("mi-search").value.trim().toLowerCase();
+    var scale = document.getElementById("mi-scale").value;
+    var hideNc = document.getElementById("mi-hide-nc").checked;
+    var rows = document.querySelectorAll("#mi-direct tbody tr");
+    var shown = 0;
+    rows.forEach(function (tr) {
+      var ok = (!q || tr.getAttribute("data-name").indexOf(q) !== -1) &&
+               (!scale || tr.getAttribute("data-scale") === scale) &&
+               (!hideNc || tr.getAttribute("data-nc") === "0");
+      tr.style.display = ok ? "" : "none";
+      if (ok) shown++;
+    });
+    document.getElementById("mi-shown").textContent = shown + " of " + rows.length + " shown";
+  }
+
+  fetch("models-import.json", { cache: "no-cache" })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      DATA = d;
+      var direct = d.direct_onnx || [], conv = d.requires_conversion || [];
+      document.getElementById("mi-lead-counts").innerHTML =
+        "<strong>" + direct.length + " models</strong> are available as ready-to-use ONNX files; <strong>" +
+        conv.length + " more</strong> exist as PyTorch/NCNN and would need conversion.";
+      document.getElementById("mi-direct-count").textContent = "(" + direct.length + ")";
+      document.getElementById("mi-conv-count").textContent = "(" + conv.length + ")";
+      document.getElementById("mi-generated").textContent = d.generated || "?";
+      document.querySelector("#mi-direct tbody").innerHTML = direct.map(directRow).join("");
+      applyFilters();
+      // 609 rows: render lazily on first expand
+      var det = document.getElementById("mi-conv-details");
+      det.addEventListener("toggle", function () {
+        var tbody = document.querySelector("#mi-conv tbody");
+        if (det.open && !tbody.childElementCount) tbody.innerHTML = conv.map(convRow).join("");
+      });
+    })
+    .catch(function () {
+      document.getElementById("mi-lead-counts").textContent =
+        "Could not load models-import.json - view the raw data on GitHub instead.";
+    });
+
+  ["input", "change"].forEach(function (ev) {
+    document.getElementById("mi-search").addEventListener(ev, applyFilters);
+    document.getElementById("mi-scale").addEventListener(ev, applyFilters);
+    document.getElementById("mi-hide-nc").addEventListener(ev, applyFilters);
+  });
+})();
+</script>
+</body>
+</html>

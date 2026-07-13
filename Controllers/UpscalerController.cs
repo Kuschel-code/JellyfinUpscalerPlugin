@@ -560,6 +560,13 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
+        /// <summary>
+        /// Benchmark-derived settings recommendations from the LOCAL hardware benchmark
+        /// service. Distinct from <c>/recommend</c> (proxies the AI service's own
+        /// hardware-aware model pick) and <c>/recommend-model</c> (content-based pick
+        /// for a specific video). All three are consumed by different UI surfaces —
+        /// they look alike but are not aliases of each other.
+        /// </summary>
         [HttpGet("recommendations")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult<object>> GetHardwareRecommendations()
@@ -576,8 +583,10 @@ namespace JellyfinUpscalerPlugin.Controllers
         }
 
         /// <summary>
-        /// Get the recommended AI model for specific content parameters.
-        /// Used by the UI to show which model will be auto-selected.
+        /// Get the recommended AI model for specific content parameters (genres,
+        /// resolution). Used by the in-player panel when Auto-Mode is enabled.
+        /// Distinct from <c>/recommend</c> (service hardware pick) and
+        /// <c>/recommendations</c> (local benchmark results) — see the note there.
         /// </summary>
         [HttpGet("recommend-model")]
         [Produces(MediaTypeNames.Application.Json)]

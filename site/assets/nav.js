@@ -13,6 +13,7 @@
       items: [
         { href: 'features.html',     label: 'Features' },
         { href: 'models.html',       label: 'Model catalog' },
+        { href: 'models-import.html', label: 'Importable models' },
         { href: 'hardware.html',     label: 'Hardware guide' },
         { href: 'architecture.html', label: 'Architecture' },
         { href: 'api.html',          label: 'REST API' }

@@ -1,0 +1,37 @@
+# v1.8.3.5 - weekly regeneration of site/models-import.json from OpenModelDB.
+# Anti-drift: the "Importable models" page renders this JSON client-side, so a
+# stale catalog would silently advertise dead links. The generator re-derives
+# everything from OpenModelDB's data; if nothing changed, no commit is made.
+name: Refresh importable-models catalog
+
+on:
+  schedule:
+    - cron: '17 4 * * 1'   # Mondays 04:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Shallow-clone OpenModelDB
+        run: git clone --depth 1 https://github.com/OpenModelDB/open-model-database.git /tmp/omdb
+      - name: Regenerate models-import.json
+        run: python3 Scripts/generate-import-catalog.py /tmp/omdb site
+      - name: Commit if changed
+        run: |
+          if git diff --quiet site/models-import.json; then
+            echo "No catalog changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add site/models-import.json
+          git commit -m "site: weekly OpenModelDB import-catalog refresh"
+          git push

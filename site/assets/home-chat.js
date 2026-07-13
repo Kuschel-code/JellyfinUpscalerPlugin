@@ -104,6 +104,85 @@
   }
   loadLatest();
 
+  // --- importable-models catalog (OpenModelDB) ---------------------------
+  // site/models-import.json is the same data the "Importable models" page
+  // renders. Loading it here lets the assistant answer questions about any of
+  // the ~660 community models (license, size, download) instead of guessing.
+  var IMPORT = null; // { generated, direct: [...], convCount }
+  function loadImport() {
+    fetch("models-import.json", { cache: "no-cache" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d && d.direct_onnx) {
+          IMPORT = {
+            generated: d.generated || "",
+            direct: d.direct_onnx,
+            convCount: (d.requires_conversion || []).length
+          };
+        }
+      })
+      .catch(function () { IMPORT = null; });
+  }
+  loadImport();
+
+  var IMPORT_STOPWORDS = { models: 1, upscale: 1, upscaler: 1, license: 1, download: 1, openmodeldb: 1, convert: 1, "import": 1, imports: 1 };
+  function normId(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, ""); }
+  // Match catalog entries whose id/name contains a specific-enough query token
+  // (>=6 chars, not a generic word). Longest token wins; up to `limit` hits.
+  function searchImport(query, limit) {
+    if (!IMPORT) return [];
+    var tokens = String(query).toLowerCase().split(/[^a-z0-9]+/).filter(function (t) {
+      return t.length >= 6 && !IMPORT_STOPWORDS[t];
+    });
+    if (!tokens.length) return [];
+    var hits = [];
+    for (var i = 0; i < IMPORT.direct.length; i++) {
+      var m = IMPORT.direct[i];
+      var hay = normId(m.id) + " " + normId(m.name);
+      var best = 0;
+      for (var t = 0; t < tokens.length; t++) {
+        if (hay.indexOf(tokens[t]) !== -1 && tokens[t].length > best) best = tokens[t].length;
+      }
+      if (best > 0) hits.push({ m: m, s: best });
+    }
+    hits.sort(function (a, b) { return b.s - a.s; });
+    return hits.slice(0, limit || 3);
+  }
+  function importHuman(bytes) {
+    if (!bytes) return "?";
+    var mb = bytes / (1024 * 1024);
+    return mb >= 1 ? mb.toFixed(1) + " MB" : (bytes / 1024).toFixed(0) + " KB";
+  }
+  // compact catalog excerpt for the Worker prompt (kept small; context is capped)
+  function importContext(query) {
+    if (!IMPORT) return "";
+    var out = "IMPORTABLE COMMUNITY MODELS (OpenModelDB, page models-import.html, refreshed weekly): " +
+      IMPORT.direct.length + " ready-to-use ONNX + " + IMPORT.convCount +
+      " convertible. In-plugin importer planned for v1.9; today: manual install per docs/MODEL-HOSTING.md. NC license = non-commercial.\n";
+    var hits = searchImport(query, 3);
+    for (var i = 0; i < hits.length; i++) {
+      var m = hits[i].m;
+      out += "- " + m.name + " (" + m.scale + "x, " + m.architecture + ", " +
+        (m.license || "license unclear") + ", " + importHuman(m.size_bytes) + ") " + m.omdb_url + "\n";
+    }
+    return out.slice(0, 900) + "\n";
+  }
+  function renderImportHit(m) {
+    var nc = /NC/i.test(m.license || "");
+    var lic = m.license ? esc(m.license) + (nc ? " — <strong>non-commercial</strong>" : "") : "license unclear — verify with the author";
+    var txt = "<strong>" + esc(m.name) + "</strong> — importable community model (OpenModelDB)<br>" +
+      esc(String(m.scale)) + "× · <code>" + esc(m.architecture) + "</code> · " + importHuman(m.size_bytes) +
+      " · License: " + lic + "<br>" +
+      "Install today: download the ONNX, verify sha256" +
+      (m.sha256 ? " (<code>" + esc(m.sha256.slice(0, 12)) + "…</code>)" : "") +
+      ", drop it into the AI service's model directory (see MODEL-HOSTING.md). One-click import is planned for v1.9.";
+    return srcLabel("kb", "Importable model") + txt +
+      '<div class="hc-rel">' +
+      (/^https?:\/\//i.test(m.download_url || "") ? '<a href="' + esc(m.download_url) + '" target="_blank" rel="noopener">Download ONNX</a> &nbsp;·&nbsp; ' : "") +
+      '<a href="' + esc(m.omdb_url) + '" target="_blank" rel="noopener">OpenModelDB</a> &nbsp;·&nbsp; ' +
+      '<a href="models-import.html">All importable models</a></div>';
+  }
+
   // authoritative live facts, prepended to every Worker prompt
   function currentFacts() {
     var out = "CURRENT FACTS (live, authoritative - always prefer these over anything below):\n";
@@ -124,9 +203,9 @@
     if (HISTORY.length > 4) HISTORY.shift();
   }
 
-  // context for the Worker — live facts + conversation + top KB entries.
+  // context for the Worker — live facts + import catalog + conversation + KB.
   function workerContext(query) {
-    var out = currentFacts();
+    var out = currentFacts() + importContext(query);
     if (HISTORY.length) {
       out += "CONVERSATION SO FAR (for follow-up questions):\n";
       for (var h = 0; h < HISTORY.length; h++) {
@@ -390,6 +469,17 @@
     if (hits.length && hits[0].s >= KB_MIN_SCORE && KB) {
       addEl(renderKb(hits[0].e), "bot");
       remember(query, hits[0].e.title);
+      finish();
+      return;
+    }
+    // 4b) a specific importable-model name (no KB hit) -> answer from the
+    // OpenModelDB catalog directly. Threshold 8 = a distinctly model-shaped
+    // token ("ultrasharpv2", "animejanai"), so generic wording still reaches
+    // the AI with the catalog excerpt as context instead.
+    var importHits = searchImport(query, 2);
+    if (importHits.length && importHits[0].s >= 8) {
+      importHits.forEach(function (h) { addEl(renderImportHit(h.m), "bot"); });
+      remember(query, "importable model: " + importHits.map(function (h) { return h.m.name; }).join("; "));
       finish();
       return;
     }

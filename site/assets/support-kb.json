@@ -1,6 +1,6 @@
 {
-  "version": "1.8.3.4",
-  "updated": "2026-07-07",
+  "version": "1.8.3.5",
+  "updated": "2026-07-13",
   "repo": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin",
   "newIssueUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/new",
   "intro": "Hi! I'm the AI Upscaler support assistant. I answer from every support topic we've ever handled (each with a step-by-step guide), and I can search all GitHub issues live. Ask about install errors, GPU not used, Docker/NAS setup, API tokens, models, and more.",
@@ -634,6 +634,28 @@
         "missing model"
       ],
       "answer": "Models marked **[self-host required]** have **no working public ONNX download** — community HuggingFace repos get deleted, some published exports are broken (fail to load in onnxruntime), and some models were only ever released as .pth weights. The catalog keeps them listed honestly instead of serving dead links.\n- A 2026-07 health sweep checked every catalog URL: broken entries were either re-pointed to verified mirrors or marked self-host with the reason in the catalog entry.\n- To use one anyway: export/convert the weights to ONNX yourself and drop the file into the service's model directory — see `docs/MODEL-HOSTING.md` in the repo.\n- In most cases a listed alternative covers the same niche (e.g. `fallin-soft-x2` for anime real-time, `nomos8kdat-x4` for JPEG restoration)."
+    },
+    {
+      "id": "import-models",
+      "title": "Importing community models (OpenModelDB) / use your own model",
+      "issues": [],
+      "keywords": [
+        "import",
+        "importable",
+        "openmodeldb",
+        "open model database",
+        "community model",
+        "custom model",
+        "own model",
+        "add model",
+        "more models",
+        "bring your own",
+        "pth",
+        "safetensors",
+        "convert model",
+        "models-import"
+      ],
+      "answer": "Beyond the curated catalog, the **[Importable models](models-import.html)** page lists community models from [OpenModelDB](https://openmodeldb.info) that work with the plugin's ONNX pipeline:\n- **~60 models are ready to use** - published as ONNX with a direct download URL and sha256 checksum (license shown per model, **NC = non-commercial**).\n- **~600 more** exist only as PyTorch/NCNN weights and would need an ONNX export first.\n\nHow to use one **today**: download the ONNX file, verify the sha256, and drop it into the AI service's model directory as described in `docs/MODEL-HOSTING.md` (self-host flow). A **one-click in-plugin importer is planned for v1.9** - it will resolve OpenModelDB ids, enforce the sha256 pin, and mark imports as *not curated*.\n\nNotes:\n- Imported models are **not curated or benchmarked** by the plugin team - quality varies.\n- Check the license before commercial use; the page can filter out NC models.\n- The page refreshes weekly from OpenModelDB, so counts change over time."
     }
   ]
 }

@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.4
+# Jellyfin AI Upscaler Plugin v1.8.3.5
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 

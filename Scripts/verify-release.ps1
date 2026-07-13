@@ -29,8 +29,9 @@
   GitHub repo in owner/name form. Defaults to Kuschel-code/JellyfinUpscalerPlugin.
 
 .PARAMETER ManifestUrl
-  Raw URL of the plugin manifest (live-served). Must expose the same checksum
-  that Jellyfin's plugin installer validates against.
+  Legacy override, no longer used for the checksum source: since v1.8.3.5 the
+  script asserts ALL THREE live feeds (manifest.json, repository-jellyfin.json,
+  repository-simple.json) agree on the release entry and checksum.
 
 .EXAMPLE
   pwsh ./Scripts/verify-release.ps1 -Tag v1.6.1.12
@@ -79,18 +80,57 @@ New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 $tmp = (Get-Item -LiteralPath $tmp).FullName
 
 try {
-    Write-Host "=== Fetching live manifest ===" -ForegroundColor Cyan
-    $manifest = Invoke-RestMethod -Uri $ManifestUrl
-    $manifestEntry = $manifest[0].versions | Where-Object {
-        $_.sourceUrl -like "*$Tag*"
-    } | Select-Object -First 1
-    if (-not $manifestEntry) {
-        Write-Host "FAIL: no manifest entry references tag $Tag" -ForegroundColor Red
+    # v1.8.3.5 — ALL THREE plugin feeds must carry the release, consistently.
+    # Issue #74 root cause: manifest.json (the most-advertised feed) silently
+    # lagged behind because only repository-jellyfin/-simple were maintained.
+    # Any feed missing the tag entry, pointing its sourceUrl at a different
+    # tag, or carrying a diverging checksum fails the release.
+    Write-Host "=== Fetching all three live feeds ===" -ForegroundColor Cyan
+    $tagVersionFeed = $Tag.TrimStart("v")
+    $rawBase = "https://raw.githubusercontent.com/$Repo/main"
+    $feedUrls = @(
+        "$rawBase/manifest.json",
+        "$rawBase/repository-jellyfin.json",
+        "$rawBase/repository-simple.json"
+    )
+    $feedChecksums = @{}
+    foreach ($feedUrl in $feedUrls) {
+        $feedName = Split-Path -Leaf $feedUrl
+        try {
+            $feed = Invoke-RestMethod -Uri $feedUrl
+        } catch {
+            Write-Host ("  [FAIL] " + $feedName + ": fetch failed (" + $_.Exception.Message + ")") -ForegroundColor Red
+            $fail = $true
+            continue
+        }
+        $entry = $feed[0].versions | Where-Object { $_.version -eq $tagVersionFeed } | Select-Object -First 1
+        if (-not $entry) {
+            Write-Host ("  [FAIL] " + $feedName + ": no entry with version " + $tagVersionFeed) -ForegroundColor Red
+            $fail = $true
+            continue
+        }
+        if ($entry.sourceUrl -notlike "*/download/$Tag/*") {
+            Write-Host ("  [FAIL] " + $feedName + ": sourceUrl does not point at the $Tag asset (" + $entry.sourceUrl + ")") -ForegroundColor Red
+            $fail = $true
+        }
+        if (-not ($entry.checksum -match '^[0-9a-fA-F]{32}$')) {
+            Write-Host ("  [FAIL] " + $feedName + ": checksum is not a 32-char hex MD5 ('" + $entry.checksum + "')") -ForegroundColor Red
+            $fail = $true
+            continue
+        }
+        $feedChecksums[$feedName] = $entry.checksum.ToLower()
+        Write-Host ("  [OK] " + $feedName + " -> checksum " + $entry.checksum.ToLower() + ", targetAbi " + $entry.targetAbi)
+    }
+    if (($feedChecksums.Values | Select-Object -Unique).Count -gt 1) {
+        Write-Host "  [FAIL] feeds disagree on the checksum:" -ForegroundColor Red
+        $feedChecksums.GetEnumerator() | ForEach-Object { Write-Host ("      " + $_.Key + " = " + $_.Value) -ForegroundColor Red }
+        $fail = $true
+    }
+    if ($feedChecksums.Count -eq 0) {
+        Write-Host "FAIL: no feed carries tag $Tag - nothing to verify the ZIP against" -ForegroundColor Red
         exit 1
     }
-    $manifestChecksum = $manifestEntry.checksum.ToLower()
-    Write-Host ("  manifest checksum: " + $manifestChecksum)
-    Write-Host ("  targetAbi:         " + $manifestEntry.targetAbi)
+    $manifestChecksum = ($feedChecksums.Values | Select-Object -First 1)
 
     Write-Host ""
     Write-Host "=== Source version-string consistency (local checkout) ===" -ForegroundColor Cyan
@@ -110,6 +150,11 @@ try {
         @{ File = "Configuration/quick-menu.js";          Pattern = "PLUGIN_VERSION = '([\d.]+)'";                 Expect = $tagVersion  },
         @{ File = "Configuration/sidebar-upscaler.js";    Pattern = "PLUGIN_VERSION = '([\d.]+)'";                 Expect = $tagVersion  },
         @{ File = "meta.json";                            Pattern = '"version"\s*:\s*"([\d.]+)"';                  Expect = $tagVersion  },
+        # ALL THREE local feed files must lead with the new release (first "version" in
+        # each file = newest entry). Local counterpart of the live triple-feed assert.
+        @{ File = "manifest.json";                        Pattern = '"version"\s*:\s*"([\d.]+)"';                  Expect = $tagVersion  },
+        @{ File = "repository-jellyfin.json";             Pattern = '"version"\s*:\s*"([\d.]+)"';                  Expect = $tagVersion  },
+        @{ File = "repository-simple.json";               Pattern = '"version"\s*:\s*"([\d.]+)"';                  Expect = $tagVersion  },
         @{ File = "JellyfinUpscalerPlugin.csproj";        Pattern = '<Version>([\d.]+)</Version>';                 Expect = $tagVersion4 },
         @{ File = "JellyfinUpscalerPlugin.csproj";        Pattern = '<AssemblyVersion>([\d.]+)</AssemblyVersion>'; Expect = $tagVersion4 },
         @{ File = "JellyfinUpscalerPlugin.csproj";        Pattern = '<FileVersion>([\d.]+)</FileVersion>';         Expect = $tagVersion4 }
@@ -133,6 +178,22 @@ try {
         } else {
             Write-Host ("  [OK] " + $chk.File + " = " + $m.Groups[1].Value)
         }
+    }
+
+    Write-Host ""
+    Write-Host "=== UI field consistency (JS selectors vs HTML ids) ===" -ForegroundColor Cyan
+    # Kills the v1.8.3.3 class: config-page JS referencing a removed element id
+    # compiles clean (EmbeddedResource) and only crashes at runtime.
+    $py = (Get-Command python -ErrorAction SilentlyContinue) ?? (Get-Command python3 -ErrorAction SilentlyContinue)
+    if ($py) {
+        & $py.Source (Join-Path $PSScriptRoot "check_ui_field_consistency.py")
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  [FAIL] UI field consistency check failed" -ForegroundColor Red
+            $fail = $true
+        }
+    } else {
+        Write-Host "  [FAIL] python not found - cannot run check_ui_field_consistency.py" -ForegroundColor Red
+        $fail = $true
     }
 
     Write-Host ""
