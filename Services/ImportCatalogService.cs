@@ -64,6 +64,29 @@ namespace JellyfinUpscalerPlugin.Services
         }
 
         /// <summary>
+        /// OMDB occasionally records browser VIEWER urls: /blob/ pages on GitHub and
+        /// HuggingFace serve HTML, not the file, so the download would fail the sha256
+        /// pin. Rewrite them to the raw-content equivalents (same file, same hash).
+        /// The catalog generator does the same; this covers stale catalog data.
+        /// </summary>
+        internal static string? NormalizeDownloadUrl(string? url)
+        {
+            if (string.IsNullOrEmpty(url)) return url;
+            if (url.StartsWith("https://github.com/", StringComparison.Ordinal) && url.Contains("/blob/", StringComparison.Ordinal))
+            {
+                var raw = "https://raw.githubusercontent.com/" + url.Substring("https://github.com/".Length);
+                var idx = raw.IndexOf("/blob/", StringComparison.Ordinal);
+                return raw.Remove(idx, "/blob".Length);
+            }
+            if (url.StartsWith("https://huggingface.co/", StringComparison.Ordinal) && url.Contains("/blob/", StringComparison.Ordinal))
+            {
+                var idx = url.IndexOf("/blob/", StringComparison.Ordinal);
+                return url.Substring(0, idx) + "/resolve/" + url.Substring(idx + "/blob/".Length);
+            }
+            return url;
+        }
+
+        /// <summary>
         /// Catalog id -> service model name. The AI service's /models/upload accepts
         /// ^[a-zA-Z0-9_-]{1,64}$; the omdb- prefix namespaces imports so a community
         /// model can never shadow a curated catalog entry.
@@ -96,6 +119,10 @@ namespace JellyfinUpscalerPlugin.Services
                         var json = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                         var doc = JsonSerializer.Deserialize<ImportCatalogDoc>(json);
                         if (doc?.DirectOnnx == null || doc.DirectOnnx.Count == 0) continue;
+                        foreach (var m in doc.DirectOnnx)
+                        {
+                            m.DownloadUrl = NormalizeDownloadUrl(m.DownloadUrl);
+                        }
                         _cache = doc.DirectOnnx;
                         _cacheTime = DateTimeOffset.UtcNow;
                         _logger.LogInformation("AI Upscaler: import catalog loaded ({Count} direct-ONNX entries, generated {Gen})",

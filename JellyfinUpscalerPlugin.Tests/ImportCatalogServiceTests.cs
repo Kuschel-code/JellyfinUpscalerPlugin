@@ -51,6 +51,25 @@ namespace JellyfinUpscalerPlugin.Tests
         }
 
         [Theory]
+        // /blob/ pages serve HTML, not the file — must be rewritten to raw-content urls
+        [InlineData("https://github.com/Phhofm/models/blob/main/x/y_fp32.onnx",
+                    "https://raw.githubusercontent.com/Phhofm/models/main/x/y_fp32.onnx")]
+        [InlineData("https://huggingface.co/Kim2091/UltraSharpV2/blob/main/4x-UltraSharpV2_fp32_op17.onnx",
+                    "https://huggingface.co/Kim2091/UltraSharpV2/resolve/main/4x-UltraSharpV2_fp32_op17.onnx")]
+        [InlineData("https://github.com/x/releases/download/v1/y.onnx",
+                    "https://github.com/x/releases/download/v1/y.onnx")] // already direct — untouched
+        [InlineData(null, null)]
+        public void NormalizeDownloadUrl_rewrites_viewer_pages_to_raw_content(string? url, string? expected)
+        {
+            var normalized = ImportCatalogService.NormalizeDownloadUrl(url);
+            Assert.Equal(expected, normalized);
+            if (expected != null)
+            {
+                Assert.True(ImportCatalogService.IsDirectlyImportable(normalized));
+            }
+        }
+
+        [Theory]
         [InlineData("CC-BY-NC-SA-4.0", true)]
         [InlineData("CC-BY-NC-4.0", true)]
         [InlineData("CC-BY-4.0", false)]

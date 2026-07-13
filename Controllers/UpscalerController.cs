@@ -505,7 +505,10 @@ namespace JellyfinUpscalerPlugin.Controllers
             var modelName = Services.ImportCatalogService.ToModelName(entry.Id);
             try
             {
-                // 1) download from the pinned, allowlisted URL (NO service token on this client)
+                // 1) download from the pinned, allowlisted URL (NO service token on this client).
+                //    Redirects are followed (GitHub releases redirect to objects.githubusercontent.com);
+                //    only the START url is allowlist-checked - acceptable because the bytes must
+                //    still match the catalog's sha256 pin below, and this client carries no secret.
                 var external = _httpClientFactory.CreateClient("ExternalModelDownload");
                 byte[] data;
                 using (var dl = await external.GetAsync(entry.DownloadUrl, HttpContext.RequestAborted))

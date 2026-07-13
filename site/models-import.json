@@ -590,7 +590,7 @@
    "description": "2x SRFormer_light anime upscale model that handles AVC (h264) compression since h264 crf 20-28 degradation together with bicubic, bilinear, box and lanczos downsampling has been applied on musl's HFA2k dataset with Kim's dataset destroyer for training.\n\n\nIf you want to run this model with chaiNNer (or another application) you need to use the onnx files with an onnx upscale node. All onnx conversions can be found in the [onnx folder on my repo](https://github.com/Phhofm/models/tree/main/2xHFA2kAVCSRFormer_light/onnx).\n\nExample 1: https://imgsli.com/MTkxMTQz\n\nExample 2: https://imgsli.com/MTkxMTQ0",
    "date": "2023-07-11",
    "omdb_url": "https://openmodeldb.info/models/2x-HFA2kAVCSRFormer-light",
-   "download_url": "https://github.com/Phhofm/models/blob/main/2xHFA2kAVCSRFormer_light/onnx/2xHFA2kAVCSRFormer_light_16_onnxsim_fp32.onnx",
+   "download_url": "https://raw.githubusercontent.com/Phhofm/models/main/2xHFA2kAVCSRFormer_light/onnx/2xHFA2kAVCSRFormer_light_16_onnxsim_fp32.onnx",
    "sha256": "74865a019f66014231f9c479713f3d00488967cfa08b6d4a4eab92b843a46a59",
    "size_bytes": 14062720,
    "import": "direct"
@@ -1212,7 +1212,7 @@
    "description": "Please consider supporting my work on [Ko-Fi](https://ko-fi.com/kim20913944)!\n\nThis model has been in the works for a very very very long time. I spent years creating my own private dataset just to train this model. It can handle realistic images, anime, cartoons, and quite a bit more without much hassle. It also works amazingly on illustrations and artwork. This is easily the best model I've ever trained.\n\nI hope you all like it.\n\nThe Lite model is based on the RealPLKSR architecture, rather than DAT2.\n\nAnd please consider donating! I'm going through a rough time right now & any support helps a LOT\n\n**Showcase:**\n\nFlux comparisons: <https://slow.pics/s/bsfbNpMA>\n\nImage Upscales: <https://slow.pics/s/RORQ4R0U?image-fit=contain>\n\nV1 vs V2 Upscales: <https://slow.pics/c/2HIBlzAh>",
    "date": "2025-05-23",
    "omdb_url": "https://openmodeldb.info/models/4x-UltraSharpV2",
-   "download_url": "https://huggingface.co/Kim2091/UltraSharpV2/blob/main/4x-UltraSharpV2_fp32_op17.onnx",
+   "download_url": "https://huggingface.co/Kim2091/UltraSharpV2/resolve/main/4x-UltraSharpV2_fp32_op17.onnx",
    "sha256": "6c0201e3403745f39a9aa5273c50ed084cf6c4af5a71a4654c30252cf19bf0a5",
    "size_bytes": 51800517,
    "import": "direct"

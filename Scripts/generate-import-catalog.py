@@ -29,6 +29,15 @@ def main():
     for f in sorted(glob.glob(os.path.join(src, "data/models/*.json"))):
         d = json.load(open(f, encoding="utf-8"))
         model_id = os.path.basename(f)[:-5]
+        # OMDB occasionally records browser VIEWER urls. /blob/ pages serve HTML,
+        # not the file, so a downloader would fetch a webpage and fail the sha256
+        # pin. Rewrite them to the raw-content equivalents (same file, same hash).
+        def normalize_url(u):
+            if u.startswith("https://github.com/") and "/blob/" in u:
+                return u.replace("https://github.com/", "https://raw.githubusercontent.com/", 1).replace("/blob/", "/", 1)
+            if u.startswith("https://huggingface.co/") and "/blob/" in u:
+                return u.replace("/blob/", "/resolve/", 1)
+            return u
         onnx_res = [r for r in d.get("resources", []) if r.get("platform") == "onnx"]
         any_res = d.get("resources", [])
         entry = {
@@ -46,7 +55,7 @@ def main():
         if onnx_res:
             r = onnx_res[0]
             entry.update({
-                "download_url": (r.get("urls") or [""])[0],
+                "download_url": normalize_url((r.get("urls") or [""])[0]),
                 "sha256": r.get("sha256", ""),
                 "size_bytes": r.get("size", 0),
                 "import": "direct",
@@ -56,7 +65,7 @@ def main():
             r = any_res[0]
             entry.update({
                 "source_platform": r.get("platform", "?"),
-                "download_url": (r.get("urls") or [""])[0],
+                "download_url": normalize_url((r.get("urls") or [""])[0]),
                 "size_bytes": r.get("size", 0),
                 "import": "convert",
             })
