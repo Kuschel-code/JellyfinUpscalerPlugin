@@ -1219,8 +1219,7 @@
         function saveFavorites(favs) {
             return ApiClient.getPluginConfiguration(pluginId).then(function(cfg) {
                 cfg.FavoriteModels = favs.join(',');
-                return ApiClient.updatePluginConfiguration(pluginId, cfg).then(function(result) {
-                    Dashboard.processPluginConfigurationUpdateResult(result);
+                return ApiClient.updatePluginConfiguration(pluginId, cfg).then(function() {
                     _favoriteModels = favs;
                 });
             });
@@ -1234,14 +1233,21 @@
                 if (!id) return;
                 var favs = _favoriteModels.slice();
                 var idx = favs.indexOf(id);
-                if (idx === -1) favs.push(id); else favs.splice(idx, 1);
+                var adding = idx === -1;
+                if (adding) favs.push(id); else favs.splice(idx, 1);
                 saveFavorites(favs).then(function() {
                     return loadModels(page);
                 }).then(function() {
                     var sel2 = page.querySelector('#Model');
                     if (sel2) sel2.value = id;
                     updateFavoriteButton(page);
-                }).catch(function() {});
+                    showToast(adding ? 'Added to ★ Favorites' : 'Removed from ★ Favorites');
+                }).catch(function() {
+                    // v1.8.3.7 review fix: never fail silently — the star otherwise
+                    // just "does nothing" on a network/auth error.
+                    showToast('Failed to update favorites', '#f87171');
+                    updateFavoriteButton(page);
+                });
             });
         }
         function renderImportOptions(page, query) {
@@ -1316,13 +1322,19 @@
                 }).then(function(r) {
                     if (r.ok && r.j && r.j.success) {
                         status.style.color = '#4ade80';
-                        status.textContent = 'Imported as ' + r.j.imported_as + ' (sha256 verified) - pinned to ★ Favorites at the top of the model list.';
-                        // v1.8.3.7 - auto-pin the import to favorites, then refresh the dropdown
+                        status.textContent = 'Imported as ' + r.j.imported_as + ' (sha256 verified) - now in the model list.';
+                        // v1.8.3.7 - auto-pin the import to favorites, then refresh the
+                        // dropdown. Review fix: only claim "pinned" AFTER the pin saved;
+                        // on a pin failure say so instead of overstating success.
                         var favs = _favoriteModels.slice();
                         var pin = (favs.indexOf(r.j.imported_as) === -1)
-                            ? saveFavorites(favs.concat([r.j.imported_as])).catch(function() {})
+                            ? saveFavorites(favs.concat([r.j.imported_as]))
                             : Promise.resolve();
-                        pin.then(function() { return loadModels(page); }).catch(function() {});
+                        pin.then(function() {
+                            status.textContent = 'Imported as ' + r.j.imported_as + ' (sha256 verified) - pinned to ★ Favorites at the top of the model list.';
+                        }).catch(function() {
+                            status.textContent = 'Imported as ' + r.j.imported_as + ' (sha256 verified) - could not pin to favorites; find it under "Imported / Custom".';
+                        }).then(function() { return loadModels(page); }).catch(function() {});
                     } else {
                         status.style.color = '#f87171';
                         status.textContent = 'Import failed: ' + ((r.j && (r.j.error || r.j.detail || r.j.message)) || 'unknown error');
