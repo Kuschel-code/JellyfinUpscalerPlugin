@@ -1807,6 +1807,59 @@ def detect_hardware():
         state.gpu_memory = "N/A"
 
 
+def _register_custom_models_from_disk(models_dir, available_models) -> int:
+    """Re-register custom-uploaded models after a restart (v1.8.3.7).
+
+    /models/upload persists the .onnx into MODELS_DIR plus a small
+    <name>.custom.json sidecar with the validated metadata, but the
+    AVAILABLE_MODELS entry itself only lived in memory — so every container
+    restart silently dropped uploaded/imported models from the catalog while
+    their files kept sitting in the volume. This scans the sidecars and
+    restores the registry entries. The sidecar values were validated by the
+    upload endpoint (ONNX InferenceSession + 4D shape) before being written,
+    so they are trusted here — no model load at startup.
+
+    Returns the number of restored models. Pure function over its arguments
+    so tests can drive it with a tmp dir + plain dict.
+    """
+    restored = 0
+    try:
+        sidecars = sorted(models_dir.glob("*.custom.json"))
+    except OSError:
+        return 0
+    for sidecar in sidecars:
+        try:
+            with open(sidecar, encoding="utf-8") as fh:
+                meta = json.load(fh)
+            model_name = meta.get("model_name", "")
+            filename = meta.get("filename", f"{model_name}.onnx")
+            if not re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", model_name):
+                logger.warning(f"Skipping custom-model sidecar with invalid name: {sidecar.name}")
+                continue
+            model_path = (models_dir / filename).resolve()
+            if not str(model_path).startswith(str(models_dir.resolve())) or not model_path.is_file():
+                logger.warning(f"Skipping custom-model sidecar without model file: {sidecar.name}")
+                continue
+            if model_name in available_models:
+                continue  # built-in or already restored — never shadow
+            available_models[model_name] = {
+                "name": model_name,
+                "description": meta.get("description") or f"Custom uploaded model ({meta.get('scale', 2)}x)",
+                "url": "",
+                "filename": filename,
+                "type": "onnx",
+                "scale": int(meta.get("scale", 2)),
+                "category": "super-resolution",
+                "input_channels": meta.get("input_channels"),
+                "available": True,
+                "custom": True,
+            }
+            restored += 1
+        except Exception:
+            logger.warning(f"Failed to restore custom model from {sidecar.name}", exc_info=True)
+    return restored
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application startup and shutdown."""
@@ -1815,6 +1868,12 @@ async def lifespan(app: FastAPI):
     # Create directories
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Restore custom/imported models from their sidecar files (v1.8.3.7 —
+    # previously they vanished from the catalog on every restart).
+    restored = _register_custom_models_from_disk(MODELS_DIR, AVAILABLE_MODELS)
+    if restored:
+        logger.info(f"Restored {restored} custom model(s) from {MODELS_DIR}")
     
     # Detect hardware (run in executor to avoid blocking event loop with subprocess calls)
     loop = asyncio.get_running_loop()
@@ -6106,7 +6165,24 @@ async def upload_custom_model(
             os.unlink(tmp_path)
         raise HTTPException(status_code=500, detail="Failed to save model file")
 
-    # Register in AVAILABLE_MODELS (runtime only — not persisted across restarts)
+    # Persist a metadata sidecar so the registration survives restarts
+    # (v1.8.3.7 — the file used to survive in the volume while the registry
+    # entry silently vanished on every container restart).
+    sidecar_path = model_dir / f"{model_name}.custom.json"
+    try:
+        with open(sidecar_path, "w", encoding="utf-8") as fh:
+            json.dump({
+                "model_name": model_name,
+                "filename": model_filename,
+                "scale": scale,
+                "description": description or f"Custom uploaded model ({scale}x)",
+                "input_channels": input_channels,
+                "output_channels": output_channels,
+            }, fh)
+    except OSError:
+        logger.warning(f"Could not write custom-model sidecar for {model_name} — model will not survive a restart", exc_info=True)
+
+    # Register in AVAILABLE_MODELS (restored from the sidecar on restart)
     with _model_lock:
         AVAILABLE_MODELS[model_name] = {
             "name": model_name,
@@ -6159,9 +6235,12 @@ async def delete_custom_model(request: Request, model_name: str):
         if not str(model_path).startswith(str(models_dir)):
             raise HTTPException(status_code=403, detail="Invalid model path")
 
-        # Remove file
+        # Remove file + its persistence sidecar (v1.8.3.7)
         if model_path.exists() and model_path.is_file():
             os.unlink(str(model_path))
+        sidecar = models_dir / f"{model_name}.custom.json"
+        if sidecar.exists() and sidecar.is_file():
+            os.unlink(str(sidecar))
 
         # Unregister and unload if active.
         # _model_lock is already held here — acquiring _models_registry_lock

@@ -7,13 +7,22 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.6</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.7</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.6 - One-click model importer <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.7 - Model favorites + restart-proof imports <span class="tag success">latest</span></h2>
+  <p class="date">2026-07-13</p>
+  <ul>
+    <li><strong>★ Favorites</strong> - new group at the top of the model dropdown; pin/unpin the selected model with the star button next to it. <strong>Every one-click import is pinned automatically</strong>: pick a community model, hit Import, and it sits at the top of the list ready to select.</li>
+    <li><strong>Import search</strong> - a search box filters the ~40 importable OpenModelDB models live (name, architecture, license, scale).</li>
+    <li><strong>Fix: imported models survive container restarts</strong> - the AI service used to register uploads only in memory; a restart silently dropped them from the catalog while the file stayed in the volume. Uploads now write a <code>&lt;name&gt;.custom.json</code> sidecar and are re-registered at startup; deleting a model removes both. Imported models are labelled <em>Imported / Custom</em> in the dropdown.</li>
+    <li>Tests: pytest 83 (5 new persistence invariants), xUnit 190, UI-consistency 114 refs. docker7 images released in lockstep as v1.8.3.7.</li>
+  </ul>
+
+  <h2>v1.8.3.6 - One-click model importer</h2>
   <p class="date">2026-07-13</p>
   <ul>
     <li><strong>Import community models from the config page</strong> - new "Import Community Model" card: pick any directly importable OpenModelDB model; the plugin downloads it (allowlisted hosts only, plain <code>.onnx</code>, 500&nbsp;MB cap), verifies the pinned sha256 and registers it with the AI service as <code>omdb-&lt;id&gt;</code>. No curl, no console. NC-licensed models show a non-commercial warning before import.</li>
@@ -376,7 +385,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.6</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.7</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

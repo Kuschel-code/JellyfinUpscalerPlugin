@@ -206,7 +206,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.8.3.6 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.8.3.7 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -375,7 +375,7 @@
                         <div class="details-body">
                             <div class="checkboxContainer"><label><input type="checkbox" id="EnablePlugin" /> Plugin enabled</label></div>
                             <div class="form-row" style="margin-top:0.5rem;">
-                                <div class="form-col selectContainer"><label class="selectLabel" for="Model">Model</label><select id="Model"></select></div>
+                                <div class="form-col selectContainer"><label class="selectLabel" for="Model">Model</label><div style="display:flex;gap:0.4rem;align-items:center;"><select id="Model" style="flex:1;min-width:0;"></select><button type="button" id="btn-toggle-favorite" title="Add to favorites" style="flex:0 0 auto;background:none;border:1px solid var(--border,#444);border-radius:4px;color:var(--accent,#4a9eff);font-size:1.05rem;line-height:1;padding:0.35rem 0.5rem;cursor:pointer;">☆</button></div></div>
                                 <div class="form-col selectContainer"><label class="selectLabel" for="ScaleFactor">Scale</label><select id="ScaleFactor"></select></div>
                             </div>
                             <div class="form-row">
@@ -669,6 +669,9 @@
                 <div class="upscaler-card">
                     <h3>Import Community Model</h3>
                     <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">One-click import from the <a href="https://kuschel-code.github.io/JellyfinUpscalerPlugin/models-import.html" target="_blank" rel="noopener" style="color:var(--accent);">OpenModelDB catalog</a>: the plugin downloads the ONNX, verifies its sha256 pin, and the AI service validates and registers it. Imported models are <strong>not curated</strong> — check the license.</div>
+                    <div class="form-row" style="margin-bottom:0.4rem;">
+                        <input type="text" id="ImportModelSearch" placeholder="Search models… (name, architecture, license)" autocomplete="off" style="width:100%;box-sizing:border-box;background:var(--card-bg,#1e1e24);border:1px solid var(--border,#444);border-radius:4px;color:inherit;padding:0.45rem 0.6rem;font-size:0.85rem;" />
+                    </div>
                     <div class="form-row" style="display:flex;gap:0.5rem;align-items:center;">
                         <select id="ImportModelSelect" is="emby-select" style="flex:1;min-width:0;"><option value="">Loading catalog…</option></select>
                         <button type="button" id="btn-import-model" class="raised button-submit" style="white-space:nowrap;">Import</button>
@@ -1198,27 +1201,80 @@
         // ===== MODELS =====
         // v1.8.3.6 - one-click OpenModelDB import: fill the picker, warn on NC
         // licenses, POST /Upscaler/models/import and refresh the model list.
+        // v1.8.3.7 - search box filters the picker; imports auto-pin to favorites.
         var _importCatalogCache = null;
+        var _importList = [];
+        var _favoriteModels = [];
+        function parseFavorites(cfg) {
+            return (cfg && cfg.FavoriteModels || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+        }
+        function updateFavoriteButton(page) {
+            var btn = page.querySelector('#btn-toggle-favorite');
+            var sel = page.querySelector('#Model');
+            if (!btn || !sel) return;
+            var isFav = !!sel.value && _favoriteModels.indexOf(sel.value) !== -1;
+            btn.textContent = isFav ? '★' : '☆';
+            btn.title = isFav ? 'Remove from favorites' : 'Add to favorites';
+        }
+        function saveFavorites(favs) {
+            return ApiClient.getPluginConfiguration(pluginId).then(function(cfg) {
+                cfg.FavoriteModels = favs.join(',');
+                return ApiClient.updatePluginConfiguration(pluginId, cfg).then(function(result) {
+                    Dashboard.processPluginConfigurationUpdateResult(result);
+                    _favoriteModels = favs;
+                });
+            });
+        }
+        function attachFavoriteEvents(page) {
+            var btn = page.querySelector('#btn-toggle-favorite');
+            if (!btn) return;
+            btn.addEventListener('click', function() {
+                var sel = page.querySelector('#Model');
+                var id = sel && sel.value;
+                if (!id) return;
+                var favs = _favoriteModels.slice();
+                var idx = favs.indexOf(id);
+                if (idx === -1) favs.push(id); else favs.splice(idx, 1);
+                saveFavorites(favs).then(function() {
+                    return loadModels(page);
+                }).then(function() {
+                    var sel2 = page.querySelector('#Model');
+                    if (sel2) sel2.value = id;
+                    updateFavoriteButton(page);
+                }).catch(function() {});
+            });
+        }
+        function renderImportOptions(page, query) {
+            var select = page.querySelector('#ImportModelSelect');
+            if (!select) return;
+            while (select.firstChild) select.removeChild(select.firstChild);
+            var q = (query || '').toLowerCase();
+            var models = _importList.filter(function(m) {
+                if (!q) return true;
+                return (m.name + ' ' + m.id + ' ' + (m.architecture || '') + ' ' + (m.license || '') + ' ' + m.scale + 'x').toLowerCase().indexOf(q) !== -1;
+            });
+            var opt0 = document.createElement('option');
+            opt0.value = '';
+            opt0.textContent = q
+                ? models.length + ' of ' + _importList.length + ' models match - pick one…'
+                : _importList.length + ' importable models - pick one…';
+            select.appendChild(opt0);
+            models.forEach(function(m) {
+                var o = document.createElement('option');
+                o.value = m.id;
+                var mb = m.size_bytes ? (m.size_bytes / 1048576).toFixed(1) + ' MB' : '?';
+                o.textContent = m.name + ' - ' + m.scale + 'x, ' + (m.license || 'license unclear') + (m.non_commercial ? ' [NC]' : '') + ', ' + mb;
+                select.appendChild(o);
+            });
+        }
         function loadImportableModels(page) {
             ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/models/importable'), dataType: 'json' }).then(function(data) {
-                var select = page.querySelector('#ImportModelSelect');
-                if (!select) return;
                 _importCatalogCache = {};
-                while (select.firstChild) select.removeChild(select.firstChild);
-                var models = (data && data.models || []).filter(function(m) { return m.importable; })
+                _importList = (data && data.models || []).filter(function(m) { return m.importable; })
                     .sort(function(a, b) { return a.name.localeCompare(b.name); });
-                var opt0 = document.createElement('option');
-                opt0.value = '';
-                opt0.textContent = models.length + ' importable models - pick one…';
-                select.appendChild(opt0);
-                models.forEach(function(m) {
-                    _importCatalogCache[m.id] = m;
-                    var o = document.createElement('option');
-                    o.value = m.id;
-                    var mb = m.size_bytes ? (m.size_bytes / 1048576).toFixed(1) + ' MB' : '?';
-                    o.textContent = m.name + ' - ' + m.scale + 'x, ' + (m.license || 'license unclear') + (m.non_commercial ? ' [NC]' : '') + ', ' + mb;
-                    select.appendChild(o);
-                });
+                _importList.forEach(function(m) { _importCatalogCache[m.id] = m; });
+                var search = page.querySelector('#ImportModelSearch');
+                renderImportOptions(page, search ? search.value : '');
             }).catch(function() {
                 var select = page.querySelector('#ImportModelSelect');
                 if (select && select.firstChild) select.firstChild.textContent = 'Catalog unavailable - see the website';
@@ -1237,6 +1293,13 @@
                     ? '<span style="color:#f87171;">⚠ ' + m.license + ' - NON-COMMERCIAL license. Do not use on a commercial/public service.</span>'
                     : 'License: ' + (m.license || 'unclear - verify with the author') + ' · will be registered as <code>' + m.model_name + '</code>';
             });
+            var search = page.querySelector('#ImportModelSearch');
+            if (search) {
+                search.addEventListener('input', function() {
+                    renderImportOptions(page, search.value);
+                    info.textContent = '';
+                });
+            }
             btn.addEventListener('click', function() {
                 var m = _importCatalogCache && _importCatalogCache[select.value];
                 if (!m) { status.textContent = 'Pick a model first.'; return; }
@@ -1253,8 +1316,13 @@
                 }).then(function(r) {
                     if (r.ok && r.j && r.j.success) {
                         status.style.color = '#4ade80';
-                        status.textContent = 'Imported as ' + r.j.imported_as + ' (sha256 verified) - now available in the model list.';
-                        loadModels(page).catch(function() {});
+                        status.textContent = 'Imported as ' + r.j.imported_as + ' (sha256 verified) - pinned to ★ Favorites at the top of the model list.';
+                        // v1.8.3.7 - auto-pin the import to favorites, then refresh the dropdown
+                        var favs = _favoriteModels.slice();
+                        var pin = (favs.indexOf(r.j.imported_as) === -1)
+                            ? saveFavorites(favs.concat([r.j.imported_as])).catch(function() {})
+                            : Promise.resolve();
+                        pin.then(function() { return loadModels(page); }).catch(function() {});
                     } else {
                         status.style.color = '#f87171';
                         status.textContent = 'Import failed: ' + ((r.j && (r.j.error || r.j.detail || r.j.message)) || 'unknown error');
@@ -1267,7 +1335,13 @@
         }
 
         function loadModels(page) {
-            return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/models'), dataType: 'json' }).then(function(data) {
+            // v1.8.3.7 - favorites live in the plugin config; fetch it first so the
+            // "★ Favorites" group renders correctly on the initial page load too.
+            return ApiClient.getPluginConfiguration(pluginId).then(function(cfg) {
+                _favoriteModels = parseFavorites(cfg);
+            }).catch(function() {}).then(function() {
+                return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/models'), dataType: 'json' });
+            }).then(function(data) {
                 // Docker service returns { models: [...] }, fallback returns plain array
                 modelsData = (data && data.models) ? data.models : (Array.isArray(data) ? data : []);
 
@@ -1280,7 +1354,24 @@
                 });
 
                 var select = page.querySelector('#Model');
+                var prevValue = select.value;
                 while (select.firstChild) select.removeChild(select.firstChild);
+
+                // v1.8.3.7 - pinned models first (duplicated up top with a ★ prefix;
+                // select.value matches the first option carrying the id)
+                if (_favoriteModels.length) {
+                    var favGroup = document.createElement('optgroup');
+                    favGroup.label = '★ Favorites';
+                    _favoriteModels.forEach(function(fid) {
+                        var fm = upscaleModels.filter(function(x) { return x.id === fid; })[0];
+                        if (!fm) return;
+                        var fopt = document.createElement('option');
+                        fopt.value = fm.id;
+                        fopt.textContent = '★ ' + fm.name + (fm.loaded ? ' [loaded]' : (fm.downloaded ? ' [ready]' : ''));
+                        favGroup.appendChild(fopt);
+                    });
+                    if (favGroup.children.length) select.appendChild(favGroup);
+                }
 
                 // Group upscale-eligible models by category for optgroups
                 var categories = {};
@@ -1290,7 +1381,7 @@
                     categories[cat].push(m);
                 });
 
-                var catNames = { realesrgan: 'Real-ESRGAN', fast: 'Fast (OpenCV)', quality: 'Quality (OpenCV)', nextgen: 'Next-Gen (SPAN/SwinIR)', community: 'Community Models', vsr: 'Video SR (Multi-Frame)', 'video-sr': 'Video SR (Multi-Frame)', 'video-fast': 'Video Real-Time', 'video-quality': 'Video Quality', anime: 'Anime', film: 'Film Restoration', 'film-restore': 'Film Restoration', vulkan: 'Vulkan / ncnn', other: 'Other' };
+                var catNames = { realesrgan: 'Real-ESRGAN', fast: 'Fast (OpenCV)', quality: 'Quality (OpenCV)', nextgen: 'Next-Gen (SPAN/SwinIR)', community: 'Community Models', vsr: 'Video SR (Multi-Frame)', 'video-sr': 'Video SR (Multi-Frame)', 'video-fast': 'Video Real-Time', 'video-quality': 'Video Quality', anime: 'Anime', film: 'Film Restoration', 'film-restore': 'Film Restoration', vulkan: 'Vulkan / ncnn', 'super-resolution': 'Imported / Custom', other: 'Other' };
                 Object.keys(categories).forEach(function(cat) {
                     var group = document.createElement('optgroup');
                     group.label = catNames[cat] || cat;
@@ -1304,7 +1395,13 @@
                     select.appendChild(group);
                 });
 
-                select.addEventListener('change', function() { updateScaleOptions(page); });
+                select.addEventListener('change', function() { updateScaleOptions(page); updateFavoriteButton(page); });
+
+                // v1.8.3.7 - a mid-session refresh (favorite toggle, import) must not
+                // reset the user's selection; the initial load has no prior value and
+                // gets set by loadConfig() right after.
+                if (prevValue) select.value = prevValue;
+                updateFavoriteButton(page);
 
                 // v1.6.1.21 - Populate PreferredAnimeModel + PreferredLiveActionModel dropdowns.
                 // Anime: only category="anime" entries. Live-action: any upscale-eligible non-anime entry.
@@ -1536,6 +1633,8 @@
                     var el = page.querySelector('#' + f);
                     if (el && config[f]) el.value = config[f];
                 });
+                _favoriteModels = parseFavorites(config);
+                updateFavoriteButton(page);
 
                 if (config.ScaleFactor) {
                     updateScaleOptions(page);
@@ -1629,7 +1728,7 @@
                 if (faceModelEl) config.FaceRestoreModel = faceModelEl.value;
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.8.3.6';
+                config.PluginVersion = '1.8.3.7';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -2609,6 +2708,7 @@
                 initNav(page);
                 attachEvents(page);
                 attachImportEvents(page);
+                attachFavoriteEvents(page);
                 initFilterTab(page);
                 _initialized = true;
             }

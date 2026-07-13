@@ -57,6 +57,13 @@ namespace JellyfinUpscalerPlugin
         /// <summary>Default AI model name (e.g. "realesrgan-x4", "span-x4").</summary>
         public string Model { get; set; } = DefaultModel;
 
+        /// <summary>
+        /// v1.8.3.7 - comma-separated model ids the user pinned (imports are
+        /// auto-pinned) - rendered as a "★ Favorites" group at the top of the
+        /// model dropdown on the config page.
+        /// </summary>
+        public string FavoriteModels { get; set; } = string.Empty;
+
         /// <summary>Upscaling factor (1-8x). Clamped to valid range.</summary>
         public int ScaleFactor
         {
@@ -534,6 +541,6 @@ namespace JellyfinUpscalerPlugin
         // ── Version Tracking ─────────────────────────────────────────────
 
         /// <summary>Current plugin version string for webhook payloads and diagnostics.</summary>
-        public string PluginVersion { get; set; } = "1.8.3.6";
+        public string PluginVersion { get; set; } = "1.8.3.7";
     }
 }

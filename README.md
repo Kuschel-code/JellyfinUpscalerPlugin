@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.6
+# Jellyfin AI Upscaler Plugin v1.8.3.7
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.6):**
+**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.7):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.6   │  │
+│  │  AI Upscaler Plugin v1.8.3.7   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -302,6 +302,12 @@ Each tag is published three ways so you can pin precisely:
 ---
 
 ## Changelog
+
+### v1.8.3.7 (Model favorites + restart-proof imports - the "6.1" follow-up)
+- **★ Favorites** - new group at the top of the model dropdown; pin/unpin the selected model with the star button. **Every import is pinned automatically**: pick a community model, hit Import, and it sits at the top of the list.
+- **Import search** - filter the ~40 importable OpenModelDB models live by name/architecture/license/scale.
+- **Fix: imported models survive restarts** - the service used to register uploads only in memory, so a container restart silently dropped them from the catalog. Uploads now write a `<name>.custom.json` sidecar and are re-registered at startup; delete removes both.
+- pytest 83 (5 new persistence invariants), xUnit 190. docker7 images released in lockstep as v1.8.3.7.
 
 ### v1.8.3.6 (One-click model importer + version sync)
 - **Import community models from the config page** - new "Import Community Model" card: pick any directly importable OpenModelDB model; the plugin downloads it (allowlisted hosts only, plain `.onnx`, 500 MB cap), verifies the pinned sha256 and registers it with the AI service as `omdb-<id>` - no curl, no console. NC-licensed models warn before import.
