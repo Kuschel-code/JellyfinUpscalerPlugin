@@ -155,6 +155,13 @@ try {
         @{ File = "manifest.json";                        Pattern = '"version"\s*:\s*"([\d.]+)"';                  Expect = $tagVersion  },
         @{ File = "repository-jellyfin.json";             Pattern = '"version"\s*:\s*"([\d.]+)"';                  Expect = $tagVersion  },
         @{ File = "repository-simple.json";               Pattern = '"version"\s*:\s*"([\d.]+)"';                  Expect = $tagVersion  },
+        # v1.8.3.5 follow-up: README + config default drifted for TWO releases
+        # (README body said v1.8.3.3, PluginConfiguration default said 1.7.7)
+        # because none of them were guarded. Now they are.
+        @{ File = "README.md";                            Pattern = '^# Jellyfin AI Upscaler Plugin v([\d.]+)';    Expect = $tagVersion  },
+        @{ File = "README.md";                            Pattern = 'independently versioned at v([\d.]+)\)';      Expect = $tagVersion  },
+        @{ File = "README.md";                            Pattern = 'AI Upscaler Plugin v([\d.]+)\s+│';            Expect = $tagVersion  },
+        @{ File = "PluginConfiguration.cs";               Pattern = 'PluginVersion \{ get; set; \} = "([\d.]+)"';  Expect = $tagVersion  },
         @{ File = "JellyfinUpscalerPlugin.csproj";        Pattern = '<Version>([\d.]+)</Version>';                 Expect = $tagVersion4 },
         @{ File = "JellyfinUpscalerPlugin.csproj";        Pattern = '<AssemblyVersion>([\d.]+)</AssemblyVersion>'; Expect = $tagVersion4 },
         @{ File = "JellyfinUpscalerPlugin.csproj";        Pattern = '<FileVersion>([\d.]+)</FileVersion>';         Expect = $tagVersion4 }

@@ -16,8 +16,13 @@
 .mi-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:1.2rem 0 .4rem}
 .mi-controls input[type=search]{flex:1;min-width:220px;background:var(--paper-deep);border:1px solid var(--rule-strong);border-radius:8px;color:var(--ink);padding:8px 12px;font-size:.95rem}
 .mi-controls select{background:var(--paper-deep);border:1px solid var(--rule-strong);border-radius:8px;color:var(--ink);padding:8px 10px;font-size:.9rem}
-.mi-controls label{font-size:.88rem;color:var(--ink-dim);display:flex;gap:6px;align-items:center;white-space:nowrap}
 .mi-count{font-family:var(--mono);font-size:.8rem;color:var(--ink-faint)}
+/* filter chips - same language as the rest of the site (mono pills, one accent) */
+.mi-chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:.5rem 0}
+.mi-chips .mi-lbl{font-family:var(--mono);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-right:2px}
+.mi-chip{font-family:var(--mono);font-size:.78rem;color:var(--ink-dim);background:var(--paper-deep);border:1px solid var(--rule-strong);border-radius:999px;padding:5px 14px;cursor:pointer;transition:color .14s ease,border-color .14s ease,background .14s ease}
+.mi-chip:hover{color:var(--ink);border-color:var(--accent)}
+.mi-chip[aria-pressed="true"]{color:var(--accent-ink);border-color:var(--accent);background:var(--accent-soft)}
 #mi-direct td{vertical-align:top}
 #mi-direct details summary{cursor:pointer;color:var(--accent-ink);font-size:.85rem}
 #mi-direct details p{font-size:.85rem;color:var(--ink-dim);margin:.4rem 0 0;max-width:60ch;white-space:pre-line}
@@ -34,31 +39,42 @@
 
   <div class="mi-note">⚠ <strong>Check the license.</strong> Every model carries its author's license — <span class="mi-badge nc" style="display:inline">NC</span> models are <em>non-commercial</em>. Imported models are <strong>not curated or benchmarked</strong> by the plugin team; use them at your own discretion. A one-click in-plugin importer is planned for v1.9 — today, download the ONNX file and drop it into the AI service's model directory as described in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/MODEL-HOSTING.md" target="_blank" rel="noopener">MODEL-HOSTING.md</a>.</div>
 
-  <h2>Ready to use (ONNX) <small id="mi-direct-count"></small></h2>
   <div class="mi-controls">
     <input type="search" id="mi-search" placeholder="Filter by name, architecture or tag…" aria-label="Filter models">
-    <select id="mi-scale" aria-label="Filter by scale">
-      <option value="">Any scale</option>
-      <option value="1">1×</option>
-      <option value="2">2×</option>
-      <option value="4">4×</option>
-    </select>
-    <label><input type="checkbox" id="mi-hide-nc"> Hide non-commercial</label>
     <span class="mi-count" id="mi-shown"></span>
   </div>
+  <div class="mi-chips" id="mi-cats" role="group" aria-label="Filter by content type">
+    <span class="mi-lbl">Content</span>
+    <button type="button" class="mi-chip" data-cat="" aria-pressed="true">All</button>
+    <button type="button" class="mi-chip" data-cat="anime">Anime</button>
+    <button type="button" class="mi-chip" data-cat="cartoon">Cartoons</button>
+    <button type="button" class="mi-chip" data-cat="movies">Movies &amp; TV</button>
+    <button type="button" class="mi-chip" data-cat="faces">Faces</button>
+    <button type="button" class="mi-chip" data-cat="games">Games</button>
+    <button type="button" class="mi-chip" data-cat="restore">Restoration</button>
+  </div>
+  <div class="mi-chips" id="mi-scales" role="group" aria-label="Filter by scale and license">
+    <span class="mi-lbl">Scale</span>
+    <button type="button" class="mi-chip" data-scale="" aria-pressed="true">Any</button>
+    <button type="button" class="mi-chip" data-scale="1">1×</button>
+    <button type="button" class="mi-chip" data-scale="2">2×</button>
+    <button type="button" class="mi-chip" data-scale="4">4×</button>
+    <span class="mi-lbl" style="margin-left:10px">License</span>
+    <button type="button" class="mi-chip" id="mi-hide-nc" aria-pressed="false">Hide non-commercial</button>
+  </div>
+
+  <h2>Ready to use (ONNX) <small id="mi-direct-count"></small></h2>
   <table id="mi-direct">
     <thead><tr><th>Model</th><th>Scale</th><th>Architecture</th><th>License</th><th>Size</th><th>Links</th></tr></thead>
     <tbody></tbody>
   </table>
 
   <h2>Convertible (PyTorch / NCNN) <small id="mi-conv-count"></small></h2>
-  <p style="color: var(--text-dim); font-size: .95rem;">These exist only as <code>.pth</code>/<code>.safetensors</code> or NCNN weights and would need an ONNX export first (planned importer phase 2). Listed for completeness — each name links to its OpenModelDB page.</p>
-  <details id="mi-conv-details"><summary>Show all convertible models</summary>
-    <table id="mi-conv">
-      <thead><tr><th>Scale</th><th>Model</th><th>Architecture</th><th>License</th><th>Format</th><th>Size</th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </details>
+  <p style="color: var(--text-dim); font-size: .95rem;">These exist only as <code>.pth</code>/<code>.safetensors</code> or NCNN weights and would need an ONNX export first (planned importer phase 2). The search and filter chips above apply here too — each name links to its OpenModelDB page.</p>
+  <table id="mi-conv">
+    <thead><tr><th>Scale</th><th>Model</th><th>Architecture</th><th>License</th><th>Format</th><th>Size</th></tr></thead>
+    <tbody></tbody>
+  </table>
 
   <p style="color: var(--text-dim); font-size: .85rem; margin-top: 2rem;">Data generated <code id="mi-generated">…</code> from <a href="https://github.com/OpenModelDB/open-model-database" target="_blank" rel="noopener">OpenModelDB/open-model-database</a> by <code>Scripts/generate-import-catalog.py</code> — refreshed automatically. This page renders <code>models-import.json</code> client-side; nothing here is hand-maintained.</p>
   <noscript><p>This page needs JavaScript to render the model list. The raw data is available as <a href="models-import.json">models-import.json</a>.</p></noscript>
@@ -94,13 +110,31 @@
 
   var DATA = null;
 
+  // Content categories derived from OpenModelDB tags. A model can be in several.
+  function catsOf(m) {
+    var t = m.tags || [];
+    function has(x) { return t.indexOf(x) !== -1; }
+    var c = [];
+    if (has("anime") || has("manga")) c.push("anime");
+    if (has("cartoon")) c.push("cartoon");
+    if (has("faces")) c.push("faces");
+    if (has("game-textures") || has("game-screenshots") || has("pixel-art") || has("texture-generation")) c.push("games");
+    if (has("photo") || has("video-frame") || has("general-upscaler")) c.push("movies");
+    if (["compression-removal", "denoise", "deblur", "dehalo", "debanding", "dedither", "jpeg", "restoration", "dehalftone"].some(has)) c.push("restore");
+    return c.length ? c : ["other"];
+  }
+  function rowAttrs(m) {
+    return " data-name=\"" + esc((m.name + " " + m.architecture + " " + (m.tags || []).join(" ")).toLowerCase()) + "\"" +
+      " data-scale=\"" + esc(m.scale) + "\" data-nc=\"" + (/NC/i.test(m.license || "") ? "1" : "0") + "\"" +
+      " data-cat=\"" + catsOf(m).join(" ") + "\"";
+  }
+
   function directRow(m) {
     var dl = safeUrl(m.download_url);
     var omdb = safeUrl(m.omdb_url);
     var desc = (m.description || "").slice(0, 600);
     var tags = (m.tags || []).slice(0, 5).join(", ");
-    return "<tr data-name=\"" + esc((m.name + " " + m.architecture + " " + (m.tags || []).join(" ")).toLowerCase()) + "\"" +
-      " data-scale=\"" + esc(m.scale) + "\" data-nc=\"" + (/NC/i.test(m.license || "") ? "1" : "0") + "\">" +
+    return "<tr" + rowAttrs(m) + ">" +
       "<td><strong>" + esc(m.name) + "</strong>" +
       (desc ? "<details><summary>details</summary><p>" + esc(desc) + (tags ? "\n\nTags: " + esc(tags) : "") + "</p></details>" : "") + "</td>" +
       "<td>" + esc(m.scale) + "×</td>" +
@@ -115,7 +149,7 @@
 
   function convRow(m) {
     var omdb = safeUrl(m.omdb_url);
-    return "<tr><td>" + esc(m.scale) + "×</td>" +
+    return "<tr" + rowAttrs(m) + "><td>" + esc(m.scale) + "×</td>" +
       "<td>" + (omdb ? "<a href=\"" + esc(omdb) + "\" rel=\"noopener\" target=\"_blank\">" + esc(m.name) + "</a>" : esc(m.name)) + "</td>" +
       "<td><code>" + esc(m.architecture) + "</code></td>" +
       "<td>" + licBadge(m.license) + "</td>" +
@@ -123,20 +157,37 @@
       "<td>" + humanSize(m.size_bytes) + "</td></tr>";
   }
 
+  // chip state (single-select per group; NC chip is a toggle)
+  var activeCat = "", activeScale = "";
+  function wireChipGroup(groupId, attr, onPick) {
+    var group = document.getElementById(groupId);
+    group.addEventListener("click", function (e) {
+      var chip = e.target.closest(".mi-chip");
+      if (!chip || !chip.hasAttribute(attr)) return;
+      group.querySelectorAll(".mi-chip[" + attr + "]").forEach(function (c) { c.setAttribute("aria-pressed", "false"); });
+      chip.setAttribute("aria-pressed", "true");
+      onPick(chip.getAttribute(attr));
+      applyFilters();
+    });
+  }
+
   function applyFilters() {
     var q = document.getElementById("mi-search").value.trim().toLowerCase();
-    var scale = document.getElementById("mi-scale").value;
-    var hideNc = document.getElementById("mi-hide-nc").checked;
-    var rows = document.querySelectorAll("#mi-direct tbody tr");
-    var shown = 0;
-    rows.forEach(function (tr) {
-      var ok = (!q || tr.getAttribute("data-name").indexOf(q) !== -1) &&
-               (!scale || tr.getAttribute("data-scale") === scale) &&
-               (!hideNc || tr.getAttribute("data-nc") === "0");
-      tr.style.display = ok ? "" : "none";
-      if (ok) shown++;
+    var hideNc = document.getElementById("mi-hide-nc").getAttribute("aria-pressed") === "true";
+    var shownDirect = 0, totalDirect = 0, shownConv = 0, totalConv = 0;
+    ["#mi-direct", "#mi-conv"].forEach(function (sel) {
+      document.querySelectorAll(sel + " tbody tr").forEach(function (tr) {
+        var ok = (!q || tr.getAttribute("data-name").indexOf(q) !== -1) &&
+                 (!activeScale || tr.getAttribute("data-scale") === activeScale) &&
+                 (!activeCat || (" " + tr.getAttribute("data-cat") + " ").indexOf(" " + activeCat + " ") !== -1) &&
+                 (!hideNc || tr.getAttribute("data-nc") === "0");
+        tr.style.display = ok ? "" : "none";
+        if (sel === "#mi-direct") { totalDirect++; if (ok) shownDirect++; }
+        else { totalConv++; if (ok) shownConv++; }
+      });
     });
-    document.getElementById("mi-shown").textContent = shown + " of " + rows.length + " shown";
+    document.getElementById("mi-shown").textContent =
+      shownDirect + " of " + totalDirect + " ready · " + shownConv + " of " + totalConv + " convertible";
   }
 
   fetch("models-import.json", { cache: "no-cache" })
@@ -151,23 +202,22 @@
       document.getElementById("mi-conv-count").textContent = "(" + conv.length + ")";
       document.getElementById("mi-generated").textContent = d.generated || "?";
       document.querySelector("#mi-direct tbody").innerHTML = direct.map(directRow).join("");
+      // all convertible models visible by default - the filters cover them too
+      document.querySelector("#mi-conv tbody").innerHTML = conv.map(convRow).join("");
       applyFilters();
-      // 609 rows: render lazily on first expand
-      var det = document.getElementById("mi-conv-details");
-      det.addEventListener("toggle", function () {
-        var tbody = document.querySelector("#mi-conv tbody");
-        if (det.open && !tbody.childElementCount) tbody.innerHTML = conv.map(convRow).join("");
-      });
     })
     .catch(function () {
       document.getElementById("mi-lead-counts").textContent =
         "Could not load models-import.json - view the raw data on GitHub instead.";
     });
 
-  ["input", "change"].forEach(function (ev) {
-    document.getElementById("mi-search").addEventListener(ev, applyFilters);
-    document.getElementById("mi-scale").addEventListener(ev, applyFilters);
-    document.getElementById("mi-hide-nc").addEventListener(ev, applyFilters);
+  document.getElementById("mi-search").addEventListener("input", applyFilters);
+  wireChipGroup("mi-cats", "data-cat", function (v) { activeCat = v; });
+  wireChipGroup("mi-scales", "data-scale", function (v) { activeScale = v; });
+  document.getElementById("mi-hide-nc").addEventListener("click", function () {
+    var b = this.getAttribute("aria-pressed") === "true";
+    this.setAttribute("aria-pressed", b ? "false" : "true");
+    applyFilters();
   });
 })();
 </script>

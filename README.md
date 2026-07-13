@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.8.3.3):**
+**Docker Images (docker7 base — plugin is independently versioned at v1.8.3.5):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.3   │  │
+│  │  AI Upscaler Plugin v1.8.3.5   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -228,7 +228,7 @@ To batch-upscale your low-resolution content:
 
 ---
 
-## AI Models (40+ Total)
+## AI Models (76 curated + 660+ importable)
 
 | Category | Models | Scale | Speed | Best For |
 |----------|--------|-------|-------|----------|
@@ -302,6 +302,14 @@ Each tag is published three ways so you can pin precisely:
 ---
 
 ## Changelog
+
+### v1.8.3.5 (Hardening + importable models)
+
+**Plugin-only release.** Triple-feed release guard (all three plugin feeds must carry each release consistently — the issue-#74 class is now machine-checked), new CI check asserting every JS-referenced element id exists in the HTML (the v1.8.3.3 save-crash class; it immediately caught the test-upscale button silently always testing realesrgan-x4 via a dead `#PreferredModel` selector), `UserManagerAdapter` reflection lookup cached, 5 new face-helper pytest invariants. NEW website page [Importable models](https://kuschel-code.github.io/JellyfinUpscalerPlugin/models-import.html): 60 ready-to-use ONNX + 609 convertible community models from OpenModelDB (license badges, sha256 pins, weekly CI refresh) — and the site AI assistant answers questions about them. Tests: pytest 78, xUnit 164, build clean.
+
+### v1.8.3.4 (Jellyfin 12.0 readiness + catalog integrity)
+
+**Plugin + model-catalog release.** One DLL now serves Jellyfin 10.11.x AND 12.x (the single 12.0 API break, `IUserManager.Users`, is resolved via runtime reflection). Full catalog URL health sweep: 16 dead links found, 9 repointed to verified mirrors, 7 marked *[self-host required]*; 3 new license-checked models added (sha256-pinned, CPU-benchmarked) and model downloads are now sha256-verified before activation. Docker requirement floors hardened (starlette CVE fix et al.); the stale `:latest` Docker tag now follows releases again. Details: `docs/JELLYFIN-12-READINESS.md`, `docs/MODEL-EVAL-2026-07.md`.
 
 ### v1.8.3.3 (Fix config-page Save)
 
