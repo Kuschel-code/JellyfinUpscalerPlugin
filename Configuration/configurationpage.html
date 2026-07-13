@@ -206,7 +206,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.8.3.5 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.8.3.6 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -663,6 +663,18 @@
                             <tbody id="model-catalog-body"><tr><td colspan="5" style="text-align:center;padding:1rem;opacity:0.5;">Loading models...</td></tr></tbody>
                         </table>
                     </div>
+                </div>
+
+                <!-- v1.8.3.6 - one-click community-model import (OpenModelDB) -->
+                <div class="upscaler-card">
+                    <h3>Import Community Model</h3>
+                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">One-click import from the <a href="https://kuschel-code.github.io/JellyfinUpscalerPlugin/models-import.html" target="_blank" rel="noopener" style="color:var(--accent);">OpenModelDB catalog</a>: the plugin downloads the ONNX, verifies its sha256 pin, and the AI service validates and registers it. Imported models are <strong>not curated</strong> — check the license.</div>
+                    <div class="form-row" style="display:flex;gap:0.5rem;align-items:center;">
+                        <select id="ImportModelSelect" is="emby-select" style="flex:1;min-width:0;"><option value="">Loading catalog…</option></select>
+                        <button type="button" id="btn-import-model" class="raised button-submit" style="white-space:nowrap;">Import</button>
+                    </div>
+                    <div id="import-model-info" style="font-size:0.78rem;color:var(--text-muted);margin-top:0.4rem;"></div>
+                    <div id="import-model-status" style="font-size:0.82rem;margin-top:0.4rem;"></div>
                 </div>
 
                 <div class="upscaler-card">
@@ -1184,6 +1196,76 @@
         }
 
         // ===== MODELS =====
+        // v1.8.3.6 - one-click OpenModelDB import: fill the picker, warn on NC
+        // licenses, POST /Upscaler/models/import and refresh the model list.
+        var _importCatalogCache = null;
+        function loadImportableModels(page) {
+            ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/models/importable'), dataType: 'json' }).then(function(data) {
+                var select = page.querySelector('#ImportModelSelect');
+                if (!select) return;
+                _importCatalogCache = {};
+                while (select.firstChild) select.removeChild(select.firstChild);
+                var models = (data && data.models || []).filter(function(m) { return m.importable; })
+                    .sort(function(a, b) { return a.name.localeCompare(b.name); });
+                var opt0 = document.createElement('option');
+                opt0.value = '';
+                opt0.textContent = models.length + ' importable models - pick one…';
+                select.appendChild(opt0);
+                models.forEach(function(m) {
+                    _importCatalogCache[m.id] = m;
+                    var o = document.createElement('option');
+                    o.value = m.id;
+                    var mb = m.size_bytes ? (m.size_bytes / 1048576).toFixed(1) + ' MB' : '?';
+                    o.textContent = m.name + ' - ' + m.scale + 'x, ' + (m.license || 'license unclear') + (m.non_commercial ? ' [NC]' : '') + ', ' + mb;
+                    select.appendChild(o);
+                });
+            }).catch(function() {
+                var select = page.querySelector('#ImportModelSelect');
+                if (select && select.firstChild) select.firstChild.textContent = 'Catalog unavailable - see the website';
+            });
+        }
+        function attachImportEvents(page) {
+            var select = page.querySelector('#ImportModelSelect');
+            var info = page.querySelector('#import-model-info');
+            var status = page.querySelector('#import-model-status');
+            var btn = page.querySelector('#btn-import-model');
+            if (!select || !btn) return;
+            select.addEventListener('change', function() {
+                var m = _importCatalogCache && _importCatalogCache[select.value];
+                if (!m) { info.textContent = ''; return; }
+                info.innerHTML = m.non_commercial
+                    ? '<span style="color:#f87171;">⚠ ' + m.license + ' - NON-COMMERCIAL license. Do not use on a commercial/public service.</span>'
+                    : 'License: ' + (m.license || 'unclear - verify with the author') + ' · will be registered as <code>' + m.model_name + '</code>';
+            });
+            btn.addEventListener('click', function() {
+                var m = _importCatalogCache && _importCatalogCache[select.value];
+                if (!m) { status.textContent = 'Pick a model first.'; return; }
+                btn.disabled = true;
+                var mb = m.size_bytes ? (m.size_bytes / 1048576).toFixed(1) : '?';
+                status.style.color = '#fbbf24';
+                status.textContent = 'Importing ' + m.name + ' (' + mb + ' MB download + validation - this can take a few minutes)…';
+                fetch(ApiClient.getUrl('Upscaler/models/import'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' },
+                    body: JSON.stringify({ id: m.id })
+                }).then(function(resp) {
+                    return resp.json().catch(function() { return {}; }).then(function(j) { return { ok: resp.ok, j: j }; });
+                }).then(function(r) {
+                    if (r.ok && r.j && r.j.success) {
+                        status.style.color = '#4ade80';
+                        status.textContent = 'Imported as ' + r.j.imported_as + ' (sha256 verified) - now available in the model list.';
+                        loadModels(page).catch(function() {});
+                    } else {
+                        status.style.color = '#f87171';
+                        status.textContent = 'Import failed: ' + ((r.j && (r.j.error || r.j.detail || r.j.message)) || 'unknown error');
+                    }
+                }).catch(function(err) {
+                    status.style.color = '#f87171';
+                    status.textContent = 'Import failed: ' + (err && err.message || err);
+                }).then(function() { btn.disabled = false; });
+            });
+        }
+
         function loadModels(page) {
             return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/models'), dataType: 'json' }).then(function(data) {
                 // Docker service returns { models: [...] }, fallback returns plain array
@@ -1547,7 +1629,7 @@
                 if (faceModelEl) config.FaceRestoreModel = faceModelEl.value;
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.8.3.5';
+                config.PluginVersion = '1.8.3.6';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -2526,6 +2608,7 @@
             if (!_initialized) {
                 initNav(page);
                 attachEvents(page);
+                attachImportEvents(page);
                 initFilterTab(page);
                 _initialized = true;
             }
@@ -2537,6 +2620,7 @@
             });
             loadMediaItems(page);
             loadGpuList(page);
+            loadImportableModels(page);
             refreshDashboard(page);
             startPerfMonitor(page);
 

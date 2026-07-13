@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.8.3.6",
+        "changelog": "v1.8.3.6: One-click model importer + service version sync. NEW 'Import Community Model' card on the plugin config page: pick a directly importable OpenModelDB model and the plugin downloads it (https-only from allowlisted hosts, plain .onnx, 500 MB cap), verifies the pinned sha256 and registers it with the AI service as omdb-<id> - immediately selectable, no curl needed; NC-licensed models warn before import. New admin endpoints GET /Upscaler/models/importable + POST /Upscaler/models/import; the external download client carries no service token. The docker7 AI-service images now release in lockstep as v1.8.3.6 so the service dashboard shows the same version as the plugin. Tests: xUnit 186, pytest 78.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.3.6/JellyfinUpscalerPlugin-v1.8.3.6.zip",
+        "checksum": "b5ba8f9a89d0548eef76edab0831c4a1",
+        "timestamp": "2026-07-13T11:25:00.000Z"
+      },
+      {
         "version": "1.8.3.5",
         "changelog": "v1.8.3.5: Hardening + importable-models catalog. Triple-feed release guard (all three plugin feeds must carry each release consistently - the issue-#74 class), new CI check: every element id referenced from JS must exist in the HTML (the v1.8.3.3 save-crash class; immediately fixed the test-upscale button reading a non-existent #PreferredModel), UserManagerAdapter reflection lookup cached, 5 new face-helper pytest invariants. NEW website page 'Importable models': 60 ready-to-use ONNX + 609 convertible community models from OpenModelDB (license badges, sha256 pins, weekly CI refresh) - and the site AI assistant answers questions about them. Plugin-only release; docker7 images unchanged. Tests: pytest 78, xUnit 164, build clean.",
         "targetAbi": "10.11.8.0",

@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.5
+# Jellyfin AI Upscaler Plugin v1.8.3.6
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — plugin is independently versioned at v1.8.3.5):**
+**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.6):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.5   │  │
+│  │  AI Upscaler Plugin v1.8.3.6   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -302,6 +302,11 @@ Each tag is published three ways so you can pin precisely:
 ---
 
 ## Changelog
+
+### v1.8.3.6 (One-click model importer + version sync)
+- **Import community models from the config page** - new "Import Community Model" card: pick any directly importable OpenModelDB model; the plugin downloads it (allowlisted hosts only, plain `.onnx`, 500 MB cap), verifies the pinned sha256 and registers it with the AI service as `omdb-<id>` - no curl, no console. NC-licensed models warn before import.
+- **Docker service releases in lockstep** - the docker7 images ship as v1.8.3.6 too, so the service dashboard shows the same version as the plugin.
+- New admin endpoints `GET /Upscaler/models/importable` + `POST /Upscaler/models/import`; the external download client deliberately carries no service token (the secret never reaches third-party hosts). xUnit 186 (22 new importer-gate tests).
 
 ### v1.8.3.5 (Hardening + importable models)
 

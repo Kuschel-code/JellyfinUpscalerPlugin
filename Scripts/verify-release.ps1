@@ -159,7 +159,7 @@ try {
         # (README body said v1.8.3.3, PluginConfiguration default said 1.7.7)
         # because none of them were guarded. Now they are.
         @{ File = "README.md";                            Pattern = '^# Jellyfin AI Upscaler Plugin v([\d.]+)';    Expect = $tagVersion  },
-        @{ File = "README.md";                            Pattern = 'independently versioned at v([\d.]+)\)';      Expect = $tagVersion  },
+        @{ File = "README.md";                            Pattern = 'in lockstep with the plugin, both at v([\d.]+)\)'; Expect = $tagVersion  },
         @{ File = "README.md";                            Pattern = 'AI Upscaler Plugin v([\d.]+)\s+│';            Expect = $tagVersion  },
         @{ File = "PluginConfiguration.cs";               Pattern = 'PluginVersion \{ get; set; \} = "([\d.]+)"';  Expect = $tagVersion  },
         @{ File = "JellyfinUpscalerPlugin.csproj";        Pattern = '<Version>([\d.]+)</Version>';                 Expect = $tagVersion4 },

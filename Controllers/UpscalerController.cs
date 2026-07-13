@@ -55,6 +55,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         private readonly CacheManager _cacheManager;
         private readonly ProcessingQueue _processingQueue;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly Services.ImportCatalogService _importCatalog;
 
         public UpscalerController(
             ILogger<UpscalerController> logger,
@@ -67,8 +68,10 @@ namespace JellyfinUpscalerPlugin.Controllers
             VideoProcessor videoProcessor,
             CacheManager cacheManager,
             ProcessingQueue processingQueue,
-            IHttpClientFactory httpClientFactory)
+            IHttpClientFactory httpClientFactory,
+            Services.ImportCatalogService importCatalog)
         {
+            _importCatalog = importCatalog;
             _logger = logger;
             _libraryManager = libraryManager;
             _mediaSourceManager = mediaSourceManager;
@@ -431,6 +434,134 @@ namespace JellyfinUpscalerPlugin.Controllers
             {
                 _logger.LogError(ex, "AI Upscaler: recommend proxy failed");
                 return StatusCode(502, new { error = "AI service unreachable" });
+            }
+        }
+
+        /// <summary>
+        /// v1.8.3.6 — the direct-ONNX entries of the OpenModelDB import catalog
+        /// (site/models-import.json), annotated with whether the PLUGIN can import
+        /// them one-click (https + allowlisted host + plain .onnx + sha256 pin).
+        /// </summary>
+        [HttpGet("models/importable")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult> GetImportableModels()
+        {
+            var catalog = await _importCatalog.GetCatalogAsync(HttpContext.RequestAborted);
+            if (catalog == null)
+                return StatusCode(502, new { error = "Import catalog unavailable (could not fetch models-import.json)" });
+            return Ok(new
+            {
+                count = catalog.Count,
+                models = catalog.Select(m => new
+                {
+                    id = m.Id,
+                    name = m.Name,
+                    scale = m.ScaleInt,
+                    architecture = m.Architecture,
+                    license = m.License,
+                    non_commercial = Services.ImportCatalogService.IsNonCommercial(m.License),
+                    size_bytes = m.SizeBytes,
+                    omdb_url = m.OmdbUrl,
+                    importable = Services.ImportCatalogService.IsDirectlyImportable(m.DownloadUrl)
+                                 && !string.IsNullOrEmpty(m.Sha256)
+                                 && m.SizeBytes <= Services.ImportCatalogService.MaxImportBytes,
+                    model_name = Services.ImportCatalogService.ToModelName(m.Id)
+                })
+            });
+        }
+
+        /// <summary>Request body for <see cref="ImportModel"/>.</summary>
+        public class ImportModelRequest
+        {
+            public string? Id { get; set; }
+        }
+
+        /// <summary>
+        /// v1.8.3.6 — one-click community-model import. Admin-only. The flow:
+        /// resolve the catalog id (NO free-form URLs), download the pinned ONNX from
+        /// an allowlisted host, verify its sha256 against the catalog pin, then hand
+        /// it to the AI service's existing /models/upload (which shape-validates the
+        /// model and registers it in the live model list as omdb-*).
+        /// </summary>
+        [HttpPost("models/import")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult> ImportModel([FromBody] ImportModelRequest body)
+        {
+            if (string.IsNullOrWhiteSpace(body?.Id))
+                return BadRequest(new { error = "id is required" });
+
+            var entry = await _importCatalog.ResolveAsync(body.Id, HttpContext.RequestAborted);
+            if (entry == null)
+                return NotFound(new { error = $"'{body.Id}' is not in the import catalog" });
+            if (!Services.ImportCatalogService.IsDirectlyImportable(entry.DownloadUrl))
+                return BadRequest(new { error = "This entry has no direct .onnx download the plugin can fetch (zip bundle or interactive host) - download it manually from its OpenModelDB page" });
+            if (string.IsNullOrEmpty(entry.Sha256))
+                return BadRequest(new { error = "This entry has no sha256 pin - refusing to import unverifiable data" });
+            if (entry.SizeBytes > Services.ImportCatalogService.MaxImportBytes)
+                return BadRequest(new { error = "Model exceeds the 500 MB import limit" });
+
+            var serviceUrl = GetValidatedServiceUrl();
+            var modelName = Services.ImportCatalogService.ToModelName(entry.Id);
+            try
+            {
+                // 1) download from the pinned, allowlisted URL (NO service token on this client)
+                var external = _httpClientFactory.CreateClient("ExternalModelDownload");
+                byte[] data;
+                using (var dl = await external.GetAsync(entry.DownloadUrl, HttpContext.RequestAborted))
+                {
+                    if (!dl.IsSuccessStatusCode)
+                        return StatusCode(502, new { error = $"Download failed (HTTP {(int)dl.StatusCode} from source)" });
+                    if (dl.Content.Headers.ContentLength is > Services.ImportCatalogService.MaxImportBytes)
+                        return StatusCode(502, new { error = "Source reports a file above the 500 MB import limit" });
+                    data = await dl.Content.ReadAsByteArrayAsync(HttpContext.RequestAborted);
+                }
+                if (data.LongLength > Services.ImportCatalogService.MaxImportBytes)
+                    return StatusCode(502, new { error = "Downloaded file exceeds the 500 MB import limit" });
+
+                // 2) supply-chain gate: the bytes must match the catalog pin exactly
+                var sha = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(data)).ToLowerInvariant();
+                if (!sha.Equals(entry.Sha256, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogWarning("AI Upscaler: import of {Id} rejected - sha256 mismatch (expected {Expected}, got {Actual})",
+                        entry.Id, entry.Sha256, sha);
+                    return StatusCode(502, new { error = "sha256 mismatch - the upstream file changed since the catalog was generated. Import refused; the weekly catalog refresh will re-pin it if the change is legitimate." });
+                }
+
+                // 3) hand off to the service's validating upload (registers the model live)
+                using var form = new MultipartFormDataContent();
+                var fileContent = new ByteArrayContent(data);
+                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+                form.Add(fileContent, "file", modelName + ".onnx");
+                form.Add(new StringContent(modelName), "model_name");
+                form.Add(new StringContent(entry.ScaleInt.ToString(System.Globalization.CultureInfo.InvariantCulture)), "scale");
+                form.Add(new StringContent($"{entry.Name} (OpenModelDB import, license: {entry.License ?? "unclear"})"), "description");
+
+                using var response = await GetDownloadClient().PostAsync($"{serviceUrl}/models/upload", form, HttpContext.RequestAborted);
+                var serviceBody = await response.Content.ReadAsStringAsync();
+                if (!response.IsSuccessStatusCode)
+                {
+                    return new ContentResult { Content = serviceBody, ContentType = "application/json", StatusCode = (int)response.StatusCode };
+                }
+                _logger.LogInformation("AI Upscaler: imported {Id} as {ModelName} ({Bytes} bytes, sha256 verified)", entry.Id, modelName, data.LongLength);
+                return Ok(new
+                {
+                    success = true,
+                    imported_as = modelName,
+                    scale = entry.ScaleInt,
+                    license = entry.License,
+                    non_commercial = Services.ImportCatalogService.IsNonCommercial(entry.License),
+                    size_bytes = data.LongLength
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AI Upscaler: model import of {Id} failed", body.Id);
+                return StatusCode(502, new { error = "Import failed: " + ex.Message });
             }
         }
 

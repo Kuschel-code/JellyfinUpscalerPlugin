@@ -158,7 +158,7 @@
     if (!IMPORT) return "";
     var out = "IMPORTABLE COMMUNITY MODELS (OpenModelDB, page models-import.html, refreshed weekly): " +
       IMPORT.direct.length + " ready-to-use ONNX + " + IMPORT.convCount +
-      " convertible. In-plugin importer planned for v1.9; today: upload the ONNX via the AI service endpoint POST /models/upload (validated, then listed in the plugin) or per docs/MODEL-HOSTING.md. NC license = non-commercial.\n";
+      " convertible. Import: plugin config page card 'Import Community Model' (v1.8.3.6+) downloads, sha256-verifies and registers the model automatically; manual alternative: POST /models/upload on the AI service or docs/MODEL-HOSTING.md. NC license = non-commercial.\n";
     var hits = searchImport(query, 3);
     for (var i = 0; i < hits.length; i++) {
       var m = hits[i].m;
@@ -175,7 +175,7 @@
       " · License: " + lic + "<br>" +
       "Import today: download the ONNX, verify sha256" +
       (m.sha256 ? " (<code>" + esc(m.sha256.slice(0, 12)) + "…</code>)" : "") +
-      ", then upload it via <code>POST /models/upload</code> on your AI service — it appears in the plugin's model list immediately. One-click import is planned for v1.9.";
+      " — easiest: import it directly on the plugin config page (card <em>Import Community Model</em>, v1.8.3.6+). Manual alternative: upload it via <code>POST /models/upload</code> on your AI service — either way it appears in the plugin's model list immediately.";
     return srcLabel("kb", "Importable model") + txt +
       '<div class="hc-rel">' +
       (/^https?:\/\//i.test(m.download_url || "") ? '<a href="' + esc(m.download_url) + '" target="_blank" rel="noopener">Download ONNX</a> &nbsp;·&nbsp; ' : "") +

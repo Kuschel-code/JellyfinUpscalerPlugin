@@ -50,6 +50,9 @@ namespace JellyfinUpscalerPlugin
             // Video Filters (Camera-Style)
             serviceCollection.AddSingleton<VideoFilterService>();
 
+            // v1.8.3.6 - OpenModelDB import catalog (resolves ids for the model importer)
+            serviceCollection.AddSingleton<ImportCatalogService>();
+
             // v1.7.3.1 - test-seam adapters (extracted to make Jellyfin-API-dependent
             // logic mockable in unit tests).
             serviceCollection.AddSingleton<IUserManagerAdapter, UserManagerAdapter>();
@@ -77,6 +80,10 @@ namespace JellyfinUpscalerPlugin
             // body-less browser timeout (#72-class slow boxes/links).
             serviceCollection.AddHttpClient("AiUpscalerDownload", c => c.Timeout = TimeSpan.FromSeconds(570))
                 .AddHttpMessageHandler<AiServiceAuthHandler>();
+            // v1.8.3.6 - downloads from GitHub/HuggingFace for the model importer.
+            // Deliberately NO AiServiceAuthHandler: the X-Api-Token secret must never
+            // be sent to third-party hosts.
+            serviceCollection.AddHttpClient("ExternalModelDownload", c => c.Timeout = TimeSpan.FromSeconds(570));
         }
     }
 }

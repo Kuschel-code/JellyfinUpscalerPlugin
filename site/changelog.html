@@ -7,13 +7,23 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.5</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.6</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.5 - Hardening + importable models <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.6 - One-click model importer <span class="tag success">latest</span></h2>
+  <p class="date">2026-07-13</p>
+  <ul>
+    <li><strong>Import community models from the config page</strong> - new "Import Community Model" card: pick any directly importable OpenModelDB model; the plugin downloads it (allowlisted hosts only, plain <code>.onnx</code>, 500&nbsp;MB cap), verifies the pinned sha256 and registers it with the AI service as <code>omdb-&lt;id&gt;</code>. No curl, no console. NC-licensed models show a non-commercial warning before import.</li>
+    <li><strong>Docker service releases in lockstep</strong> - the docker7 images ship as v1.8.3.6 too, so the service dashboard shows the same version as the plugin (it had stayed at 1.8.3.4 because images only rebuild on docker tags; no functional service change).</li>
+    <li>New admin endpoints <code>GET /Upscaler/models/importable</code> + <code>POST /Upscaler/models/import</code>; the external download client carries no service token, so the secret never reaches third-party hosts.</li>
+    <li>Catalog check against the 2026-07-13 OpenModelDB refresh: no new freely-licensed direct-ONNX candidates (all 2025/2026 additions are CC-BY-NC) - exactly the gap the importer covers for private use.</li>
+    <li>Tests: xUnit 186 (22 new importer-gate invariants), pytest 78.</li>
+  </ul>
+
+  <h2>v1.8.3.5 - Hardening + importable models</h2>
   <p><em>2026-07.</em> Guard-rails release + 660+ importable community models.</p>
   <ul>
     <li><strong>Importable models page.</strong> New <a href="models-import.html">Importable models</a> page: 60 ready-to-use ONNX + 609 convertible community models from <a href="https://openmodeldb.info" rel="noopener" target="_blank">OpenModelDB</a>, with license badges (non-commercial flagged), sizes, sha256 pins and direct downloads. The data refreshes weekly via CI; the page renders the JSON client-side, so nothing is hand-maintained. The site's AI assistant answers questions about any of these models.</li>
@@ -366,7 +376,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.5</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.6</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 {
-  "version": "1.8.3.5",
+  "version": "1.8.3.6",
   "updated": "2026-07-13",
   "repo": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin",
   "newIssueUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/new",
@@ -655,7 +655,7 @@
         "convert model",
         "models-import"
       ],
-      "answer": "Beyond the curated catalog, the **[Importable models](models-import.html)** page lists community models from [OpenModelDB](https://openmodeldb.info) that work with the plugin's ONNX pipeline:\n- **~60 models are ready to use** - published as ONNX with a direct download URL and sha256 checksum (license shown per model, **NC = non-commercial**).\n- **~600 more** exist only as PyTorch/NCNN weights and would need an ONNX export first.\n\n**How to import today** (the AI service already has a custom-model upload API):\n1. Download the ONNX file from the page (verify the sha256 shown).\n2. Upload it to your AI service:\n```\ncurl -X POST http://<service>:5000/models/upload \\n  -F file=@model.onnx -F model_name=my-model-x4 -F scale=4\n```\n(add `-H \"X-Api-Token: ...\"` if your service uses a token; requires `ENABLE_MODEL_UPLOAD=true`, the default)\n3. The service validates the model and registers it - it appears in the plugin's model list immediately. Remove it later via `DELETE /models/upload/{model_name}`.\n\nA **one-click in-plugin importer is planned for v1.9**. Notes: imported models are **not curated or benchmarked**; check the license before commercial use (the page can filter out NC models); the page refreshes weekly from OpenModelDB."
+      "answer": "Beyond the curated catalog, the **[Importable models](models-import.html)** page lists community models from [OpenModelDB](https://openmodeldb.info) that work with the plugin's ONNX pipeline:\n- **~60 models are ready to use** - published as ONNX with a direct download URL and sha256 checksum (license shown per model, **NC = non-commercial**).\n- **~600 more** exist only as PyTorch/NCNN weights and would need an ONNX export first.\n\n**Easiest way (plugin v1.8.3.6+):** Jellyfin Dashboard \u2192 Plugins \u2192 AI Upscaler \u2192 card **Import Community Model** - pick the model; the plugin downloads it, verifies the pinned sha256 and registers it as `omdb-<id>` automatically (NC models warn before import).\n\n**Manual alternative** (the AI service has a custom-model upload API):\n1. Download the ONNX file from the page (verify the sha256 shown).\n2. Upload it to your AI service:\n```\ncurl -X POST http://<service>:5000/models/upload \\n  -F file=@model.onnx -F model_name=my-model-x4 -F scale=4\n```\n(add `-H \"X-Api-Token: ...\"` if your service uses a token; requires `ENABLE_MODEL_UPLOAD=true`, the default)\n3. The service validates the model and registers it - it appears in the plugin's model list immediately. Remove it later via `DELETE /models/upload/{model_name}`.\n\nNotes: imported models are **not curated or benchmarked**; check the license before commercial use (the page can filter out NC models); the page refreshes weekly from OpenModelDB."
     }
   ]
 }
