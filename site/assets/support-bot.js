@@ -34,7 +34,7 @@
       if (LATEST.changelog) out += "- What's new: " + LATEST.changelog + "\n";
     }
     out += "- Docker images: docker.io/kuscheltier/jellyfin-ai-upscaler - rolling tags docker7 (NVIDIA), docker7-cpu, docker7-intel, docker7-amd, docker7-vulkan, docker7-apple; ':latest' = NVIDIA variant. AI service port 5000; the plugin updates via the Jellyfin catalog, the Docker image via docker pull.\n";
-    out += "- Importable community models: the 'Importable models' page (models-import.html) lists OpenModelDB models usable with the plugin (ready ONNX + convertible; refreshed weekly). In-plugin importer planned for v1.9; today manual install per docs/MODEL-HOSTING.md.\n";
+    out += "- Importable community models: the 'Importable models' page (models-import.html) lists OpenModelDB models usable with the plugin (ready ONNX + convertible; refreshed weekly). In-plugin importer planned for v1.9; today: upload via the AI service endpoint POST /models/upload (validated, then listed in the plugin).\n";
     return out + "\n";
   }
 
