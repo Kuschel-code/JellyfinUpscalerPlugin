@@ -6236,6 +6236,14 @@ def _fetch_import_catalog() -> dict | None:
     return _import_catalog_cache["data"]  # possibly stale/None — caller surfaces the error
 
 
+async def _fetch_import_catalog_async() -> dict | None:
+    """Async wrapper: the sync httpx call would otherwise block the single
+    uvicorn event loop for up to ~60s on a cache miss (review finding) —
+    freezing every in-flight request incl. /health and /upscale-stream."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _fetch_import_catalog)
+
+
 def _import_gate(entry: dict, exts: tuple = (".onnx", ".zip")) -> str | None:
     """None if the entry passes all import gates, else a human-readable reason."""
     url = entry.get("download_url") or ""
@@ -6375,7 +6383,7 @@ async def get_import_catalog():
     Data source: models-import.json (regenerated weekly by CI, cached 6h here).
     No token: the catalog is public data (same content as the website page);
     the import/convert ACTIONS below do require the token."""
-    doc = _fetch_import_catalog()
+    doc = await _fetch_import_catalog_async()
     if not doc:
         raise HTTPException(status_code=502, detail="Import catalog unavailable (could not fetch models-import.json)")
 
@@ -6409,7 +6417,7 @@ async def import_model_from_catalog(request: Request, body: dict = Body(...)):
     model_id = (body.get("id") or "").strip()
     if not model_id:
         raise HTTPException(status_code=400, detail="id is required")
-    doc = _fetch_import_catalog()
+    doc = await _fetch_import_catalog_async()
     if not doc:
         raise HTTPException(status_code=502, detail="Import catalog unavailable")
     entry = next((e for e in doc.get("direct_onnx", []) if (e.get("id") or "").lower() == model_id.lower()), None)
@@ -6443,7 +6451,7 @@ async def convert_model_from_catalog(request: Request, body: dict = Body(...)):
     model_id = (body.get("id") or "").strip()
     if not model_id:
         raise HTTPException(status_code=400, detail="id is required")
-    doc = _fetch_import_catalog()
+    doc = await _fetch_import_catalog_async()
     if not doc:
         raise HTTPException(status_code=502, detail="Import catalog unavailable")
     entry = next((e for e in doc.get("requires_conversion", []) if (e.get("id") or "").lower() == model_id.lower()), None)

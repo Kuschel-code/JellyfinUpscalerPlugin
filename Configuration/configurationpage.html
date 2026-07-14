@@ -1395,9 +1395,11 @@
             select.addEventListener('change', function() {
                 var m = _importCatalogCache && _importCatalogCache[select.value];
                 if (!m) { info.textContent = ''; return; }
+                // review fix: license/model_name come from community-editable OMDB
+                // data - must be escaped like everywhere else (stored-XSS vector)
                 info.innerHTML = m.non_commercial
-                    ? '<span style="color:#f87171;">⚠ ' + m.license + ' - NON-COMMERCIAL license. Do not use on a commercial/public service.</span>'
-                    : 'License: ' + (m.license || 'unclear - verify with the author') + ' · will be registered as <code>' + m.model_name + '</code>';
+                    ? '<span style="color:#f87171;">⚠ ' + _escHtml(m.license) + ' - NON-COMMERCIAL license. Do not use on a commercial/public service.</span>'
+                    : 'License: ' + _escHtml(m.license || 'unclear - verify with the author') + ' · will be registered as <code>' + _escHtml(m.model_name) + '</code>';
             });
             var search = page.querySelector('#ImportModelSearch');
             if (search) {
