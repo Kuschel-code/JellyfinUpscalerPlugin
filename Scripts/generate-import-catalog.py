@@ -66,6 +66,7 @@ def main():
             entry.update({
                 "source_platform": r.get("platform", "?"),
                 "download_url": normalize_url((r.get("urls") or [""])[0]),
+                "sha256": r.get("sha256", ""),  # v1.8.3.8: the converter refuses unpinned downloads
                 "size_bytes": r.get("size", 0),
                 "import": "convert",
             })

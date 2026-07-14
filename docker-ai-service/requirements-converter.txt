@@ -1,0 +1,12 @@
+# Converter image (docker7-converter): CPU service + torch/spandrel for
+# pth -> ONNX conversion of OpenModelDB community models (v1.8.3.8).
+# Kept OUT of the standard images on purpose - torch adds ~1.5-2.5 GB.
+-r requirements-cpu.txt
+
+# CPU-only torch (the converter runs a single 64x64 verification pass; no GPU needed)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.4,<3
+
+# spandrel: model-loader of the chaiNNer ecosystem - recognizes every
+# OpenModelDB architecture (ESRGAN, Compact, SPAN, DAT, SwinIR, OmniSR, ...)
+spandrel>=0.4.0

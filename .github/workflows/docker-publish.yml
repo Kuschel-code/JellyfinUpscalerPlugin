@@ -72,6 +72,11 @@ jobs:
             dockerfile: Dockerfile.cpu
             suffix: '-cpu'
             platforms: 'linux/amd64,linux/arm64'
+          # v1.8.3.8 - opt-in converter image (CPU + torch/spandrel, pth->ONNX)
+          - backend: converter
+            dockerfile: Dockerfile.converter
+            suffix: '-converter'
+            platforms: 'linux/amd64'
 
     steps:
       - uses: actions/checkout@v4

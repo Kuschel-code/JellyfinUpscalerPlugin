@@ -7,13 +7,24 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.7</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.8</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.7 - Model favorites + restart-proof imports <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.8 - Install ANY OpenModelDB model <span class="tag success">latest</span></h2>
+  <p class="date">2026-07-13</p>
+  <ul>
+    <li><strong>Importer everywhere</strong> - the AI service owns the import pipeline now: the <code>:5000</code> dashboard got an "Import from OpenModelDB" section (search, license badges, one-click import), and the plugin config page shows the <strong>whole</strong> direct catalog - ready-to-use, convertible, and manual-install entries greyed out with the reason. ZIP-packed releases (the AnimeJaNai series) import one-click now (pinned zip verified, single .onnx extracted with a decompression cap).</li>
+    <li><strong>New opt-in converter image <code>docker7-converter</code></strong> (CPU + torch/spandrel, ~2&nbsp;GB): converts <code>.pth</code>/<code>.safetensors</code> community models to ONNX and verifies the export against the torch output before registering - unlocks ~500 of the 609 pth-only models (240 fully automatic via sha256-pinned downloads). Standard images answer 501 with a clear pointer.</li>
+    <li><strong>File install</strong> on the config page: <code>.onnx</code> installs directly, <code>.pth</code> converts - closes the gap for Google-Drive/Mega-hosted models (download in the browser, hand the file over). Installed files are auto-pinned to favorites.</li>
+    <li><strong>★ Favorites card</strong>: every pinned model with status (loaded/ready), <em>Use</em> and <em>Unpin</em> actions.</li>
+    <li>Plugin import endpoints delegate to the service when available (downloads run in the container, not the Jellyfin process) with a transparent fallback for older images. The catalog generator records sha256 pins for convertible models too.</li>
+    <li>Tests: pytest 99 (16 new gate/zip/converter invariants), xUnit 190, UI-consistency 120 refs. All 7 docker images released in lockstep as v1.8.3.8.</li>
+  </ul>
+
+  <h2>v1.8.3.7 - Model favorites + restart-proof imports</h2>
   <p class="date">2026-07-13</p>
   <ul>
     <li><strong>★ Favorites</strong> - new group at the top of the model dropdown; pin/unpin the selected model with the star button next to it. <strong>Every one-click import is pinned automatically</strong>: pick a community model, hit Import, and it sits at the top of the list ready to select.</li>
@@ -385,7 +396,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.7</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.8</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

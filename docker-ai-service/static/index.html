@@ -311,9 +311,37 @@
         </table>
       </div>
     </div>
+    <!-- v1.8.3.8 - OpenModelDB import/convert directly from the dashboard -->
+    <div class="card mt-12">
+      <div class="card-head">
+        <div class="card-title">Import from OpenModelDB</div>
+        <div class="flex items-center gap-8">
+          <span class="card-meta" id="import-count">—</span>
+          <select id="import-kind" class="input input--sm">
+            <option value="direct">Ready-to-use ONNX</option>
+            <option value="convert">Convertible (.pth)</option>
+          </select>
+          <input id="import-search" class="input input--sm" type="search" placeholder="Filter by name / arch / license" style="width:240px">
+          <input id="import-token" class="input input--sm" type="password" placeholder="API token (if configured)" style="width:170px" autocomplete="off">
+        </div>
+      </div>
+      <div class="card-body" style="padding:0; max-height:480px; overflow:auto">
+        <table id="import-table">
+          <thead>
+            <tr><th>Name</th><th class="num">Scale</th><th>Arch</th><th>License</th><th class="num">Size</th><th>Action</th></tr>
+          </thead>
+          <tbody id="import-body">
+            <tr><td colspan="6" class="muted" style="padding:16px">loading catalog…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card-body" style="padding:8px 16px">
+        <span class="muted" id="import-status" style="font-size:11px">Community models are not curated — check the license (NC = non-commercial). Imports are sha256-verified and validated before activation.</span>
+      </div>
+    </div>
     <p class="muted mt-12" style="font-size:11px">
-      Download / load / delete actions live in the Jellyfin plugin config page to avoid duplicate state.
-      This view is read-only and reflects on-disk + in-memory state after <code>/models/download</code> or <code>/models/load</code> calls.
+      Curated-model download / load / delete actions live in the Jellyfin plugin config page to avoid duplicate state.
+      Community-model import/convert works right here; converting .pth models needs the <code>docker7-converter</code> image.
     </p>
   </section>
 
@@ -498,6 +526,7 @@
     if (v === 'api' && !apiLoaded) loadApi();
     if (v === 'hardware' && !hwLoaded) loadHardware();
     if (v === 'models' && !modelsLoaded) loadModels();
+    if (v === 'models' && !importLoaded) loadImportCatalog();
     if (v === 'console' && !consoleStarted) startConsole();
   }));
 
@@ -693,6 +722,7 @@
         else if (m.downloaded) tags.push('<span class="tag">ready</span>');
         else if (!m.available) tags.push('<span class="tag tag--dim">offline</span>');
         else tags.push('<span class="tag tag--dim">—</span>');
+        if (m.custom) tags.push('<span class="tag">custom</span>');
         return `<tr>
           <td><code>${m.id}</code></td>
           <td>${m.name}</td>
@@ -707,6 +737,84 @@
   }
   $('#models-search').addEventListener('input', renderModels);
   $('#models-filter').addEventListener('change', renderModels);
+
+  // --- OpenModelDB import (v1.8.3.8) ------------------------------
+  let importCatalog = null;
+  let importLoaded = false;
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  async function loadImportCatalog() {
+    importLoaded = true;
+    try {
+      importCatalog = await fetchJson('/models/import-catalog');
+      renderImportCatalog();
+    } catch (e) {
+      $('#import-body').innerHTML = `<tr><td colspan="6" class="muted" style="padding:16px">catalog unavailable: ${esc(e.message)}</td></tr>`;
+    }
+  }
+  function renderImportCatalog() {
+    if (!importCatalog) return;
+    const kind = $('#import-kind').value;
+    const q = $('#import-search').value.toLowerCase().trim();
+    const list = (kind === 'direct' ? importCatalog.direct : importCatalog.convertible) || [];
+    const conv = !!importCatalog.converter_available;
+    const rows = list
+      .filter(m => !q || (m.name + ' ' + m.id + ' ' + (m.architecture||'') + ' ' + (m.license||'')).toLowerCase().includes(q))
+      .map(m => {
+        const mb = m.size_bytes ? (m.size_bytes / 1048576).toFixed(1) + ' MB' : '—';
+        const lic = m.non_commercial
+          ? `<span class="tag tag--warn" title="non-commercial license">${esc(m.license)} NC</span>`
+          : `<span class="tag tag--dim">${esc(m.license) || '?'}</span>`;
+        let action;
+        if (!m.eligible) {
+          action = `<span class="muted" style="font-size:11px" title="${esc(m.reason)}">${esc((m.reason||'').split(' - ')[0])}</span> <a href="${esc(m.omdb_url)}" target="_blank" rel="noopener" style="font-size:11px">OMDB ↗</a>`;
+        } else if (kind === 'convert' && !conv) {
+          action = `<span class="muted" style="font-size:11px" title="start the docker7-converter image to convert .pth models">needs converter image</span>`;
+        } else {
+          const label = kind === 'direct' ? 'Import' : 'Convert & install';
+          action = `<button class="btn btn--sm" data-import-id="${esc(m.id)}" data-import-kind="${kind}">${label}</button>`;
+        }
+        return `<tr>
+          <td title="registers as ${esc(m.model_name)}">${esc(m.name)}</td>
+          <td class="num">×${esc(m.scale)}</td>
+          <td class="muted">${esc(m.architecture) || '—'}</td>
+          <td>${lic}</td>
+          <td class="num">${mb}</td>
+          <td>${action}</td>
+        </tr>`;
+      });
+    $('#import-body').innerHTML = rows.join('') || '<tr><td colspan="6" class="muted" style="padding:16px">no matches</td></tr>';
+    $('#import-count').textContent = `${rows.length} of ${list.length} (${kind === 'direct' ? 'ONNX' : '.pth'})`;
+  }
+  async function runImportAction(id, kind, btn) {
+    const st = $('#import-status');
+    btn.disabled = true;
+    st.textContent = (kind === 'direct' ? 'Importing ' : 'Converting ') + id + '… (download + validation can take a few minutes)';
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      const tok = $('#import-token').value.trim() || localStorage.getItem('ai_api_token') || '';
+      if (tok) { headers['X-Api-Token'] = tok; localStorage.setItem('ai_api_token', tok); }
+      const url = kind === 'direct' ? '/models/import-from-catalog' : '/models/convert-from-catalog';
+      const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ id }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.detail || j.error || ('HTTP ' + r.status));
+      st.textContent = `✓ ${j.imported_as || id} registered (sha256 verified${j.converted ? ', converted' : ''}) — now in the model list.`;
+      modelsLoaded = false; loadModels();
+    } catch (e) {
+      st.textContent = '✗ ' + (kind === 'direct' ? 'Import' : 'Convert') + ' failed: ' + e.message +
+        (/401|403/.test(e.message) ? ' — enter your API token in the field above.' : '');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+  $('#import-body').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-import-id]');
+    if (btn) runImportAction(btn.dataset.importId, btn.dataset.importKind, btn);
+  });
+  $('#import-kind').addEventListener('change', renderImportCatalog);
+  $('#import-search').addEventListener('input', renderImportCatalog);
+  const savedTok = localStorage.getItem('ai_api_token'); if (savedTok) $('#import-token').value = savedTok;
 
   // --- Hardware tab ----------------------------------------------
   let hwLoaded = false;

@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.7
+# Jellyfin AI Upscaler Plugin v1.8.3.8
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.7):**
+**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.8):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.7   │  │
+│  │  AI Upscaler Plugin v1.8.3.8   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -302,6 +302,13 @@ Each tag is published three ways so you can pin precisely:
 ---
 
 ## Changelog
+
+### v1.8.3.8 (Install ANY OpenModelDB model - importer everywhere + pth converter + visible favorites)
+- **Importer everywhere** - the AI service owns the import pipeline now; the :5000 dashboard got an "Import from OpenModelDB" section, and the plugin config page shows the whole direct catalog (ready / convertible / manual-with-reason). ZIP-packed releases (AnimeJaNai series) import one-click now.
+- **NEW opt-in converter image `docker7-converter`** (CPU + torch/spandrel, ~2 GB): converts `.pth`/`.safetensors` community models to ONNX with output verification - unlocks ~500 of the 609 pth-only models (240 fully automatic, sha256-pinned; the rest via the new file-install form).
+- **File install** on the config page: `.onnx` installs directly, `.pth` converts - closes the gap for Google-Drive/Mega-hosted models. Installed files are auto-pinned.
+- **★ Favorites card**: every pinned model with status, Use and Unpin actions.
+- pytest 99 (16 new invariants), xUnit 190. All 7 docker images (incl. the new converter) released in lockstep as v1.8.3.8.
 
 ### v1.8.3.7 (Model favorites + restart-proof imports - the "6.1" follow-up)
 - **★ Favorites** - new group at the top of the model dropdown; pin/unpin the selected model with the star button. **Every import is pinned automatically**: pick a community model, hit Import, and it sits at the top of the list.

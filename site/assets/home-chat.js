@@ -158,7 +158,7 @@
     if (!IMPORT) return "";
     var out = "IMPORTABLE COMMUNITY MODELS (OpenModelDB, page models-import.html, refreshed weekly): " +
       IMPORT.direct.length + " ready-to-use ONNX + " + IMPORT.convCount +
-      " convertible. Import: plugin config page card 'Import Community Model' (v1.8.3.6+) downloads, sha256-verifies and registers the model automatically; manual alternative: POST /models/upload on the AI service or docs/MODEL-HOSTING.md. NC license = non-commercial.\n";
+      " convertible. Import: plugin config page card 'Import Community Model' (v1.8.3.6+) downloads, sha256-verifies and registers the model automatically; manual alternative: POST /models/upload on the AI service or docs/MODEL-HOSTING.md. Since v1.8.3.8 the optional docker7-converter image also converts .pth models to ONNX automatically. NC license = non-commercial.\n";
     var hits = searchImport(query, 3);
     for (var i = 0; i < hits.length; i++) {
       var m = hits[i].m;

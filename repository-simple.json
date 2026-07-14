@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.8.3.8",
+        "changelog": "v1.8.3.8: Install ANY OpenModelDB model. Importer everywhere: the AI service owns the pipeline now (new import/convert endpoints, shared hardened ingest core), the :5000 dashboard got its own 'Import from OpenModelDB' section, and the plugin picker shows the WHOLE catalog - ready-to-use ONNX, zip-packed releases (AnimeJaNai) now one-click, convertible .pth models, and manual entries greyed out with the reason. NEW opt-in converter image docker7-converter (torch+spandrel, ~2 GB) converts .pth/.safetensors to ONNX with output verification - unlocks ~500 of the 609 pth-only community models (240 fully automatic, sha256-pinned). NEW file-install form on the config page (.onnx direct, .pth converted) for Google-Drive/Mega-hosted models. NEW star-Favorites management card (status, Use, Unpin); installs are auto-pinned. Plugin import delegates to the service when available (downloads run in the container) with fallback for older images. Tests: pytest 99, xUnit 190. All 7 docker images released in lockstep as v1.8.3.8.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.3.8/JellyfinUpscalerPlugin-v1.8.3.8.zip",
+        "checksum": "6c854ce7e28c18902bda3b6932df85f7",
+        "timestamp": "2026-07-13T18:40:00.000Z"
+      },
+      {
         "version": "1.8.3.7",
         "changelog": "v1.8.3.7: Model favorites + import search + restart-proof imports (the '6.1' follow-up). NEW 'Favorites' group at the top of the model dropdown with a pin/unpin star button - and every one-click import is pinned automatically, so an imported community model sits at the top of the list ready to select. New search box filters the ~40 importable OpenModelDB models live. FIX: custom/imported models now survive container restarts - the service used to register uploads only in memory; it now writes a <name>.custom.json sidecar and re-registers all sidecar models at startup (delete removes both). Imported models are labelled 'Imported / Custom'. docker7 images released in lockstep as v1.8.3.7. Tests: pytest 83, xUnit 190.",
         "targetAbi": "10.11.8.0",

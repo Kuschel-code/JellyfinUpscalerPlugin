@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using MediaBrowser.Controller.Library;
@@ -446,27 +447,54 @@ namespace JellyfinUpscalerPlugin.Controllers
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult> GetImportableModels()
         {
+            // v1.8.3.8: the AI service owns the catalog view now (zip support,
+            // convertible list, converter availability). Proxy it; fall back to
+            // the local v1.8.3.6 logic for older service images.
+            try
+            {
+                var svcUrl = GetValidatedServiceUrl();
+                using var resp = await GetDownloadClient().GetAsync($"{svcUrl}/models/import-catalog", HttpContext.RequestAborted);
+                if (resp.IsSuccessStatusCode)
+                {
+                    var body = await resp.Content.ReadAsStringAsync();
+                    return new ContentResult { Content = body, ContentType = "application/json", StatusCode = 200 };
+                }
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogDebug("import-catalog proxy unavailable, using local fallback: {Message}", ex.Message);
+            }
+
             var catalog = await _importCatalog.GetCatalogAsync(HttpContext.RequestAborted);
             if (catalog == null)
                 return StatusCode(502, new { error = "Import catalog unavailable (could not fetch models-import.json)" });
             return Ok(new
             {
-                count = catalog.Count,
-                models = catalog.Select(m => new
+                generated = (string?)null,
+                converter_available = false,
+                direct = catalog.Select(m =>
                 {
-                    id = m.Id,
-                    name = m.Name,
-                    scale = m.ScaleInt,
-                    architecture = m.Architecture,
-                    license = m.License,
-                    non_commercial = Services.ImportCatalogService.IsNonCommercial(m.License),
-                    size_bytes = m.SizeBytes,
-                    omdb_url = m.OmdbUrl,
-                    importable = Services.ImportCatalogService.IsDirectlyImportable(m.DownloadUrl)
-                                 && !string.IsNullOrEmpty(m.Sha256)
-                                 && m.SizeBytes <= Services.ImportCatalogService.MaxImportBytes,
-                    model_name = Services.ImportCatalogService.ToModelName(m.Id)
-                })
+                    var eligible = Services.ImportCatalogService.IsDirectlyImportable(m.DownloadUrl)
+                                   && !string.IsNullOrEmpty(m.Sha256)
+                                   && m.SizeBytes <= Services.ImportCatalogService.MaxImportBytes;
+                    return new
+                    {
+                        id = m.Id,
+                        name = m.Name,
+                        scale = (object)m.ScaleInt,
+                        architecture = m.Architecture,
+                        license = m.License,
+                        non_commercial = Services.ImportCatalogService.IsNonCommercial(m.License),
+                        size_bytes = m.SizeBytes,
+                        omdb_url = m.OmdbUrl,
+                        kind = "direct",
+                        eligible,
+                        reason = eligible ? null : "not one-click importable (update the AI service image for zip support / see the OMDB page)",
+                        model_name = Services.ImportCatalogService.ToModelName(m.Id)
+                    };
+                }),
+                convertible = Array.Empty<object>()
             });
         }
 
@@ -490,6 +518,28 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             if (string.IsNullOrWhiteSpace(body?.Id))
                 return BadRequest(new { error = "id is required" });
+
+            // v1.8.3.8: prefer the service-side importer (zip support, download runs
+            // in the container instead of the Jellyfin process). 404 = older image
+            // without the endpoint -> local v1.8.3.6 path below.
+            try
+            {
+                var svcUrl = GetValidatedServiceUrl();
+                using var payload = new StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(new { id = body.Id }),
+                    System.Text.Encoding.UTF8, "application/json");
+                using var svcResp = await GetDownloadClient().PostAsync($"{svcUrl}/models/import-from-catalog", payload, HttpContext.RequestAborted);
+                if (svcResp.StatusCode != System.Net.HttpStatusCode.NotFound)
+                {
+                    var svcBody = await svcResp.Content.ReadAsStringAsync();
+                    return new ContentResult { Content = svcBody, ContentType = "application/json", StatusCode = (int)svcResp.StatusCode };
+                }
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogDebug("service-side import unavailable, using local path: {Message}", ex.Message);
+            }
 
             var entry = await _importCatalog.ResolveAsync(body.Id, HttpContext.RequestAborted);
             if (entry == null)
@@ -565,6 +615,88 @@ namespace JellyfinUpscalerPlugin.Controllers
             {
                 _logger.LogError(ex, "AI Upscaler: model import of {Id} failed", body.Id);
                 return StatusCode(502, new { error = "Import failed: " + ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// v1.8.3.8 - convert a pth catalog model to ONNX on the AI service and
+        /// register it. Requires the docker7-converter image (501 otherwise).
+        /// </summary>
+        [HttpPost("models/convert")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult> ConvertModel([FromBody] ImportModelRequest body)
+        {
+            if (string.IsNullOrWhiteSpace(body?.Id))
+                return BadRequest(new { error = "id is required" });
+            try
+            {
+                var svcUrl = GetValidatedServiceUrl();
+                using var payload = new StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(new { id = body.Id }),
+                    System.Text.Encoding.UTF8, "application/json");
+                using var resp = await GetDownloadClient().PostAsync($"{svcUrl}/models/convert-from-catalog", payload, HttpContext.RequestAborted);
+                var respBody = await resp.Content.ReadAsStringAsync();
+                if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+                    return StatusCode(501, new { error = "The AI service image is too old for conversion - update to v1.8.3.8+ (docker7-converter)" });
+                return new ContentResult { Content = respBody, ContentType = "application/json", StatusCode = (int)resp.StatusCode };
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AI Upscaler: model conversion of {Id} failed", body.Id);
+                return StatusCode(502, new { error = "Conversion failed: " + ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// v1.8.3.8 - direct file install: forwards an .onnx to the service's
+        /// validated /models/upload, or a .pth/.safetensors to /models/convert-upload.
+        /// Closes the gap for models hosted on Google Drive / Mega etc.: download in
+        /// the browser, hand the file to this endpoint via the config page.
+        /// </summary>
+        [HttpPost("models/upload-file")]
+        [Authorize(Policy = "RequiresElevation")]
+        [RequestSizeLimit(600_000_000)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 600_000_000)]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult> UploadModelFile([FromForm] IFormFile file, [FromForm] string modelName, [FromForm] int scale = 2)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { error = "file is required" });
+            if (string.IsNullOrWhiteSpace(modelName))
+                return BadRequest(new { error = "modelName is required" });
+
+            var ext = System.IO.Path.GetExtension(file.FileName ?? string.Empty).ToLowerInvariant();
+            var isOnnx = ext == ".onnx";
+            var isPth = ext is ".pth" or ".pt" or ".safetensors";
+            if (!isOnnx && !isPth)
+                return BadRequest(new { error = "Unsupported file type - expected .onnx (direct install) or .pth/.pt/.safetensors (converted install)" });
+
+            try
+            {
+                var svcUrl = GetValidatedServiceUrl();
+                using var form = new MultipartFormDataContent();
+                var stream = new StreamContent(file.OpenReadStream());
+                stream.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+                form.Add(stream, "file", file.FileName ?? ("model" + ext));
+                form.Add(new StringContent(modelName), "model_name");
+                if (isOnnx)
+                    form.Add(new StringContent(scale.ToString(System.Globalization.CultureInfo.InvariantCulture)), "scale");
+                form.Add(new StringContent($"Uploaded via Jellyfin config page ({file.FileName})"), "description");
+
+                var target = isOnnx ? "/models/upload" : "/models/convert-upload";
+                using var resp = await GetDownloadClient().PostAsync($"{svcUrl}{target}", form, HttpContext.RequestAborted);
+                var respBody = await resp.Content.ReadAsStringAsync();
+                if (!isOnnx && resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+                    return StatusCode(501, new { error = "The AI service image is too old for conversion - update to v1.8.3.8+ (docker7-converter)" });
+                return new ContentResult { Content = respBody, ContentType = "application/json", StatusCode = (int)resp.StatusCode };
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AI Upscaler: model file upload failed");
+                return StatusCode(502, new { error = "Upload failed: " + ex.Message });
             }
         }
 

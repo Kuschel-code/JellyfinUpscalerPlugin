@@ -206,7 +206,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.8.3.7 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.8.3.8 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -678,6 +678,30 @@
                     </div>
                     <div id="import-model-info" style="font-size:0.78rem;color:var(--text-muted);margin-top:0.4rem;"></div>
                     <div id="import-model-status" style="font-size:0.82rem;margin-top:0.4rem;"></div>
+                    <hr style="border:none;border-top:1px solid var(--border,#333);margin:0.7rem 0;">
+                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.4rem;"><strong>Or install from a file</strong> — for models hosted on Google Drive / Mega etc.: download in your browser, then hand the file over here. <code>.onnx</code> installs directly; <code>.pth</code>/<code>.safetensors</code> is converted first (needs the <code>docker7-converter</code> image).</div>
+                    <div class="form-row" style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+                        <input type="file" id="ImportModelFile" accept=".onnx,.pth,.pt,.safetensors" style="flex:1 1 200px;min-width:0;font-size:0.8rem;" />
+                        <input type="text" id="ImportModelFileName" placeholder="model name (a-z 0-9 - _)" autocomplete="off" style="flex:1 1 150px;min-width:0;background:var(--card-bg,#1e1e24);border:1px solid var(--border,#444);border-radius:4px;color:inherit;padding:0.4rem 0.5rem;font-size:0.8rem;" />
+                        <input type="number" id="ImportModelFileScale" min="1" max="8" value="2" title="Scale (for .onnx uploads; auto-detected for .pth)" style="width:3.5rem;background:var(--card-bg,#1e1e24);border:1px solid var(--border,#444);border-radius:4px;color:inherit;padding:0.4rem 0.3rem;font-size:0.8rem;" />
+                        <button type="button" id="btn-upload-model-file" class="raised" style="white-space:nowrap;">Install file</button>
+                    </div>
+                    <div id="upload-model-status" style="font-size:0.82rem;margin-top:0.4rem;"></div>
+                </div>
+
+                <!-- v1.8.3.8 - visible favorites management -->
+                <div class="upscaler-card">
+                    <h3>★ Favorites</h3>
+                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">Pinned models appear at the top of the model dropdown. Imports are pinned automatically; pin anything else with the ☆ button next to the model selector.</div>
+                    <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+                        <thead><tr style="text-align:left;color:var(--text-muted);">
+                            <th style="padding:0.3rem 0.3rem;">Model</th>
+                            <th style="padding:0.3rem 0.3rem;">Scale</th>
+                            <th style="padding:0.3rem 0.3rem;">Status</th>
+                            <th style="padding:0.3rem 0.3rem;text-align:right;">Actions</th>
+                        </tr></thead>
+                        <tbody id="favorites-body"><tr><td colspan="4" style="padding:0.6rem 0.3rem;opacity:0.6;">No favorites yet - import a community model or pin one with the ☆ button.</td></tr></tbody>
+                    </table>
                 </div>
 
                 <div class="upscaler-card">
@@ -1224,6 +1248,59 @@
                 });
             });
         }
+        function _escHtml(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+            });
+        }
+        // v1.8.3.8 - visible favorites management card
+        function renderFavoritesCard(page) {
+            var body = page.querySelector('#favorites-body');
+            if (!body) return;
+            var all = page._allModels || [];
+            var rows = _favoriteModels.map(function(fid) {
+                var m = all.filter(function(x) { return x.id === fid; })[0];
+                var name = m ? m.name : fid;
+                var scale = m && m.scale ? m.scale + 'x' : '-';
+                var status = !m ? '<span style="color:#f87171;">not on the service</span>'
+                    : (m.loaded ? '<span style="color:#4ade80;">loaded</span>'
+                        : (m.downloaded ? 'ready' : '<span style="opacity:0.6;">not downloaded</span>'));
+                return '<tr>'
+                    + '<td style="padding:0.35rem 0.3rem;">★ ' + _escHtml(name) + '</td>'
+                    + '<td style="padding:0.35rem 0.3rem;">' + _escHtml(scale) + '</td>'
+                    + '<td style="padding:0.35rem 0.3rem;">' + status + '</td>'
+                    + '<td style="padding:0.35rem 0.3rem;text-align:right;white-space:nowrap;">'
+                    + (m ? '<button type="button" data-fav-use="' + _escHtml(fid) + '" style="background:none;border:1px solid var(--border,#444);border-radius:4px;color:var(--accent,#4a9eff);padding:0.2rem 0.5rem;cursor:pointer;font-size:0.78rem;">Use</button> ' : '')
+                    + '<button type="button" data-fav-unpin="' + _escHtml(fid) + '" style="background:none;border:1px solid var(--border,#444);border-radius:4px;color:#f87171;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.78rem;">Unpin</button>'
+                    + '</td></tr>';
+            });
+            body.innerHTML = rows.join('') || '<tr><td colspan="4" style="padding:0.6rem 0.3rem;opacity:0.6;">No favorites yet - import a community model or pin one with the ☆ button.</td></tr>';
+        }
+        function attachFavoritesCardEvents(page) {
+            var body = page.querySelector('#favorites-body');
+            if (!body) return;
+            body.addEventListener('click', function(e) {
+                var use = e.target.closest && e.target.closest('button[data-fav-use]');
+                var unpin = e.target.closest && e.target.closest('button[data-fav-unpin]');
+                if (use) {
+                    var sel = page.querySelector('#Model');
+                    if (sel) {
+                        sel.value = use.getAttribute('data-fav-use');
+                        sel.dispatchEvent(new Event('change'));
+                        showToast('Model selected - click Save to apply');
+                    }
+                } else if (unpin) {
+                    var id = unpin.getAttribute('data-fav-unpin');
+                    saveFavorites(_favoriteModels.filter(function(x) { return x !== id; })).then(function() {
+                        return loadModels(page);
+                    }).then(function() {
+                        showToast('Removed from ★ Favorites');
+                    }).catch(function() {
+                        showToast('Failed to update favorites', '#f87171');
+                    });
+                }
+            });
+        }
         function attachFavoriteEvents(page) {
             var btn = page.querySelector('#btn-toggle-favorite');
             if (!btn) return;
@@ -1250,34 +1327,57 @@
                 });
             });
         }
+        function _importOptionLabel(m) {
+            var mb = m.size_bytes ? (m.size_bytes / 1048576).toFixed(1) + ' MB' : '?';
+            return m.name + ' - ' + m.scale + 'x, ' + (m.license || 'license unclear') + (m.non_commercial ? ' [NC]' : '') + ', ' + mb;
+        }
         function renderImportOptions(page, query) {
             var select = page.querySelector('#ImportModelSelect');
             if (!select) return;
             while (select.firstChild) select.removeChild(select.firstChild);
             var q = (query || '').toLowerCase();
-            var models = _importList.filter(function(m) {
+            function matches(m) {
                 if (!q) return true;
                 return (m.name + ' ' + m.id + ' ' + (m.architecture || '') + ' ' + (m.license || '') + ' ' + m.scale + 'x').toLowerCase().indexOf(q) !== -1;
-            });
+            }
+            var ready = _importList.filter(function(m) { return m.kind === 'direct' && m.eligible && matches(m); });
+            var convertible = _importList.filter(function(m) { return m.kind === 'convert' && m.eligible && matches(m); });
+            var manual = _importList.filter(function(m) { return !m.eligible && matches(m); });
+            var total = ready.length + (_importConverterAvailable ? convertible.length : 0);
             var opt0 = document.createElement('option');
             opt0.value = '';
-            opt0.textContent = q
-                ? models.length + ' of ' + _importList.length + ' models match - pick one…'
-                : _importList.length + ' importable models - pick one…';
+            opt0.textContent = total + ' installable model' + (total === 1 ? '' : 's') + (q ? ' match' : '') + ' - pick one…';
             select.appendChild(opt0);
-            models.forEach(function(m) {
-                var o = document.createElement('option');
-                o.value = m.id;
-                var mb = m.size_bytes ? (m.size_bytes / 1048576).toFixed(1) + ' MB' : '?';
-                o.textContent = m.name + ' - ' + m.scale + 'x, ' + (m.license || 'license unclear') + (m.non_commercial ? ' [NC]' : '') + ', ' + mb;
-                select.appendChild(o);
+            function group(label, items, disabled, labelFn) {
+                if (!items.length) return;
+                var g = document.createElement('optgroup');
+                g.label = label;
+                items.forEach(function(m) {
+                    var o = document.createElement('option');
+                    o.value = m.id;
+                    o.textContent = labelFn(m);
+                    if (disabled) o.disabled = true;
+                    g.appendChild(o);
+                });
+                select.appendChild(g);
+            }
+            group('Ready to use (ONNX)', ready, false, _importOptionLabel);
+            if (convertible.length) {
+                group(_importConverterAvailable ? 'Convertible (.pth → ONNX)' : 'Convertible - needs the docker7-converter image',
+                    convertible, !_importConverterAvailable, _importOptionLabel);
+            }
+            group('Manual install required (use the file upload below)', manual, true, function(m) {
+                return _importOptionLabel(m) + ' — ' + ((m.reason || 'not one-click importable').split(' - ')[0]);
             });
         }
+        var _importConverterAvailable = false;
         function loadImportableModels(page) {
             ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/models/importable'), dataType: 'json' }).then(function(data) {
                 _importCatalogCache = {};
-                _importList = (data && data.models || []).filter(function(m) { return m.importable; })
-                    .sort(function(a, b) { return a.name.localeCompare(b.name); });
+                _importConverterAvailable = !!(data && data.converter_available);
+                var direct = (data && data.direct) || [];
+                var convertible = (data && data.convertible) || [];
+                _importList = direct.concat(convertible).sort(function(a, b) { return (a.name || '').localeCompare(b.name || ''); });
                 _importList.forEach(function(m) { _importCatalogCache[m.id] = m; });
                 var search = page.querySelector('#ImportModelSearch');
                 renderImportOptions(page, search ? search.value : '');
@@ -1306,21 +1406,81 @@
                     info.textContent = '';
                 });
             }
+            // v1.8.3.8 - install from a local file (.onnx direct, .pth converted)
+            var upBtn = page.querySelector('#btn-upload-model-file');
+            var fileInput = page.querySelector('#ImportModelFile');
+            if (fileInput) {
+                fileInput.addEventListener('change', function() {
+                    var f = fileInput.files && fileInput.files[0];
+                    var ni = page.querySelector('#ImportModelFileName');
+                    if (f && ni && !ni.value) {
+                        ni.value = f.name.replace(/\.(onnx|pth|pt|safetensors)$/i, '').toLowerCase()
+                            .replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64);
+                    }
+                });
+            }
+            if (upBtn) {
+                upBtn.addEventListener('click', function() {
+                    var ust = page.querySelector('#upload-model-status');
+                    var f = fileInput && fileInput.files && fileInput.files[0];
+                    if (!f) { ust.style.color = ''; ust.textContent = 'Pick a file first.'; return; }
+                    var name = (page.querySelector('#ImportModelFileName').value || '').trim();
+                    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name)) {
+                        ust.style.color = '#f87171';
+                        ust.textContent = 'Model name must be a-z, 0-9, - or _ (max 64 chars).';
+                        return;
+                    }
+                    var converting = !/\.onnx$/i.test(f.name);
+                    var fd = new FormData();
+                    fd.append('file', f);
+                    fd.append('modelName', name);
+                    fd.append('scale', String(parseInt(page.querySelector('#ImportModelFileScale').value, 10) || 2));
+                    upBtn.disabled = true;
+                    ust.style.color = '#fbbf24';
+                    ust.textContent = (converting ? 'Uploading + converting ' : 'Uploading + validating ') + f.name + ' (' + (f.size / 1048576).toFixed(1) + ' MB) - this can take a few minutes…';
+                    fetch(ApiClient.getUrl('Upscaler/models/upload-file'), {
+                        method: 'POST',
+                        headers: { 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' },
+                        body: fd
+                    }).then(function(resp) {
+                        return resp.json().catch(function() { return {}; }).then(function(j) { return { ok: resp.ok, j: j }; });
+                    }).then(function(r) {
+                        if (r.ok && r.j && (r.j.status === 'ok' || r.j.success)) {
+                            var mn = r.j.model_name || name;
+                            ust.style.color = '#4ade80';
+                            ust.textContent = 'Installed as ' + mn + (r.j.converted ? ' (converted to ONNX)' : '') + ' - pinned to ★ Favorites.';
+                            var favs = _favoriteModels.slice();
+                            var pin = favs.indexOf(mn) === -1 ? saveFavorites(favs.concat([mn])) : Promise.resolve();
+                            pin.catch(function() {
+                                ust.textContent = 'Installed as ' + mn + (r.j.converted ? ' (converted to ONNX)' : '') + ' - now in the model list (favorites pin failed).';
+                            }).then(function() { return loadModels(page); }).catch(function() {});
+                        } else {
+                            ust.style.color = '#f87171';
+                            ust.textContent = 'Install failed: ' + ((r.j && (r.j.error || r.j.detail || r.j.message)) || 'unknown error');
+                        }
+                    }).catch(function(err) {
+                        ust.style.color = '#f87171';
+                        ust.textContent = 'Install failed: ' + (err && err.message || err);
+                    }).then(function() { upBtn.disabled = false; });
+                });
+            }
             btn.addEventListener('click', function() {
                 var m = _importCatalogCache && _importCatalogCache[select.value];
                 if (!m) { status.textContent = 'Pick a model first.'; return; }
                 btn.disabled = true;
                 var mb = m.size_bytes ? (m.size_bytes / 1048576).toFixed(1) : '?';
+                var converting = m.kind === 'convert';
                 status.style.color = '#fbbf24';
-                status.textContent = 'Importing ' + m.name + ' (' + mb + ' MB download + validation - this can take a few minutes)…';
-                fetch(ApiClient.getUrl('Upscaler/models/import'), {
+                status.textContent = (converting ? 'Converting ' : 'Importing ') + m.name + ' (' + mb + ' MB download + ' + (converting ? 'pth→ONNX conversion' : 'validation') + ' - this can take a few minutes)…';
+                fetch(ApiClient.getUrl(converting ? 'Upscaler/models/convert' : 'Upscaler/models/import'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' },
                     body: JSON.stringify({ id: m.id })
                 }).then(function(resp) {
                     return resp.json().catch(function() { return {}; }).then(function(j) { return { ok: resp.ok, j: j }; });
                 }).then(function(r) {
-                    if (r.ok && r.j && r.j.success) {
+                    if (r.ok && r.j && (r.j.success || r.j.status === 'ok')) {
+                        r.j.imported_as = r.j.imported_as || r.j.model_name;
                         status.style.color = '#4ade80';
                         status.textContent = 'Imported as ' + r.j.imported_as + ' (sha256 verified) - now in the model list.';
                         // v1.8.3.7 - auto-pin the import to favorites, then refresh the
@@ -1414,6 +1574,7 @@
                 // gets set by loadConfig() right after.
                 if (prevValue) select.value = prevValue;
                 updateFavoriteButton(page);
+                renderFavoritesCard(page);
 
                 // v1.6.1.21 - Populate PreferredAnimeModel + PreferredLiveActionModel dropdowns.
                 // Anime: only category="anime" entries. Live-action: any upscale-eligible non-anime entry.
@@ -1647,6 +1808,7 @@
                 });
                 _favoriteModels = parseFavorites(config);
                 updateFavoriteButton(page);
+                renderFavoritesCard(page);
 
                 if (config.ScaleFactor) {
                     updateScaleOptions(page);
@@ -1740,7 +1902,7 @@
                 if (faceModelEl) config.FaceRestoreModel = faceModelEl.value;
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.8.3.7';
+                config.PluginVersion = '1.8.3.8';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -2721,6 +2883,7 @@
                 attachEvents(page);
                 attachImportEvents(page);
                 attachFavoriteEvents(page);
+                attachFavoritesCardEvents(page);
                 initFilterTab(page);
                 _initialized = true;
             }

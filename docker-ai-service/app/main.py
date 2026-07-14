@@ -30,7 +30,7 @@ from contextlib import asynccontextmanager
 import numpy as np
 import cv2
 import httpx
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request, Body
 from fastapi.responses import Response, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -3709,6 +3709,7 @@ async def status():
         "input_frames": state.current_model_input_frames,
         "use_fp16": state.use_fp16,
         "api_token_configured": api_token_configured,
+        "converter_available": _converter_available(),
         "auth_enabled": auth_enabled,
         "managed_tokens": managed_token_count,
         "scene_change_detection": {
@@ -6082,42 +6083,21 @@ async def upload_face_enhance_model(request: Request, file: UploadFile = File(..
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Feature: Custom ONNX Model Upload
+# Feature: Custom ONNX Model Upload + OpenModelDB import/convert (v1.8.3.8)
 # ══════════════════════════════════════════════════════════════════════════════
 
-@app.post("/models/upload", tags=["Models"])
-async def upload_custom_model(
-    request: Request,
-    file: UploadFile = File(...),
-    model_name: str = Form(...),
-    scale: int = Form(2),
-    description: str = Form(""),
-):
-    """Upload a custom ONNX super-resolution model.
+def _ingest_onnx_bytes(data: bytes, model_name: str, scale: int, description: str) -> dict:
+    """Validate, persist and register ONNX model bytes.
 
-    The model is validated (input/output shape check), saved to MODELS_DIR
-    (default /app/models, overridable via MODELS_DIR env var),
-    and registered in AVAILABLE_MODELS so it appears in the model list.
-
-    Args:
-        model_name: Unique identifier (e.g. "my-custom-4x").
-        scale: Upscaling factor this model produces (1-8).
-        description: Optional human-readable description.
-
-    Configurable via ENABLE_MODEL_UPLOAD and MAX_MODEL_UPLOAD_BYTES env vars."""
-    _require_api_token(request)
-    if not ENABLE_MODEL_UPLOAD:
-        raise HTTPException(status_code=403, detail="Model upload disabled (ENABLE_MODEL_UPLOAD=false)")
-    if not ONNX_AVAILABLE:
-        raise HTTPException(status_code=503, detail="ONNX Runtime not available")
-
-    # Validate model name (alphanumeric + hyphens only)
+    Shared core of /models/upload, /models/import-from-catalog and the pth
+    converter — one gate set, one sidecar format, one registry shape.
+    Raises HTTPException on any validation failure.
+    """
     if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", model_name):
         raise HTTPException(status_code=400, detail="model_name must be alphanumeric with hyphens/underscores, max 64 chars")
 
     scale = max(1, min(8, scale))
 
-    data = await file.read()
     if len(data) > MAX_MODEL_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail=f"Model too large (max {MAX_MODEL_UPLOAD_BYTES // (1024*1024)} MB)")
 
@@ -6209,6 +6189,338 @@ async def upload_custom_model(
         "file_size_mb": round(len(data) / (1024 * 1024), 2),
         "path": str(model_path),
     }
+
+
+# ── OpenModelDB import catalog (v1.8.3.8) ────────────────────────────────────
+# The service can now import catalog models itself (dashboard + plugin both
+# call this). Same security model as the plugin importer: catalog ids only,
+# host allowlist, sha256 pin mandatory, size cap, validated ingest.
+
+_IMPORT_CATALOG_URLS = (
+    "https://kuschel-code.github.io/JellyfinUpscalerPlugin/models-import.json",
+    "https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/site/models-import.json",
+)
+_IMPORT_ALLOWED_HOSTS = (
+    "github.com",
+    "raw.githubusercontent.com",
+    "huggingface.co",
+    "objectstorage.us-phoenix-1.oraclecloud.com",
+)
+_IMPORT_CATALOG_TTL = 6 * 3600
+_import_catalog_cache: dict = {"data": None, "ts": 0.0}
+
+
+def _import_host_allowed(url: str) -> bool:
+    try:
+        host = urllib.parse.urlparse(url).hostname or ""
+    except ValueError:
+        return False
+    return any(host == h or host.endswith("." + h) for h in _IMPORT_ALLOWED_HOSTS)
+
+
+def _fetch_import_catalog() -> dict | None:
+    now = time.time()
+    if _import_catalog_cache["data"] and now - _import_catalog_cache["ts"] < _IMPORT_CATALOG_TTL:
+        return _import_catalog_cache["data"]
+    for url in _IMPORT_CATALOG_URLS:
+        try:
+            r = httpx.get(url, timeout=30, follow_redirects=True)
+            if r.status_code == 200:
+                doc = r.json()
+                if doc.get("direct_onnx"):
+                    _import_catalog_cache["data"] = doc
+                    _import_catalog_cache["ts"] = now
+                    return doc
+        except Exception as e:
+            logger.warning(f"Import catalog fetch failed from {url}: {e}")
+    return _import_catalog_cache["data"]  # possibly stale/None — caller surfaces the error
+
+
+def _import_gate(entry: dict, exts: tuple = (".onnx", ".zip")) -> str | None:
+    """None if the entry passes all import gates, else a human-readable reason."""
+    url = entry.get("download_url") or ""
+    if not url.startswith("https://"):
+        return "no https download url"
+    if not _import_host_allowed(url):
+        host = urllib.parse.urlparse(url).hostname or "?"
+        return f"host not allowlisted ({host}) - download manually and use the upload form"
+    path = urllib.parse.urlparse(url).path.lower()
+    if not any(path.endswith(e) for e in exts):
+        return f"not a direct {'/'.join(exts)} file"
+    if not entry.get("sha256"):
+        return "no sha256 pin in the catalog"
+    if (entry.get("size_bytes") or 0) > MAX_MODEL_UPLOAD_BYTES:
+        return f"exceeds the {MAX_MODEL_UPLOAD_BYTES // (1024*1024)} MB import limit"
+    return None
+
+
+def _to_import_model_name(catalog_id: str) -> str:
+    """Catalog id -> omdb- namespaced model name (mirrors the plugin's ToModelName)."""
+    cleaned = re.sub(r"[^a-z0-9-]+", "-", catalog_id.lower()).strip("-")
+    return ("omdb-" + cleaned)[:64].rstrip("-")
+
+
+def _catalog_scale(entry: dict) -> int:
+    try:
+        return max(1, min(8, int(entry.get("scale"))))
+    except (TypeError, ValueError):
+        return 2
+
+
+def _extract_single_onnx_from_zip(data: bytes) -> bytes:
+    """Some catalog releases (e.g. the AnimeJaNai series) ship the .onnx inside a
+    zip. The ZIP itself is sha256-pinned; we accept exactly one .onnx member and
+    hard-cap the decompressed size (zip-bomb guard — infolist sizes can lie)."""
+    import zipfile as _zipfile
+    import io as _io
+    try:
+        zf = _zipfile.ZipFile(_io.BytesIO(data))
+    except _zipfile.BadZipFile:
+        raise HTTPException(status_code=502, detail="Downloaded file is not a valid zip archive")
+    members = [m for m in zf.infolist() if m.filename.lower().endswith(".onnx") and not m.is_dir()]
+    if len(members) != 1:
+        raise HTTPException(status_code=502, detail=f"Zip must contain exactly one .onnx file (found {len(members)})")
+    with zf.open(members[0]) as fh:
+        out = fh.read(MAX_MODEL_UPLOAD_BYTES + 1)
+    if len(out) > MAX_MODEL_UPLOAD_BYTES:
+        raise HTTPException(status_code=502, detail=f"Zipped model exceeds the {MAX_MODEL_UPLOAD_BYTES // (1024*1024)} MB limit")
+    return out
+
+
+async def _download_pinned(url: str, sha256_pin: str) -> bytes:
+    """Download from an allowlisted URL and verify the catalog's sha256 pin.
+    Redirects are followed (GitHub releases redirect to objects.githubusercontent.com);
+    safe because the bytes must still match the pin and no secret is sent."""
+    async with httpx.AsyncClient(follow_redirects=True, timeout=httpx.Timeout(570.0, connect=30.0)) as client:
+        resp = await client.get(url)
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"Download failed (HTTP {resp.status_code} from source)")
+        data = resp.content
+    if len(data) > MAX_MODEL_UPLOAD_BYTES:
+        raise HTTPException(status_code=502, detail=f"Downloaded file exceeds the {MAX_MODEL_UPLOAD_BYTES // (1024*1024)} MB import limit")
+    digest = hashlib.sha256(data).hexdigest()
+    if digest.lower() != (sha256_pin or "").lower():
+        logger.warning(f"Catalog import rejected - sha256 mismatch (expected {sha256_pin}, got {digest})")
+        raise HTTPException(status_code=502, detail="sha256 mismatch - the upstream file changed since the catalog was generated. Import refused; the weekly catalog refresh will re-pin it if the change is legitimate.")
+    return data
+
+
+def _converter_available() -> bool:
+    """True when torch+spandrel are installed (the docker7-converter image)."""
+    import importlib.util
+    return importlib.util.find_spec("spandrel") is not None and importlib.util.find_spec("torch") is not None
+
+
+def _convert_pth_bytes_to_onnx(pth_data: bytes) -> tuple:
+    """Load a .pth/.safetensors via spandrel, export ONNX (opset 17, dynamic H/W)
+    and verify the export against the torch output. Returns (onnx_bytes, scale,
+    input_channels).
+
+    SECURITY NOTE: loading .pth files can execute pickled code. This is why the
+    converter (a) is an OPT-IN image, (b) auto-downloads only sha256-pinned files
+    from allowlisted hosts, and (c) otherwise requires an admin to hand it a file
+    they chose to trust. spandrel additionally restricts unpickling internally.
+    """
+    if not _converter_available():
+        raise HTTPException(status_code=501, detail="Converter not available - this image ships without torch/spandrel. Use the kuscheltier/jellyfin-ai-upscaler:docker7-converter image to convert .pth models.")
+    import torch
+    import spandrel
+    import numpy as _np
+
+    with tempfile.NamedTemporaryFile(suffix=".pth", delete=False) as tmp:
+        tmp.write(pth_data)
+        tmp_path = tmp.name
+    onnx_path = None
+    try:
+        desc = spandrel.ModelLoader().load_from_file(tmp_path)
+        if not isinstance(desc, spandrel.ImageModelDescriptor):
+            raise HTTPException(status_code=400, detail=f"Unsupported model type for conversion: {type(desc).__name__} (only single-image SR models)")
+        model = desc.model.eval()
+        in_ch = int(desc.input_channels)
+        scale = int(desc.scale)
+        dummy = torch.rand(1, in_ch, 64, 64)
+        with tempfile.NamedTemporaryFile(suffix=".onnx", delete=False) as otmp:
+            onnx_path = otmp.name
+        torch.onnx.export(
+            model, dummy, onnx_path, opset_version=17,
+            input_names=["input"], output_names=["output"],
+            dynamic_axes={"input": {0: "batch", 2: "height", 3: "width"},
+                          "output": {0: "batch", 2: "height", 3: "width"}})
+        # Verify: the exported graph must reproduce the torch output
+        sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
+        ort_out = sess.run(None, {sess.get_inputs()[0].name: dummy.numpy()})[0]
+        with torch.no_grad():
+            torch_out = model(dummy).numpy()
+        max_diff = float(_np.abs(ort_out - torch_out).max())
+        if max_diff > 1e-2:
+            raise HTTPException(status_code=502, detail=f"Conversion verification failed (max output diff {max_diff:.4f}) - this architecture does not export cleanly")
+        with open(onnx_path, "rb") as fh:
+            onnx_bytes = fh.read()
+        return onnx_bytes, scale, in_ch
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning("pth->onnx conversion failed", exc_info=True)
+        raise HTTPException(status_code=400, detail=f"Conversion failed: {e}")
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        if onnx_path and os.path.exists(onnx_path):
+            os.unlink(onnx_path)
+
+
+@app.get("/models/import-catalog", tags=["Models"])
+async def get_import_catalog():
+    """OpenModelDB import catalog with per-entry import/convert eligibility.
+    Data source: models-import.json (regenerated weekly by CI, cached 6h here).
+    No token: the catalog is public data (same content as the website page);
+    the import/convert ACTIONS below do require the token."""
+    doc = _fetch_import_catalog()
+    if not doc:
+        raise HTTPException(status_code=502, detail="Import catalog unavailable (could not fetch models-import.json)")
+
+    def row(e: dict, kind: str) -> dict:
+        exts = (".onnx", ".zip") if kind == "direct" else (".pth", ".pt", ".safetensors")
+        reason = _import_gate(e, exts)
+        return {
+            "id": e.get("id"), "name": e.get("name"), "scale": e.get("scale"),
+            "architecture": e.get("architecture"), "license": e.get("license") or "",
+            "non_commercial": "NC" in (e.get("license") or "").upper(),
+            "size_bytes": e.get("size_bytes") or 0, "omdb_url": e.get("omdb_url"),
+            "kind": kind, "eligible": reason is None, "reason": reason,
+            "model_name": _to_import_model_name(e.get("id") or ""),
+        }
+
+    return {
+        "generated": doc.get("generated"),
+        "converter_available": _converter_available(),
+        "direct": [row(e, "direct") for e in doc.get("direct_onnx", [])],
+        "convertible": [row(e, "convert") for e in doc.get("requires_conversion", [])],
+    }
+
+
+@app.post("/models/import-from-catalog", tags=["Models"])
+async def import_model_from_catalog(request: Request, body: dict = Body(...)):
+    """One-click import of a direct-ONNX catalog model: download from the pinned,
+    allowlisted URL, verify sha256, unzip if needed, then validated ingest."""
+    _require_api_token(request)
+    if not ENABLE_MODEL_UPLOAD:
+        raise HTTPException(status_code=403, detail="Model upload disabled (ENABLE_MODEL_UPLOAD=false)")
+    model_id = (body.get("id") or "").strip()
+    if not model_id:
+        raise HTTPException(status_code=400, detail="id is required")
+    doc = _fetch_import_catalog()
+    if not doc:
+        raise HTTPException(status_code=502, detail="Import catalog unavailable")
+    entry = next((e for e in doc.get("direct_onnx", []) if (e.get("id") or "").lower() == model_id.lower()), None)
+    if entry is None:
+        raise HTTPException(status_code=404, detail=f"'{model_id}' is not in the direct-ONNX import catalog")
+    reason = _import_gate(entry)
+    if reason:
+        raise HTTPException(status_code=400, detail=f"Not importable: {reason}")
+
+    data = await _download_pinned(entry["download_url"], entry.get("sha256") or "")
+    if urllib.parse.urlparse(entry["download_url"]).path.lower().endswith(".zip"):
+        data = _extract_single_onnx_from_zip(data)
+
+    model_name = _to_import_model_name(entry.get("id") or "")
+    desc = f"{entry.get('name')} (OpenModelDB import, license: {entry.get('license') or 'unclear'})"
+    result = _ingest_onnx_bytes(data, model_name, _catalog_scale(entry), desc)
+    return {**result, "imported_as": model_name,
+            "license": entry.get("license"),
+            "non_commercial": "NC" in (entry.get("license") or "").upper()}
+
+
+@app.post("/models/convert-from-catalog", tags=["Models"])
+async def convert_model_from_catalog(request: Request, body: dict = Body(...)):
+    """Download a pth catalog model (allowlisted host + sha256 pin required),
+    convert it to ONNX via spandrel and register it. 501 without the converter image."""
+    _require_api_token(request)
+    if not ENABLE_MODEL_UPLOAD:
+        raise HTTPException(status_code=403, detail="Model upload disabled (ENABLE_MODEL_UPLOAD=false)")
+    if not _converter_available():
+        raise HTTPException(status_code=501, detail="Converter not available - use the docker7-converter image")
+    model_id = (body.get("id") or "").strip()
+    if not model_id:
+        raise HTTPException(status_code=400, detail="id is required")
+    doc = _fetch_import_catalog()
+    if not doc:
+        raise HTTPException(status_code=502, detail="Import catalog unavailable")
+    entry = next((e for e in doc.get("requires_conversion", []) if (e.get("id") or "").lower() == model_id.lower()), None)
+    if entry is None:
+        raise HTTPException(status_code=404, detail=f"'{model_id}' is not in the convertible catalog")
+    reason = _import_gate(entry, exts=(".pth", ".pt", ".safetensors"))
+    if reason:
+        raise HTTPException(status_code=400, detail=f"Not auto-convertible: {reason}")
+
+    pth_data = await _download_pinned(entry["download_url"], entry.get("sha256") or "")
+    loop = asyncio.get_running_loop()
+    onnx_bytes, scale, _in_ch = await loop.run_in_executor(None, _convert_pth_bytes_to_onnx, pth_data)
+
+    model_name = _to_import_model_name(entry.get("id") or "")
+    desc = f"{entry.get('name')} (OpenModelDB, converted pth->onnx, license: {entry.get('license') or 'unclear'})"
+    result = _ingest_onnx_bytes(onnx_bytes, model_name, scale or _catalog_scale(entry), desc)
+    return {**result, "imported_as": model_name, "converted": True,
+            "license": entry.get("license"),
+            "non_commercial": "NC" in (entry.get("license") or "").upper()}
+
+
+@app.post("/models/convert-upload", tags=["Models"])
+async def convert_uploaded_model(
+    request: Request,
+    file: UploadFile = File(...),
+    model_name: str = Form(...),
+    description: str = Form(""),
+):
+    """Convert an uploaded .pth/.safetensors to ONNX and register it. For models
+    whose download host the importer cannot use (Google Drive, Mega, ...): download
+    in your browser, hand the file to this endpoint. 501 without the converter image."""
+    _require_api_token(request)
+    if not ENABLE_MODEL_UPLOAD:
+        raise HTTPException(status_code=403, detail="Model upload disabled (ENABLE_MODEL_UPLOAD=false)")
+    if not _converter_available():
+        raise HTTPException(status_code=501, detail="Converter not available - use the docker7-converter image")
+    if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", model_name):
+        raise HTTPException(status_code=400, detail="model_name must be alphanumeric with hyphens/underscores, max 64 chars")
+    pth_data = await file.read()
+    if len(pth_data) > MAX_MODEL_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail=f"Model too large (max {MAX_MODEL_UPLOAD_BYTES // (1024*1024)} MB)")
+    loop = asyncio.get_running_loop()
+    onnx_bytes, scale, _in_ch = await loop.run_in_executor(None, _convert_pth_bytes_to_onnx, pth_data)
+    result = _ingest_onnx_bytes(onnx_bytes, model_name, scale, description or f"Converted upload ({scale}x)")
+    return {**result, "converted": True}
+
+
+@app.post("/models/upload", tags=["Models"])
+async def upload_custom_model(
+    request: Request,
+    file: UploadFile = File(...),
+    model_name: str = Form(...),
+    scale: int = Form(2),
+    description: str = Form(""),
+):
+    """Upload a custom ONNX super-resolution model.
+
+    The model is validated (input/output shape check), saved to MODELS_DIR
+    (default /app/models, overridable via MODELS_DIR env var),
+    and registered in AVAILABLE_MODELS so it appears in the model list.
+
+    Args:
+        model_name: Unique identifier (e.g. "my-custom-4x").
+        scale: Upscaling factor this model produces (1-8).
+        description: Optional human-readable description.
+
+    Configurable via ENABLE_MODEL_UPLOAD and MAX_MODEL_UPLOAD_BYTES env vars."""
+    _require_api_token(request)
+    if not ENABLE_MODEL_UPLOAD:
+        raise HTTPException(status_code=403, detail="Model upload disabled (ENABLE_MODEL_UPLOAD=false)")
+    if not ONNX_AVAILABLE:
+        raise HTTPException(status_code=503, detail="ONNX Runtime not available")
+
+    # v1.8.3.8: gates + persistence live in _ingest_onnx_bytes (shared with the
+    # catalog importer and the pth converter)
+    data = await file.read()
+    return _ingest_onnx_bytes(data, model_name, scale, description)
 
 
 @app.delete("/models/upload/{model_name}", tags=["Models"])
