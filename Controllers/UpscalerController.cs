@@ -638,10 +638,12 @@ namespace JellyfinUpscalerPlugin.Controllers
                 using var resp = await GetDownloadClient().PostAsync($"{svcUrl}/models/convert-from-catalog", payload, HttpContext.RequestAborted);
                 var respBody = await resp.Content.ReadAsStringAsync();
                 // Review fix: a 404 is ambiguous - the ROUTE missing on a pre-1.8.3.8
-                // image (bare/HTML body) vs the service's own "id not in catalog"
-                // (FastAPI JSON with a "detail" field). Only claim "image too old"
-                // for the former; pass the real error through otherwise.
-                if (resp.StatusCode == System.Net.HttpStatusCode.NotFound && !respBody.Contains("\"detail\"", StringComparison.Ordinal))
+                // image vs the service's own "id not in catalog". FastAPI's route-404
+                // body is exactly {"detail":"Not Found"}; the catalog error carries a
+                // descriptive detail. Only claim "image too old" for the former.
+                if (resp.StatusCode == System.Net.HttpStatusCode.NotFound
+                    && (!respBody.Contains("\"detail\"", StringComparison.Ordinal)
+                        || respBody.Contains("\"detail\":\"Not Found\"", StringComparison.Ordinal)))
                     return StatusCode(501, new { error = "The AI service image is too old for conversion - update to v1.8.3.8+ (docker7-converter)" });
                 return new ContentResult { Content = respBody, ContentType = "application/json", StatusCode = (int)resp.StatusCode };
             }
