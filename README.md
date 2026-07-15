@@ -21,6 +21,7 @@ AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neura
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-apple` (macOS Apple Silicon — multi-arch amd64/arm64)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-vulkan` (Vulkan/ncnn — AMD pre-RDNA2, Intel iGPU)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-cpu` (CPU Only — multi-threaded ONNXRuntime, multi-arch)
+*   `kuscheltier/jellyfin-ai-upscaler:docker7-converter` (CPU + pth→ONNX converter for OpenModelDB community models — opt-in, ~2 GB)
 
 **Report bugs:** [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 
@@ -48,7 +49,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 │  │  CUDA / ROCm / OpenVINO / CPU     │  │
 │  │  Real-ESRGAN, SPAN, SwinIR, DAT2 │  │
 │  │  EDVR-M, RealBasicVSR, AnimeSR  │  │
-│  │  EDSR, FSRCNN, ESPCN (70+ models) │  │
+│  │  EDSR, FSRCNN, ESPCN (76+ models) │  │
 │  │  Web UI for Model Management      │  │
 │  └────────────────────────────────────┘  │
 └──────────────────────────────────────────┘
@@ -98,7 +99,7 @@ When you press play, the plugin enhances the video in real-time. It offers sever
 
 ### Player Integration
 The in-player button lets you:
-- Select from **40+ AI models** across 12 categories (Real-ESRGAN, SPAN, SwinIR, DAT2, EDVR-M, RealBasicVSR, AnimeSR, APISR, EDSR, LapSRN, FSRCNN, ESPCN, ncnn-Vulkan)
+- Select from **76 curated models** (+ hundreds importable from OpenModelDB) across 12 categories (Real-ESRGAN, SPAN, SwinIR, DAT2, EDVR-M, RealBasicVSR, AnimeSR, APISR, EDSR, LapSRN, FSRCNN, ESPCN, ncnn-Vulkan)
 - Choose scale factor (2x, 3x, 4x, 8x)
 - Toggle real-time upscaling and switch modes
 - Quick access via keyboard shortcuts (Alt+U, Alt+M)
@@ -166,6 +167,15 @@ docker run -d \
   kuscheltier/jellyfin-ai-upscaler:docker7-cpu
 ```
 
+**CPU + Model Converter (adds .pth community-model conversion, ~2 GB):**
+```bash
+docker run -d \r
+  --name jellyfin-ai-upscaler \r
+  -p 5000:5000 \r
+  -v ai-models:/app/models \r
+  kuscheltier/jellyfin-ai-upscaler:docker7-converter
+```
+
 Verify the container is running: `curl http://YOUR_SERVER_IP:5000/health`
 
 ### Step 2: Install the Jellyfin Plugin
@@ -202,7 +212,8 @@ To batch-upscale your low-resolution content:
 
 ## Features
 
-- **40+ AI Models**: Real-ESRGAN, SPAN, SwinIR, DAT2, EDVR-M, RealBasicVSR, AnimeSR, APISR, EDSR, FSRCNN, ESPCN, LapSRN (2x–8x)
+- **76 Curated AI Models**: Real-ESRGAN, SPAN, SwinIR, DAT2, EDVR-M, RealBasicVSR, AnimeSR, APISR, EDSR, FSRCNN, ESPCN, LapSRN (2x–8x)
+- **OpenModelDB Importer (v1.8.3.8+)**: one-click import of 660+ community models from the config page or the `:5000` dashboard — sha256-pinned, ZIP-aware; the opt-in `docker7-converter` image converts `.pth` models to ONNX with output verification; installs land in the ★ Favorites card
 - **Multi-Frame VSR**: 5-frame sliding window for temporal consistency (EDVR-M, RealBasicVSR, AnimeSR v2)
 - **Auto-Model Selection**: Picks best model per video based on genre (anime/live-action), resolution, and mode
 - **Real-Time Upscaling**: Honest tiers — WebGL (sharpen) · Anime4K (anime shader) · WebGPU AI (client GPU) · Server AI · Batch (best) — with auto-fallback
@@ -222,7 +233,7 @@ To batch-upscale your low-resolution content:
 - **Webhook Notifications**: HTTP POST on job complete/failure
 - **Model Management**: Disk usage tracking, LRU cleanup of unused models
 - **Docker Microservice**: AI runs isolated in a container (no DLL conflicts, ~1.6 MB plugin)
-- **6 GPU Architectures**: NVIDIA CUDA/TensorRT, AMD ROCm, Intel OpenVINO, Vulkan/ncnn, Apple Silicon, CPU
+- **7 Image Variants**: NVIDIA CUDA/TensorRT, AMD ROCm, Intel OpenVINO, Vulkan/ncnn, Apple Silicon, CPU, CPU+Converter
 - **Player Integration**: In-player button with quick settings menu, FPS overlay, keyboard shortcuts (Alt+U, Alt+M)
 - **Web UI**: Model management at `http://YOUR_SERVER_IP:5000`
 
@@ -243,6 +254,8 @@ To batch-upscale your low-resolution content:
 | **Multi-Frame VSR** | edvr-m-x4, realbasicvsr-x4, animesr-v2-x4 | 4x | Slow | Temporal consistency (5 frames) |
 | **OpenCV Classic** | edsr-x2/x3/x4, lapsrn-x2/x4/x8, fsrcnn-x2/x3/x4, espcn-x2/x3/x4 | 2-8x | Fast-Medium | CPU-only, lightweight |
 | **Vulkan/ncnn** | realesrgan-x4-vulkan, realesrgan-anime-x4-vulkan, span-x4-vulkan | 4x | Fast | AMD pre-RDNA2, Intel iGPU |
+
+Beyond the curated catalog, the [Importable models](https://kuschel-code.github.io/JellyfinUpscalerPlugin/models-import.html) page lists 660+ OpenModelDB community models — import them one-click from the plugin config page or the `:5000` dashboard (`.pth` models convert automatically with the `docker7-converter` image).
 
 ---
 
