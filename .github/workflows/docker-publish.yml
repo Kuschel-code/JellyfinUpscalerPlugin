@@ -153,12 +153,18 @@ jobs:
       - name: Trivy scan
         if: github.event.inputs.push != 'false'
         uses: aquasecurity/trivy-action@master
+        # The scan repeatedly killed "Build amd" AFTER a successful push: trivy's
+        # default 5m timeout cannot scan the 20 GB ROCm image. Give it real time
+        # and never let a scan hiccup paint a shipped build red (the image is
+        # already on Docker Hub when this step runs).
+        continue-on-error: true
         with:
           image-ref: ${{ steps.tags.outputs.primary }}
           format: sarif
           output: trivy-${{ matrix.backend }}.sarif
           severity: 'HIGH,CRITICAL'
           ignore-unfixed: true
+          timeout: '30m'
           exit-code: '0'   # Report but don't fail the job — base images often have unfixable CVEs
 
       - name: Upload Trivy SARIF
