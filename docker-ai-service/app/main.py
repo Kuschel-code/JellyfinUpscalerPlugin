@@ -6275,30 +6275,37 @@ def _catalog_scale(entry: dict) -> int:
         return 2
 
 
-def _extract_single_onnx_from_zip(data: bytes) -> bytes:
-    """Some catalog releases (e.g. the AnimeJaNai series) ship the .onnx inside a
-    zip. The ZIP itself is sha256-pinned; we accept exactly one .onnx member and
-    hard-cap the decompressed size (zip-bomb guard — infolist sizes can lie)."""
+def _extract_pinned_onnx_from_zip(data: bytes, sha256_pin: str) -> bytes:
+    """v1.8.3.9 fix: OMDB pins the INNER .onnx file, not the zip container
+    (live-verified against the AnimeJaNai release: ONE zip ships FIVE model
+    variants, and the catalog's sha256/size describe exactly one member).
+    Select the member whose sha256 matches the pin — the zip is just transport
+    and stays unpinned. Decompression is hard-capped per member (zip-bomb
+    guard — infolist sizes can lie)."""
     import zipfile as _zipfile
     import io as _io
     try:
         zf = _zipfile.ZipFile(_io.BytesIO(data))
     except _zipfile.BadZipFile:
         raise HTTPException(status_code=502, detail="Downloaded file is not a valid zip archive")
-    members = [m for m in zf.infolist() if m.filename.lower().endswith(".onnx") and not m.is_dir()]
-    if len(members) != 1:
-        raise HTTPException(status_code=502, detail=f"Zip must contain exactly one .onnx file (found {len(members)})")
-    with zf.open(members[0]) as fh:
-        out = fh.read(MAX_MODEL_UPLOAD_BYTES + 1)
-    if len(out) > MAX_MODEL_UPLOAD_BYTES:
-        raise HTTPException(status_code=502, detail=f"Zipped model exceeds the {MAX_MODEL_UPLOAD_BYTES // (1024*1024)} MB limit")
-    return out
+    pin = (sha256_pin or "").lower()
+    candidates = [m for m in zf.infolist() if m.filename.lower().endswith(".onnx") and not m.is_dir()]
+    if not candidates:
+        raise HTTPException(status_code=502, detail="Zip contains no .onnx file")
+    for m in candidates:
+        with zf.open(m) as fh:
+            content = fh.read(MAX_MODEL_UPLOAD_BYTES + 1)
+        if len(content) > MAX_MODEL_UPLOAD_BYTES:
+            continue
+        if hashlib.sha256(content).hexdigest() == pin:
+            return content
+    raise HTTPException(status_code=502, detail=f"No .onnx inside the zip matches the catalog's sha256 pin ({len(candidates)} candidates) - the upstream release changed; the weekly catalog refresh will re-pin it if legitimate.")
 
 
-async def _download_pinned(url: str, sha256_pin: str) -> bytes:
-    """Download from an allowlisted URL and verify the catalog's sha256 pin.
-    Redirects are followed (GitHub releases redirect to objects.githubusercontent.com);
-    safe because the bytes must still match the pin and no secret is sent."""
+async def _download_capped(url: str) -> bytes:
+    """Download from an allowlisted URL with the size cap. Redirects are followed
+    (GitHub releases redirect to objects.githubusercontent.com); safe because the
+    payload is verified against the catalog pin afterwards and no secret is sent."""
     async with httpx.AsyncClient(follow_redirects=True, timeout=httpx.Timeout(570.0, connect=30.0)) as client:
         resp = await client.get(url)
         if resp.status_code != 200:
@@ -6306,6 +6313,13 @@ async def _download_pinned(url: str, sha256_pin: str) -> bytes:
         data = resp.content
     if len(data) > MAX_MODEL_UPLOAD_BYTES:
         raise HTTPException(status_code=502, detail=f"Downloaded file exceeds the {MAX_MODEL_UPLOAD_BYTES // (1024*1024)} MB import limit")
+    return data
+
+
+async def _download_pinned(url: str, sha256_pin: str) -> bytes:
+    """_download_capped + sha256 pin verification (for non-zip payloads, where
+    the catalog pin describes the downloaded file itself)."""
+    data = await _download_capped(url)
     digest = hashlib.sha256(data).hexdigest()
     if digest.lower() != (sha256_pin or "").lower():
         logger.warning(f"Catalog import rejected - sha256 mismatch (expected {sha256_pin}, got {digest})")
@@ -6349,8 +6363,13 @@ def _convert_pth_bytes_to_onnx(pth_data: bytes) -> tuple:
         dummy = torch.rand(1, in_ch, 64, 64)
         with tempfile.NamedTemporaryFile(suffix=".onnx", delete=False) as otmp:
             onnx_path = otmp.name
+        # v1.8.3.9: torch >=2.9 switched torch.onnx.export to the dynamo
+        # exporter by default, which requires onnxscript (live failure:
+        # "No module named 'onnxscript'"). Pin the legacy TorchScript
+        # exporter our dynamic_axes design targets; onnxscript is in the
+        # converter image anyway as a fallback.
         torch.onnx.export(
-            model, dummy, onnx_path, opset_version=17,
+            model, dummy, onnx_path, opset_version=17, dynamo=False,
             input_names=["input"], output_names=["output"],
             dynamic_axes={"input": {0: "batch", 2: "height", 3: "width"},
                           "output": {0: "batch", 2: "height", 3: "width"}})
@@ -6427,9 +6446,13 @@ async def import_model_from_catalog(request: Request, body: dict = Body(...)):
     if reason:
         raise HTTPException(status_code=400, detail=f"Not importable: {reason}")
 
-    data = await _download_pinned(entry["download_url"], entry.get("sha256") or "")
+    # v1.8.3.9: for zips the catalog pin describes the INNER .onnx, not the
+    # container - download capped, then select the pinned member.
     if urllib.parse.urlparse(entry["download_url"]).path.lower().endswith(".zip"):
-        data = _extract_single_onnx_from_zip(data)
+        data = await _download_capped(entry["download_url"])
+        data = _extract_pinned_onnx_from_zip(data, entry.get("sha256") or "")
+    else:
+        data = await _download_pinned(entry["download_url"], entry.get("sha256") or "")
 
     model_name = _to_import_model_name(entry.get("id") or "")
     desc = f"{entry.get('name')} (OpenModelDB import, license: {entry.get('license') or 'unclear'})"

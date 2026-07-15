@@ -206,7 +206,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.8.3.8 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.8.3.9 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -1904,7 +1904,7 @@
                 if (faceModelEl) config.FaceRestoreModel = faceModelEl.value;
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.8.3.8';
+                config.PluginVersion = '1.8.3.9';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');

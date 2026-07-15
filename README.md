@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.8
+# Jellyfin AI Upscaler Plugin v1.8.3.9
 
 [![Built with Claude Opus](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude/opus)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.8):**
+**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.9):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -34,7 +34,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.8   │  │
+│  │  AI Upscaler Plugin v1.8.3.9   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -302,6 +302,11 @@ Each tag is published three ways so you can pin precisely:
 ---
 
 ## Changelog
+
+### v1.8.3.9 (Hotfix: zip-pin semantics + converter exporter)
+- **ZIP imports work now** - OpenModelDB pins the inner `.onnx`, not the zip (an AnimeJaNai release zip ships five variants); the extractor now selects the member matching the catalog pin.
+- **pth conversion works now** - torch >=2.9 defaults to the dynamo ONNX exporter (needs onnxscript); the export pins the legacy exporter (`dynamo=False`) and the converter image ships onnx+onnxscript.
+- Both found in the first live run on a real server; the sha256/verification gates refused cleanly as designed. pytest 99, xUnit 190.
 
 ### v1.8.3.8 (Install ANY OpenModelDB model - importer everywhere + pth converter + visible favorites)
 - **Importer everywhere** - the AI service owns the import pipeline now; the :5000 dashboard got an "Import from OpenModelDB" section, and the plugin config page shows the whole direct catalog (ready / convertible / manual-with-reason). ZIP-packed releases (AnimeJaNai series) import one-click now.

@@ -74,28 +74,37 @@ def _zip_bytes(members: dict) -> bytes:
     return buf.getvalue()
 
 
-def test_zip_extracts_single_onnx(client):
+def test_zip_extracts_the_pinned_member(client):
+    # v1.8.3.9: OMDB pins the INNER file - multi-member zips (AnimeJaNai ships
+    # five variants in one release zip) must yield exactly the pinned member.
+    import hashlib
     from app import main
-    payload = b"\x08\x07fake-onnx"
-    out = main._extract_single_onnx_from_zip(_zip_bytes({"model_fp32.onnx": payload, "README.txt": b"hi"}))
-    assert out == payload
+    target = b"\x08\x07target-model"
+    pin = hashlib.sha256(target).hexdigest()
+    out = main._extract_pinned_onnx_from_zip(
+        _zip_bytes({"a.onnx": b"other", "sub/target.onnx": target, "install.ps1": b"x"}), pin)
+    assert out == target
 
 
-@pytest.mark.parametrize("members", [
-    {"a.onnx": b"x", "b.onnx": b"y"},   # ambiguous
-    {"README.txt": b"no model here"},   # none
-])
-def test_zip_rejects_wrong_member_count(client, members):
+def test_zip_rejects_when_no_member_matches_pin(client):
     from app import main
     with pytest.raises(HTTPException) as ei:
-        main._extract_single_onnx_from_zip(_zip_bytes(members))
+        main._extract_pinned_onnx_from_zip(_zip_bytes({"a.onnx": b"x", "b.onnx": b"y"}), "0" * 64)
+    assert ei.value.status_code == 502
+    assert "pin" in ei.value.detail.lower()
+
+
+def test_zip_rejects_no_onnx_at_all(client):
+    from app import main
+    with pytest.raises(HTTPException) as ei:
+        main._extract_pinned_onnx_from_zip(_zip_bytes({"README.txt": b"no model"}), "0" * 64)
     assert ei.value.status_code == 502
 
 
 def test_zip_rejects_garbage(client):
     from app import main
     with pytest.raises(HTTPException) as ei:
-        main._extract_single_onnx_from_zip(b"this is not a zip")
+        main._extract_pinned_onnx_from_zip(b"this is not a zip", "0" * 64)
     assert ei.value.status_code == 502
 
 

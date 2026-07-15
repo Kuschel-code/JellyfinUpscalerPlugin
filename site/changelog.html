@@ -7,13 +7,21 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.8</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.9</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.8 - Install ANY OpenModelDB model <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.9 - Hotfix: zip-pin semantics + converter exporter <span class="tag success">latest</span></h2>
+  <p class="date">2026-07-16</p>
+  <ul>
+    <li><strong>ZIP imports work now</strong> - OpenModelDB pins the <em>inner</em> <code>.onnx</code>, not the zip container (one AnimeJaNai release zip ships five variants); the extractor now selects the member whose sha256 matches the catalog pin.</li>
+    <li><strong>pth conversion works now</strong> - torch &ge;2.9 switched <code>torch.onnx.export</code> to the dynamo exporter (needs onnxscript); the export pins the legacy exporter (<code>dynamo=False</code>) and the converter image ships onnx+onnxscript.</li>
+    <li>Both bugs surfaced in the first live run on a real server - and the sha256/verification gates refused cleanly instead of installing wrong bytes, exactly as designed.</li>
+  </ul>
+
+  <h2>v1.8.3.8 - Install ANY OpenModelDB model</h2>
   <p class="date">2026-07-13</p>
   <ul>
     <li><strong>Importer everywhere</strong> - the AI service owns the import pipeline now: the <code>:5000</code> dashboard got an "Import from OpenModelDB" section (search, license badges, one-click import), and the plugin config page shows the <strong>whole</strong> direct catalog - ready-to-use, convertible, and manual-install entries greyed out with the reason. ZIP-packed releases (the AnimeJaNai series) import one-click now (pinned zip verified, single .onnx extracted with a decompression cap).</li>
@@ -396,7 +404,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.8</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.9</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

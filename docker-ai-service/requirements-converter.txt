@@ -5,7 +5,12 @@
 
 # CPU-only torch (the converter runs a single 64x64 verification pass; no GPU needed)
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch>=2.4,<3
+torch>=2.6,<3
+
+# v1.8.3.9: torch >=2.9 defaults torch.onnx.export to the dynamo exporter which
+# imports onnxscript; we pin dynamo=False in code but ship both so either path works
+onnx>=1.16
+onnxscript>=0.1
 
 # spandrel: model-loader of the chaiNNer ecosystem - recognizes every
 # OpenModelDB architecture (ESRGAN, Compact, SPAN, DAT, SwinIR, OmniSR, ...)
