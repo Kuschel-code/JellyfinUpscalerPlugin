@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.9
+# Jellyfin AI Upscaler Plugin v1.8.3.10
 
 [![Built with Claude](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8%20%26%20Fable%205-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.9):**
+**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.10):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -35,7 +35,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.9   │  │
+│  │  AI Upscaler Plugin v1.8.3.10   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -315,6 +315,11 @@ Each tag is published three ways so you can pin precisely:
 ---
 
 ## Changelog
+
+### v1.8.3.10 (Import-UX hotfix: warnings are not errors)
+- The **NC license notice** in the import picker was red like a real error and permanent - now amber, with "import still possible" wording. Red is reserved for real failures.
+- Every import/install failure now tells you **what to do next** (check service URL / retry or file-install / token mismatch / converter image needed).
+- Favorites card no longer briefly shows "not on the service" for a just-imported model; the "Model Catalog" title now shows the real count instead of a stale hardcoded "(35 Models)".
 
 ### v1.8.3.9 (Hotfix: zip-pin semantics + converter exporter)
 - **ZIP imports work now** - OpenModelDB pins the inner `.onnx`, not the zip (an AnimeJaNai release zip ships five variants); the extractor now selects the member matching the catalog pin.

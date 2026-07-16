@@ -7,13 +7,21 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.9</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.10</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.9 - Hotfix: zip-pin semantics + converter exporter <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.10 - Import-UX hotfix: warnings are not errors <span class="tag success">latest</span></h2>
+  <p class="date">2026-07-16</p>
+  <ul>
+    <li><strong>The NC license notice is a warning again, not a fake error</strong> - it was rendered in the same permanent red as real failures, so imports looked broken. Now amber, with "import still possible" wording; red is reserved for real failures.</li>
+    <li><strong>Actionable error lines</strong> - every import/install failure now says what to do next (service unreachable &rarr; check URL + Test Connection; timeout &rarr; retry or file-install; 401/403 &rarr; token mismatch; 501 &rarr; converter image needed).</li>
+    <li>Favorites card no longer briefly shows "not on the service" for a just-imported model (render order fixed); the "Model Catalog" card title shows the real model count instead of a stale "(35 Models)".</li>
+  </ul>
+
+  <h2>v1.8.3.9 - Hotfix: zip-pin semantics + converter exporter</h2>
   <p class="date">2026-07-16</p>
   <ul>
     <li><strong>ZIP imports work now</strong> - OpenModelDB pins the <em>inner</em> <code>.onnx</code>, not the zip container (one AnimeJaNai release zip ships five variants); the extractor now selects the member whose sha256 matches the catalog pin.</li>
@@ -404,7 +412,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.9</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.10</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

@@ -206,7 +206,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.8.3.9 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.8.3.10 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -649,7 +649,7 @@
 
                 <!-- Model Catalog -->
                 <div class="upscaler-card">
-                    <h3>Model Catalog (35 Models)</h3>
+                    <h3 id="model-catalog-title">Model Catalog</h3>
                     <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">All available AI upscaling models. Click "Load & Bench" to benchmark a specific model.</div>
                     <div id="model-catalog-table" style="max-height:400px;overflow-y:auto;">
                         <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
@@ -1248,6 +1248,23 @@
                 });
             });
         }
+        // v1.8.3.10 - every red failure line should tell the user what to DO next
+        function _errorHint(msg) {
+            var m = String(msg || '');
+            if (/failed to fetch|networkerror|unreachable|refused|502|bad gateway|catalog unavailable/i.test(m)) {
+                return ' — is the AI service running? Check the URL under "Docker AI Service" and use Test Connection.';
+            }
+            if (/timeout|timed out|aborted/i.test(m)) {
+                return ' — large model + slow box can exceed the time limit; try again, or download the file and use the file-install form.';
+            }
+            if (/401|403|unauthorized|token/i.test(m)) {
+                return ' — check the API token (plugin setting must match the container\'s API_TOKEN).';
+            }
+            if (/501|converter not available/i.test(m)) {
+                return ' — .pth conversion needs the docker7-converter image.';
+            }
+            return '';
+        }
         function _escHtml(s) {
             return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
                 return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -1397,8 +1414,11 @@
                 if (!m) { info.textContent = ''; return; }
                 // review fix: license/model_name come from community-editable OMDB
                 // data - must be escaped like everywhere else (stored-XSS vector)
+                // v1.8.3.10: the NC notice is a WARNING, not an error - amber, and it
+                // says the import still works. Red is reserved for real failures
+                // (users read a persistent red line as "import is broken").
                 info.innerHTML = m.non_commercial
-                    ? '<span style="color:#f87171;">⚠ ' + _escHtml(m.license) + ' - NON-COMMERCIAL license. Do not use on a commercial/public service.</span>'
+                    ? '<span style="color:#fbbf24;">⚠ ' + _escHtml(m.license) + ' - non-commercial license. Import still possible - just don\'t use it on a commercial/public service.</span>'
                     : 'License: ' + _escHtml(m.license || 'unclear - verify with the author') + ' · will be registered as <code>' + _escHtml(m.model_name) + '</code>';
             });
             var search = page.querySelector('#ImportModelSearch');
@@ -1458,11 +1478,12 @@
                             }).then(function() { return loadModels(page); }).catch(function() {});
                         } else {
                             ust.style.color = '#f87171';
-                            ust.textContent = 'Install failed: ' + ((r.j && (r.j.error || r.j.detail || r.j.message)) || 'unknown error');
+                            var uerr = (r.j && (r.j.error || r.j.detail || r.j.message)) || 'unknown error';
+                            ust.textContent = 'Install failed: ' + uerr + _errorHint(uerr);
                         }
                     }).catch(function(err) {
                         ust.style.color = '#f87171';
-                        ust.textContent = 'Install failed: ' + (err && err.message || err);
+                        ust.textContent = 'Install failed: ' + (err && err.message || err) + _errorHint(err && err.message || err);
                     }).then(function() { upBtn.disabled = false; });
                 });
             }
@@ -1499,11 +1520,12 @@
                         }).then(function() { return loadModels(page); }).catch(function() {});
                     } else {
                         status.style.color = '#f87171';
-                        status.textContent = 'Import failed: ' + ((r.j && (r.j.error || r.j.detail || r.j.message)) || 'unknown error');
+                        var ierr = (r.j && (r.j.error || r.j.detail || r.j.message)) || 'unknown error';
+                        status.textContent = 'Import failed: ' + ierr + _errorHint(ierr);
                     }
                 }).catch(function(err) {
                     status.style.color = '#f87171';
-                    status.textContent = 'Import failed: ' + (err && err.message || err);
+                    status.textContent = 'Import failed: ' + (err && err.message || err) + _errorHint(err && err.message || err);
                 }).then(function() { btn.disabled = false; });
             });
         }
@@ -1576,7 +1598,6 @@
                 // gets set by loadConfig() right after.
                 if (prevValue) select.value = prevValue;
                 updateFavoriteButton(page);
-                renderFavoritesCard(page);
 
                 // v1.6.1.21 - Populate PreferredAnimeModel + PreferredLiveActionModel dropdowns.
                 // Anime: only category="anime" entries. Live-action: any upscale-eligible non-anime entry.
@@ -1594,6 +1615,11 @@
 
                 // Store for benchmark table
                 page._allModels = modelsData;
+                // v1.8.3.10: render AFTER _allModels is fresh - previously the card
+                // briefly showed 'not on the service' for a just-imported model
+                renderFavoritesCard(page);
+                var catTitle = page.querySelector('#model-catalog-title');
+                if (catTitle) catTitle.textContent = 'Model Catalog (' + modelsData.length + ' models)';
             });
         }
 
@@ -1904,7 +1930,7 @@
                 if (faceModelEl) config.FaceRestoreModel = faceModelEl.value;
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.8.3.9';
+                config.PluginVersion = '1.8.3.10';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
