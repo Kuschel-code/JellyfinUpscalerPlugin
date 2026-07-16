@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.8.3.10';
+    const PLUGIN_VERSION = '1.8.3.11';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -1122,6 +1122,20 @@
 
             // Build category groups with state-aware model cards
             var modelsHtml = '';
+            // v1.8.3.11 - pinned favorites first (the config page's star list)
+            var favIds = (config.FavoriteModels || '').split(',').map(function(x) { return x.trim(); }).filter(Boolean);
+            if (favIds.length) {
+                var flatCat = {};
+                Object.keys(MODEL_CATALOG).forEach(function(fck) { MODEL_CATALOG[fck].models.forEach(function(fm) { flatCat[fm.id] = fm; }); });
+                modelsHtml += '<div class="ai-menu__cat" data-cat="favorites">';
+                modelsHtml += '<div class="ai-menu__cat-head"><span class="ai-menu__cat-name">★ Favorites</span><span class="ai-menu__cat-desc">pinned on the config page</span></div>';
+                for (var fvi = 0; fvi < favIds.length; fvi++) {
+                    var favId = favIds[fvi];
+                    var favM = flatCat[favId] || { id: favId, name: favId.replace(/^omdb-/, ''), scale: 2 };
+                    modelsHtml += this._renderModelCard(favM, favId === currentModel, modelStates ? modelStates[favId] : null);
+                }
+                modelsHtml += '</div>';
+            }
             var cats = Object.keys(MODEL_CATALOG);
             for (var ci = 0; ci < cats.length; ci++) {
                 var catKey = cats[ci];

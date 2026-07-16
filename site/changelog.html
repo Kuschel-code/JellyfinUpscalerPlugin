@@ -7,13 +7,23 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.10</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.11</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.10 - Import-UX hotfix: warnings are not errors <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.11 - Settings redesign + async everything + player favorites <span class="tag success">latest</span></h2>
+  <p class="date">2026-07-16</p>
+  <ul>
+    <li><strong>New "Models" tab</strong> - Model Catalog, ★ Favorites, the importer (incl. file-install), AI Face Restoration, Live Benchmark and Comparison View live in ONE place now; the Settings tab shrank to five labeled groups (Connection / Upscaling / Playback / Library Scan / Advanced) with a live <strong>settings search box</strong>.</li>
+    <li><strong>Toggles &amp; sliders instead of checkboxes</strong> - all 19 checkboxes render as switches and 8 numeric fields became sliders with live value badges. Same element ids underneath: saved configs and the save/load logic are untouched.</li>
+    <li><strong>Async import/convert with honest phases</strong> - imports run as background jobs (downloading &rarr; extracting/converting &rarr; validating) polled by the UI; big CPU conversions can no longer hit the proxy timeout. Face-restore models (~300&nbsp;MB) download in the background with live status before loading. Older services fall back to the synchronous path transparently.</li>
+    <li><strong>Player favorites</strong> - the in-player quick menu shows a ★ Favorites category first (your pinned models incl. imports); imported models can be <strong>deleted</strong> from the Favorites card.</li>
+    <li>New service endpoints <code>POST /models/import-async</code> + <code>GET /models/import-status/{id}</code>; new plugin proxies incl. background downloads and <code>DELETE models/import/{name}</code>. Tests: pytest 103, xUnit 190, UI-consistency 123 refs.</li>
+  </ul>
+
+  <h2>v1.8.3.10 - Import-UX hotfix: warnings are not errors</h2>
   <p class="date">2026-07-16</p>
   <ul>
     <li><strong>The NC license notice is a warning again, not a fake error</strong> - it was rendered in the same permanent red as real failures, so imports looked broken. Now amber, with "import still possible" wording; red is reserved for real failures.</li>
@@ -412,7 +422,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.10</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.11</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

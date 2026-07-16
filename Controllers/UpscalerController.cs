@@ -706,6 +706,88 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
+        /// <summary>
+        /// v1.8.3.11 - generic proxy helper: forward a request to the AI service and
+        /// hand the JSON body/status straight back to the browser.
+        /// </summary>
+        private async Task<ActionResult> ProxyServiceAsync(HttpMethod method, string path, object? jsonBody = null)
+        {
+            try
+            {
+                var svcUrl = GetValidatedServiceUrl();
+                using var req = new HttpRequestMessage(method, $"{svcUrl}{path}");
+                if (jsonBody != null)
+                {
+                    req.Content = new StringContent(
+                        System.Text.Json.JsonSerializer.Serialize(jsonBody),
+                        System.Text.Encoding.UTF8, "application/json");
+                }
+                using var resp = await GetDownloadClient().SendAsync(req, HttpContext.RequestAborted);
+                var body = await resp.Content.ReadAsStringAsync();
+                return new ContentResult { Content = body, ContentType = "application/json", StatusCode = (int)resp.StatusCode };
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AI Upscaler: proxy {Path} failed", path);
+                return StatusCode(502, new { error = "AI service unreachable: " + ex.Message });
+            }
+        }
+
+        /// <summary>v1.8.3.11 - start an async catalog import/convert job on the service.</summary>
+        [HttpPost("models/import-async")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public Task<ActionResult> ImportModelAsync([FromBody] ImportModelRequest body)
+            => ProxyServiceAsync(HttpMethod.Post, "/models/import-async", new { id = body?.Id });
+
+        /// <summary>v1.8.3.11 - poll an async import job.</summary>
+        [HttpGet("models/import-status/{jobId}")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public Task<ActionResult> ImportModelStatus([FromRoute] string jobId)
+            => ProxyServiceAsync(HttpMethod.Get, $"/models/import-status/{Uri.EscapeDataString(jobId)}");
+
+        /// <summary>v1.8.3.11 - start a background catalog-model download (big face-restore models).</summary>
+        [HttpPost("models/download-async")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult> DownloadModelAsync([FromForm] string modelName)
+        {
+            if (string.IsNullOrWhiteSpace(modelName) || !Regex.IsMatch(modelName, "^[a-zA-Z0-9._-]{1,64}$"))
+                return BadRequest(new { error = "invalid modelName" });
+            try
+            {
+                var svcUrl = GetValidatedServiceUrl();
+                using var form = new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("model_name", modelName) });
+                using var resp = await GetDownloadClient().PostAsync($"{svcUrl}/models/download-async", form, HttpContext.RequestAborted);
+                var body = await resp.Content.ReadAsStringAsync();
+                return new ContentResult { Content = body, ContentType = "application/json", StatusCode = (int)resp.StatusCode };
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AI Upscaler: download-async proxy failed");
+                return StatusCode(502, new { error = "AI service unreachable: " + ex.Message });
+            }
+        }
+
+        /// <summary>v1.8.3.11 - poll a background download job.</summary>
+        [HttpGet("models/download-status/{jobId}")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public Task<ActionResult> DownloadModelStatus([FromRoute] string jobId)
+            => ProxyServiceAsync(HttpMethod.Get, $"/models/download-status/{Uri.EscapeDataString(jobId)}");
+
+        /// <summary>v1.8.3.11 - delete a custom/imported model (service refuses built-ins).</summary>
+        [HttpDelete("models/import/{modelName}")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public Task<ActionResult> DeleteImportedModel([FromRoute] string modelName)
+        {
+            if (string.IsNullOrWhiteSpace(modelName) || !Regex.IsMatch(modelName, "^[a-zA-Z0-9._-]{1,64}$"))
+                return Task.FromResult<ActionResult>(BadRequest(new { error = "invalid model name" }));
+            return ProxyServiceAsync(HttpMethod.Delete, $"/models/upload/{Uri.EscapeDataString(modelName)}");
+        }
+
         /// <summary>Request body for <see cref="ComputeVmaf"/>.</summary>
         public class VmafRequest
         {

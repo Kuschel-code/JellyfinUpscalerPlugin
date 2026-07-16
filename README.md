@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.10
+# Jellyfin AI Upscaler Plugin v1.8.3.11
 
 [![Built with Claude](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8%20%26%20Fable%205-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.10):**
+**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.11):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -35,7 +35,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.10   │  │
+│  │  AI Upscaler Plugin v1.8.3.11   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -315,6 +315,13 @@ Each tag is published three ways so you can pin precisely:
 ---
 
 ## Changelog
+
+### v1.8.3.11 (Settings redesign + async everything + player favorites)
+- **New "Models" tab** - catalog, ★ favorites, importer (incl. file-install), face restoration, benchmark and comparison in ONE place; the Settings tab shrank to five labeled groups (Connection / Upscaling / Playback / Library Scan / Advanced) with a live **settings search**.
+- **Toggles + sliders** - all 19 checkboxes render as switches, 8 numeric fields became sliders with value badges (same ids underneath; saved configs untouched).
+- **Async import/convert** - background jobs with honest phase reporting (downloading/extracting/converting/validating); face-restore models (~300 MB) download in the background too. Big CPU conversions can no longer hit proxy timeouts.
+- **Player favorites** - the in-player quick menu shows your ★ pinned models first; imported models can be **deleted** from the Favorites card.
+- pytest 103, xUnit 190. All 7 docker images in lockstep as v1.8.3.11.
 
 ### v1.8.3.10 (Import-UX hotfix: warnings are not errors)
 - The **NC license notice** in the import picker was red like a real error and permanent - now amber, with "import still possible" wording. Red is reserved for real failures.

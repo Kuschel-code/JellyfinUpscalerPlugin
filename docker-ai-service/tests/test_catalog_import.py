@@ -123,3 +123,36 @@ def test_catalog_scale_clamps_and_defaults(client):
     assert main._catalog_scale({"scale": "?"}) == 2
     assert main._catalog_scale({"scale": 99}) == 8
     assert main._catalog_scale({}) == 2
+
+
+@pytest.fixture
+def no_auth(monkeypatch):
+    from app import main
+    monkeypatch.setattr(main, "_require_api_token", lambda r=None: None)
+
+
+def test_import_async_requires_id(client, no_auth):
+    r = client.post("/models/import-async", json={})
+    assert r.status_code == 400
+
+
+def test_import_async_unknown_id_404(client, no_auth, monkeypatch):
+    from app import main
+    monkeypatch.setattr(main, "_fetch_import_catalog", lambda: {"direct_onnx": [], "requires_conversion": []})
+    r = client.post("/models/import-async", json={"id": "does-not-exist"})
+    assert r.status_code == 404
+
+
+def test_import_async_gate_rejected_400(client, no_auth, monkeypatch):
+    from app import main
+    entry = {"id": "bad-host", "name": "x", "scale": 2, "license": "MIT",
+             "download_url": "https://mega.nz/file/x.onnx", "sha256": "a" * 64, "size_bytes": 10}
+    monkeypatch.setattr(main, "_fetch_import_catalog", lambda: {"direct_onnx": [entry], "requires_conversion": []})
+    r = client.post("/models/import-async", json={"id": "bad-host"})
+    assert r.status_code == 400
+    assert "allowlisted" in r.json()["detail"]
+
+
+def test_import_status_unknown_job_404(client, no_auth):
+    r = client.get("/models/import-status/deadbeef")
+    assert r.status_code == 404

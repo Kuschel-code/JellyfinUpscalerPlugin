@@ -114,7 +114,22 @@
 
     /* ===== Form elements ===== */
     #UpscalerConfigurationPage input[type="text"],
-    #UpscalerConfigurationPage input[type="number"],
+    /* v1.8.3.11 - checkboxes render as toggle switches (same ids, save/load untouched) */
+        #UpscalerConfigurationPage .checkboxContainer input[type="checkbox"] {
+            appearance: none; -webkit-appearance: none; width: 34px; height: 18px; border-radius: 9px;
+            background: var(--border, #3a3a44); position: relative; cursor: pointer; outline: none;
+            transition: background .15s ease; vertical-align: middle; margin-right: 0.45rem; flex: 0 0 auto;
+        }
+        #UpscalerConfigurationPage .checkboxContainer input[type="checkbox"]::after {
+            content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
+            background: var(--text-muted, #aab); transition: transform .15s ease, background .15s ease;
+        }
+        #UpscalerConfigurationPage .checkboxContainer input[type="checkbox"]:checked { background: var(--accent, #4a9eff); }
+        #UpscalerConfigurationPage .checkboxContainer input[type="checkbox"]:checked::after { transform: translateX(16px); background: #fff; }
+        /* v1.8.3.11 - slider styling + value badge */
+        #UpscalerConfigurationPage input[type="range"] { width: 100%; accent-color: var(--accent, #4a9eff); cursor: pointer; }
+        #UpscalerConfigurationPage .range-val { font-size: 0.78rem; color: var(--accent, #4a9eff); font-variant-numeric: tabular-nums; margin-left: 0.4rem; }
+        #UpscalerConfigurationPage input[type="number"],
     #UpscalerConfigurationPage input[type="url"],
     #UpscalerConfigurationPage input[type="password"],
     #UpscalerConfigurationPage input:not([type="checkbox"]):not([type="file"]),
@@ -206,12 +221,13 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.8.3.10 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.8.3.11 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
             <div class="upscaler-tabs">
                 <div class="upscaler-tab active" data-tab="dashboard">Dashboard</div>
+                <div class="upscaler-tab" data-tab="models">Models</div>
                 <div class="upscaler-tab" data-tab="settings">Settings</div>
                 <div class="upscaler-tab" data-tab="jobs">Jobs</div>
                 <div class="upscaler-tab" data-tab="cache">Cache</div>
@@ -338,315 +354,8 @@
             </div>
 
             <!-- ==================== TAB: SETTINGS ==================== -->
-            <div id="tab-settings" class="tab-content" style="display:none;">
-
-                <form id="UpscalerConfigForm">
-
-                    <!-- Docker AI Service -->
-                    <details open>
-                        <summary>Docker AI Service</summary>
-                        <div class="details-body">
-                            <div class="inputContainer">
-                                <label class="inputLabel" for="AiServiceUrl">AI Service URL</label>
-                                <input type="url" id="AiServiceUrl" placeholder="http://localhost:5000" />
-                                <div class="fieldDescription">URL to Docker AI Container (e.g. http://192.168.1.100:5000)</div>
-                            </div>
-                            <div class="inputContainer">
-                                <label class="inputLabel" for="AiServiceApiToken">AI Service API Token</label>
-                                <input type="password" id="AiServiceApiToken" placeholder="Required — must match container API_TOKEN env var" autocomplete="off" />
-                                <div class="fieldDescription">Shared secret sent as <code>X-Api-Token</code> header on every call to the AI service. There is <strong>no "generate" button</strong> — you choose the value and set it in <em>two</em> places: the <code>API_TOKEN</code> environment variable on the Docker container (e.g. docker-compose <code>environment: [ API_TOKEN=your-secret ]</code>) <em>and</em> this field. They must match, or the service returns <code>401</code>. Leave empty only if the service was deployed with <code>API_TOKEN=disable</code>. Full guide: the API page on the project website.</div>
-                            </div>
-                            <div class="selectContainer">
-                                <label class="selectLabel" for="GpuDeviceIndex">GPU Device</label>
-                                <select id="GpuDeviceIndex"><option value="0">GPU 0 (Default)</option></select>
-                                <div class="fieldDescription">Select GPU for AI processing (multi-GPU systems)</div>
-                            </div>
-                            <div style="margin-top:0.5rem;">
-                                <button type="button" id="btn-test-connection" class="raised">Test Connection</button>
-                                <button type="button" id="btn-test-upscale" class="raised" style="margin-left:0.5rem;">Test Upscale</button>
-                                <span id="connection-status" style="font-size:0.85rem;margin-left:0.5rem;"></span>
-                            </div>
-                        </div>
-                    </details>
-
-                    <!-- Upscaling -->
-                    <details open>
-                        <summary>Upscaling</summary>
-                        <div class="details-body">
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnablePlugin" /> Plugin enabled</label></div>
-                            <div class="form-row" style="margin-top:0.5rem;">
-                                <div class="form-col selectContainer"><label class="selectLabel" for="Model">Model</label><div style="display:flex;gap:0.4rem;align-items:center;"><select id="Model" style="flex:1;min-width:0;"></select><button type="button" id="btn-toggle-favorite" title="Add to favorites" style="flex:0 0 auto;background:none;border:1px solid var(--border,#444);border-radius:4px;color:var(--accent,#4a9eff);font-size:1.05rem;line-height:1;padding:0.35rem 0.5rem;cursor:pointer;">☆</button></div></div>
-                                <div class="form-col selectContainer"><label class="selectLabel" for="ScaleFactor">Scale</label><select id="ScaleFactor"></select></div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-col selectContainer">
-                                    <label class="selectLabel" for="QualityLevel">Quality</label>
-                                    <select id="QualityLevel">
-                                        <option value="high">High</option>
-                                        <option value="medium">Medium</option>
-                                        <option value="low">Low</option>
-                                    </select>
-                                </div>
-                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxConcurrentStreams">Max Concurrent Streams</label><input type="number" id="MaxConcurrentStreams" min="1" max="8" /></div>
-                            </div>
-                        </div>
-                    </details>
-
-                    <!-- Hardware -->
-                    <details>
-                        <summary>Hardware</summary>
-                        <div class="details-body">
-                            <div class="checkboxContainer"><label><input type="checkbox" id="HardwareAcceleration" /> Hardware Acceleration</label></div>
-                        </div>
-                    </details>
-
-                    <!-- Player Integration (Intro Skipper-style button) -->
-                    <details open>
-                        <summary>Player Integration</summary>
-                        <div class="details-body">
-                            <div style="margin-bottom:0.75rem;color:var(--text-secondary);font-size:0.85rem;line-height:1.5;">
-                                Adds an AI Upscaler button to the video player controls (similar to Intro Skipper). Click the button during playback to access quick upscaling settings, model selection, and scale factor controls. Keyboard shortcut: Alt+U to toggle, Alt+M for menu.
-                            </div>
-                            <div class="selectContainer" style="margin-top:0.5rem;">
-                                <label class="selectLabel" for="ButtonPosition">Button Position</label>
-                                <select id="ButtonPosition">
-                                    <option value="right">Right</option>
-                                    <option value="left">Left</option>
-                                    <option value="center">Center</option>
-                                </select>
-                            </div>
-                        </div>
-                    </details>
-
-                    <!-- Auto Model Selection & Fallback -->
-                    <details>
-                        <summary>Auto Model Selection &amp; Fallback</summary>
-                        <div class="details-body">
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableAutoModelSelection" /> Enable Auto Mode (AI picks model + filter per video)</label></div>
-                            <div class="fieldDescription" style="margin-bottom:0.5rem;"><b>Default: off.</b> When enabled, the plugin picks the best AI model and color-filter preset for each video on playback start — using genre (anime/horror/sci-fi/documentary), source resolution, and multi-frame capability. Overrides your chosen model only for the current video; your saved preferences remain unchanged. Batch library scans follow the same heuristic when active.</div>
-                            <div class="inputContainer"><label class="inputLabel" for="ModelFallbackChain">Model Fallback Chain</label><input type="text" id="ModelFallbackChain" placeholder="realesrgan-x4,span-x4,edsr-x4" /><div class="fieldDescription">Comma-separated model names. If primary fails, tries next in chain.</div></div>
-                            <div class="form-row" style="margin-top:0.5rem;">
-                                <div class="form-col inputContainer"><label class="inputLabel" for="PreferredAnimeModel">Preferred Anime Model</label><select id="PreferredAnimeModel" is="emby-select"><option value="">Auto (use heuristic)</option></select><div class="fieldDescription">Override for anime content. Default: anime-compact-x4. Populated from /Upscaler/models on page load (anime category only).</div></div>
-                                <div class="form-col inputContainer"><label class="inputLabel" for="PreferredLiveActionModel">Preferred Live-Action Model</label><select id="PreferredLiveActionModel" is="emby-select"><option value="">Auto (use heuristic)</option></select><div class="fieldDescription">Override for live-action content (empty = auto-select per heuristic).</div></div>
-                            </div>
-                        </div>
-                    </details>
-
-                    <!-- Library Scan Settings -->
-                    <details>
-                        <summary>Library Scan</summary>
-                        <div class="details-body">
-                            <div class="inputContainer" style="margin-bottom:0.75rem;">
-                                <label class="inputLabel" style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
-                                    <span>Scan Scope &mdash; which libraries?</span>
-                                    <button type="button" id="btn-refresh-libraries" is="emby-button" class="raised" style="font-size:0.85em;padding:0.25em 0.8em;">Refresh</button>
-                                </label>
-                                <div id="EnabledLibraryIdsList" style="display:flex;flex-wrap:wrap;gap:0.5rem;padding:0.6rem;border:1px solid rgba(148,163,184,0.2);border-radius:6px;background:rgba(15,23,42,0.35);min-height:2.4em;">
-                                    <span style="color:var(--text-secondary);font-size:0.9em;">Loading libraries&hellip;</span>
-                                </div>
-                                <input type="hidden" id="EnabledLibraryIds" />
-                                <div class="fieldDescription">Select one or more libraries to scope the nightly scan. Leave empty to scan <strong>all</strong> libraries (legacy behavior).</div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-col inputContainer"><label class="inputLabel" for="MinResolutionWidth">Min Resolution Width</label><input type="number" id="MinResolutionWidth" min="0" max="7680" /><div class="fieldDescription">Videos below this width are upscaled (default: 1920)</div></div>
-                                <div class="form-col inputContainer"><label class="inputLabel" for="MinResolutionHeight">Min Resolution Height</label><input type="number" id="MinResolutionHeight" min="0" max="4320" /><div class="fieldDescription">Videos below this height are upscaled (default: 1080)</div></div>
-                            </div>
-                            <div class="form-row" style="margin-top:0.5rem;">
-                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxItemsPerScan">Max Items Per Scan</label><input type="number" id="MaxItemsPerScan" min="0" /><div class="fieldDescription">0 = unlimited</div></div>
-                            </div>
-                            <div class="checkboxContainer" style="margin-top:0.5rem;"><label><input type="checkbox" id="RestrictToUnwatchedContent" /> Only upscale unwatched content</label></div>
-                            <div class="checkboxContainer"><label><input type="checkbox" id="SkipUpscaledOnRescan" /> Skip already upscaled items on rescan</label></div>
-                            <div class="selectContainer" style="margin-top:0.5rem;">
-                                <label class="selectLabel" for="OutputCodec">Output Codec</label>
-                                <select id="OutputCodec">
-                                    <optgroup label="Software (CPU)">
-                                        <option value="libx264">H.264 (libx264) — universal compatibility</option>
-                                        <option value="libx265">H.265 / HEVC (libx265) — ~40% smaller</option>
-                                        <option value="libsvtav1">AV1 (libsvtav1) — best size/speed</option>
-                                        <option value="libaom-av1">AV1 (libaom-av1) — highest quality, slow</option>
-                                        <option value="libvpx-vp9">VP9 (libvpx-vp9)</option>
-                                    </optgroup>
-                                    <optgroup label="NVIDIA NVENC (GPU)">
-                                        <option value="h264_nvenc">H.264 NVENC</option>
-                                        <option value="hevc_nvenc">HEVC NVENC</option>
-                                        <option value="av1_nvenc">AV1 NVENC (RTX 40+)</option>
-                                    </optgroup>
-                                    <optgroup label="Intel Quick Sync (GPU)">
-                                        <option value="h264_qsv">H.264 QSV</option>
-                                        <option value="hevc_qsv">HEVC QSV</option>
-                                        <option value="av1_qsv">AV1 QSV (Arc / 11th gen+)</option>
-                                    </optgroup>
-                                    <option value="copy">Stream Copy (no re-encode)</option>
-                                </select>
-                            </div>
-                        </div>
-                    </details>
-
-                    <!-- Processing Queue -->
-                    <details>
-                        <summary>Processing Queue</summary>
-                        <div class="details-body">
-                            <div class="form-row" style="margin-top:0.5rem;">
-                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxQueueSize">Max Queue Size</label><input type="number" id="MaxQueueSize" min="1" max="10000" /><div class="fieldDescription">Max pending jobs (default: 100)</div></div>
-                            </div>
-                            <div class="checkboxContainer"><label><input type="checkbox" id="PauseQueueDuringPlayback" /> Pause queue during playback</label></div>
-                            <div class="checkboxContainer"><label><input type="checkbox" id="PersistQueueAcrossRestarts" /> Persist queue across restarts</label></div>
-                        </div>
-                    </details>
-
-                    <!-- Webhooks -->
-                    <details>
-                        <summary>Webhook Notifications</summary>
-                        <div class="details-body">
-                            <div class="inputContainer"><label class="inputLabel" for="WebhookUrl">Webhook URL</label><input type="url" id="WebhookUrl" placeholder="https://example.com/webhook" /><div class="fieldDescription">HTTP POST on job complete/failure. Leave empty to disable.</div></div>
-                            <div class="checkboxContainer" style="margin-top:0.5rem;"><label><input type="checkbox" id="WebhookOnComplete" /> Notify on completion</label></div>
-                            <div class="checkboxContainer"><label><input type="checkbox" id="WebhookOnFailure" /> Notify on failure</label></div>
-                        </div>
-                    </details>
-
-                    <!-- Real-Time Upscaling -->
-                    <details>
-                        <summary>Real-Time Upscaling</summary>
-                        <div class="details-body">
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableRealtimeUpscaling" /> Enable Real-Time Upscaling</label></div>
-                            <div class="form-row" style="margin-top:0.5rem;">
-                                <div class="form-col selectContainer">
-                                    <label class="selectLabel" for="RealtimeMode">Mode</label>
-                                    <select id="RealtimeMode">
-                                        <option value="auto">Auto (smart-pick based on benchmark)</option>
-                                        <option value="lanczos">Lanczos + Sharpen (classic, fast, no AI)</option>
-                                        <option value="anime4k">Anime4K (anime shader — GLSL filter, not a neural net; best for anime)</option>
-                                        <option value="ai-webgpu">AI WebGPU (Real-ESRGAN compact, browser-native AI inference)</option>
-                                        <option value="server">Server AI (Docker, full Real-ESRGAN/SwinIR/etc.)</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="inputContainer" style="margin-top:0.5rem;"><label class="inputLabel" for="RealtimeCaptureWidth">Capture Width</label><input type="number" id="RealtimeCaptureWidth" min="160" max="1920" /><div class="fieldDescription">Resolution for server-side capture (default: 480)</div></div>
-                        </div>
-                    </details>
-
-                    <!-- Features -->
-                    <details>
-                        <summary>Features</summary>
-                        <div class="details-body">
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnablePerformanceMetrics" /> Performance Metrics</label></div>
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableAutoBenchmarking" /> Auto-Benchmarking</label></div>
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnablePipelineParallelism" /> Pipeline parallelism (experimental: overlap extract + upscale)</label></div>
-                        </div>
-                    </details>
-
-                    <!-- Backup -->
-                    <details>
-                        <summary>Backup &amp; Restore</summary>
-                        <div class="details-body">
-                            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.5rem;">Export your settings to restore them on another device.</div>
-                            <div>
-                                <button type="button" id="btn-export-settings" class="raised">Export Settings</button>
-                                <button type="button" id="btn-import-settings" class="raised">Import Settings</button>
-                                <input type="file" id="settings-file-input" accept=".json,.txt" style="display:none;" />
-                            </div>
-                            <div id="settings-backup-status" style="font-size:0.85rem;margin-top:0.4rem;"></div>
-                        </div>
-                    </details>
-
-                    <div style="margin-top:1rem;">
-                        <button type="button" id="btn-save" class="raised btn-primary">Save Settings</button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- ==================== TAB: JOBS ==================== -->
-            <div id="tab-jobs" class="tab-content" style="display:none;">
-                <div style="margin-bottom:0.75rem;">
-                    <button type="button" id="btn-refresh-jobs" class="quick-action-btn">Refresh Jobs</button>
-                </div>
-                <div class="upscaler-card">
-                    <table id="jobs-table">
-                        <thead>
-                            <tr>
-                                <th>File</th>
-                                <th>Status</th>
-                                <th>Progress</th>
-                                <th>Method</th>
-                                <th>Duration</th>
-                                <th style="text-align:center;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="jobs-tbody">
-                            <tr><td colspan="6" style="text-align:center;padding:1.5rem;opacity:0.5;">No jobs found</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- ==================== TAB: CACHE ==================== -->
-            <div id="tab-cache" class="tab-content" style="display:none;">
-
-                <div class="stat-row">
-                    <div class="stat-card">
-                        <div class="stat-value" style="color:var(--accent);" id="cache-size"><span class="skeleton" style="width:55px;height:20px;"></span></div>
-                        <div class="stat-label">Size</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" style="color:var(--success);" id="cache-entries"><span class="skeleton" style="width:35px;height:20px;"></span></div>
-                        <div class="stat-label">Entries</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" style="color:var(--warning);" id="cache-hitrate"><span class="skeleton" style="width:45px;height:20px;"></span></div>
-                        <div class="stat-label">Hit Rate</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" style="color:var(--danger);" id="cache-usage"><span class="skeleton" style="width:45px;height:20px;"></span></div>
-                        <div class="stat-label">Usage</div>
-                    </div>
-                </div>
-
-                <div class="upscaler-card">
-                    <h3>Cache Settings</h3>
-                    <div class="form-row">
-                        <div class="form-col inputContainer"><label class="inputLabel" for="MaxCacheAgeDays">Max Age (Days)</label><input type="number" id="MaxCacheAgeDays" min="1" max="365" /></div>
-                        <div class="form-col inputContainer"><label class="inputLabel" for="CacheSizeMB">Max Size (MB)</label><input type="number" id="CacheSizeMB" min="128" max="1048576" /></div>
-                    </div>
-                    <div style="margin-top:0.5rem;">
-                        <button type="button" id="btn-clear-cache" class="raised">Clear Cache</button>
-                        <button type="button" id="btn-refresh-cache" class="raised">Refresh</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==================== TAB: SYSTEM ==================== -->
-            <div id="tab-system" class="tab-content" style="display:none;">
-
-                <div class="two-col">
-                    <div class="upscaler-card">
-                        <h3>Hardware Info</h3>
-                        <div id="hw-info">
-                            <div class="info-row"><span class="label">CPU</span><span class="value" id="hw-cpu"><span class="skeleton" style="width:100px;height:14px;"></span></span></div>
-                            <div class="info-row"><span class="label">GPU</span><span class="value" id="hw-gpu"><span class="skeleton" style="width:100px;height:14px;"></span></span></div>
-                            <div class="info-row"><span class="label">Platform</span><span class="value" id="hw-platform"><span class="skeleton" style="width:70px;height:14px;"></span></span></div>
-                            <div class="info-row"><span class="label">Providers</span><span class="value" id="hw-providers"><span class="skeleton" style="width:90px;height:14px;"></span></span></div>
-                            <div class="info-row"><span class="label">Container</span><span class="value" id="hw-container"><span class="skeleton" style="width:35px;height:14px;"></span></span></div>
-                        </div>
-                    </div>
-                    <div class="upscaler-card">
-                        <h3>Benchmark</h3>
-                        <div id="benchmark-result" style="font-size:0.85rem;margin-bottom:0.5rem;">
-                            <div style="opacity:0.5;">No benchmark run yet</div>
-                        </div>
-                        <button type="button" id="btn-run-benchmark" class="raised" style="width:100%;">Run Benchmark</button>
-                    </div>
-                    <div class="upscaler-card">
-                        <h3>Filter Benchmark</h3>
-                        <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">
-                            Test video filter chain generation for each preset. Works without the AI service.
-                        </div>
-                        <div id="filter-bench-result" style="font-size:0.85rem;margin-bottom:0.5rem;">
-                            <div style="opacity:0.5;">No filter benchmark run yet</div>
-                        </div>
-                        <button type="button" id="btn-filter-benchmark" class="raised" style="width:100%;">Run Filter Benchmark</button>
-                    </div>
-                </div>
-
+            <!-- ==================== TAB: MODELS (v1.8.3.11) ==================== -->
+            <div id="tab-models" class="tab-content" style="display:none;">
                 <!-- Model Catalog -->
                 <div class="upscaler-card">
                     <h3 id="model-catalog-title">Model Catalog</h3>
@@ -753,6 +462,350 @@
                         </table>
                     </div>
                 </div>
+                <div class="upscaler-card">
+                    <h3>AI Face Restoration</h3>
+                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.7rem;">
+                        Restore heavily degraded faces in old or low-quality video using GFPGAN or CodeFormer.
+                        Faces are detected via OpenCV, cropped to 512×512, restored with the chosen model, and feather-blended back.
+                    </div>
+
+                    <div class="checkboxContainer" style="margin-bottom:0.6rem;">
+                        <label><input type="checkbox" id="EnableFaceRestore" /> Enable Face Restoration</label>
+                    </div>
+
+                    <div id="face-restore-options" style="opacity:0.5;pointer-events:none;">
+                        <div class="form-row" style="margin-bottom:0.7rem;gap:0.8rem;">
+                            <div class="form-col selectContainer" style="flex:1;">
+                                <label class="selectLabel" for="FaceRestoreModel">Model</label>
+                                <!-- v1.6.1.21 - populated from /Upscaler/models (category=face_restore) by loadModels(). Hardcoded options below are bootstrap defaults shown briefly until /Upscaler/models resolves; once loadModels() runs they're replaced with the live registry list (preserving the saved value). -->
+                                <select id="FaceRestoreModel" style="width:100%;padding:0.4rem;background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;">
+                                    <option value="gfpgan-v1.4">GFPGAN v1.4 (Apache 2.0)</option>
+                                    <option value="codeformer">CodeFormer (S-Lab License)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="face-restore-status" style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">
+                            Status: checking…
+                        </div>
+
+                        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                            <button type="button" id="btn-face-restore-load" class="raised">Load Face Model</button>
+                            <button type="button" id="btn-face-restore-unload" class="raised">Unload</button>
+                            <button type="button" id="btn-face-restore-preview" class="raised">Preview on Selected Media</button>
+                        </div>
+
+                        <div id="face-restore-preview-container" style="display:none;margin-top:1rem;">
+                            <div class="two-col">
+                                <div style="text-align:center;display:inline-block;width:48%;vertical-align:top;">
+                                    <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.3rem;">Before</div>
+                                    <img id="face-img-before" style="max-width:100%;border-radius:6px;" />
+                                </div>
+                                <div style="text-align:center;display:inline-block;width:48%;vertical-align:top;">
+                                    <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.3rem;" id="face-img-after-label">After (faces detected: —)</div>
+                                    <img id="face-img-after" style="max-width:100%;border-radius:6px;" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-settings" class="tab-content" style="display:none;">
+
+                <form id="UpscalerConfigForm">
+
+                    <!-- Docker AI Service -->
+                    <div class="upscaler-card" style="padding:0.6rem 0.9rem;"><input type="text" id="SettingsSearch" placeholder="Search settings…" autocomplete="off" style="width:100%;box-sizing:border-box;background:var(--card-bg,#1e1e24);border:1px solid var(--border,#444);border-radius:4px;color:inherit;padding:0.45rem 0.6rem;font-size:0.85rem;" /></div>
+                <h3 class="settings-group-title" style="margin:1.1rem 0 0.4rem 0.2rem;font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted,#889);">Connection</h3>
+                <details open>
+                        <summary>Docker AI Service</summary>
+                        <div class="details-body">
+                            <div class="inputContainer">
+                                <label class="inputLabel" for="AiServiceUrl">AI Service URL</label>
+                                <input type="url" id="AiServiceUrl" placeholder="http://localhost:5000" />
+                                <div class="fieldDescription">URL to Docker AI Container (e.g. http://192.168.1.100:5000)</div>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel" for="AiServiceApiToken">AI Service API Token</label>
+                                <input type="password" id="AiServiceApiToken" placeholder="Required — must match container API_TOKEN env var" autocomplete="off" />
+                                <div class="fieldDescription">Shared secret sent as <code>X-Api-Token</code> header on every call to the AI service. There is <strong>no "generate" button</strong> — you choose the value and set it in <em>two</em> places: the <code>API_TOKEN</code> environment variable on the Docker container (e.g. docker-compose <code>environment: [ API_TOKEN=your-secret ]</code>) <em>and</em> this field. They must match, or the service returns <code>401</code>. Leave empty only if the service was deployed with <code>API_TOKEN=disable</code>. Full guide: the API page on the project website.</div>
+                            </div>
+                            <div class="selectContainer">
+                                <label class="selectLabel" for="GpuDeviceIndex">GPU Device</label>
+                                <select id="GpuDeviceIndex"><option value="0">GPU 0 (Default)</option></select>
+                                <div class="fieldDescription">Select GPU for AI processing (multi-GPU systems)</div>
+                            </div>
+                            <div style="margin-top:0.5rem;">
+                                <button type="button" id="btn-test-connection" class="raised">Test Connection</button>
+                                <button type="button" id="btn-test-upscale" class="raised" style="margin-left:0.5rem;">Test Upscale</button>
+                                <span id="connection-status" style="font-size:0.85rem;margin-left:0.5rem;"></span>
+                            </div>
+                        </div>
+                    </details>
+                <details>
+                        <summary>Hardware</summary>
+                        <div class="details-body">
+                            <div class="checkboxContainer"><label><input type="checkbox" id="HardwareAcceleration" /> Hardware Acceleration</label></div>
+                        </div>
+                    </details>
+                <h3 class="settings-group-title" style="margin:1.1rem 0 0.4rem 0.2rem;font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted,#889);">Upscaling</h3>
+                <details open>
+                        <summary>Upscaling</summary>
+                        <div class="details-body">
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnablePlugin" /> Plugin enabled</label></div>
+                            <div class="form-row" style="margin-top:0.5rem;">
+                                <div class="form-col selectContainer"><label class="selectLabel" for="Model">Model</label><div style="display:flex;gap:0.4rem;align-items:center;"><select id="Model" style="flex:1;min-width:0;"></select><button type="button" id="btn-toggle-favorite" title="Add to favorites" style="flex:0 0 auto;background:none;border:1px solid var(--border,#444);border-radius:4px;color:var(--accent,#4a9eff);font-size:1.05rem;line-height:1;padding:0.35rem 0.5rem;cursor:pointer;">☆</button></div></div>
+                                <div class="form-col selectContainer"><label class="selectLabel" for="ScaleFactor">Scale</label><select id="ScaleFactor"></select></div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-col selectContainer">
+                                    <label class="selectLabel" for="QualityLevel">Quality</label>
+                                    <select id="QualityLevel">
+                                        <option value="high">High</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="low">Low</option>
+                                    </select>
+                                </div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxConcurrentStreams">Max Concurrent Streams</label><input type="range" id="MaxConcurrentStreams" min="1" max="8" step="1" /><span class="range-val" data-rv="MaxConcurrentStreams"></span></div>
+                            </div>
+                        </div>
+                    </details>
+                <details>
+                        <summary>Auto Model Selection &amp; Fallback</summary>
+                        <div class="details-body">
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableAutoModelSelection" /> Enable Auto Mode (AI picks model + filter per video)</label></div>
+                            <div class="fieldDescription" style="margin-bottom:0.5rem;"><b>Default: off.</b> When enabled, the plugin picks the best AI model and color-filter preset for each video on playback start — using genre (anime/horror/sci-fi/documentary), source resolution, and multi-frame capability. Overrides your chosen model only for the current video; your saved preferences remain unchanged. Batch library scans follow the same heuristic when active.</div>
+                            <div class="inputContainer"><label class="inputLabel" for="ModelFallbackChain">Model Fallback Chain</label><input type="text" id="ModelFallbackChain" placeholder="realesrgan-x4,span-x4,edsr-x4" /><div class="fieldDescription">Comma-separated model names. If primary fails, tries next in chain.</div></div>
+                            <div class="form-row" style="margin-top:0.5rem;">
+                                <div class="form-col inputContainer"><label class="inputLabel" for="PreferredAnimeModel">Preferred Anime Model</label><select id="PreferredAnimeModel" is="emby-select"><option value="">Auto (use heuristic)</option></select><div class="fieldDescription">Override for anime content. Default: anime-compact-x4. Populated from /Upscaler/models on page load (anime category only).</div></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="PreferredLiveActionModel">Preferred Live-Action Model</label><select id="PreferredLiveActionModel" is="emby-select"><option value="">Auto (use heuristic)</option></select><div class="fieldDescription">Override for live-action content (empty = auto-select per heuristic).</div></div>
+                            </div>
+                        </div>
+                    </details>
+                <h3 class="settings-group-title" style="margin:1.1rem 0 0.4rem 0.2rem;font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted,#889);">Playback</h3>
+                <details open>
+                        <summary>Player Integration</summary>
+                        <div class="details-body">
+                            <div style="margin-bottom:0.75rem;color:var(--text-secondary);font-size:0.85rem;line-height:1.5;">
+                                Adds an AI Upscaler button to the video player controls (similar to Intro Skipper). Click the button during playback to access quick upscaling settings, model selection, and scale factor controls. Keyboard shortcut: Alt+U to toggle, Alt+M for menu.
+                            </div>
+                            <div class="selectContainer" style="margin-top:0.5rem;">
+                                <label class="selectLabel" for="ButtonPosition">Button Position</label>
+                                <select id="ButtonPosition">
+                                    <option value="right">Right</option>
+                                    <option value="left">Left</option>
+                                    <option value="center">Center</option>
+                                </select>
+                            </div>
+                        </div>
+                    </details>
+                <details>
+                        <summary>Real-Time Upscaling</summary>
+                        <div class="details-body">
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableRealtimeUpscaling" /> Enable Real-Time Upscaling</label></div>
+                            <div class="form-row" style="margin-top:0.5rem;">
+                                <div class="form-col selectContainer">
+                                    <label class="selectLabel" for="RealtimeMode">Mode</label>
+                                    <select id="RealtimeMode">
+                                        <option value="auto">Auto (smart-pick based on benchmark)</option>
+                                        <option value="lanczos">Lanczos + Sharpen (classic, fast, no AI)</option>
+                                        <option value="anime4k">Anime4K (anime shader — GLSL filter, not a neural net; best for anime)</option>
+                                        <option value="ai-webgpu">AI WebGPU (Real-ESRGAN compact, browser-native AI inference)</option>
+                                        <option value="server">Server AI (Docker, full Real-ESRGAN/SwinIR/etc.)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="inputContainer" style="margin-top:0.5rem;"><label class="inputLabel" for="RealtimeCaptureWidth">Capture Width</label><input type="range" id="RealtimeCaptureWidth" min="160" max="1920" step="80" /><span class="range-val" data-rv="RealtimeCaptureWidth"></span><div class="fieldDescription">Resolution for server-side capture (default: 480)</div></div>
+                        </div>
+                    </details>
+                <h3 class="settings-group-title" style="margin:1.1rem 0 0.4rem 0.2rem;font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted,#889);">Library Scan</h3>
+                <details>
+                        <summary>Library Scan</summary>
+                        <div class="details-body">
+                            <div class="inputContainer" style="margin-bottom:0.75rem;">
+                                <label class="inputLabel" style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
+                                    <span>Scan Scope &mdash; which libraries?</span>
+                                    <button type="button" id="btn-refresh-libraries" is="emby-button" class="raised" style="font-size:0.85em;padding:0.25em 0.8em;">Refresh</button>
+                                </label>
+                                <div id="EnabledLibraryIdsList" style="display:flex;flex-wrap:wrap;gap:0.5rem;padding:0.6rem;border:1px solid rgba(148,163,184,0.2);border-radius:6px;background:rgba(15,23,42,0.35);min-height:2.4em;">
+                                    <span style="color:var(--text-secondary);font-size:0.9em;">Loading libraries&hellip;</span>
+                                </div>
+                                <input type="hidden" id="EnabledLibraryIds" />
+                                <div class="fieldDescription">Select one or more libraries to scope the nightly scan. Leave empty to scan <strong>all</strong> libraries (legacy behavior).</div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MinResolutionWidth">Min Resolution Width</label><input type="range" id="MinResolutionWidth" min="0" max="7680" step="128" /><span class="range-val" data-rv="MinResolutionWidth"></span><div class="fieldDescription">Videos below this width are upscaled (default: 1920)</div></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MinResolutionHeight">Min Resolution Height</label><input type="range" id="MinResolutionHeight" min="0" max="4320" step="72" /><span class="range-val" data-rv="MinResolutionHeight"></span><div class="fieldDescription">Videos below this height are upscaled (default: 1080)</div></div>
+                            </div>
+                            <div class="form-row" style="margin-top:0.5rem;">
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxItemsPerScan">Max Items Per Scan</label><input type="range" id="MaxItemsPerScan" min="0" max="1000" step="10" /><span class="range-val" data-rv="MaxItemsPerScan"></span><div class="fieldDescription">0 = unlimited</div></div>
+                            </div>
+                            <div class="checkboxContainer" style="margin-top:0.5rem;"><label><input type="checkbox" id="RestrictToUnwatchedContent" /> Only upscale unwatched content</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="SkipUpscaledOnRescan" /> Skip already upscaled items on rescan</label></div>
+                            <div class="selectContainer" style="margin-top:0.5rem;">
+                                <label class="selectLabel" for="OutputCodec">Output Codec</label>
+                                <select id="OutputCodec">
+                                    <optgroup label="Software (CPU)">
+                                        <option value="libx264">H.264 (libx264) — universal compatibility</option>
+                                        <option value="libx265">H.265 / HEVC (libx265) — ~40% smaller</option>
+                                        <option value="libsvtav1">AV1 (libsvtav1) — best size/speed</option>
+                                        <option value="libaom-av1">AV1 (libaom-av1) — highest quality, slow</option>
+                                        <option value="libvpx-vp9">VP9 (libvpx-vp9)</option>
+                                    </optgroup>
+                                    <optgroup label="NVIDIA NVENC (GPU)">
+                                        <option value="h264_nvenc">H.264 NVENC</option>
+                                        <option value="hevc_nvenc">HEVC NVENC</option>
+                                        <option value="av1_nvenc">AV1 NVENC (RTX 40+)</option>
+                                    </optgroup>
+                                    <optgroup label="Intel Quick Sync (GPU)">
+                                        <option value="h264_qsv">H.264 QSV</option>
+                                        <option value="hevc_qsv">HEVC QSV</option>
+                                        <option value="av1_qsv">AV1 QSV (Arc / 11th gen+)</option>
+                                    </optgroup>
+                                    <option value="copy">Stream Copy (no re-encode)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </details>
+                <h3 class="settings-group-title" style="margin:1.1rem 0 0.4rem 0.2rem;font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted,#889);">Advanced</h3>
+                <details>
+                        <summary>Processing Queue</summary>
+                        <div class="details-body">
+                            <div class="form-row" style="margin-top:0.5rem;">
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxQueueSize">Max Queue Size</label><input type="range" id="MaxQueueSize" min="1" max="10000" step="25" /><span class="range-val" data-rv="MaxQueueSize"></span><div class="fieldDescription">Max pending jobs (default: 100)</div></div>
+                            </div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="PauseQueueDuringPlayback" /> Pause queue during playback</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="PersistQueueAcrossRestarts" /> Persist queue across restarts</label></div>
+                        </div>
+                    </details>
+                <details>
+                        <summary>Webhook Notifications</summary>
+                        <div class="details-body">
+                            <div class="inputContainer"><label class="inputLabel" for="WebhookUrl">Webhook URL</label><input type="url" id="WebhookUrl" placeholder="https://example.com/webhook" /><div class="fieldDescription">HTTP POST on job complete/failure. Leave empty to disable.</div></div>
+                            <div class="checkboxContainer" style="margin-top:0.5rem;"><label><input type="checkbox" id="WebhookOnComplete" /> Notify on completion</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="WebhookOnFailure" /> Notify on failure</label></div>
+                        </div>
+                    </details>
+                <details>
+                        <summary>Features</summary>
+                        <div class="details-body">
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnablePerformanceMetrics" /> Performance Metrics</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableAutoBenchmarking" /> Auto-Benchmarking</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnablePipelineParallelism" /> Pipeline parallelism (experimental: overlap extract + upscale)</label></div>
+                        </div>
+                    </details>
+                <details>
+                        <summary>Backup &amp; Restore</summary>
+                        <div class="details-body">
+                            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.5rem;">Export your settings to restore them on another device.</div>
+                            <div>
+                                <button type="button" id="btn-export-settings" class="raised">Export Settings</button>
+                                <button type="button" id="btn-import-settings" class="raised">Import Settings</button>
+                                <input type="file" id="settings-file-input" accept=".json,.txt" style="display:none;" />
+                            </div>
+                            <div id="settings-backup-status" style="font-size:0.85rem;margin-top:0.4rem;"></div>
+                        </div>
+                    </details>
+
+                    <div style="margin-top:1rem;">
+                        <button type="button" id="btn-save" class="raised btn-primary">Save Settings</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ==================== TAB: JOBS ==================== -->
+            <div id="tab-jobs" class="tab-content" style="display:none;">
+                <div style="margin-bottom:0.75rem;">
+                    <button type="button" id="btn-refresh-jobs" class="quick-action-btn">Refresh Jobs</button>
+                </div>
+                <div class="upscaler-card">
+                    <table id="jobs-table">
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th>Status</th>
+                                <th>Progress</th>
+                                <th>Method</th>
+                                <th>Duration</th>
+                                <th style="text-align:center;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="jobs-tbody">
+                            <tr><td colspan="6" style="text-align:center;padding:1.5rem;opacity:0.5;">No jobs found</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ==================== TAB: CACHE ==================== -->
+            <div id="tab-cache" class="tab-content" style="display:none;">
+
+                <div class="stat-row">
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:var(--accent);" id="cache-size"><span class="skeleton" style="width:55px;height:20px;"></span></div>
+                        <div class="stat-label">Size</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:var(--success);" id="cache-entries"><span class="skeleton" style="width:35px;height:20px;"></span></div>
+                        <div class="stat-label">Entries</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:var(--warning);" id="cache-hitrate"><span class="skeleton" style="width:45px;height:20px;"></span></div>
+                        <div class="stat-label">Hit Rate</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:var(--danger);" id="cache-usage"><span class="skeleton" style="width:45px;height:20px;"></span></div>
+                        <div class="stat-label">Usage</div>
+                    </div>
+                </div>
+
+                <div class="upscaler-card">
+                    <h3>Cache Settings</h3>
+                    <div class="form-row">
+                        <div class="form-col inputContainer"><label class="inputLabel" for="MaxCacheAgeDays">Max Age (Days)</label><input type="range" id="MaxCacheAgeDays" min="1" max="365" step="1" /><span class="range-val" data-rv="MaxCacheAgeDays"></span></div>
+                        <div class="form-col inputContainer"><label class="inputLabel" for="CacheSizeMB">Max Size (MB)</label><input type="range" id="CacheSizeMB" min="128" max="1048576" step="512" /><span class="range-val" data-rv="CacheSizeMB"></span></div>
+                    </div>
+                    <div style="margin-top:0.5rem;">
+                        <button type="button" id="btn-clear-cache" class="raised">Clear Cache</button>
+                        <button type="button" id="btn-refresh-cache" class="raised">Refresh</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== TAB: SYSTEM ==================== -->
+            <div id="tab-system" class="tab-content" style="display:none;">
+
+                <div class="two-col">
+                    <div class="upscaler-card">
+                        <h3>Hardware Info</h3>
+                        <div id="hw-info">
+                            <div class="info-row"><span class="label">CPU</span><span class="value" id="hw-cpu"><span class="skeleton" style="width:100px;height:14px;"></span></span></div>
+                            <div class="info-row"><span class="label">GPU</span><span class="value" id="hw-gpu"><span class="skeleton" style="width:100px;height:14px;"></span></span></div>
+                            <div class="info-row"><span class="label">Platform</span><span class="value" id="hw-platform"><span class="skeleton" style="width:70px;height:14px;"></span></span></div>
+                            <div class="info-row"><span class="label">Providers</span><span class="value" id="hw-providers"><span class="skeleton" style="width:90px;height:14px;"></span></span></div>
+                            <div class="info-row"><span class="label">Container</span><span class="value" id="hw-container"><span class="skeleton" style="width:35px;height:14px;"></span></span></div>
+                        </div>
+                    </div>
+                    <div class="upscaler-card">
+                        <h3>Benchmark</h3>
+                        <div id="benchmark-result" style="font-size:0.85rem;margin-bottom:0.5rem;">
+                            <div style="opacity:0.5;">No benchmark run yet</div>
+                        </div>
+                        <button type="button" id="btn-run-benchmark" class="raised" style="width:100%;">Run Benchmark</button>
+                    </div>
+                    <div class="upscaler-card">
+                        <h3>Filter Benchmark</h3>
+                        <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">
+                            Test video filter chain generation for each preset. Works without the AI service.
+                        </div>
+                        <div id="filter-bench-result" style="font-size:0.85rem;margin-bottom:0.5rem;">
+                            <div style="opacity:0.5;">No filter benchmark run yet</div>
+                        </div>
+                        <button type="button" id="btn-filter-benchmark" class="raised" style="width:100%;">Run Filter Benchmark</button>
+                    </div>
+                </div>
+
             </div>
 
             <!-- ==================== TAB: FILTERS ==================== -->
@@ -901,53 +954,7 @@
                 </div>
 
                 <!-- AI Face Restoration (v1.6.1.7) -->
-                <div class="upscaler-card">
-                    <h3>AI Face Restoration</h3>
-                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.7rem;">
-                        Restore heavily degraded faces in old or low-quality video using GFPGAN or CodeFormer.
-                        Faces are detected via OpenCV, cropped to 512×512, restored with the chosen model, and feather-blended back.
-                    </div>
-
-                    <div class="checkboxContainer" style="margin-bottom:0.6rem;">
-                        <label><input type="checkbox" id="EnableFaceRestore" /> Enable Face Restoration</label>
-                    </div>
-
-                    <div id="face-restore-options" style="opacity:0.5;pointer-events:none;">
-                        <div class="form-row" style="margin-bottom:0.7rem;gap:0.8rem;">
-                            <div class="form-col selectContainer" style="flex:1;">
-                                <label class="selectLabel" for="FaceRestoreModel">Model</label>
-                                <!-- v1.6.1.21 - populated from /Upscaler/models (category=face_restore) by loadModels(). Hardcoded options below are bootstrap defaults shown briefly until /Upscaler/models resolves; once loadModels() runs they're replaced with the live registry list (preserving the saved value). -->
-                                <select id="FaceRestoreModel" style="width:100%;padding:0.4rem;background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;">
-                                    <option value="gfpgan-v1.4">GFPGAN v1.4 (Apache 2.0)</option>
-                                    <option value="codeformer">CodeFormer (S-Lab License)</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div id="face-restore-status" style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">
-                            Status: checking…
-                        </div>
-
-                        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-                            <button type="button" id="btn-face-restore-load" class="raised">Load Face Model</button>
-                            <button type="button" id="btn-face-restore-unload" class="raised">Unload</button>
-                            <button type="button" id="btn-face-restore-preview" class="raised">Preview on Selected Media</button>
-                        </div>
-
-                        <div id="face-restore-preview-container" style="display:none;margin-top:1rem;">
-                            <div class="two-col">
-                                <div style="text-align:center;display:inline-block;width:48%;vertical-align:top;">
-                                    <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.3rem;">Before</div>
-                                    <img id="face-img-before" style="max-width:100%;border-radius:6px;" />
-                                </div>
-                                <div style="text-align:center;display:inline-block;width:48%;vertical-align:top;">
-                                    <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.3rem;" id="face-img-after-label">After (faces detected: —)</div>
-                                    <img id="face-img-after" style="max-width:100%;border-radius:6px;" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                
 
             </div>
 
@@ -999,7 +1006,8 @@
                     if (tabId === 'dashboard') { refreshDashboard(page); startPerfMonitor(page); }
                     else if (tabId === 'jobs') refreshJobs(page);
                     else if (tabId === 'cache') refreshCache(page);
-                    else if (tabId === 'system') { refreshSystem(page); loadModelCatalog(page); }
+                    else if (tabId === 'system') refreshSystem(page);
+                    else if (tabId === 'models') loadModelCatalog(page);
                     else if (tabId === 'tokens') refreshTokens(page);
                 });
             });
@@ -1249,6 +1257,39 @@
             });
         }
         // v1.8.3.10 - every red failure line should tell the user what to DO next
+        // v1.8.3.11 - live value badge next to every slider
+        function updateRangeLabels(page) {
+            page.querySelectorAll('.range-val[data-rv]').forEach(function(sp) {
+                var inp = page.querySelector('#' + sp.getAttribute('data-rv'));
+                if (inp) sp.textContent = inp.value;
+            });
+        }
+        function attachRangeLabels(page) {
+            page.querySelectorAll('input[type="range"][id]').forEach(function(inp) {
+                inp.addEventListener('input', function() {
+                    var sp = page.querySelector('.range-val[data-rv="' + inp.id + '"]');
+                    if (sp) sp.textContent = inp.value;
+                });
+            });
+        }
+        // v1.8.3.11 - settings search: filter the grouped <details> blocks live
+        function attachSettingsSearch(page) {
+            var box = page.querySelector('#SettingsSearch');
+            if (!box) return;
+            box.addEventListener('input', function() {
+                var q = box.value.toLowerCase().trim();
+                page.querySelectorAll('#tab-settings details').forEach(function(d) {
+                    var hit = !q || d.textContent.toLowerCase().indexOf(q) !== -1;
+                    d.style.display = hit ? '' : 'none';
+                    if (q && hit) d.open = true;
+                });
+                page.querySelectorAll('#tab-settings .settings-group-title').forEach(function(h) {
+                    var any = false, el = h.nextElementSibling;
+                    while (el && el.tagName === 'DETAILS') { if (el.style.display !== 'none') any = true; el = el.nextElementSibling; }
+                    h.style.display = any ? '' : 'none';
+                });
+            });
+        }
         function _errorHint(msg) {
             var m = String(msg || '');
             if (/failed to fetch|networkerror|unreachable|refused|502|bad gateway|catalog unavailable/i.test(m)) {
@@ -1288,6 +1329,7 @@
                     + '<td style="padding:0.35rem 0.3rem;">' + status + '</td>'
                     + '<td style="padding:0.35rem 0.3rem;text-align:right;white-space:nowrap;">'
                     + (m ? '<button type="button" data-fav-use="' + _escHtml(fid) + '" style="background:none;border:1px solid var(--border,#444);border-radius:4px;color:var(--accent,#4a9eff);padding:0.2rem 0.5rem;cursor:pointer;font-size:0.78rem;">Use</button> ' : '')
+                    + (m && m.custom ? '<button type="button" data-fav-delete="' + _escHtml(fid) + '" title="Remove the model file from the AI service" style="background:none;border:1px solid #7f1d1d;border-radius:4px;color:#f87171;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.78rem;margin-right:0.3rem;">Delete</button>' : '')
                     + '<button type="button" data-fav-unpin="' + _escHtml(fid) + '" style="background:none;border:1px solid var(--border,#444);border-radius:4px;color:#f87171;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.78rem;">Unpin</button>'
                     + '</td></tr>';
             });
@@ -1930,7 +1972,7 @@
                 if (faceModelEl) config.FaceRestoreModel = faceModelEl.value;
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.8.3.10';
+                config.PluginVersion = '1.8.3.11';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');

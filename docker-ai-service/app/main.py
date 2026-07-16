@@ -6496,6 +6496,111 @@ async def convert_model_from_catalog(request: Request, body: dict = Body(...)):
             "non_commercial": "NC" in (entry.get("license") or "").upper()}
 
 
+# ── Async import/convert jobs (v1.8.3.11) ───────────────────────────────────
+# Big community models (60+ MB pth on a CPU box) can exceed the plugin's proxy
+# timeout chain on the synchronous endpoints. Same job pattern as
+# /models/download-async: start, get a job id, poll. Honest PHASE reporting
+# (downloading/extracting/converting/validating) instead of a fake percent.
+
+_import_jobs: dict = {}
+_import_jobs_guard = threading.Lock()
+
+
+def _import_job_set(job_id: str, **kw):
+    with _import_jobs_guard:
+        job = _import_jobs.get(job_id)
+        if job is not None:
+            job.update(kw)
+
+
+async def _run_import_job(job_id: str, kind: str, entry: dict):
+    try:
+        _import_job_set(job_id, status="downloading")
+        is_zip = urllib.parse.urlparse(entry["download_url"]).path.lower().endswith(".zip")
+        data = await _download_capped(entry["download_url"])
+        model_name = _to_import_model_name(entry.get("id") or "")
+        if kind == "convert":
+            digest = hashlib.sha256(data).hexdigest()
+            if digest.lower() != (entry.get("sha256") or "").lower():
+                raise HTTPException(status_code=502, detail="sha256 mismatch - the upstream file changed since the catalog was generated. Import refused.")
+            _import_job_set(job_id, status="converting")
+            loop = asyncio.get_running_loop()
+            onnx_bytes, scale, _in_ch = await loop.run_in_executor(None, _convert_pth_bytes_to_onnx, data)
+            desc = f"{entry.get('name')} (OpenModelDB, converted pth->onnx, license: {entry.get('license') or 'unclear'})"
+            _import_job_set(job_id, status="validating")
+            result = _ingest_onnx_bytes(onnx_bytes, model_name, scale or _catalog_scale(entry), desc)
+        else:
+            if is_zip:
+                _import_job_set(job_id, status="extracting")
+                data = _extract_pinned_onnx_from_zip(data, entry.get("sha256") or "")
+            else:
+                digest = hashlib.sha256(data).hexdigest()
+                if digest.lower() != (entry.get("sha256") or "").lower():
+                    raise HTTPException(status_code=502, detail="sha256 mismatch - the upstream file changed since the catalog was generated. Import refused.")
+            desc = f"{entry.get('name')} (OpenModelDB import, license: {entry.get('license') or 'unclear'})"
+            _import_job_set(job_id, status="validating")
+            result = _ingest_onnx_bytes(data, model_name, _catalog_scale(entry), desc)
+        _import_job_set(job_id, status="completed", imported_as=model_name,
+                        converted=(kind == "convert"),
+                        license=entry.get("license"),
+                        non_commercial="NC" in (entry.get("license") or "").upper(),
+                        file_size_mb=result.get("file_size_mb"))
+    except HTTPException as e:
+        logger.warning(f"Async import job {job_id} failed: {e.detail}")
+        _import_job_set(job_id, status="failed", error=str(e.detail))
+    except Exception as e:
+        logger.error(f"Async import job {job_id} failed: {e}", exc_info=True)
+        _import_job_set(job_id, status="failed", error=str(e))
+
+
+@app.post("/models/import-async", tags=["Models"])
+async def import_model_async(request: Request, body: dict = Body(...)):
+    """Start a catalog import/convert in the background and return a job id.
+    Poll /models/import-status/{job_id}. Same gates as the synchronous endpoints."""
+    _require_api_token(request)
+    if not ENABLE_MODEL_UPLOAD:
+        raise HTTPException(status_code=403, detail="Model upload disabled (ENABLE_MODEL_UPLOAD=false)")
+    model_id = (body.get("id") or "").strip()
+    if not model_id:
+        raise HTTPException(status_code=400, detail="id is required")
+    doc = await _fetch_import_catalog_async()
+    if not doc:
+        raise HTTPException(status_code=502, detail="Import catalog unavailable")
+    entry = next((e for e in doc.get("direct_onnx", []) if (e.get("id") or "").lower() == model_id.lower()), None)
+    kind = "direct"
+    if entry is None:
+        entry = next((e for e in doc.get("requires_conversion", []) if (e.get("id") or "").lower() == model_id.lower()), None)
+        kind = "convert"
+    if entry is None:
+        raise HTTPException(status_code=404, detail=f"'{model_id}' is not in the import catalog")
+    exts = (".onnx", ".zip") if kind == "direct" else (".pth", ".pt", ".safetensors")
+    reason = _import_gate(entry, exts)
+    if reason:
+        raise HTTPException(status_code=400, detail=f"Not importable: {reason}")
+    if kind == "convert" and not _converter_available():
+        raise HTTPException(status_code=501, detail="Converter not available - use the docker7-converter image")
+
+    job_id = uuid.uuid4().hex
+    with _import_jobs_guard:
+        _import_jobs[job_id] = {
+            "job_id": job_id, "id": entry.get("id"), "kind": kind,
+            "status": "queued", "error": None, "started_at": time.time(),
+        }
+    asyncio.create_task(_run_import_job(job_id, kind, dict(entry)))
+    return {"status": "queued", "job_id": job_id, "kind": kind}
+
+
+@app.get("/models/import-status/{job_id}", tags=["Models"])
+async def import_status(job_id: str, request: Request = None):
+    """Poll an async import job (queued|downloading|extracting|converting|validating|completed|failed)."""
+    _require_api_token(request)
+    with _import_jobs_guard:
+        job = _import_jobs.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail=f"No import job {job_id}")
+        return dict(job)
+
+
 @app.post("/models/convert-upload", tags=["Models"])
 async def convert_uploaded_model(
     request: Request,
