@@ -1918,6 +1918,7 @@
                 _favoriteModels = parseFavorites(config);
                 updateFavoriteButton(page);
                 renderFavoritesCard(page);
+                updateRangeLabels(page);
 
                 if (config.ScaleFactor) {
                     updateScaleOptions(page);
@@ -3029,6 +3030,8 @@
                 attachImportEvents(page);
                 attachFavoriteEvents(page);
                 attachFavoritesCardEvents(page);
+                attachRangeLabels(page);
+                attachSettingsSearch(page);
                 initFilterTab(page);
                 _initialized = true;
             }
