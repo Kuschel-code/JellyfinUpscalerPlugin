@@ -4270,7 +4270,8 @@ async def list_models():
             "type": info.get("type", "pb"),
             "downloaded": model_path.exists() if is_available else False,
             "loaded": state.current_model == model_id,
-            "available": is_available
+            "available": is_available,
+            "custom": bool(info.get("custom", False))
         })
     result = {"models": models, "total": len(models)}
     _models_cache = result

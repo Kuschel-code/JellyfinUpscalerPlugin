@@ -1305,6 +1305,14 @@
             }
             return '';
         }
+        // v1.8.3.11 - service /models projections older than this release drop the
+        // custom flag; derive it from the ingest-generated descriptions as fallback.
+        function _isCustomModel(m) {
+            if (!m) return false;
+            if (m.custom) return true;
+            var d = m.description || '';
+            return d.indexOf('OpenModelDB') !== -1 || d.indexOf('Custom uploaded model') !== -1 || d.indexOf('Uploaded via Jellyfin config page') !== -1;
+        }
         function _escHtml(s) {
             return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
                 return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -1328,7 +1336,7 @@
                     + '<td style="padding:0.35rem 0.3rem;">' + status + '</td>'
                     + '<td style="padding:0.35rem 0.3rem;text-align:right;white-space:nowrap;">'
                     + (m ? '<button type="button" data-fav-use="' + _escHtml(fid) + '" style="background:none;border:1px solid var(--border,#444);border-radius:4px;color:var(--accent,#4a9eff);padding:0.2rem 0.5rem;cursor:pointer;font-size:0.78rem;">Use</button> ' : '')
-                    + (m && m.custom ? '<button type="button" data-fav-delete="' + _escHtml(fid) + '" title="Remove the model file from the AI service" style="background:none;border:1px solid #7f1d1d;border-radius:4px;color:#f87171;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.78rem;margin-right:0.3rem;">Delete</button>' : '')
+                    + (m && _isCustomModel(m) ? '<button type="button" data-fav-delete="' + _escHtml(fid) + '" title="Remove the model file from the AI service" style="background:none;border:1px solid #7f1d1d;border-radius:4px;color:#f87171;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.78rem;margin-right:0.3rem;">Delete</button>' : '')
                     + '<button type="button" data-fav-unpin="' + _escHtml(fid) + '" style="background:none;border:1px solid var(--border,#444);border-radius:4px;color:#f87171;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.78rem;">Unpin</button>'
                     + '</td></tr>';
             });
