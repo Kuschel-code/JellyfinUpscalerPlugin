@@ -114,22 +114,7 @@
 
     /* ===== Form elements ===== */
     #UpscalerConfigurationPage input[type="text"],
-    /* v1.8.3.11 - checkboxes render as toggle switches (same ids, save/load untouched) */
-        #UpscalerConfigurationPage .checkboxContainer input[type="checkbox"] {
-            appearance: none; -webkit-appearance: none; width: 34px; height: 18px; border-radius: 9px;
-            background: var(--border, #3a3a44); position: relative; cursor: pointer; outline: none;
-            transition: background .15s ease; vertical-align: middle; margin-right: 0.45rem; flex: 0 0 auto;
-        }
-        #UpscalerConfigurationPage .checkboxContainer input[type="checkbox"]::after {
-            content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
-            background: var(--text-muted, #aab); transition: transform .15s ease, background .15s ease;
-        }
-        #UpscalerConfigurationPage .checkboxContainer input[type="checkbox"]:checked { background: var(--accent, #4a9eff); }
-        #UpscalerConfigurationPage .checkboxContainer input[type="checkbox"]:checked::after { transform: translateX(16px); background: #fff; }
-        /* v1.8.3.11 - slider styling + value badge */
-        #UpscalerConfigurationPage input[type="range"] { width: 100%; accent-color: var(--accent, #4a9eff); cursor: pointer; }
-        #UpscalerConfigurationPage .range-val { font-size: 0.78rem; color: var(--accent, #4a9eff); font-variant-numeric: tabular-nums; margin-left: 0.4rem; }
-        #UpscalerConfigurationPage input[type="number"],
+    #UpscalerConfigurationPage input[type="number"],
     #UpscalerConfigurationPage input[type="url"],
     #UpscalerConfigurationPage input[type="password"],
     #UpscalerConfigurationPage input:not([type="checkbox"]):not([type="file"]),
@@ -150,11 +135,25 @@
     /* Checkbox */
     #UpscalerConfigurationPage .checkboxContainer { margin: 8px 0; }
     #UpscalerConfigurationPage .checkboxContainer label { cursor: pointer; display: inline-block !important; }
+    /* v1.8.3.11 - checkboxes render as toggle switches (same elements/ids,
+       save/load untouched). !important needed: this replaces the previous
+       !important checkbox rule and must beat theme styles the same way. */
     #UpscalerConfigurationPage input[type="checkbox"] {
-        -webkit-appearance: checkbox !important; appearance: checkbox !important; accent-color: var(--accent);
-        width: 16px !important; height: 16px !important; cursor: pointer; vertical-align: middle;
-        margin-right: 0.4rem; background: transparent !important; border: none !important; padding: 0 !important;
+        -webkit-appearance: none !important; appearance: none !important;
+        width: 34px !important; height: 18px !important; border-radius: 9px !important;
+        background: var(--border-strong, #3a3a44) !important; border: none !important; padding: 0 !important;
+        position: relative; cursor: pointer; outline: none; vertical-align: middle;
+        margin-right: 0.45rem; transition: background .15s ease;
     }
+    #UpscalerConfigurationPage input[type="checkbox"]::after {
+        content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
+        background: var(--text-muted, #aab); transition: transform .15s ease, background .15s ease;
+    }
+    #UpscalerConfigurationPage input[type="checkbox"]:checked { background: var(--accent) !important; }
+    #UpscalerConfigurationPage input[type="checkbox"]:checked::after { transform: translateX(16px); background: #fff; }
+    /* v1.8.3.11 - slider styling + value badge */
+    #UpscalerConfigurationPage input[type="range"] { width: 100%; accent-color: var(--accent, #4a9eff); cursor: pointer; }
+    #UpscalerConfigurationPage .range-val { font-size: 0.78rem; color: var(--accent, #4a9eff); font-variant-numeric: tabular-nums; margin-left: 0.4rem; }
     #UpscalerConfigurationPage .checkboxIcon, #UpscalerConfigurationPage .checkboxOutline { display: none !important; }
 
     /* ===== Form grid ===== */
