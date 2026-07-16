@@ -567,7 +567,7 @@
                                         <option value="low">Low</option>
                                     </select>
                                 </div>
-                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxConcurrentStreams">Max Concurrent Streams</label><input type="range" id="MaxConcurrentStreams" min="1" max="8" step="1" /><span class="range-val" data-rv="MaxConcurrentStreams"></span></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxConcurrentStreams">Max Concurrent Streams</label><input type="range" id="MaxConcurrentStreams" min="1" max="16" step="1" /><span class="range-val" data-rv="MaxConcurrentStreams"></span></div>
                             </div>
                         </div>
                     </details>
@@ -639,7 +639,7 @@
                                 <div class="form-col inputContainer"><label class="inputLabel" for="MinResolutionHeight">Min Resolution Height</label><input type="range" id="MinResolutionHeight" min="0" max="4320" step="72" /><span class="range-val" data-rv="MinResolutionHeight"></span><div class="fieldDescription">Videos below this height are upscaled (default: 1080)</div></div>
                             </div>
                             <div class="form-row" style="margin-top:0.5rem;">
-                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxItemsPerScan">Max Items Per Scan</label><input type="range" id="MaxItemsPerScan" min="0" max="1000" step="10" /><span class="range-val" data-rv="MaxItemsPerScan"></span><div class="fieldDescription">0 = unlimited</div></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxItemsPerScan">Max Items Per Scan</label><input type="range" id="MaxItemsPerScan" min="0" max="100000" step="100" /><span class="range-val" data-rv="MaxItemsPerScan"></span><div class="fieldDescription">0 = unlimited</div></div>
                             </div>
                             <div class="checkboxContainer" style="margin-top:0.5rem;"><label><input type="checkbox" id="RestrictToUnwatchedContent" /> Only upscale unwatched content</label></div>
                             <div class="checkboxContainer"><label><input type="checkbox" id="SkipUpscaledOnRescan" /> Skip already upscaled items on rescan</label></div>
@@ -763,8 +763,8 @@
                 <div class="upscaler-card">
                     <h3>Cache Settings</h3>
                     <div class="form-row">
-                        <div class="form-col inputContainer"><label class="inputLabel" for="MaxCacheAgeDays">Max Age (Days)</label><input type="range" id="MaxCacheAgeDays" min="1" max="365" step="1" /><span class="range-val" data-rv="MaxCacheAgeDays"></span></div>
-                        <div class="form-col inputContainer"><label class="inputLabel" for="CacheSizeMB">Max Size (MB)</label><input type="range" id="CacheSizeMB" min="128" max="1048576" step="512" /><span class="range-val" data-rv="CacheSizeMB"></span></div>
+                        <div class="form-col inputContainer"><label class="inputLabel" for="MaxCacheAgeDays">Max Age (Days)</label><input type="range" id="MaxCacheAgeDays" min="1" max="3650" step="1" /><span class="range-val" data-rv="MaxCacheAgeDays"></span></div>
+                        <div class="form-col inputContainer"><label class="inputLabel" for="CacheSizeMB">Max Size (MB)</label><input type="range" id="CacheSizeMB" min="0" max="1048576" step="512" /><span class="range-val" data-rv="CacheSizeMB"></span></div>
                     </div>
                     <div style="margin-top:0.5rem;">
                         <button type="button" id="btn-clear-cache" class="raised">Clear Cache</button>
@@ -1007,7 +1007,7 @@
                     else if (tabId === 'jobs') refreshJobs(page);
                     else if (tabId === 'cache') refreshCache(page);
                     else if (tabId === 'system') refreshSystem(page);
-                    else if (tabId === 'models') loadModelCatalog(page);
+                    else if (tabId === 'models') { loadModelCatalog(page); setTimeout(refreshFaceRestoreStatus, 200); }
                     else if (tabId === 'tokens') refreshTokens(page);
                 });
             });
@@ -1341,6 +1341,23 @@
             body.addEventListener('click', function(e) {
                 var use = e.target.closest && e.target.closest('button[data-fav-use]');
                 var unpin = e.target.closest && e.target.closest('button[data-fav-unpin]');
+                var del = e.target.closest && e.target.closest('button[data-fav-delete]');
+                if (del) {
+                    var did = del.getAttribute('data-fav-delete');
+                    if (!window.confirm('Delete ' + did + ' from the AI service? The model file is removed; you can re-import it any time.')) return;
+                    fetch(ApiClient.getUrl('Upscaler/models/import/' + encodeURIComponent(did)), {
+                        method: 'DELETE',
+                        headers: { 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' }
+                    }).then(function(resp) {
+                        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                        return saveFavorites(_favoriteModels.filter(function(x) { return x !== did; }));
+                    }).then(function() { return loadModels(page); }).then(function() {
+                        showToast('Deleted ' + did);
+                    }).catch(function(err) {
+                        showToast('Delete failed: ' + (err && err.message || err), '#f87171');
+                    });
+                    return;
+                }
                 if (use) {
                     var sel = page.querySelector('#Model');
                     if (sel) {
@@ -1537,38 +1554,61 @@
                 var converting = m.kind === 'convert';
                 status.style.color = '#fbbf24';
                 status.textContent = (converting ? 'Converting ' : 'Importing ') + m.name + ' (' + mb + ' MB download + ' + (converting ? 'pth→ONNX conversion' : 'validation') + ' - this can take a few minutes)…';
-                fetch(ApiClient.getUrl(converting ? 'Upscaler/models/convert' : 'Upscaler/models/import'), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' },
-                    body: JSON.stringify({ id: m.id })
-                }).then(function(resp) {
-                    return resp.json().catch(function() { return {}; }).then(function(j) { return { ok: resp.ok, j: j }; });
-                }).then(function(r) {
-                    if (r.ok && r.j && (r.j.success || r.j.status === 'ok')) {
-                        r.j.imported_as = r.j.imported_as || r.j.model_name;
-                        status.style.color = '#4ade80';
-                        status.textContent = 'Imported as ' + r.j.imported_as + ' (sha256 verified) - now in the model list.';
-                        // v1.8.3.7 - auto-pin the import to favorites, then refresh the
-                        // dropdown. Review fix: only claim "pinned" AFTER the pin saved;
-                        // on a pin failure say so instead of overstating success.
-                        var favs = _favoriteModels.slice();
-                        var pin = (favs.indexOf(r.j.imported_as) === -1)
-                            ? saveFavorites(favs.concat([r.j.imported_as]))
-                            : Promise.resolve();
-                        pin.then(function() {
-                            status.textContent = 'Imported as ' + r.j.imported_as + ' (sha256 verified) - pinned to ★ Favorites at the top of the model list.';
-                        }).catch(function() {
-                            status.textContent = 'Imported as ' + r.j.imported_as + ' (sha256 verified) - could not pin to favorites; find it under "Imported / Custom".';
-                        }).then(function() { return loadModels(page); }).catch(function() {});
-                    } else {
-                        status.style.color = '#f87171';
-                        var ierr = (r.j && (r.j.error || r.j.detail || r.j.message)) || 'unknown error';
-                        status.textContent = 'Import failed: ' + ierr + _errorHint(ierr);
-                    }
-                }).catch(function(err) {
+                var authH = { 'Content-Type': 'application/json', 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' };
+                function finishOk(importedAs) {
+                    status.style.color = '#4ade80';
+                    status.textContent = 'Imported as ' + importedAs + ' - now in the model list.';
+                    var favs = _favoriteModels.slice();
+                    var pin = (favs.indexOf(importedAs) === -1) ? saveFavorites(favs.concat([importedAs])) : Promise.resolve();
+                    pin.then(function() {
+                        status.textContent = 'Imported as ' + importedAs + ' - pinned to \u2605 Favorites at the top of the model list.';
+                    }).catch(function() {
+                        status.textContent = 'Imported as ' + importedAs + ' - could not pin to favorites; find it under "Imported / Custom".';
+                    }).then(function() { return loadModels(page); }).catch(function() {});
+                    btn.disabled = false;
+                }
+                function finishErr(msg) {
                     status.style.color = '#f87171';
-                    status.textContent = 'Import failed: ' + (err && err.message || err) + _errorHint(err && err.message || err);
-                }).then(function() { btn.disabled = false; });
+                    status.textContent = (converting ? 'Convert' : 'Import') + ' failed: ' + msg + _errorHint(msg);
+                    btn.disabled = false;
+                }
+                function runSync() {
+                    fetch(ApiClient.getUrl(converting ? 'Upscaler/models/convert' : 'Upscaler/models/import'), {
+                        method: 'POST', headers: authH, body: JSON.stringify({ id: m.id })
+                    }).then(function(resp) {
+                        return resp.json().catch(function() { return {}; }).then(function(j) { return { ok: resp.ok, j: j }; });
+                    }).then(function(r) {
+                        if (r.ok && r.j && (r.j.success || r.j.status === 'ok')) finishOk(r.j.imported_as || r.j.model_name);
+                        else finishErr((r.j && (r.j.error || r.j.detail || r.j.message)) || 'unknown error');
+                    }).catch(function(err) { finishErr(err && err.message || err); });
+                }
+                // v1.8.3.11 - async-first: background job with honest phase reporting;
+                // falls back to the synchronous path when the service is older.
+                var PHASES = { queued: 'Queued\u2026', downloading: 'Downloading', extracting: 'Extracting the pinned .onnx from the zip\u2026', converting: 'Converting to ONNX (the slow part on CPU)\u2026', validating: 'Validating + registering\u2026' };
+                fetch(ApiClient.getUrl('Upscaler/models/import-async'), { method: 'POST', headers: authH, body: JSON.stringify({ id: m.id }) })
+                    .then(function(resp) { return resp.json().catch(function() { return {}; }).then(function(j) { return { st: resp.status, j: j }; }); })
+                    .then(function(r) {
+                        if (!r.j || !r.j.job_id) {
+                            var d = (r.j && (r.j.detail || r.j.error)) || '';
+                            if (r.st === 404 || /not found/i.test(String(d))) return runSync();
+                            return finishErr(d || ('HTTP ' + r.st));
+                        }
+                        var polls = 0;
+                        (function poll() {
+                            setTimeout(function() {
+                                fetch(ApiClient.getUrl('Upscaler/models/import-status/' + r.j.job_id), { headers: authH })
+                                    .then(function(pr) { return pr.json(); })
+                                    .then(function(js) {
+                                        if (js.status === 'completed') return finishOk(js.imported_as);
+                                        if (js.status === 'failed') return finishErr(js.error || 'unknown error');
+                                        status.textContent = (PHASES[js.status] || js.status) + (js.status === 'downloading' ? ' ' + m.name + ' (' + mb + ' MB)\u2026' : '');
+                                        if (++polls < 480) poll(); else finishErr('timed out waiting for the background job');
+                                    })
+                                    .catch(function() { if (++polls < 480) poll(); else finishErr('lost contact with the background job'); });
+                            }, 2500);
+                        })();
+                    })
+                    .catch(function() { runSync(); });
             });
         }
 
@@ -2719,19 +2759,55 @@
                 btn.disabled = true;
                 statusEl.style.color = 'var(--warning)';
                 statusEl.textContent = 'Loading ' + model + ' (may download ~300MB on first use)...';
-                ApiClient.ajax({
-                    type: 'POST',
-                    url: ApiClient.getUrl('Upscaler/face-restore/load') + '?model_name=' + encodeURIComponent(model),
-                    dataType: 'json',
-                    timeout: 600000  // 10 min for first-time download
-                }).then(function() { refreshFaceRestoreStatus(); })
-                  .catch(function(err) {
-                      statusEl.style.color = 'var(--danger)';
-                      var msg = 'Load failed';
-                      try { var j = JSON.parse(err.responseText); var m = j.detail || j.error || j.message; if (m) msg = m; } catch(e) {}
-                      statusEl.textContent = msg;
-                  })
-                  .then(function() { btn.disabled = false; });
+                var fAuth = { 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' };
+                function doLoad() {
+                    statusEl.textContent = 'Loading ' + model + ' into memory...';
+                    ApiClient.ajax({
+                        type: 'POST',
+                        url: ApiClient.getUrl('Upscaler/face-restore/load') + '?model_name=' + encodeURIComponent(model),
+                        dataType: 'json',
+                        timeout: 600000
+                    }).then(function() { refreshFaceRestoreStatus(); })
+                      .catch(function(err) {
+                          statusEl.style.color = 'var(--danger)';
+                          var msg = 'Load failed';
+                          try { var jj = JSON.parse(err.responseText); var em = jj.detail || jj.error || jj.message; if (em) msg = em; } catch(e) {}
+                          statusEl.textContent = msg + _errorHint(msg);
+                      })
+                      .then(function() { btn.disabled = false; });
+                }
+                // v1.8.3.11 - the ~300 MB face models used to download inside one long
+                // request (frequent timeout on slow boxes). Background download with
+                // live status first; the actual load afterwards is fast. Old services
+                // without the endpoint fall back to the direct load.
+                var fd = new FormData();
+                fd.append('modelName', model);
+                fetch(ApiClient.getUrl('Upscaler/models/download-async'), { method: 'POST', headers: fAuth, body: fd })
+                    .then(function(resp) { return resp.json().catch(function() { return {}; }).then(function(j) { return { ok: resp.ok, j: j }; }); })
+                    .then(function(r) {
+                        if (!r.ok || (!r.j.job_id && !r.j.already_present)) return doLoad();
+                        if (r.j.already_present || r.j.status === 'completed') return doLoad();
+                        var polls = 0;
+                        (function poll() {
+                            setTimeout(function() {
+                                fetch(ApiClient.getUrl('Upscaler/models/download-status/' + r.j.job_id), { headers: fAuth })
+                                    .then(function(pr) { return pr.json(); })
+                                    .then(function(js) {
+                                        if (js.status === 'completed') return doLoad();
+                                        if (js.status === 'failed') {
+                                            statusEl.style.color = 'var(--danger)';
+                                            statusEl.textContent = 'Download failed: ' + (js.error || '?') + _errorHint(js.error);
+                                            btn.disabled = false;
+                                            return;
+                                        }
+                                        statusEl.textContent = 'Downloading ' + model + ' in the background (~300 MB)\u2026';
+                                        if (++polls < 600) poll(); else { statusEl.textContent = 'Download timed out'; btn.disabled = false; }
+                                    })
+                                    .catch(function() { if (++polls < 600) poll(); else { statusEl.textContent = 'Download status lost'; btn.disabled = false; } });
+                            }, 3000);
+                        })();
+                    })
+                    .catch(doLoad);
             });
 
             page.querySelector('#btn-face-restore-unload')?.addEventListener('click', function() {
