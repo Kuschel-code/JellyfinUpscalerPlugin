@@ -218,7 +218,7 @@ namespace JellyfinUpscalerPlugin
         /// <summary>Automatically pick the best model per content type (anime, low-res, multi-frame).
         /// Default false — user must opt in. When true, the in-player client calls /Upscaler/recommend-model
         /// on video loadedmetadata and the batch scan task uses ResolveModelForVideo on each item.</summary>
-        public bool EnableAutoModelSelection { get; set; } = false;
+        public bool EnableAutoModelSelection { get; set; } = true; // v1.8.3.12 - Auto mode is the default; the dashboard Mode switch flips to Custom
 
         /// <summary>Comma-separated fallback models if primary fails (e.g. "realesrgan-x4,span-x4").</summary>
         public string ModelFallbackChain { get; set; } = "";
@@ -541,6 +541,6 @@ namespace JellyfinUpscalerPlugin
         // ── Version Tracking ─────────────────────────────────────────────
 
         /// <summary>Current plugin version string for webhook payloads and diagnostics.</summary>
-        public string PluginVersion { get; set; } = "1.8.3.11";
+        public string PluginVersion { get; set; } = "1.8.3.12";
     }
 }

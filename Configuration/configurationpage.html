@@ -154,6 +154,9 @@
     /* v1.8.3.11 - slider styling + value badge */
     #UpscalerConfigurationPage input[type="range"] { width: 100%; accent-color: var(--accent, #4a9eff); cursor: pointer; }
     #UpscalerConfigurationPage .range-val { font-size: 0.78rem; color: var(--accent, #4a9eff); font-variant-numeric: tabular-nums; margin-left: 0.4rem; }
+    /* v1.8.3.12 - benchmark result boxes keep a stable, larger size */
+    #UpscalerConfigurationPage #benchmark-result,
+    #UpscalerConfigurationPage #filter-bench-result { min-height: 140px; max-height: 320px; overflow-y: auto; }
     #UpscalerConfigurationPage .checkboxIcon, #UpscalerConfigurationPage .checkboxOutline { display: none !important; }
 
     /* ===== Form grid ===== */
@@ -220,7 +223,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.8.3.11 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.8.3.12 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -288,6 +291,13 @@
 
             <!-- ==================== TAB: DASHBOARD ==================== -->
             <div id="tab-dashboard" class="tab-content">
+
+                <!-- v1.8.3.12 - one switch between Auto (benchmark-driven) and Custom -->
+                <div class="upscaler-card" style="display:flex;align-items:center;gap:0.9rem;flex-wrap:wrap;">
+                    <h3 style="margin:0;">Mode</h3>
+                    <div class="checkboxContainer" style="margin:0;"><label><input type="checkbox" id="DashboardAutoMode" /> <strong id="dashboard-mode-label">Auto</strong></label></div>
+                    <div id="dashboard-mode-desc" style="font-size:0.78rem;color:var(--text-muted);flex:1 1 280px;"></div>
+                </div>
 
                 <div id="service-banner" class="service-banner checking">
                     <strong id="banner-text">Checking AI service...</strong>
@@ -434,34 +444,6 @@
 
                 <!-- Live Video Benchmark -->
                 <div class="upscaler-card">
-                    <h3>Live Model Benchmark</h3>
-                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">Test all AI models on your hardware. Each model is loaded, warmed up, and benchmarked with 5 inference passes. Results show actual FPS your GPU/CPU can achieve.</div>
-                    <div class="form-row" style="margin-bottom:0.5rem;">
-                        <div class="form-col" style="padding-top:0.4rem;">
-                            <button type="button" id="btn-live-bench" class="raised">Run All-Model Benchmark</button>
-                            <button type="button" id="btn-stop-bench" class="raised" style="display:none;">Stop</button>
-                        </div>
-                    </div>
-                    <div id="live-bench-progress" style="display:none;margin-bottom:0.5rem;">
-                        <div style="background:var(--bg-input);border-radius:6px;height:6px;overflow:hidden;">
-                            <div id="live-bench-bar" style="background:var(--accent);height:100%;width:0%;transition:width 0.3s;"></div>
-                        </div>
-                        <div id="live-bench-status" style="font-size:0.78rem;color:var(--text-muted);margin-top:0.3rem;">Preparing...</div>
-                    </div>
-                    <div id="live-bench-results" style="max-height:350px;overflow-y:auto;">
-                        <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
-                            <thead><tr style="border-bottom:1px solid var(--border);color:var(--text-secondary);">
-                                <th style="text-align:left;padding:0.4rem 0.3rem;">Model</th>
-                                <th style="text-align:center;padding:0.4rem 0.3rem;">Scale</th>
-                                <th style="text-align:center;padding:0.4rem 0.3rem;">FPS</th>
-                                <th style="text-align:center;padding:0.4rem 0.3rem;">ms/frame</th>
-                                <th style="text-align:center;padding:0.4rem 0.3rem;">GPU</th>
-                            </tr></thead>
-                            <tbody id="live-bench-body"><tr><td colspan="5" style="text-align:center;padding:1rem;opacity:0.5;">Select a video and click "Run Live Benchmark"</td></tr></tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="upscaler-card">
                     <h3>AI Face Restoration</h3>
                     <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.7rem;">
                         Restore heavily degraded faces in old or low-quality video using GFPGAN or CodeFormer.
@@ -508,6 +490,36 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="upscaler-card">
+                    <h3>Live Model Benchmark</h3>
+                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">Test all AI models on your hardware. Each model is loaded, warmed up, and benchmarked with 5 inference passes. Results show actual FPS your GPU/CPU can achieve.</div>
+                    <div class="form-row" style="margin-bottom:0.5rem;">
+                        <div class="form-col" style="padding-top:0.4rem;">
+                            <button type="button" id="btn-live-bench" class="raised">Run All-Model Benchmark</button>
+                            <button type="button" id="btn-stop-bench" class="raised" style="display:none;">Stop</button>
+                        </div>
+                    </div>
+                    <div id="live-bench-progress" style="display:none;margin-bottom:0.5rem;">
+                        <div style="background:var(--bg-input);border-radius:6px;height:6px;overflow:hidden;">
+                            <div id="live-bench-bar" style="background:var(--accent);height:100%;width:0%;transition:width 0.3s;"></div>
+                        </div>
+                        <div id="live-bench-status" style="font-size:0.78rem;color:var(--text-muted);margin-top:0.3rem;">Preparing...</div>
+                    </div>
+                    <div id="live-bench-results" style="max-height:350px;overflow-y:auto;">
+                        <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+                            <thead><tr style="border-bottom:1px solid var(--border);color:var(--text-secondary);">
+                                <th style="text-align:left;padding:0.4rem 0.3rem;">Model</th>
+                                <th style="text-align:center;padding:0.4rem 0.3rem;">Scale</th>
+                                <th style="text-align:center;padding:0.4rem 0.3rem;">FPS</th>
+                                <th style="text-align:center;padding:0.4rem 0.3rem;">ms/frame</th>
+                                <th style="text-align:center;padding:0.4rem 0.3rem;">GPU</th>
+                            </tr></thead>
+                            <tbody id="live-bench-body"><tr><td colspan="5" style="text-align:center;padding:1rem;opacity:0.5;">Select a video and click "Run Live Benchmark"</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+                
             </div>
 
             <div id="tab-settings" class="tab-content" style="display:none;">
@@ -566,7 +578,7 @@
                                         <option value="low">Low</option>
                                     </select>
                                 </div>
-                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxConcurrentStreams">Max Concurrent Streams</label><input type="range" id="MaxConcurrentStreams" min="1" max="16" step="1" /><span class="range-val" data-rv="MaxConcurrentStreams"></span></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxConcurrentStreams">Max Concurrent Streams</label><input type="number" id="MaxConcurrentStreams" min="1" max="16" /></div>
                             </div>
                         </div>
                     </details>
@@ -615,7 +627,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="inputContainer" style="margin-top:0.5rem;"><label class="inputLabel" for="RealtimeCaptureWidth">Capture Width</label><input type="range" id="RealtimeCaptureWidth" min="160" max="1920" step="80" /><span class="range-val" data-rv="RealtimeCaptureWidth"></span><div class="fieldDescription">Resolution for server-side capture (default: 480)</div></div>
+                            <div class="inputContainer" style="margin-top:0.5rem;"><label class="inputLabel" for="RealtimeCaptureWidth">Capture Width</label><input type="number" id="RealtimeCaptureWidth" min="160" max="1920" /><div class="fieldDescription">Resolution for server-side capture (default: 480)</div></div>
                         </div>
                     </details>
                 <h3 class="settings-group-title" style="margin:1.1rem 0 0.4rem 0.2rem;font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted,#889);">Library Scan</h3>
@@ -634,11 +646,11 @@
                                 <div class="fieldDescription">Select one or more libraries to scope the nightly scan. Leave empty to scan <strong>all</strong> libraries (legacy behavior).</div>
                             </div>
                             <div class="form-row">
-                                <div class="form-col inputContainer"><label class="inputLabel" for="MinResolutionWidth">Min Resolution Width</label><input type="range" id="MinResolutionWidth" min="0" max="7680" step="128" /><span class="range-val" data-rv="MinResolutionWidth"></span><div class="fieldDescription">Videos below this width are upscaled (default: 1920)</div></div>
-                                <div class="form-col inputContainer"><label class="inputLabel" for="MinResolutionHeight">Min Resolution Height</label><input type="range" id="MinResolutionHeight" min="0" max="4320" step="72" /><span class="range-val" data-rv="MinResolutionHeight"></span><div class="fieldDescription">Videos below this height are upscaled (default: 1080)</div></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MinResolutionWidth">Min Resolution Width</label><input type="number" id="MinResolutionWidth" min="0" max="7680" /><div class="fieldDescription">Videos below this width are upscaled (default: 1920)</div></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MinResolutionHeight">Min Resolution Height</label><input type="number" id="MinResolutionHeight" min="0" max="4320" /><div class="fieldDescription">Videos below this height are upscaled (default: 1080)</div></div>
                             </div>
                             <div class="form-row" style="margin-top:0.5rem;">
-                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxItemsPerScan">Max Items Per Scan</label><input type="range" id="MaxItemsPerScan" min="0" max="100000" step="100" /><span class="range-val" data-rv="MaxItemsPerScan"></span><div class="fieldDescription">0 = unlimited</div></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxItemsPerScan">Max Items Per Scan</label><input type="number" id="MaxItemsPerScan" min="0" max="100000" /><div class="fieldDescription">0 = unlimited</div></div>
                             </div>
                             <div class="checkboxContainer" style="margin-top:0.5rem;"><label><input type="checkbox" id="RestrictToUnwatchedContent" /> Only upscale unwatched content</label></div>
                             <div class="checkboxContainer"><label><input type="checkbox" id="SkipUpscaledOnRescan" /> Skip already upscaled items on rescan</label></div>
@@ -672,7 +684,7 @@
                         <summary>Processing Queue</summary>
                         <div class="details-body">
                             <div class="form-row" style="margin-top:0.5rem;">
-                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxQueueSize">Max Queue Size</label><input type="range" id="MaxQueueSize" min="1" max="10000" step="25" /><span class="range-val" data-rv="MaxQueueSize"></span><div class="fieldDescription">Max pending jobs (default: 100)</div></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MaxQueueSize">Max Queue Size</label><input type="number" id="MaxQueueSize" min="1" max="10000" /><div class="fieldDescription">Max pending jobs (default: 100)</div></div>
                             </div>
                             <div class="checkboxContainer"><label><input type="checkbox" id="PauseQueueDuringPlayback" /> Pause queue during playback</label></div>
                             <div class="checkboxContainer"><label><input type="checkbox" id="PersistQueueAcrossRestarts" /> Persist queue across restarts</label></div>
@@ -762,8 +774,8 @@
                 <div class="upscaler-card">
                     <h3>Cache Settings</h3>
                     <div class="form-row">
-                        <div class="form-col inputContainer"><label class="inputLabel" for="MaxCacheAgeDays">Max Age (Days)</label><input type="range" id="MaxCacheAgeDays" min="1" max="3650" step="1" /><span class="range-val" data-rv="MaxCacheAgeDays"></span></div>
-                        <div class="form-col inputContainer"><label class="inputLabel" for="CacheSizeMB">Max Size (MB)</label><input type="range" id="CacheSizeMB" min="0" max="1048576" step="512" /><span class="range-val" data-rv="CacheSizeMB"></span></div>
+                        <div class="form-col inputContainer"><label class="inputLabel" for="MaxCacheAgeDays">Max Age (Days)</label><input type="number" id="MaxCacheAgeDays" min="1" max="3650" /></div>
+                        <div class="form-col inputContainer"><label class="inputLabel" for="CacheSizeMB">Max Size (MB)</label><input type="number" id="CacheSizeMB" min="0" max="1048576" /></div>
                     </div>
                     <div style="margin-top:0.5rem;">
                         <button type="button" id="btn-clear-cache" class="raised">Clear Cache</button>
@@ -1289,6 +1301,35 @@
                 });
             });
         }
+        // v1.8.3.12 - dashboard Auto/Custom switch drives EnableAutoModelSelection
+        function _updateModeTexts(page, isAuto) {
+            var lbl = page.querySelector('#dashboard-mode-label');
+            var desc = page.querySelector('#dashboard-mode-desc');
+            if (lbl) lbl.textContent = isAuto ? 'Auto' : 'Custom';
+            if (desc) desc.textContent = isAuto
+                ? 'Auto: model and filters are picked per video from your benchmarks and content type. Flip off for Custom.'
+                : 'Custom: your manual model/scale/filter settings apply exactly as configured.';
+        }
+        function attachDashboardMode(page) {
+            var cb = page.querySelector('#DashboardAutoMode');
+            if (!cb) return;
+            cb.addEventListener('change', function() {
+                var isAuto = cb.checked;
+                _updateModeTexts(page, isAuto);
+                ApiClient.getPluginConfiguration(pluginId).then(function(cfg) {
+                    cfg.EnableAutoModelSelection = isAuto;
+                    return ApiClient.updatePluginConfiguration(pluginId, cfg);
+                }).then(function() {
+                    var settingsCb = page.querySelector('#EnableAutoModelSelection');
+                    if (settingsCb) settingsCb.checked = isAuto;
+                    showToast(isAuto ? 'Auto mode on - models are picked per video' : 'Custom mode - your settings apply');
+                }).catch(function() {
+                    cb.checked = !isAuto;
+                    _updateModeTexts(page, !isAuto);
+                    showToast('Could not save mode', '#f87171');
+                });
+            });
+        }
         function _errorHint(msg) {
             var m = String(msg || '');
             if (/failed to fetch|networkerror|unreachable|refused|502|bad gateway|catalog unavailable/i.test(m)) {
@@ -1299,6 +1340,9 @@
             }
             if (/401|403|unauthorized|token/i.test(m)) {
                 return ' — check the API token (plugin setting must match the container\'s API_TOKEN).';
+            }
+            if (/FBGEMM/i.test(m)) {
+                return ' \u2014 this CPU lacks AVX2, so transformer models (DAT/SwinIR class) cannot be CONVERTED on it. CNN models (Compact/ESRGAN) convert fine; ready-made ONNX transformers still import normally.';
             }
             if (/501|converter not available/i.test(m)) {
                 return ' — .pth conversion needs the docker7-converter image.';
@@ -1927,6 +1971,8 @@
                 updateFavoriteButton(page);
                 renderFavoritesCard(page);
                 updateRangeLabels(page);
+                var modeCb = page.querySelector('#DashboardAutoMode');
+                if (modeCb) { modeCb.checked = !!config.EnableAutoModelSelection; _updateModeTexts(page, modeCb.checked); }
 
                 if (config.ScaleFactor) {
                     updateScaleOptions(page);
@@ -2020,7 +2066,7 @@
                 if (faceModelEl) config.FaceRestoreModel = faceModelEl.value;
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.8.3.11';
+                config.PluginVersion = '1.8.3.12';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -3040,6 +3086,7 @@
                 attachFavoritesCardEvents(page);
                 attachRangeLabels(page);
                 attachSettingsSearch(page);
+                attachDashboardMode(page);
                 initFilterTab(page);
                 _initialized = true;
             }

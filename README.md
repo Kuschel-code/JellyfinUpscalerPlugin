@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.11
+# Jellyfin AI Upscaler Plugin v1.8.3.12
 
 [![Built with Claude](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8%20%26%20Fable%205-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.11):**
+**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.12):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -35,7 +35,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.11   │  │
+│  │  AI Upscaler Plugin v1.8.3.12   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -315,6 +315,12 @@ Each tag is published three ways so you can pin precisely:
 ---
 
 ## Changelog
+
+### v1.8.3.12 (Polish: Auto/Custom mode + face-model fix)
+- **Mode switch on the dashboard**: Auto (default) picks model+filters per video from your benchmarks; flip to Custom for full manual control.
+- Numeric sliders reverted to number inputs (toggles stay); Live Benchmark card sits below Face Restoration; benchmark boxes keep a stable size.
+- **Face fix**: gpen-512 + restoreformer++ were un-downloadable (upstream re-uploads invalidated the sha256 pins - the gate refused correctly); re-pinned after verification. All four face models work now.
+- Console: 5000-line log buffer + Download button; FBGEMM/AVX2 hint. pytest 103, xUnit 190.
 
 ### v1.8.3.11 (Settings redesign + async everything + player favorites)
 - **New "Models" tab** - catalog, ★ favorites, importer (incl. file-install), face restoration, benchmark and comparison in ONE place; the Settings tab shrank to five labeled groups (Connection / Upscaling / Playback / Library Scan / Advanced) with a live **settings search**.

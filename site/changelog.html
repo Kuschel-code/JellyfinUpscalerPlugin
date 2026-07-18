@@ -7,13 +7,22 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.11</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.12</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.11 - Settings redesign + async everything + player favorites <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.12 - Polish: Auto/Custom mode + face-model fix <span class="tag success">latest</span></h2>
+  <p class="date">2026-07-17</p>
+  <ul>
+    <li><strong>Mode switch on the dashboard</strong> - <em>Auto</em> (default) picks model and filters per video from your benchmarks; flip the switch for <em>Custom</em> full manual control.</li>
+    <li>Numeric sliders reverted to plain number inputs (the on/off toggle switches stay); the Live Model Benchmark card moved below AI Face Restoration; benchmark boxes keep a stable size.</li>
+    <li><strong>Face-model fix</strong> - gpen-512 and restoreformer++ were un-downloadable: upstream re-uploaded both files, so the sha256 pins no longer matched (the supply-chain gate refused correctly). Re-pinned after verification - all four face models download and load now.</li>
+    <li>Console: 5000-line log buffer + Download button; FBGEMM/AVX2 error hint for transformer conversion on old CPUs.</li>
+  </ul>
+
+  <h2>v1.8.3.11 - Settings redesign + async everything + player favorites</h2>
   <p class="date">2026-07-16</p>
   <ul>
     <li><strong>New "Models" tab</strong> - Model Catalog, ★ Favorites, the importer (incl. file-install), AI Face Restoration, Live Benchmark and Comparison View live in ONE place now; the Settings tab shrank to five labeled groups (Connection / Upscaling / Playback / Library Scan / Advanced) with a live <strong>settings search box</strong>.</li>
@@ -422,7 +431,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.11</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.12</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

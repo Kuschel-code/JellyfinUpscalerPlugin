@@ -64,7 +64,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Live log streaming — in-memory ring buffer + asyncio event bus for SSE
-LOG_BUFFER: "collections.deque[dict]" = collections.deque(maxlen=1000)
+LOG_BUFFER: "collections.deque[dict]" = collections.deque(maxlen=5000)  # v1.8.3.12 - deeper history for the Console tab
 _LOG_SEQ = 0
 _LOG_LOCK = threading.Lock()
 _LOG_SUBSCRIBERS: "set[asyncio.Queue[dict]]" = set()
@@ -1193,7 +1193,7 @@ AVAILABLE_MODELS = {
         "model_type": "face_restore",
         "license": "Apache-2.0",
         "attribution": "wzhouxiff/RestoreFormerPlusPlus; FaceFusion models mirror",
-        "sha256": "1aba559333b60fce0270e3436699ebf56bbc602e8fefe9502f027b1b5fe4eead",
+        "sha256": "164818b70d1745da4108a45c9263b05452236d14ac0ffab2202af0ac4a438195",
         # 2026-07: upstream HF repo gone — repointed to the FaceFusion assets mirror. Size corrected (~294MB, not 50MB).
         "available": True
     },
@@ -1256,7 +1256,7 @@ AVAILABLE_MODELS = {
         "model_type": "face_restore",
         "license": "Apache-2.0",
         "attribution": "Alibaba DAMO GPEN; FaceFusion models mirror",
-        "sha256": "c6dd20daa7dd4313b83cb5bfb2a50a534b2f217afcd383b77862859d829d7f1a",
+        "sha256": "d5f066b9068a8b74217f9712e28e875a6144629b108a6f7355acbdb3a2832c54",
         # 2026-07: yangxy/GPEN HF repo gone — repointed to the FaceFusion assets mirror (same weights family as gfpgan/codeformer entries).
         "available": True
     },
@@ -3582,7 +3582,7 @@ async def root():
 async def logs_recent(limit: int = 200):
     """Return the most recent log entries (from ring buffer). Used when the
     Console tab is first opened to populate history before live-streaming."""
-    limit = max(1, min(limit, 1000))
+    limit = max(1, min(limit, 5000))
     with _LOG_LOCK:
         items = list(LOG_BUFFER)[-limit:]
     return {"count": len(items), "entries": items}

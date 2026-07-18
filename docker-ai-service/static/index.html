@@ -471,6 +471,7 @@
           <input type="search" id="console-filter" placeholder="filter…" class="btn btn--sm" style="width:140px">
           <button type="button" class="btn btn--sm" id="console-pause">Pause</button>
           <button type="button" class="btn btn--sm" id="console-clear">Clear</button>
+          <button type="button" class="btn btn--sm" id="console-download">Download</button>
         </div>
       </div>
       <div id="console-log" class="console-log" role="log" aria-live="polite" aria-label="Live log output"></div>
@@ -1038,6 +1039,16 @@
   function _connectConsole() {
     try {
       _setConsoleState('connecting', 'tag--dim');
+      document.getElementById('console-download').addEventListener('click', function() {
+        fetch('/logs/recent?limit=5000').then(function(r) { return r.json(); }).then(function(j) {
+          var text = (j.entries || []).map(function(e) { return (e.ts || e.time || '') + ' [' + (e.level || '?') + '] ' + (e.msg || e.message || JSON.stringify(e)); }).join('\n');
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+          a.download = 'ai-upscaler-logs.txt';
+          a.click();
+          URL.revokeObjectURL(a.href);
+        });
+      });
       consoleES = new EventSource('/logs/stream');
       consoleES.onopen = () => _setConsoleState('live', 'tag--ok');
       consoleES.onmessage = (ev) => {
