@@ -188,6 +188,31 @@ try {
     }
 
     Write-Host ""
+    Write-Host "=== Dockerfile APP_VERSION defaults (must be NONE) ===" -ForegroundColor Cyan
+    # v1.8.3.13 - same drift class as the manifest.json/#74 case: the service
+    # reads its runtime version from the APP_VERSION build arg, so a stale
+    # default in a Dockerfile makes /status, /health and the dashboard report a
+    # wrong version. CI injects it from the release tag; no Dockerfile may
+    # carry a default. Tamper-probe: add "ARG APP_VERSION=1.2.3" -> must FAIL.
+    $dockerfiles = Get-ChildItem -Path (Join-Path $repoRoot "docker-ai-service") -Filter "Dockerfile*" -File
+    if ($dockerfiles.Count -lt 7) {
+        Write-Host ("  [FAIL] expected >=7 Dockerfiles, found " + $dockerfiles.Count) -ForegroundColor Red
+        $fail = $true
+    }
+    foreach ($df in $dockerfiles) {
+        $bad = Select-String -Path $df.FullName -Pattern '^\s*ARG\s+APP_VERSION\s*=' -AllMatches
+        if ($bad) {
+            Write-Host ("  [FAIL] " + $df.Name + " carries an APP_VERSION default: " + $bad.Line.Trim()) -ForegroundColor Red
+            $fail = $true
+        } elseif (-not (Select-String -Path $df.FullName -Pattern '^\s*ARG\s+APP_VERSION\s*$' -Quiet)) {
+            Write-Host ("  [FAIL] " + $df.Name + ": no 'ARG APP_VERSION' declaration found") -ForegroundColor Red
+            $fail = $true
+        } else {
+            Write-Host ("  [OK] " + $df.Name + " (no default, arg declared)")
+        }
+    }
+
+    Write-Host ""
     Write-Host "=== UI field consistency (JS selectors vs HTML ids) ===" -ForegroundColor Cyan
     # Kills the v1.8.3.3 class: config-page JS referencing a removed element id
     # compiles clean (EmbeddedResource) and only crashes at runtime.

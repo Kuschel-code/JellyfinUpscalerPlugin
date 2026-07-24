@@ -11,7 +11,9 @@ ENV PYTHONUNBUFFERED=1
 ENV DEBIAN_FRONTEND=noninteractive
 ENV USE_GPU=false
 
-ARG APP_VERSION=1.8.3.8
+# v1.8.3.13: no version default here on purpose - CI injects it from the
+# release tag (see the other Dockerfiles); verify-release.ps1 asserts it.
+ARG APP_VERSION
 ARG APP_COMMIT=unknown
 ENV APP_VERSION=${APP_VERSION} \
     APP_COMMIT=${APP_COMMIT}

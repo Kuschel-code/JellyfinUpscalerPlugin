@@ -16,8 +16,14 @@ ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 # Set SKIP_TENSORRT=false to re-enable TensorRT if your GPU supports it
 ENV SKIP_TENSORRT=true
 
-# Build-time metadata — pass via: --build-arg APP_VERSION=1.6.1.15 --build-arg APP_COMMIT=$(git rev-parse --short HEAD)
-ARG APP_VERSION=1.8.2
+# Build-time metadata — REQUIRED build arg, set by CI from the release tag:
+#   --build-arg APP_VERSION=<tag> --build-arg APP_COMMIT=$(git rev-parse --short HEAD)
+# v1.8.3.13: no default here on purpose. Six Dockerfiles had drifted to 1.8.2
+# while one said 1.8.3.8, so /status, /health and the dashboard reported a
+# wrong, inconsistent service version. The code keeps a "dev" fallback for
+# bare local runs; verify-release.ps1 asserts no Dockerfile re-introduces a
+# version default.
+ARG APP_VERSION
 ARG APP_COMMIT=unknown
 ENV APP_VERSION=${APP_VERSION} \
     APP_COMMIT=${APP_COMMIT}

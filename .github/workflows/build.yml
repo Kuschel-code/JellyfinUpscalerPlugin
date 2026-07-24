@@ -80,6 +80,48 @@ jobs:
       - name: Audit Python dependencies (CPU)
         run: pip-audit -r docker-ai-service/requirements-cpu.txt
 
+  # v1.8.3.13 (D7): the smoke test below builds ONE variant (cpu). The other six
+  # were only ever built at publish time, so a dependency conflict surfaced AFTER
+  # the release tag - that is how v1.8.3.4 shipped with all 6 image builds broken.
+  # This job builds every variant up to (and including) the pip layer, no push,
+  # no smoke test: that layer is the one that breaks, and it is cheap with cache.
+  docker-deps-matrix:
+    name: Deps build ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: nvidia
+            dockerfile: Dockerfile
+          - variant: intel
+            dockerfile: Dockerfile.intel
+          - variant: vulkan
+            dockerfile: Dockerfile.vulkan
+          - variant: apple
+            dockerfile: Dockerfile.apple
+          - variant: converter
+            dockerfile: Dockerfile.converter
+          # amd is deliberately absent: the ROCm base is ~20 GB and does not fit
+          # a standard runner's disk. Its dependency drift is covered by the
+          # weekly lock-requirements workflow instead (which resolves inside the
+          # base without materialising the full image).
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android || true
+          df -h / | tail -1
+
+      - name: Build dependency layers (${{ matrix.variant }})
+        run: |
+          docker build -f "docker-ai-service/${{ matrix.dockerfile }}" --build-arg APP_VERSION=ci-deps-check -t "deps-check-${{ matrix.variant }}" docker-ai-service/
+
+      - name: Report resolved core versions
+        run: |
+          docker run --rm --entrypoint sh "deps-check-${{ matrix.variant }}" -c "pip list 2>/dev/null | grep -iE 'numpy|opencv|onnxruntime|torch|fastapi' || true"
+
   docker-smoke-test:
     runs-on: ubuntu-latest
     steps:

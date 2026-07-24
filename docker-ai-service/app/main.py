@@ -125,7 +125,7 @@ from . import token_store  # hashed, persistent multi-token store (lazy expiry)
 # Dockerfiles pass; fall back to a literal only for bare local runs.
 # (FIX-1: the hardcoded literal had drifted to 1.6.1.21 while the image
 # entrypoint banner correctly reported 1.7.7 — issue #69 screenshots.)
-VERSION = os.getenv("APP_VERSION", "1.8.2")
+VERSION = os.getenv("APP_VERSION", "0.0.0-dev")  # v1.8.3.13: honest marker - a real image always injects APP_VERSION
 
 # Global state
 class AppState:

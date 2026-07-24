@@ -74,11 +74,14 @@ jobs:
         run: |
           set -euo pipefail
           cd docker-ai-service
+          # The CUDA and Intel bases ship python3 only (no `python` on PATH),
+          # so resolve the interpreter inside the container instead of assuming.
           docker run --rm -v "$PWD:/w" -w /w "${{ steps.base.outputs.image }}" \
-            sh -c "python -m pip install --quiet --upgrade pip pip-tools && \
-                   pip-compile --quiet --no-header --strip-extras \
-                     --output-file '/w/requirements-${{ matrix.variant }}.lock' \
-                     '/w/${{ matrix.requirements }}'"
+            sh -c 'PY=$(command -v python3 || command -v python) || { echo "no python in base image"; exit 1; }; \
+                   "$PY" -m pip install --quiet --upgrade pip pip-tools && \
+                   "$PY" -m piptools compile --quiet --no-header --strip-extras \
+                     --output-file "/w/requirements-${{ matrix.variant }}.lock" \
+                     "/w/${{ matrix.requirements }}"'
           echo '--- resolved core versions ---'
           grep -iE '^(numpy|opencv|onnxruntime|torch|fastapi|pillow)' \
             "requirements-${{ matrix.variant }}.lock" || true
@@ -102,7 +105,10 @@ jobs:
   commit:
     name: Commit locks
     needs: lock
-    if: ${{ github.event.inputs.commit != 'false' }}
+    # always(): a single variant failing to resolve must not throw away the
+    # locks that DID resolve - partial progress is still progress, and the red
+    # matrix job stays visible as the signal.
+    if: ${{ always() && github.event.inputs.commit != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
