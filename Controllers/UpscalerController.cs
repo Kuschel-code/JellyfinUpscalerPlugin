@@ -963,13 +963,16 @@ namespace JellyfinUpscalerPlugin.Controllers
                 // recommendation (the in-player panel only calls it when Auto-Mode
                 // is enabled). forceAuto=true so the heuristic runs even if the
                 // user has a non-auto Model value saved.
-                var recommendedModel = _upscalerCore.ResolveModelForVideo(
+                // v1.8.3.13 - keep the reasoning: the detailed resolver returns why this
+                // model was chosen and whether a substitution happened, so the UI can show it.
+                var pick = _upscalerCore.ResolveModelForVideoDetailed(
                     genres: genreList,
                     width: width,
                     height: height,
                     isBatch: isBatch,
                     inputFrames: inputFrames,
                     forceAuto: true);
+                var recommendedModel = pick.Model;
 
                 var recommendedFilter = _upscalerCore.ResolveFilterForVideo(
                     genres: genreList,
@@ -981,6 +984,12 @@ namespace JellyfinUpscalerPlugin.Controllers
                 {
                     success = true,
                     recommended_model = recommendedModel,
+                    // v1.8.3.13 - schema now matches the Python service's /recommend,
+                    // which has always returned a human-readable reason.
+                    reason = pick.Reason,
+                    signals = pick.Signals,
+                    substituted_from = pick.SubstitutedFrom,
+                    substitution_reason = pick.SubstitutionReason,
                     recommended_filter = recommendedFilter,
                     input_frames = inputFrames,
                     auto_selection_enabled = config?.EnableAutoModelSelection ?? false,

@@ -117,6 +117,7 @@
             '<div><strong>Platform:</strong> <span id="platformInfo">Detecting...</span></div>' +
             '<div><strong>Providers:</strong> <span id="providersInfo">Detecting...</span></div>' +
             '<div><strong>Recommended Model:</strong> <span id="recommendedModel">Analyzing...</span></div>' +
+            '<div id="recommendedModelReason" style="font-size:11px;opacity:0.75;margin-top:2px;"></div>' +
             '</div></div></div>' +
 
             '<!-- Cache & Jobs -->' +
@@ -300,6 +301,9 @@
                 if (rec) {
                     var recEl = document.getElementById('recommendedModel');
                     if (recEl) recEl.textContent = rec.recommendedModel || 'fsrcnn-x2';
+                    // v1.8.3.13 - say WHY, not just what
+                    var reasonEl = document.getElementById('recommendedModelReason');
+                    if (reasonEl) reasonEl.textContent = rec.reason || rec.recommendationReason || '';
                 }
             }
         }).catch(function(error) {

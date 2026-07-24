@@ -156,3 +156,39 @@ def test_import_async_gate_rejected_400(client, no_auth, monkeypatch):
 def test_import_status_unknown_job_404(client, no_auth):
     r = client.get("/models/import-status/deadbeef")
     assert r.status_code == 404
+
+
+# ── v1.8.3.13: the upload endpoint's model_name sanitization ──────────────────
+# The regex has guarded this since v1.8.2, but nothing pinned it: a future
+# "cleanup" could widen it and open a path-traversal write. These lock the 400.
+@pytest.mark.parametrize("bad_name", [
+    "../evil",             # traversal
+    "..\\evil",            # windows-style traversal
+    "/etc/passwd",         # absolute path
+    "sub/dir",             # nested path
+    "a" * 65,              # over the 64-char cap
+    "",                    # empty (FastAPI form validation rejects with 422)
+    "space name",          # whitespace
+    "semi;colon",          # shell-ish punctuation
+])
+def test_upload_rejects_unsafe_model_name(client, no_auth, bad_name):
+    r = client.post(
+        "/models/upload",
+        files={"file": ("m.onnx", b"\x08\x07not-a-real-onnx", "application/octet-stream")},
+        data={"model_name": bad_name, "scale": "2"},
+    )
+    # 400 = our name regex, 422 = FastAPI's form validation (empty value). Both are
+    # a refusal; what must NEVER happen is a 2xx that writes the file.
+    assert r.status_code in (400, 422), f"{bad_name!r} should be rejected, got {r.status_code}"
+
+
+def test_upload_accepts_a_clean_model_name_shape(client, no_auth):
+    # Clean name passes the NAME gate and fails later on ONNX validation (400 too,
+    # but with a different reason) - assert we got past the name check.
+    r = client.post(
+        "/models/upload",
+        files={"file": ("m.onnx", b"not-a-real-onnx", "application/octet-stream")},
+        data={"model_name": "clean-name_1", "scale": "2"},
+    )
+    detail = str(r.json().get("detail", "")).lower()
+    assert "alphanumeric" not in detail, "clean name must not be rejected by the name gate"

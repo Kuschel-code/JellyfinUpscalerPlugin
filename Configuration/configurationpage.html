@@ -297,6 +297,12 @@
                     <h3 style="margin:0;">Mode</h3>
                     <div class="checkboxContainer" style="margin:0;"><label><input type="checkbox" id="DashboardAutoMode" /> <strong id="dashboard-mode-label">Auto</strong></label></div>
                     <div id="dashboard-mode-desc" style="font-size:0.78rem;color:var(--text-muted);flex:1 1 280px;"></div>
+                    <div id="dashboard-auto-pick" style="flex:1 1 100%;font-size:0.8rem;margin-top:0.2rem;"></div>
+                </div>
+
+                <!-- v1.8.3.13 - one line answering "what is the plugin doing right now" -->
+                <div class="upscaler-card" style="padding:0.6rem 0.9rem;">
+                    <div id="activity-strip" style="font-size:0.85rem;">Checking…</div>
                 </div>
 
                 <div id="service-banner" class="service-banner checking">
@@ -1105,6 +1111,7 @@
         // ===== DASHBOARD =====
         function refreshDashboard(page) {
             checkServiceHealth(page);
+            loadAutoPick(page);
             ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/jobs'), dataType: 'json' }).then(function(data) {
                 if (data && data.jobs) {
                     var active = 0, completed = 0, failed = 0;
@@ -1122,6 +1129,7 @@
                                 '</div>';
                         }
                     });
+                    renderActivityStrip(page, data.jobs);
                     page.querySelector('#stat-active').textContent = active;
                     page.querySelector('#stat-completed').textContent = completed;
                     page.querySelector('#stat-failed').textContent = failed;
@@ -1329,6 +1337,60 @@
                     showToast('Could not save mode', '#f87171');
                 });
             });
+        }
+        // v1.8.3.13 - the auto decision explains itself: reason + signals come from the
+        // detailed resolver (they used to exist only as LogDebug output, off by default).
+        var _autoPickCache = null;
+        function loadAutoPick(page) {
+            var box = page.querySelector('#dashboard-auto-pick');
+            if (!box) return Promise.resolve(null);
+            return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/recommend-model') + '?isBatch=true', dataType: 'json' })
+                .then(function(r) {
+                    if (!r || !r.success) { box.innerHTML = ''; return null; }
+                    _autoPickCache = r;
+                    var html = '<strong>Auto → ' + _escHtml(r.recommended_model) + '</strong>';
+                    if (r.reason) html += '<div style="color:var(--text-muted);margin-top:0.15rem;">' + _escHtml(r.reason) + '</div>';
+                    if (r.substituted_from) {
+                        html += '<div style="color:#fbbf24;margin-top:0.15rem;">⚠ ' + _escHtml(r.substituted_from) +
+                            ' was preferred but is unavailable — ' + _escHtml(r.substitution_reason || 'a stand-in was used') + '</div>';
+                    }
+                    if (r.signals && r.signals.length) {
+                        html += '<details style="margin-top:0.2rem;"><summary style="cursor:pointer;color:var(--text-muted);font-size:0.76rem;">What it looked at</summary>' +
+                            '<ul style="margin:0.3rem 0 0 1rem;color:var(--text-muted);font-size:0.76rem;">' +
+                            r.signals.map(function(x) { return '<li>' + _escHtml(x) + '</li>'; }).join('') + '</ul></details>';
+                    }
+                    box.innerHTML = html;
+                    return r;
+                })
+                .catch(function() { box.innerHTML = ''; return null; });
+        }
+        // v1.8.3.13 - activity strip: joins job phase, progress, model and the auto
+        // reason into ONE sentence. No new data sources, only assembly.
+        function renderActivityStrip(page, jobs) {
+            var el = page.querySelector('#activity-strip');
+            if (!el) return;
+            var running = (jobs || []).filter(function(j) { return j.status === 'Processing' || j.status === 'Starting'; });
+            if (!running.length) {
+                var modeCb = page.querySelector('#DashboardAutoMode');
+                var mode = (modeCb && modeCb.checked) ? 'Auto mode active' : 'Custom mode';
+                var done = (jobs || []).filter(function(j) { return j.status === 'Completed'; }).length;
+                el.innerHTML = '<span style="color:#4ade80;">●</span> Ready · ' + mode +
+                    (done ? ' · ' + done + ' job' + (done === 1 ? '' : 's') + ' completed' : '');
+                return;
+            }
+            var j = running[0];
+            var name = String(j.inputPath || 'video').split(/[\\/]/).pop();
+            var prog = Math.min(Math.max(Math.round(j.progress || 0), 0), 100);
+            var phase = j.phase || (prog < 15 ? 'Extracting frames' : prog < 95 ? 'Upscaling' : 'Encoding');
+            var parts = ['<span style="color:#fbbf24;">●</span> <strong>' + _escHtml(name) + '</strong>',
+                         'phase <strong>' + _escHtml(phase) + '</strong> (' + prog + '%)'];
+            if (j.model) {
+                var m = 'model <strong>' + _escHtml(j.model) + '</strong>';
+                if (_autoPickCache && _autoPickCache.recommended_model === j.model) m += ' <span style="color:var(--text-muted);">(Auto)</span>';
+                parts.push(m);
+            }
+            if (j.fps) parts.push(Number(j.fps).toFixed(1) + ' fps');
+            el.innerHTML = parts.join(' · ');
         }
         function _errorHint(msg) {
             var m = String(msg || '');

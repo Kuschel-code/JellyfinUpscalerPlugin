@@ -19,6 +19,24 @@ namespace JellyfinUpscalerPlugin.Services
     /// Core upscaling engine - Docker-based implementation
     /// Delegates AI processing to the external Docker AI service via HTTP.
     /// </summary>
+    /// <summary>
+    /// v1.8.3.13 - the result of an automatic model decision INCLUDING its reasoning.
+    /// Before this, the reasoning existed only as LogDebug output (off by default in
+    /// Jellyfin) and was discarded, so users saw a model they never picked with no
+    /// explanation - especially when a multi-frame model was silently substituted.
+    /// </summary>
+    /// <param name="Model">The model that will actually be used.</param>
+    /// <param name="Reason">One human-readable sentence: why this model.</param>
+    /// <param name="Signals">The facts the heuristic reacted to (content, resolution, job type).</param>
+    /// <param name="SubstitutedFrom">Set when the preferred model was unavailable and a stand-in was used.</param>
+    /// <param name="SubstitutionReason">Why the substitution happened (null when none).</param>
+    public record AutoPick(
+        string Model,
+        string Reason,
+        string[] Signals,
+        string? SubstitutedFrom,
+        string? SubstitutionReason);
+
     public class UpscalerCore : IUpscalerCore, IDisposable
     {
         private readonly ILogger<UpscalerCore> _logger;
@@ -330,115 +348,126 @@ namespace JellyfinUpscalerPlugin.Services
             bool isBatch = true,
             int inputFrames = 1,
             bool forceAuto = false)
+            => ResolveModelForVideoDetailed(genres, width, height, isBatch, inputFrames, forceAuto).Model;
+
+        /// <summary>
+        /// v1.8.3.13 - same heuristic as <see cref="ResolveModelForVideo"/>, but it KEEPS the
+        /// reasoning instead of writing it to a debug log nobody has enabled. The UI shows
+        /// Reason/Signals next to the picked model, and a substitution (multi-frame model has no
+        /// public ONNX -> single-frame stand-in) is surfaced instead of silently swapping the
+        /// user's expectation. Same "never fail silently" rule the favorites flow follows.
+        /// </summary>
+        public AutoPick ResolveModelForVideoDetailed(
+            IEnumerable<string>? genres = null,
+            int width = 0,
+            int height = 0,
+            bool isBatch = true,
+            int inputFrames = 1,
+            bool forceAuto = false)
         {
-            // Respect the user's explicit model choice unless the caller opted in
-            // to auto (EnableAutoModelSelection + in-player Auto-Mode, or the batch
-            // scan task already gating on "auto" sentinel). forceAuto=true bypasses
-            // so the heuristic actually runs.
             var configured = Config.Model;
             if (!forceAuto && !string.IsNullOrEmpty(configured) && configured != "auto")
-                return configured;
+            {
+                return new AutoPick(configured, "Custom mode: your configured model is used as-is.",
+                    new[] { "Mode: Custom" }, null, null);
+            }
 
             var genreList = genres?.Select(g => g.ToLowerInvariant()).ToList() ?? new List<string>();
             bool isAnime = genreList.Any(g => g.Contains("anime") || g.Contains("animation") || g.Contains("cartoon"));
             bool isLowRes = width > 0 && height > 0 && (width < 720 || height < 480);
             bool isVeryLowRes = width > 0 && height > 0 && (width < 480 || height < 360);
 
-            // Multi-frame VSR: best quality for batch processing.
-            // All three preferred multi-frame models are currently `available: False` upstream
-            // (no public ONNX mirror), so we route through PickAvailable which falls back to
-            // a single-frame equivalent when the multi-frame model is not self-hosted.
+            // The signals the heuristic actually reacted to - shown verbatim in the UI.
+            var signals = new List<string>();
+            signals.Add(isAnime ? "Content: anime/animation (from genres)" : "Content: live action");
+            if (width > 0 && height > 0)
+            {
+                var resLabel = isVeryLowRes ? " (very low)" : isLowRes ? " (low)" : "";
+                signals.Add($"Resolution: {width}x{height}{resLabel}");
+            }
+            else
+            {
+                signals.Add("Resolution: unknown");
+            }
+            signals.Add(isBatch ? "Job: batch (quality first)" : "Job: real-time (speed first)");
+            if (inputFrames > 1) signals.Add($"Multi-frame available: {inputFrames} frames");
+
+            AutoPick Pick(string reason, string preferred, params string[] fallbacks)
+            {
+                var picked = PickAvailable(preferred, fallbacks);
+                if (picked == preferred)
+                {
+                    return new AutoPick(picked, reason, signals.ToArray(), null, null);
+                }
+                var why = ModelAvailability.IsKnownUnavailable(preferred)
+                    ? $"{preferred} has no public ONNX build (self-host required), so the closest available model was used instead."
+                    : $"{preferred} is not available on this service, so the closest available model was used instead.";
+                return new AutoPick(picked, reason, signals.ToArray(), preferred, why);
+            }
+
             if (isBatch && inputFrames > 1)
             {
                 if (isAnime)
                 {
-                    _logger.LogDebug("Auto-model: anime content + multi-frame batch → animesr-v2-x4 (with fallback)");
-                    return PickAvailable("animesr-v2-x4", "realesrgan-animevideo-x4", "anime-compact-x4");
+                    return Pick("Anime content in a batch job with multi-frame support -> AnimeSR v2 (temporal consistency).",
+                        "animesr-v2-x4", "realesrgan-animevideo-x4", "anime-compact-x4");
                 }
                 if (isVeryLowRes)
                 {
-                    // Very low res (VHS/DVD quality) → RealBasicVSR handles degradation best.
-                    // Fallback: ultrasharp-v2-x4 (DAT2) has the best single-frame restore quality.
-                    _logger.LogDebug("Auto-model: very low-res ({W}x{H}) + multi-frame batch → realbasicvsr-x4 (with fallback)", width, height);
-                    return PickAvailable("realbasicvsr-x4", "ultrasharp-v2-x4", "realesrgan-x4");
+                    return Pick($"Very low resolution ({width}x{height}) in a batch job with multi-frame support -> RealBasicVSR handles heavy degradation best.",
+                        "realbasicvsr-x4", "ultrasharp-v2-x4", "realesrgan-x4");
                 }
-                // General multi-frame: EDVR-M is the safe default.
-                // Fallback chain: ultrasharp-v2-x4 (quality) → nomos2-realplksr-x4 (efficient) → realesrgan-x4.
-                _logger.LogDebug("Auto-model: multi-frame batch → edvr-m-x4 (with fallback)");
-                return PickAvailable("edvr-m-x4", "ultrasharp-v2-x4", "nomos2-realplksr-x4", "realesrgan-x4");
+                return Pick("Batch job with multi-frame support -> EDVR-M for temporal consistency.",
+                    "edvr-m-x4", "ultrasharp-v2-x4", "nomos2-realplksr-x4", "realesrgan-x4");
             }
 
-            // Single-frame models
             if (isAnime)
             {
-                // v1.6.1.17 - honor user's PreferredAnimeModel override before falling through to heuristic.
-                // Default is "anime-compact-x4". User may set to e.g. "real-cugan-x4" for higher quality.
                 var animeOverride = Config.PreferredAnimeModel;
                 if (!string.IsNullOrWhiteSpace(animeOverride))
                 {
-                    _logger.LogDebug("Auto-model: anime content + PreferredAnimeModel override → {Model}", animeOverride);
-                    return PickAvailable(animeOverride, "realesrgan-animevideo-x4", "anime-compact-x4");
+                    signals.Add("Override: Preferred Anime Model is set");
+                    return Pick($"Anime content and your Preferred Anime Model ({animeOverride}) applies.",
+                        animeOverride, "realesrgan-animevideo-x4", "anime-compact-x4");
                 }
-
                 if (isBatch)
                 {
-                    _logger.LogDebug("Auto-model: anime content + batch → realesrgan-animevideo-x4");
-                    // v1.6.1.20 - route through PickAvailable defensively. realesrgan-animevideo-x4
-                    // is currently always-available, but a future change could flip it to self-host
-                    // (the model is ~67MB and depends on a HF mirror that has changed before).
-                    return PickAvailable("realesrgan-animevideo-x4", "anime-compact-x4", "realesrgan-x4");
+                    return Pick("Anime content in a batch job -> Real-ESRGAN anime-video (quality first).",
+                        "realesrgan-animevideo-x4", "anime-compact-x4", "realesrgan-x4");
                 }
-                // Real-time anime: use the lightweight compact model
-                _logger.LogDebug("Auto-model: anime content + real-time → anime-compact-x4");
-                return PickAvailable("anime-compact-x4", "realesrgan-animevideo-x4", "realesrgan-x4");
+                return Pick("Anime content in real time -> lightweight anime compact model (speed first).",
+                    "anime-compact-x4", "realesrgan-animevideo-x4", "realesrgan-x4");
             }
 
-            // v1.6.1.18 - honor user's PreferredLiveActionModel override before falling through
-            // to heuristic. Symmetric to the PreferredAnimeModel hook above (caught in v1.6.1.17 by
-            // Verifier-B for Anime; the live-action twin was missed and was Dead-Config until now).
-            // Default is "" (let heuristic pick). User may set to e.g. "drct-l-x4" for SOTA photo
-            // quality or "bhi-realplksr-x4" for the speed champion.
             var liveActionOverride = Config.PreferredLiveActionModel;
             if (!string.IsNullOrWhiteSpace(liveActionOverride))
             {
-                _logger.LogDebug("Auto-model: live-action + PreferredLiveActionModel override → {Model}", liveActionOverride);
-                return PickAvailable(liveActionOverride, "ultrasharp-v2-x4", "nomos2-realplksr-x4", "realesrgan-x4");
+                signals.Add("Override: Preferred Live-Action Model is set");
+                return Pick($"Live action and your Preferred Live-Action Model ({liveActionOverride}) applies.",
+                    liveActionOverride, "ultrasharp-v2-x4", "nomos2-realplksr-x4", "realesrgan-x4");
             }
 
-            // v1.6.1.20 - all single-frame returns now route through PickAvailable for defensive
-            // symmetry with the Multi-Frame path (which has been gated since v1.6.1.17). Today none
-            // of these IDs are in KnownUnavailable, so the wrapper short-circuits to the preferred
-            // value with no behavior change. If a future maintainer flips e.g. nomosuni-compact-x2
-            // to self-host, the resolver gracefully falls back instead of returning a 500-prone ID.
             if (!isBatch)
             {
-                // Real-time: prioritize speed. Use 2x models for lower VRAM/compute cost.
-                // Low-res (480p) with 4x model would produce 1920p — too expensive for real-time.
                 if (isLowRes)
                 {
-                    _logger.LogDebug("Auto-model: low-res real-time → span-x2 (fast 2x, manageable output)");
-                    return PickAvailable("span-x2", "nomosuni-compact-x2", "realesrgan-x4");
+                    return Pick($"Low resolution ({width}x{height}) in real time -> SPAN 2x stays fast and keeps the output size manageable.",
+                        "span-x2", "nomosuni-compact-x2", "realesrgan-x4");
                 }
-                // HD content: already high-res, use lightweight 2x for mild enhancement
-                _logger.LogDebug("Auto-model: HD real-time → nomosuni-compact-x2 (ultra-fast 2x)");
-                return PickAvailable("nomosuni-compact-x2", "span-x2", "realesrgan-x4");
+                return Pick("HD content in real time -> ultra-fast 2x model for mild enhancement.",
+                    "nomosuni-compact-x2", "span-x2", "realesrgan-x4");
             }
 
-            // Batch single-frame: prioritize quality
             if (isVeryLowRes)
             {
-                _logger.LogDebug("Auto-model: very low-res batch → ultrasharp-v2-x4 (best quality)");
-                return PickAvailable("ultrasharp-v2-x4", "nomos2-realplksr-x4", "realesrgan-x4");
+                return Pick($"Very low resolution ({width}x{height}) in a batch job -> UltraSharp V2 for the best restore quality.",
+                    "ultrasharp-v2-x4", "nomos2-realplksr-x4", "realesrgan-x4");
             }
             if (isLowRes)
             {
-                _logger.LogDebug("Auto-model: low-res batch → realesrgan-x4");
-                return PickAvailable("realesrgan-x4");
+                return Pick($"Low resolution ({width}x{height}) in a batch job -> Real-ESRGAN 4x.", "realesrgan-x4");
             }
-
-            // Default batch: good balance
-            _logger.LogDebug("Auto-model: general batch → realesrgan-x4");
-            return PickAvailable("realesrgan-x4");
+            return Pick("General batch job -> Real-ESRGAN 4x (balanced default).", "realesrgan-x4");
         }
 
         /// <summary>

@@ -78,7 +78,7 @@ jobs:
           # so resolve the interpreter inside the container instead of assuming.
           docker run --rm -v "$PWD:/w" -w /w "${{ steps.base.outputs.image }}" \
             sh -c 'PY=$(command -v python3 || command -v python) || { echo "no python in base image"; exit 1; }; \
-                   "$PY" -m pip install --quiet --upgrade pip pip-tools && \
+                   "$PY" -m pip install --quiet --upgrade pip setuptools wheel typing_extensions pip-tools && \
                    "$PY" -m piptools compile --quiet --no-header --strip-extras \
                      --output-file "/w/requirements-${{ matrix.variant }}.lock" \
                      "/w/${{ matrix.requirements }}"'
@@ -125,4 +125,6 @@ jobs:
           git add docker-ai-service/*.lock
           git diff --cached --quiet && { echo 'no lock changes'; exit 0; }
           git commit -m 'ci: refresh requirements locks (resolved in the real base images)'
+          # main may have moved while the matrix ran (releases, other cron jobs)
+          git pull --rebase --autostash origin main
           git push

@@ -1851,12 +1851,21 @@
                 return ApiClient.ajax({ type: 'GET', url: url, dataType: 'json' })
                     .then(function(res) {
                         if (!res || !res.success) return null;
-                        console.log('AI Upscaler Auto: picked model=' + res.recommended_model +
-                            ' filter=' + res.recommended_filter +
+                        // v1.8.3.13 - the auto decision used to land in the developer
+                        // console only; carry it out so the UI can show it.
+                        var autoMsg = 'Auto: ' + res.recommended_model +
+                            (res.reason ? ' — ' + res.reason : '');
+                        if (res.substituted_from) {
+                            autoMsg += ' (' + res.substituted_from + ' unavailable — stand-in used)';
+                        }
+                        console.log('AI Upscaler ' + autoMsg +
                             ' (' + w + 'x' + h + ', genres=' + (genres || 'none') + ')');
                         return {
                             model: res.recommended_model,
-                            filter: res.recommended_filter
+                            filter: res.recommended_filter,
+                            reason: res.reason,
+                            substitutedFrom: res.substituted_from,
+                            autoMessage: autoMsg
                         };
                     });
             }).catch(function(err) {
@@ -1898,9 +1907,14 @@
                     if (pick && pick.model) {
                         config = Object.assign({}, config, { Model: pick.model });
                         PlayerIntegration._applyAutoFilter(pick.filter);
-                        PlayerIntegration.showPlayerNotification(
-                            'Auto: ' + pick.model + (pick.filter && pick.filter !== 'none' ? ' + ' + pick.filter : ''),
-                            'info');
+                        // v1.8.3.13 - say WHY, and never swap the model silently: a
+                        // substitution (preferred model has no public ONNX) is shown as
+                        // a warning instead of looking like a wrong pick.
+                        var notice = 'Auto: ' + pick.model +
+                            (pick.filter && pick.filter !== 'none' ? ' + ' + pick.filter : '');
+                        if (pick.reason) notice += ' — ' + pick.reason;
+                        if (pick.substitutedFrom) notice += ' (' + pick.substitutedFrom + ' unavailable — stand-in used)';
+                        PlayerIntegration.showPlayerNotification(notice, pick.substitutedFrom ? 'warning' : 'info');
                     }
                     PlayerIntegration._startRtWithConfig(video, config);
                 });
