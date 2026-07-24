@@ -1,0 +1,122 @@
+# Generates requirements-*.lock files with EXACT versions, resolved inside the
+# real base image of each variant (v1.8.3.13).
+#
+# Why: all requirements-*.txt use ranges only, so the same commit produced
+# different images on different days - that is what broke all 6 builds in
+# v1.8.3.4 (opencv floated to 4.12 and collided with the numpy<2 cap).
+# The base images are @sha256-pinned; this pins the Python layer on top.
+#
+# The .txt files stay the human-readable constraint input; the .lock is the
+# build input. Resolution must happen INSIDE the base image because
+# pre-installed packages (torch in the ROCm base, openvino in the Intel one)
+# change the outcome.
+name: Lock requirements
+
+on:
+  workflow_dispatch:
+    inputs:
+      variants:
+        description: 'Comma-separated variants to lock (default: all light ones)'
+        required: false
+        default: 'cpu,intel,vulkan,apple,converter,test,nvidia'
+      commit:
+        description: 'Commit the generated locks?'
+        required: false
+        default: 'true'
+  schedule:
+    # Weekly drift check - a failing resolve here means a build WOULD have
+    # broken; better to learn it on a Monday than during a release.
+    - cron: '41 5 * * 1'
+
+permissions:
+  contents: write
+
+jobs:
+  lock:
+    name: Lock ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: cpu
+            dockerfile: Dockerfile.cpu
+            requirements: requirements-cpu.txt
+          - variant: intel
+            dockerfile: Dockerfile.intel
+            requirements: requirements-intel.txt
+          - variant: vulkan
+            dockerfile: Dockerfile.vulkan
+            requirements: requirements-vulkan.txt
+          - variant: apple
+            dockerfile: Dockerfile.apple
+            requirements: requirements-apple.txt
+          - variant: converter
+            dockerfile: Dockerfile.converter
+            requirements: requirements-converter.txt
+          - variant: nvidia
+            dockerfile: Dockerfile
+            requirements: requirements.txt
+          - variant: test
+            dockerfile: Dockerfile.cpu
+            requirements: requirements-test.txt
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve base image from the Dockerfile
+        id: base
+        run: |
+          BASE=$(grep -m1 '^FROM ' "docker-ai-service/${{ matrix.dockerfile }}" | awk '{print $2}')
+          echo "image=$BASE" >> $GITHUB_OUTPUT
+          echo "Base for ${{ matrix.variant }}: $BASE"
+
+      - name: Compile lock inside the base image
+        run: |
+          set -euo pipefail
+          cd docker-ai-service
+          docker run --rm -v "$PWD:/w" -w /w "${{ steps.base.outputs.image }}" \
+            sh -c "python -m pip install --quiet --upgrade pip pip-tools && \
+                   pip-compile --quiet --no-header --strip-extras \
+                     --output-file '/w/requirements-${{ matrix.variant }}.lock' \
+                     '/w/${{ matrix.requirements }}'"
+          echo '--- resolved core versions ---'
+          grep -iE '^(numpy|opencv|onnxruntime|torch|fastapi|pillow)' \
+            "requirements-${{ matrix.variant }}.lock" || true
+
+      - name: Assert deliberate caps survived
+        # The AMD/ROCm stack deliberately keeps numpy<2 + opencv<4.12 (base ships
+        # torch 2.3 compiled against numpy 1.x). Locking must never "clean that up".
+        run: |
+          cd docker-ai-service
+          LOCK="requirements-${{ matrix.variant }}.lock"
+          if grep -q 'numpy<2' "${{ matrix.requirements }}"; then
+            NP=$(grep -iE '^numpy==' "$LOCK" | cut -d= -f3)
+            case "$NP" in 1.*) echo "OK: numpy $NP respects the <2 cap";; *) echo "FAIL: numpy $NP breaks the deliberate <2 cap"; exit 1;; esac
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lock-${{ matrix.variant }}
+          path: docker-ai-service/requirements-${{ matrix.variant }}.lock
+
+  commit:
+    name: Commit locks
+    needs: lock
+    if: ${{ github.event.inputs.commit != 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/locks
+      - name: Move locks into the tree
+        run: |
+          find /tmp/locks -name '*.lock' -exec cp -v {} docker-ai-service/ \;
+      - name: Commit if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add docker-ai-service/*.lock
+          git diff --cached --quiet && { echo 'no lock changes'; exit 0; }
+          git commit -m 'ci: refresh requirements locks (resolved in the real base images)'
+          git push
