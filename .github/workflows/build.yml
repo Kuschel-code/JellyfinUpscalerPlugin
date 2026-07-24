@@ -130,6 +130,7 @@ jobs:
       - name: Build CPU Docker image
         run: |
           docker build -f docker-ai-service/Dockerfile.cpu \
+            --build-arg APP_VERSION=ci-smoke-test \
             -t jellyfin-upscaler-cpu:smoke-test \
             docker-ai-service/
 
