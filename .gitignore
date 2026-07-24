@@ -91,3 +91,8 @@ truenas-catalog/
 .a4k-build/out.js
 .a4k-build/package-lock.json
 .a4k-build/UPSTREAM_LICENSE.txt
+
+# v1.8.3.13 - local build scratch that must never be committed
+.a4k-build/pub*/
+.a4k-build/ZIP_MD5.txt
+.a4k-build/preview.html
