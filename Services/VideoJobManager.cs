@@ -52,6 +52,12 @@ namespace JellyfinUpscalerPlugin.Services
                 startTime = job.StartTime,
                 duration = job.ProcessingDuration.TotalSeconds,
                 method = job.ProcessingMethod.ToString(),
+                // v1.8.3.13 - the dashboard activity strip shows which model is
+                // actually running; OptimizedOptions wins because that is what the
+                // pipeline uses after auto-selection.
+                model = !string.IsNullOrWhiteSpace(job.OptimizedOptions?.Model) && job.OptimizedOptions.Model != "auto"
+                    ? job.OptimizedOptions.Model
+                    : job.Options?.Model ?? "",
                 isPaused = _pausedJobs.GetValueOrDefault(job.Id, false)
             }).Cast<object>().ToList();
         }

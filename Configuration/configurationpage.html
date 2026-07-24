@@ -223,7 +223,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.8.3.12 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.8.3.13 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -1330,6 +1330,7 @@
                 }).then(function() {
                     var settingsCb = page.querySelector('#EnableAutoModelSelection');
                     if (settingsCb) settingsCb.checked = isAuto;
+                    loadAutoPick(page);   // re-label the pick box for the new mode
                     showToast(isAuto ? 'Auto mode on - models are picked per video' : 'Custom mode - your settings apply');
                 }).catch(function() {
                     cb.checked = !isAuto;
@@ -1348,7 +1349,13 @@
                 .then(function(r) {
                     if (!r || !r.success) { box.innerHTML = ''; return null; }
                     _autoPickCache = r;
-                    var html = '<strong>Auto → ' + _escHtml(r.recommended_model) + '</strong>';
+                    // Review fix: the endpoint always runs the heuristic (forceAuto), so in
+                    // Custom mode this would advertise a model the plugin will never use.
+                    // Say so instead of pretending Auto is active.
+                    var isAuto = r.auto_selection_enabled !== false;
+                    var html = isAuto
+                        ? '<strong>Auto → ' + _escHtml(r.recommended_model) + '</strong>'
+                        : '<strong>Custom mode</strong> <span style="color:var(--text-muted);">— Auto would pick ' + _escHtml(r.recommended_model) + '</span>';
                     if (r.reason) html += '<div style="color:var(--text-muted);margin-top:0.15rem;">' + _escHtml(r.reason) + '</div>';
                     if (r.substituted_from) {
                         html += '<div style="color:#fbbf24;margin-top:0.15rem;">⚠ ' + _escHtml(r.substituted_from) +
@@ -1381,15 +1388,22 @@
             var j = running[0];
             var name = String(j.inputPath || 'video').split(/[\\/]/).pop();
             var prog = Math.min(Math.max(Math.round(j.progress || 0), 0), 100);
+            // Review fix: a paused job keeps status "Processing" and only carries
+            // isPaused - showing it as running contradicted the Jobs tab's Resume button.
+            if (j.isPaused) {
+                el.innerHTML = '<span style="color:#94a3b8;">❚❚</span> <strong>' + _escHtml(name) + '</strong> · paused at ' + prog + '%';
+                return;
+            }
             var phase = j.phase || (prog < 15 ? 'Extracting frames' : prog < 95 ? 'Upscaling' : 'Encoding');
             var parts = ['<span style="color:#fbbf24;">●</span> <strong>' + _escHtml(name) + '</strong>',
                          'phase <strong>' + _escHtml(phase) + '</strong> (' + prog + '%)'];
+            // model comes from the /jobs projection (added in v1.8.3.13); no fps field
+            // exists on a job, so nothing is invented here.
             if (j.model) {
                 var m = 'model <strong>' + _escHtml(j.model) + '</strong>';
                 if (_autoPickCache && _autoPickCache.recommended_model === j.model) m += ' <span style="color:var(--text-muted);">(Auto)</span>';
                 parts.push(m);
             }
-            if (j.fps) parts.push(Number(j.fps).toFixed(1) + ' fps');
             el.innerHTML = parts.join(' · ');
         }
         function _errorHint(msg) {
@@ -2128,7 +2142,7 @@
                 if (faceModelEl) config.FaceRestoreModel = faceModelEl.value;
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.8.3.12';
+                config.PluginVersion = '1.8.3.13';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');

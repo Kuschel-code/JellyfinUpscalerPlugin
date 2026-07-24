@@ -1,8 +1,8 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.12
+# Jellyfin AI Upscaler Plugin v1.8.3.13
 
-[![Built with Claude](https://img.shields.io/badge/Built%20with-Claude%20Opus%204.8%20%26%20Fable%205-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
+[![Built with Claude Opus 5](https://img.shields.io/badge/Built%20with-Claude%20Opus%205-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
 
-> **Built with Claude Opus 4.8 & Claude Fable 5** — this plugin is developed and maintained entirely with [Anthropic's Claude models](https://www.anthropic.com/claude) (Opus 4.8 through v1.8.3.4, [Fable 5](https://www.anthropic.com/news/claude-fable-5-mythos-5) since v1.8.3.5). Code contributions, Dockerfiles, CI workflows and documentation are produced in a pair-programming style with the model; the maintainer ([Kuschel-code](https://github.com/Kuschel-code)) reviews, tests and publishes every change. Release commits carry the `Co-Authored-By: Claude` trailer as disclosure.
+> **Built with Claude Opus 5** — this plugin is developed and maintained entirely with [Anthropic's Claude models](https://www.anthropic.com/claude): **Opus 5 since v1.8.3.13**, Fable 5 for v1.8.3.5–v1.8.3.12, Opus 4.8 before that. Code contributions, Dockerfiles, CI workflows and documentation are produced in a pair-programming style with the model; the maintainer ([Kuschel-code](https://github.com/Kuschel-code)) reviews, tests and publishes every change. Release commits carry the `Co-Authored-By: Claude` trailer as disclosure.
 
 ---
 
@@ -14,14 +14,16 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.12):**
+**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.13):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-apple` (macOS Apple Silicon — multi-arch amd64/arm64)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-vulkan` (Vulkan/ncnn — AMD pre-RDNA2, Intel iGPU)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-cpu` (CPU Only — multi-threaded ONNXRuntime, multi-arch)
-*   `kuscheltier/jellyfin-ai-upscaler:docker7-converter` (CPU + pth→ONNX converter for OpenModelDB community models — opt-in, ~2 GB)
+*   `kuscheltier/jellyfin-ai-upscaler:docker7-converter` (CPU + pth→ONNX converter for OpenModelDB community models — opt-in)
+
+Download sizes range from **0.27 GB** (`docker7-cpu`) to **20 GB** (`docker7-amd`, ROCm base) — see **[docs/DOCKER-IMAGES.md](docs/DOCKER-IMAGES.md)** for the full table, the converter's RAM guidance and why the AMD stack is frozen.
 
 **Report bugs:** [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 
@@ -37,7 +39,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.12   │  │
+│  │  AI Upscaler Plugin v1.8.3.13   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -323,7 +325,7 @@ The full version history lives on the website and the release pages — this REA
 - **[Changelog (website)](https://kuschel-code.github.io/JellyfinUpscalerPlugin/changelog.html)** — every release in detail
 - **[GitHub Releases](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases)** — release notes and downloadable ZIPs
 
-Latest: **v1.8.3.12** — dashboard Auto/Custom mode, face-model re-pins, UI polish · **v1.8.3.11** — Models tab, settings redesign with toggles, async imports, player favorites · **v1.8.3.10** — import-UX hotfix
+Latest: **v1.8.3.13** — Auto mode explains itself (reason, signals, substitution warning), activity strip, reproducible builds · **v1.8.3.12** — dashboard Auto/Custom mode, face-model re-pins · **v1.8.3.11** — Models tab, settings redesign, async imports, player favorites
 
 ---
 

@@ -374,6 +374,14 @@ namespace JellyfinUpscalerPlugin.Models
     public class OptimalSettings
     {
         public string RecommendedModel { get; set; } = "";
+
+        /// <summary>
+        /// v1.8.3.13 - one human-readable sentence explaining the hardware-based
+        /// recommendation. The sidebar renders it under "Recommended Model"; before
+        /// this the reasoning existed only inside CalculateOptimalSettings' branches.
+        /// </summary>
+        public string Reason { get; set; } = "";
+
         public string RecommendedMaxResolution { get; set; } = "";
         public string RecommendedQuality { get; set; } = "";
         public bool HardwareAcceleration { get; set; }

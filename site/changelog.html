@@ -7,13 +7,22 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.12</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.13</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.12 - Polish: Auto/Custom mode + face-model fix <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.13 - Auto mode explains itself + reproducible builds <span class="tag success">latest</span></h2>
+  <p class="date">2026-07-25</p>
+  <ul>
+    <li><strong>Auto transparency</strong> - the automatic model choice wrote its reasoning to a debug log that is off by default and returned a bare model name, so users saw a model they never picked. The dashboard now shows <code>Auto &rarr; model</code> with the reason, an expandable "what it looked at" list, and an <strong>amber warning when a model was substituted</strong> (the preferred multi-frame model has no public ONNX build). The in-player notification and the sidebar carry the reason too.</li>
+    <li><strong>Activity strip</strong> - one line on the dashboard: running file, phase, progress, model and fps; idle reads "Ready &middot; Auto mode active" instead of a bare "Idle". No new data sources, just assembled.</li>
+    <li><strong>Reproducible builds</strong> - no Dockerfile carries an <code>APP_VERSION</code> default any more (six said 1.8.2 while one said 1.8.3.8, so <code>/status</code>, <code>/health</code> and the dashboard reported a wrong version); CI injects it from the release tag and the release guard fails if a default reappears. A new weekly workflow resolves each Python layer inside its real base image, and CI now builds five image variants on every push instead of one - a dependency conflict can no longer surface after the release tag.</li>
+    <li>New <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/DOCKER-IMAGES.md">docs/DOCKER-IMAGES.md</a>: real image sizes (0.27&nbsp;GB CPU to 20&nbsp;GB AMD), converter RAM guidance, and the AMD stack CVE assessment with an exit trigger. Tests: xUnit 199, pytest 112.</li>
+  </ul>
+
+  <h2>v1.8.3.12 - Polish: Auto/Custom mode + face-model fix</h2>
   <p class="date">2026-07-17</p>
   <ul>
     <li><strong>Mode switch on the dashboard</strong> - <em>Auto</em> (default) picks model and filters per video from your benchmarks; flip the switch for <em>Custom</em> full manual control.</li>
@@ -431,7 +440,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.12</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.13</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

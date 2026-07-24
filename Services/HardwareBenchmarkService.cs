@@ -261,6 +261,7 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 settings.RecommendedModel = EnsureModelAvailable("realesrgan-x4");
                 settings.RecommendedQuality = "high";
+                settings.Reason = $"NVIDIA CUDA detected ({hw.CpuCores} CPU cores) - Real-ESRGAN 4x at high quality is within budget.";
                 settings.MaxConcurrentStreams = Math.Min(4, hw.CpuCores / 2);
                 settings.FallbackModel = EnsureModelAvailable("fsrcnn-x2");
             }
@@ -268,6 +269,7 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 settings.RecommendedModel = EnsureModelAvailable("realesrgan-x4");
                 settings.RecommendedQuality = "medium";
+                settings.Reason = "DirectML GPU detected - Real-ESRGAN 4x at medium quality balances speed and detail.";
                 settings.MaxConcurrentStreams = 2;
                 settings.FallbackModel = EnsureModelAvailable("fsrcnn-x2");
             }
@@ -275,6 +277,7 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 settings.RecommendedModel = EnsureModelAvailable("fsrcnn-x2");
                 settings.RecommendedQuality = "low";
+                settings.Reason = $"No GPU acceleration available ({hw.CpuCores} CPU cores) - FSRCNN 2x is the only model that stays usable on CPU.";
                 settings.MaxConcurrentStreams = 1;
                 settings.FallbackModel = EnsureModelAvailable("fsrcnn-x2");
             }
