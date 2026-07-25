@@ -221,6 +221,45 @@ namespace JellyfinUpscalerPlugin.Tests.Services
             }
         }
 
+        [Theory]
+        [InlineData("weak-cpu")]
+        [InlineData("strong-cpu")]
+        [InlineData("igpu")]
+        public void A_substitution_never_overshoots_the_target_size(string tier)
+        {
+            // Live finding after the ladder was added: the substitute was chosen by weight
+            // alone, so a branch that deliberately picked a 2x model for 1080p was handed
+            // the cheap-but-4x clearreality-x4 - 7680x4320, the very output the branch's
+            // own reason text argued against.
+            UpscalerCore.UpdateHardwareTier(tier);
+
+            foreach (var (w, h) in new[] { (1280, 720), (1920, 1080) })
+            {
+                foreach (var genres in new[] { null, new[] { "Animation" } })
+                {
+                    var pick = _core.ResolveModelForVideoDetailed(
+                        genres: genres, width: w, height: h, isBatch: true, inputFrames: 1, forceAuto: true);
+
+                    pick.Scale.Should().BeLessThanOrEqualTo(ModelScale.TargetScaleFor(w, h),
+                        $"{tier} / {w}x{h} / anime={genres != null} resolved to {pick.Model}");
+                }
+            }
+        }
+
+        [Fact]
+        public void A_capped_SD_job_still_gets_a_real_4x_restore()
+        {
+            // The scale filter must not cost small sources their upscale: 4x is exactly
+            // what an SD source needs, and clearreality-x4 delivers it within a Light budget.
+            UpscalerCore.UpdateHardwareTier("weak-cpu");
+
+            var pick = _core.ResolveModelForVideoDetailed(
+                genres: null, width: 640, height: 480, isBatch: true, inputFrames: 1, forceAuto: true);
+
+            pick.Scale.Should().Be(4);
+            HardwareBudget.WeightOf(pick.Model).Should().Be(HardwareBudget.Weight.Light);
+        }
+
         [Fact]
         public void The_capped_fallback_is_always_a_model_the_service_can_actually_load()
         {

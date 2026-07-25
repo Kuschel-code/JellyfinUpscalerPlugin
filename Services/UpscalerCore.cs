@@ -462,33 +462,47 @@ namespace JellyfinUpscalerPlugin.Services
                 if (!HardwareBudget.FitsTier(picked, tier))
                 {
                     var overBudget = picked;
-                    string? affordable = null;
-                    foreach (var candidate in fallbacks)
+
+                    // v1.8.3.16 (live-test fix): a substitute must respect BOTH limits.
+                    // The first cut only checked weight, so a branch that deliberately
+                    // chose a 2x model for 1080p got handed the cheap-but-4x
+                    // clearreality-x4 - producing the exact 8K output the branch existed
+                    // to avoid, with its own reason text arguing against it on screen.
+                    var targetScale = ModelScale.TargetScaleFor(width, height);
+
+                    bool Affordable(string? c) =>
+                        !string.IsNullOrWhiteSpace(c) &&
+                        !ModelAvailability.IsKnownUnavailable(c) &&
+                        HardwareBudget.FitsTier(c, tier);
+
+                    // An id that does not encode a scale (0) is not rejected: unknown is
+                    // not the same as too big, and refusing it would exclude imports.
+                    bool WithinScale(string? c)
                     {
-                        if (string.IsNullOrWhiteSpace(candidate)) continue;
-                        if (ModelAvailability.IsKnownUnavailable(candidate)) continue;
-                        if (!HardwareBudget.FitsTier(candidate, tier)) continue;
-                        affordable = candidate;
-                        break;
+                        var native = ModelScale.NativeScaleOf(c);
+                        return native == 0 || native <= targetScale;
                     }
-                    // The branch fallbacks carry no Light option, so on a weak CPU every
-                    // job used to collapse to the crudest model in the catalog. Walk a
-                    // quality-ordered ladder within the affordable weight class first
-                    // (found by live-testing v1.8.3.14 on a CPU-only NAS).
-                    if (affordable == null)
-                    {
-                        var max = HardwareBudget.MaxWeightFor(tier);
-                        if (max != null)
-                        {
-                            foreach (var candidate in HardwareBudget.AffordableLadder(max.Value, isAnime))
-                            {
-                                if (ModelAvailability.IsKnownUnavailable(candidate)) continue;
-                                if (!HardwareBudget.FitsTier(candidate, tier)) continue;
-                                affordable = candidate;
-                                break;
-                            }
-                        }
-                    }
+
+                    var max = HardwareBudget.MaxWeightFor(tier);
+                    var ladder = max != null
+                        ? HardwareBudget.AffordableLadder(max.Value, isAnime)
+                        : Array.Empty<string>();
+                    // Branch fallbacks first (they know the content), then the ladder,
+                    // which supplies the quality order within a weight class that a
+                    // per-branch chain cannot express.
+                    var candidates = fallbacks.Concat(ladder).ToList();
+
+                    // Pass 1: fits the hardware AND does not overshoot the target size.
+                    var affordable = candidates.FirstOrDefault(c => Affordable(c) && WithinScale(c));
+
+                    // Pass 2: nothing hits both. Take the affordable candidate with the
+                    // SMALLEST scale rather than the first one, so the output overshoots
+                    // by as little as possible.
+                    affordable ??= candidates
+                        .Where(Affordable)
+                        .OrderBy(c => ModelScale.NativeScaleOf(c) == 0 ? int.MaxValue : ModelScale.NativeScaleOf(c))
+                        .FirstOrDefault();
+
                     // Last resort: the lightest model in the catalog always runs.
                     affordable ??= "fsrcnn-x2";
                     return new AutoPick(affordable, reason, signals.ToArray(), overBudget,
