@@ -39,6 +39,11 @@ pwsh Scripts/sync-fallback-models.ps1  # regenerates Resources/models-fallback.j
 - **Docker images publish via `docker7*` / `v*-docker7` tags**, not plugin `v*` tags.
 - Jellyfin config pages are HTML FRAGMENTS: everything outside the `data-role="page"` div (including `<style>` in `<head>`) is stripped — CSS/JS must live inside the page div. In-page tabs: plain `<button type="button">`, never `<a is="emby-linkbutton">` (it routes away and ignores preventDefault).
 - Jellyfin 10.11 removed the global `window.playbackManager` — hook DOM-native `<video>` events instead.
+- **The AI service IGNORES the requested `scale`** and uses the loaded model's native factor (`main.py upscale_endpoint` only logs a warning). Only the ffmpeg hardware-filter path honours the configured value. Report the model's own scale (`Services/ModelScale.cs`), never the config's, or logs and job metadata lie.
+- **Model ids use BOTH scale conventions**: `realesrgan-x4` (x-then-digit) and `dejpg-realplksr-1x` / `omdb-4x-...` (digit-then-x). Parsing only one silently returns "unknown" for the whole 1x restoration family.
+- **A shipped config default is indistinguishable from a user override.** `PreferredAnimeModel` defaulted to a model, so every anime pick took the override path and skipped the hardware cap and scale logic. Defaults for "override" fields must be empty.
+- **Deploy to the test server before claiming done.** v1.8.3.14-.19: five defects passed every unit test and only showed on a real CPU-only box (8K output, crudest-model collapse, a default posing as a decision). `Scripts/bump-version.py <old> <new>` stamps the 13 version sites that `verify-release.ps1` guards.
+- **Two docker-publish runs in flight race the `:latest` tag** — cancel the superseded run before the newer one finishes.
 
 ## CI workflows (7, in .github/workflows/)
 `build-and-release.yml` + `build.yml` build/test ONLY (no release steps!); `dockerhub-cleanup.yml` manual dispatch, dry-run default; `v1.7.1-audit-checks.yml` diffs the model catalog. Routine: `docker-publish.yml`, `pages.yml`, `import-catalog-refresh.yml` (weekly).
