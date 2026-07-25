@@ -1,6 +1,6 @@
 # Docker images — sizes, what they are for, and the frozen AMD stack
 
-Measured from the Docker Hub registry manifests on 2026-07-24 (compressed
+Measured from the Docker Hub registry manifests on 2026-07-25 for v1.8.3.19 (compressed
 download size, `linux/amd64`). Pick deliberately: the AMD image is two orders
 of magnitude larger than the CPU one.
 
@@ -9,10 +9,15 @@ of magnitude larger than the CPU one.
 | `docker7-cpu` | **0.27 GB** | no usable GPU, or a NAS/mini-PC | multi-arch (amd64 + arm64) |
 | `docker7-converter` | **0.53 GB** | you want to convert OpenModelDB `.pth` models to ONNX | CPU image + torch-cpu + spandrel; the CPU-only torch index keeps it small (only +0.26 GB over `docker7-cpu`) |
 | `docker7-intel` | 0.67 GB | Intel Arc / Iris (OpenVINO) | |
-| `docker7-apple` | 0.51 GB | macOS Apple Silicon | multi-arch; Docker on macOS cannot pass through the Apple GPU — CPU-only in practice, native run required for GPU |
-| `docker7-vulkan` | 0.98 GB | AMD pre-RDNA2, Intel iGPU (ncnn/Vulkan) | multi-arch |
+| `docker7-apple` | 0.27 GB | macOS Apple Silicon | multi-arch; Docker on macOS cannot pass through the Apple GPU — CPU-only in practice, native run required for GPU |
+| `docker7-vulkan` | 0.53 GB | AMD pre-RDNA2, Intel iGPU (ncnn/Vulkan) | multi-arch |
 | `docker7` (NVIDIA) | 3.38 GB | NVIDIA CUDA + cuDNN 9 | also published as `latest` |
 | `docker7-amd` | **20.36 GB** | AMD ROCm | see the frozen-stack section below before pulling |
+
+> `docker7-apple` (0.51 -> 0.27 GB) and `docker7-vulkan` (0.98 -> 0.53 GB) shrank
+> between v1.8.3.13 and v1.8.3.19. Both are re-measured here with the same method,
+> not estimated. Apple now matches the CPU image, which is consistent with what the
+> table already says: Docker on macOS cannot pass through the Apple GPU.
 
 ## Why `docker7-amd` is 20 GB
 
