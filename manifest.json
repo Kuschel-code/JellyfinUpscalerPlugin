@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.8.3.18",
+        "changelog": "v1.8.3.18: Auto mode gets its own tab in the player. Auto has been the default since v1.8.3.12, but the in-player panel only ever asked the Custom-mode questions - pick a model, pick a filter - and could not answer the one that matters while a video is running: what did auto decide for THIS file, and how do I turn it off without leaving the player. The panel now leads with an Auto tab showing the model, its scale, the resulting output size, the reason, the signals it looked at and any substitution warning, plus live switches for auto mode, video filters, face restoration and real-time upscaling - each takes effect immediately, and 'Re-apply to this video' re-runs the decision against the running upscaler. The filter row states what is true: auto suggests a look and never overwrites a preset you chose. Docs caught up too: site/configuration.html described auto-selection with models that are not in the catalog (hat-x4, swinir-m-x4, realesrgan-x4plus) and a genre mapping the resolver never had; it now carries the real decision table plus the hardware-budget and scale-ceiling filters. README gains an Auto Mode section. 273 tests green.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.3.18/JellyfinUpscalerPlugin-v1.8.3.18.zip",
+        "checksum": "e404fc608153fe260727cec829047c26",
+        "timestamp": "2026-07-25T04:00:00.000Z"
+      },
+      {
         "version": "1.8.3.17",
         "changelog": "v1.8.3.17: 4K sources are cleaned up, not enlarged. TargetScaleFor has answered 1x for sources that are already 4K since v1.8.3.14, but nothing acted on it - only the substitution filter read it and no branch ever produced a 1x pick, so a 4K source still went to 7680x4320. There is now an explicit branch ahead of the multi-frame and anime paths: a 4K source gets a 1x restoration model that removes compression artefacts at the original size. Second cause: the scale parser knew only the 'x<N>' order (realesrgan-x4) and not the '<N>x' order used by the 1x restoration models (dejpg-realplksr-1x) and by every OpenModelDB import (omdb-4x-nomos8k-atd), so every 1x model reported unknown scale; both are parsed now, end-anchored first so realesrgan-x4-256 still means 4x. The overshoot test theory now includes 4K - leaving it out is what hid this - and states the honest invariant: exceeding the target factor must be a reported substitution carrying a reason. 273 tests green.",
         "targetAbi": "10.11.8.0",
