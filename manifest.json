@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.8.3.15",
+        "changelog": "v1.8.3.15: three defects that only a real machine could show, found deploying v1.8.3.14 to a CPU-only server. PreferredAnimeModel shipped with a default of anime-compact-x4, and the resolver cannot tell a shipped default from a deliberate user choice - which is exempt from the hardware budget and the scale logic by design - so EVERY anime decision skipped both and a CPU-only box got a 4x model on 1080p (7680x4320); the default is now empty like its live-action counterpart (saved values are kept: set Preferred Anime Model back to Auto if you never chose one deliberately). The v1.8.3.14 8K fix only covered live action - anime batch still targeted 8K on 1080p. And the budget fallback only walked a branch's own candidates, none of which contain a light model, so on a weak CPU every live-action job collapsed to the last-resort fsrcnn-x2 while clearreality-x4 is equally cheap, does 4x and is ~32x faster than realesrgan-x4 per CPU tile; there is now a quality ladder within each weight class. Reasons describe the material instead of naming a model, so a reason can no longer advertise something that was substituted away. 266 tests green.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.3.15/JellyfinUpscalerPlugin-v1.8.3.15.zip",
+        "checksum": "6225951e4bf3e4396de8d416664fb96d",
+        "timestamp": "2026-07-25T02:15:00.000Z"
+      },
+      {
         "version": "1.8.3.14",
         "changelog": "v1.8.3.14: Auto mode respects your hardware, and tells the truth about scale. The content heuristic and the AI service's hardware advisor were two separate recommenders that never spoke to each other, so a CPU-only NAS could be handed a full restoration net; the hardware class is now cached and an over-budget pick falls back with a stated reason (an unknown class caps nothing, and a model you picked yourself is never overridden). The service ignores the requested scale and uses the model's native factor, so the library scan logged scale=2x while auto ran a 4x model - a 1080p batch job silently produced 8K frames; the real factor is now read from the model, reported by the API, used by the job, and a 1080p batch no longer defaults to 4x. Every downloadable catalog model gets a Get button (27 of them had none) with real byte progress, and 'Not DL' is split into 'Not downloaded' vs 'Self-host only'. Pause/Resume/Cancel added to the dashboard activity strip. Auto mode no longer overwrites a filter preset you chose. Batch runs log their model reasoning at Information instead of Debug. Stray scrollbar next to the tab row removed. 262 tests green.",
         "targetAbi": "10.11.8.0",
