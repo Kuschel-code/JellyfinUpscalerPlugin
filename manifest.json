@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.8.3.16",
+        "changelog": "v1.8.3.16: a substitution must not overshoot the target size. The quality ladder added in v1.8.3.15 picked by weight alone, so a branch that had deliberately chosen a 2x model for 1080p was handed clearreality-x4 - cheap, Light and 4x - producing 7680x4320 with the branch's own reason text ('a 4x pass would target 8K for no visible gain') printed next to it; a 4K source reached 15360x8640. A substitute now has to fit the hardware AND stay within the resolution's target factor, and when nothing satisfies both, the affordable candidate with the smallest scale wins so the overshoot is as small as available. Branch fallbacks are still tried before the ladder, and an id that encodes no scale is not rejected because unknown is not the same as too big. SD keeps its full 4x restore. 270 tests green, including a theory across weak-cpu/strong-cpu/igpu x 720p/1080p x live-action/anime asserting no pick ever exceeds its target factor.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.3.16/JellyfinUpscalerPlugin-v1.8.3.16.zip",
+        "checksum": "529e893ec5b55b3cbf98b2171f9418c6",
+        "timestamp": "2026-07-25T02:45:00.000Z"
+      },
+      {
         "version": "1.8.3.15",
         "changelog": "v1.8.3.15: three defects that only a real machine could show, found deploying v1.8.3.14 to a CPU-only server. PreferredAnimeModel shipped with a default of anime-compact-x4, and the resolver cannot tell a shipped default from a deliberate user choice - which is exempt from the hardware budget and the scale logic by design - so EVERY anime decision skipped both and a CPU-only box got a 4x model on 1080p (7680x4320); the default is now empty like its live-action counterpart (saved values are kept: set Preferred Anime Model back to Auto if you never chose one deliberately). The v1.8.3.14 8K fix only covered live action - anime batch still targeted 8K on 1080p. And the budget fallback only walked a branch's own candidates, none of which contain a light model, so on a weak CPU every live-action job collapsed to the last-resort fsrcnn-x2 while clearreality-x4 is equally cheap, does 4x and is ~32x faster than realesrgan-x4 per CPU tile; there is now a quality ladder within each weight class. Reasons describe the material instead of naming a model, so a reason can no longer advertise something that was substituted away. 266 tests green.",
         "targetAbi": "10.11.8.0",
