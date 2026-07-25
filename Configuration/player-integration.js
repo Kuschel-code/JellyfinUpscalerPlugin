@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.8.3.17';
+    const PLUGIN_VERSION = '1.8.3.18';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -1208,12 +1208,24 @@
                     '<span><span class="ai-menu__summary-strong" data-summary-ready>' + (totalModels ? (readyModels + ' of ' + totalModels) : '—') + '</span> models ready</span>' +
                 '</div>' +
                 '<div class="ai-menu__tabs" role="tablist">' +
-                    '<button class="ai-menu__tab ai-menu__tab--active" data-tab="models" role="tab"><span class="material-icons">view_module</span><span>Models</span></button>' +
+                    // v1.8.3.18 - Auto leads. Auto mode is the default (EnableAutoModelSelection
+                    // is true out of the box), so the first thing the panel should answer is
+                    // "what is it doing to THIS video, and how do I stop it" - not "pick a model
+                    // from a list", which is the Custom-mode question.
+                    '<button class="ai-menu__tab ai-menu__tab--active" data-tab="auto" role="tab"><span class="material-icons">auto_awesome</span><span>Auto</span><span class="ai-menu__tab-live" data-auto-live-dot></span></button>' +
+                    '<button class="ai-menu__tab" data-tab="models" role="tab"><span class="material-icons">view_module</span><span>Models</span></button>' +
                     '<button class="ai-menu__tab" data-tab="filters" role="tab"><span class="material-icons">tune</span><span>Filters</span><span class="ai-menu__tab-live" data-filter-live-dot></span></button>' +
                     '<button class="ai-menu__tab" data-tab="realtime" role="tab"><span class="material-icons">bolt</span><span>Realtime</span></button>' +
                 '</div>' +
                 '<div class="ai-menu__body">' +
-                    '<div class="ai-menu__pane ai-menu__pane--active" data-pane="models">' +
+                    // v1.8.3.18 - the auto pane. Everything here writes straight to the
+                    // plugin config and takes effect on the running video; nothing needs
+                    // the full configuration page. Contents are filled by _renderAutoPane
+                    // once the config and the decision for this video have been fetched.
+                    '<div class="ai-menu__pane ai-menu__pane--active" data-pane="auto">' +
+                        '<div data-auto-body><div class="ai-menu__auto-loading">Reading the decision for this video&hellip;</div></div>' +
+                    '</div>' +
+                    '<div class="ai-menu__pane" data-pane="models">' +
                         '<div class="ai-menu__chips">' +
                             '<button class="ai-menu__chip ai-menu__chip--active" data-filter="all">All</button>' +
                             '<button class="ai-menu__chip" data-filter="ready">Downloaded</button>' +
@@ -1278,6 +1290,10 @@
             this._applyFilterState(filterState);
             this._loadFilterConfig();
 
+            // v1.8.3.18 - Auto is the landing tab, so fill it right away instead of
+            // waiting for a tab click the user has no reason to make.
+            this._renderAutoPane(menu);
+
             // Any interaction on the menu keeps it alive — important for filter sliders
             // where users may drag for several seconds. _touchMenuTimer resets the auto-close.
             var touchTimer = function() { PlayerIntegration._touchMenuTimer(menu); };
@@ -1301,6 +1317,14 @@
                 var tab = e.target.closest('[data-tab]');
                 if (tab) {
                     PlayerIntegration._switchTab(menu, tab.getAttribute('data-tab'));
+                    return;
+                }
+                // v1.8.3.18 - auto-pane switches. Checked before [data-preset] and
+                // [data-filter] because those selectors are broad enough to swallow a
+                // click that was meant for a switch.
+                var autoSw = e.target.closest('[data-auto-toggle]');
+                if (autoSw) {
+                    PlayerIntegration._toggleAutoAspect(menu, autoSw.getAttribute('data-auto-toggle'));
                     return;
                 }
                 var presetBtn = e.target.closest('[data-preset]');
@@ -1333,6 +1357,10 @@
                         PlayerIntegration.toggleUpscaling();
                     } else if (action === 'config') {
                         PlayerIntegration.openFullConfig();
+                    } else if (action === 'auto-apply') {
+                        PlayerIntegration._applyAutoNow(menu);
+                    } else if (action === 'auto-refresh') {
+                        PlayerIntegration._renderAutoPane(menu);
                     } else if (action === 'filter-reset') {
                         PlayerIntegration._resetFilters(menu);
                     } else if (action === 'filter-save') {
@@ -1483,6 +1511,211 @@
                 '</div>';
         },
 
+        // ==================================================================
+        // v1.8.3.18 — AUTO PANE
+        //
+        // Auto mode has been the default since v1.8.3.12, but the in-player panel
+        // only ever offered the Custom-mode questions ("pick a model", "pick a
+        // filter"). What it could not answer was the one that matters while a video
+        // is running: what did auto decide for THIS file, why, and how do I turn it
+        // off without leaving the player. Everything below writes to the plugin
+        // config and takes effect immediately — no full configuration page, no reload.
+        // ==================================================================
+
+        // Everything the auto pane interpolates goes through this. Most of it is
+        // server-generated, but ActiveFilterPreset and FaceRestoreModel are config
+        // strings an admin can set to anything, and they land in innerHTML.
+        // Same escape set as _escHtml in configurationpage.html.
+        _escapeHtml: function(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+            });
+        },
+
+        // Ask the backend what auto would do for the video that is playing right now.
+        // Resolves with the raw /recommend-model payload or null; never rejects, because
+        // a panel that fails to open is worse than one showing "service unreachable".
+        _fetchAutoDecision: function() {
+            var video = this.findVideoElement();
+            var w = (video && video.videoWidth) | 0;
+            var h = (video && video.videoHeight) | 0;
+            var itemId = this._getPlayingItemId();
+            var fetchItem = itemId && window.ApiClient
+                ? window.ApiClient.getItem(ApiClient.getCurrentUserId(), itemId).catch(function() { return null; })
+                : Promise.resolve(null);
+
+            return fetchItem.then(function(item) {
+                var genres = (item && Array.isArray(item.Genres)) ? item.Genres.join(',') : '';
+                var url = ApiClient.getUrl('Upscaler/recommend-model') +
+                    '?width=' + w + '&height=' + h + '&isBatch=false' +
+                    (genres ? ('&genres=' + encodeURIComponent(genres)) : '');
+                return ApiClient.ajax({ type: 'GET', url: url, dataType: 'json' });
+            }).catch(function() { return null; });
+        },
+
+        _autoRow: function(key, label, sub, on, disabled) {
+            return '<div class="ai-menu__auto-row' + (disabled ? ' ai-menu__auto-row--off' : '') + '">' +
+                       '<div class="ai-menu__auto-row-text">' +
+                           '<span class="ai-menu__auto-row-label">' + label + '</span>' +
+                           '<span class="ai-menu__auto-row-sub">' + sub + '</span>' +
+                       '</div>' +
+                       '<button class="ai-menu__switch ai-menu__switch--sm' + (on ? ' ai-menu__switch--on' : '') +
+                           '" data-auto-toggle="' + key + '" role="switch" aria-checked="' + (on ? 'true' : 'false') +
+                           '" aria-label="' + label + '"></button>' +
+                   '</div>';
+        },
+
+        _renderAutoPane: function(menu) {
+            var body = menu.querySelector('[data-auto-body]');
+            if (!body) return;
+
+            Promise.all([this.getPluginConfig(), this._fetchAutoDecision()]).then(function(res) {
+                var cfg = res[0] || {};
+                var pick = res[1];
+                var autoOn = cfg.EnableAutoModelSelection !== false;
+                var esc = PlayerIntegration._escapeHtml;
+
+                var dot = menu.querySelector('[data-auto-live-dot]');
+                if (dot) dot.classList.toggle('ai-menu__tab-live--on', autoOn);
+
+                var html = '';
+
+                // 1. The master switch. First, big, and honest about what "off" means.
+                html += '<div class="ai-menu__auto-master' + (autoOn ? ' ai-menu__auto-master--on' : '') + '">' +
+                            '<div class="ai-menu__auto-master-text">' +
+                                '<span class="ai-menu__auto-master-title">Auto mode' +
+                                    '<span class="ai-menu__auto-state">' + (autoOn ? 'ON' : 'OFF') + '</span></span>' +
+                                '<span class="ai-menu__auto-master-sub">' + (autoOn
+                                    ? 'Model is chosen per video from content, resolution and what your hardware can run.'
+                                    : 'Your manual model, scale and filter settings apply exactly as configured.') + '</span>' +
+                            '</div>' +
+                            '<button class="ai-menu__switch' + (autoOn ? ' ai-menu__switch--on' : '') +
+                                '" data-auto-toggle="master" role="switch" aria-checked="' + (autoOn ? 'true' : 'false') +
+                                '" aria-label="Auto mode"></button>' +
+                        '</div>';
+
+                // 2. What it decided for THIS video, with the reasoning the resolver returns.
+                if (pick && pick.success) {
+                    var over = pick.substitution_reason
+                        ? '<div class="ai-menu__auto-warn">' + esc(pick.substitution_reason) + '</div>' : '';
+                    var sig = (pick.signals && pick.signals.length)
+                        ? '<details class="ai-menu__auto-signals"><summary>What it looked at</summary><ul>' +
+                          pick.signals.map(function(s) { return '<li>' + esc(s) + '</li>'; }).join('') +
+                          '</ul></details>'
+                        : '';
+                    html += '<div class="ai-menu__auto-card">' +
+                                '<div class="ai-menu__auto-card-head">' +
+                                    '<span class="ai-menu__auto-card-title">' + (autoOn ? 'Running now' : 'Auto would pick') + '</span>' +
+                                    (pick.recommended_scale ? '<span class="ai-menu__auto-scale">' + pick.recommended_scale + '&times;</span>' : '') +
+                                '</div>' +
+                                '<div class="ai-menu__auto-model">' + esc(pick.recommended_model || '—') + '</div>' +
+                                (pick.output_size ? '<div class="ai-menu__auto-size">' + esc(pick.output_size) + '</div>' : '') +
+                                (pick.reason ? '<div class="ai-menu__auto-reason">' + esc(pick.reason) + '</div>' : '') +
+                                over + sig +
+                            '</div>';
+                } else {
+                    html += '<div class="ai-menu__auto-card ai-menu__auto-card--muted">' +
+                                'No decision available — the AI service did not answer. ' +
+                                'Auto never blocks playback: your configured model is used instead.' +
+                            '</div>';
+                }
+
+                // 3. Live switches for the four things auto touches. Filters are listed
+                //    but deliberately described as a suggestion: v1.8.3.14 stopped auto
+                //    overwriting a preset the user picked, and this text must not
+                //    promise otherwise.
+                html += '<div class="ai-menu__section-title" style="margin-top:14px"><span>Live controls</span>' +
+                        '<span class="ai-menu__section-sub">applies immediately</span></div>';
+                html += PlayerIntegration._autoRow('filters', 'Video filters',
+                            (cfg.ActiveFilterPreset && cfg.ActiveFilterPreset !== 'none')
+                                ? 'Your preset: ' + esc(cfg.ActiveFilterPreset) + ' — auto only suggests, never overwrites'
+                                : 'Auto may suggest a look for this content',
+                            cfg.EnableVideoFilters === true, false);
+                html += PlayerIntegration._autoRow('face', 'Face restoration',
+                            esc(cfg.FaceRestoreModel || 'gfpgan-v1.4') + ' — sharpens faces, costs extra time per frame',
+                            cfg.EnableFaceRestore === true, false);
+                html += PlayerIntegration._autoRow('realtime', 'Real-time upscaling',
+                            'Upscale during playback instead of only in batch jobs',
+                            cfg.EnableRealtimeUpscaling !== false, false);
+
+                html += '<div class="ai-menu__auto-actions">' +
+                            '<button class="ai-menu__filter-btn ai-menu__filter-btn--primary" data-action="auto-apply"' +
+                                (autoOn ? '' : ' disabled title="Turn auto mode on first"') + '>Re-apply to this video</button>' +
+                            '<button class="ai-menu__filter-btn ai-menu__filter-btn--secondary" data-action="auto-refresh">Refresh</button>' +
+                        '</div>';
+
+                body.innerHTML = html;
+            }).catch(function(err) {
+                body.innerHTML = '<div class="ai-menu__auto-card ai-menu__auto-card--muted">Could not read the auto state: ' +
+                    PlayerIntegration._escapeHtml((err && err.message) || 'unknown error') + '</div>';
+            });
+        },
+
+        // One switch -> one config field -> immediate effect. Each branch states what
+        // "immediate" means for that field, because they differ: two are read per frame,
+        // one is read when the RT loop starts.
+        _toggleAutoAspect: function(menu, key) {
+            var map = {
+                master: 'EnableAutoModelSelection',
+                filters: 'EnableVideoFilters',
+                face: 'EnableFaceRestore',
+                realtime: 'EnableRealtimeUpscaling'
+            };
+            var field = map[key];
+            if (!field) return;
+
+            this.getPluginConfig().then(function(cfg) {
+                var next = !(key === 'realtime' ? (cfg.EnableRealtimeUpscaling !== false)
+                          : key === 'master'   ? (cfg.EnableAutoModelSelection !== false)
+                          : cfg[field] === true);
+                var patch = {};
+                patch[field] = next;
+                return PlayerIntegration.updatePluginConfig(patch).then(function() {
+                    PlayerIntegration.showPlayerNotification(
+                        (key === 'master' ? 'Auto mode' :
+                         key === 'filters' ? 'Video filters' :
+                         key === 'face' ? 'Face restoration' : 'Real-time upscaling') +
+                        (next ? ' on' : ' off'), 'info');
+
+                    // Real-time upscaling reads its config when the loop starts, so a
+                    // toggle only takes hold if the loop is restarted.
+                    if (key === 'realtime') {
+                        if (next) PlayerIntegration.startRealtimeUpscaling();
+                        else if (window.RealtimeUpscaler && RealtimeUpscaler.stop) RealtimeUpscaler.stop();
+                    }
+                    PlayerIntegration._renderAutoPane(menu);
+                });
+            }).catch(function(err) {
+                PlayerIntegration.showPlayerNotification(
+                    'Could not save: ' + ((err && err.message) || 'unknown error'), 'warning');
+            });
+        },
+
+        // Re-run the decision and hand it to the running upscaler, without a reload.
+        _applyAutoNow: function(menu) {
+            this.getPluginConfig().then(function(cfg) {
+                var video = PlayerIntegration.findVideoElement();
+                if (!video) {
+                    PlayerIntegration.showPlayerNotification('No video is playing', 'warning');
+                    return;
+                }
+                return PlayerIntegration._autoSelectForVideo(video, cfg).then(function(pick) {
+                    if (!pick || !pick.model) {
+                        PlayerIntegration.showPlayerNotification('Auto had nothing to apply', 'warning');
+                        return;
+                    }
+                    PlayerIntegration._applyAutoFilter(pick.filter, cfg.ActiveFilterPreset);
+                    PlayerIntegration._startRtWithConfig(video, Object.assign({}, cfg, { Model: pick.model }));
+                    var msg = 'Applied ' + pick.model + (pick.reason ? ' — ' + pick.reason : '');
+                    PlayerIntegration.showPlayerNotification(msg, pick.substitutedFrom ? 'warning' : 'info');
+                    PlayerIntegration._renderAutoPane(menu);
+                });
+            }).catch(function(err) {
+                PlayerIntegration.showPlayerNotification(
+                    'Apply failed: ' + ((err && err.message) || 'unknown error'), 'warning');
+            });
+        },
+
         _switchTab: function(menu, tabName) {
             var tabs = menu.querySelectorAll('[data-tab]');
             var panes = menu.querySelectorAll('[data-pane]');
@@ -1492,6 +1725,10 @@
             for (var j = 0; j < panes.length; j++) {
                 panes[j].classList.toggle('ai-menu__pane--active', panes[j].getAttribute('data-pane') === tabName);
             }
+            // v1.8.3.18 - the auto pane describes the video that is playing right now,
+            // so it is re-read on every visit rather than cached from when the panel
+            // opened. Seeking to a different episode changes the answer.
+            if (tabName === 'auto') this._renderAutoPane(menu);
         },
 
         _onSliderInput: function(menu, slider) {
@@ -2084,6 +2321,41 @@
                 '.ai-menu__switch::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:2px;background:#5c6472;transition:left .15s,background .15s}',
                 '.ai-menu__switch--on{border-color:#3b82f6;background:rgba(59,130,246,.14)}',
                 '.ai-menu__switch--on::after{background:#3b82f6;left:18px}',
+                '.ai-menu__switch--sm{width:30px;height:17px}',
+                '.ai-menu__switch--sm::after{width:11px;height:11px}',
+                '.ai-menu__switch--sm.ai-menu__switch--on::after{left:15px}',
+
+                /* v1.8.3.18 — Auto pane. Same palette as the rest of the panel
+                   (--bg #0b0d12, --surface-2 #161a23, --border #1f2430, accent #3b82f6);
+                   the accent is reserved for "auto is on", so an off state never glows. */
+                '.ai-menu__auto-loading{padding:18px 4px;color:#5c6472;font-size:12px;text-align:center}',
+                '.ai-menu__auto-master{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #1f2430;border-radius:6px;background:#11141b}',
+                '.ai-menu__auto-master--on{border-color:rgba(59,130,246,.45);background:rgba(59,130,246,.07)}',
+                '.ai-menu__auto-master-text{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}',
+                '.ai-menu__auto-master-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#e6e8ec}',
+                '.ai-menu__auto-state{font-size:9px;letter-spacing:.1em;padding:1px 5px;border-radius:2px;background:#1f2430;color:#8b93a1}',
+                '.ai-menu__auto-master--on .ai-menu__auto-state{background:rgba(59,130,246,.2);color:#7dabf8}',
+                '.ai-menu__auto-master-sub{font-size:11px;line-height:1.45;color:#5c6472}',
+                '.ai-menu__auto-card{margin-top:10px;padding:11px 12px;border:1px solid #1f2430;border-radius:6px;background:#161a23}',
+                '.ai-menu__auto-card--muted{color:#5c6472;font-size:11px;line-height:1.5}',
+                '.ai-menu__auto-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}',
+                '.ai-menu__auto-card-title{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#5c6472}',
+                '.ai-menu__auto-scale{font-size:11px;font-weight:600;color:#7dabf8}',
+                '.ai-menu__auto-model{font-size:14px;font-weight:600;color:#e6e8ec;word-break:break-all}',
+                '.ai-menu__auto-size{font-size:11px;color:#8b93a1;margin-top:2px;font-variant-numeric:tabular-nums}',
+                '.ai-menu__auto-reason{font-size:11px;line-height:1.5;color:#8b93a1;margin-top:6px}',
+                '.ai-menu__auto-warn{font-size:11px;line-height:1.5;color:#fbbf24;margin-top:6px;padding-left:9px;border-left:2px solid rgba(251,191,36,.45)}',
+                '.ai-menu__auto-signals{margin-top:7px}',
+                '.ai-menu__auto-signals summary{cursor:pointer;font-size:10px;color:#5c6472;outline:none}',
+                '.ai-menu__auto-signals ul{margin:5px 0 0;padding-left:15px;font-size:10px;line-height:1.6;color:#5c6472}',
+                '.ai-menu__auto-row{display:flex;align-items:center;gap:12px;padding:9px 2px;border-bottom:1px solid #1a1e28}',
+                '.ai-menu__auto-row:last-of-type{border-bottom:none}',
+                '.ai-menu__auto-row--off{opacity:.45}',
+                '.ai-menu__auto-row-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}',
+                '.ai-menu__auto-row-label{font-size:12px;color:#e6e8ec}',
+                '.ai-menu__auto-row-sub{font-size:10px;line-height:1.45;color:#5c6472}',
+                '.ai-menu__auto-actions{display:flex;gap:8px;margin-top:14px}',
+                '.ai-menu__auto-actions .ai-menu__filter-btn{flex:1}',
 
                 '.ai-menu__close{background:transparent;border:1px solid transparent;color:#5c6472;font-size:18px;cursor:pointer;padding:0;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:3px;transition:color .15s,border-color .15s;line-height:1}',
                 '.ai-menu__close:hover{color:#e6e8ec;border-color:#2a3040}',

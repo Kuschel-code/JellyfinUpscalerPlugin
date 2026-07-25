@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.17
+# Jellyfin AI Upscaler Plugin v1.8.3.18
 
 [![Built with Claude Opus 5](https://img.shields.io/badge/Built%20with-Claude%20Opus%205-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.17):**
+**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.18):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -39,7 +39,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.17   │  │
+│  │  AI Upscaler Plugin v1.8.3.18   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -69,7 +69,7 @@ The plugin supports four upscaling modes:
 The **Scheduled Task** ("Scan & Upscale Library") runs daily at 3 AM and:
 1. Scans your library for videos below the configured resolution (default: 1080p)
 2. Skips already upscaled files (files with `_upscaled` suffix)
-3. **Auto-selects the best model** per video based on genre (anime vs live-action), resolution, and available multi-frame models
+3. **Auto-selects the best model** per video from genre (anime vs live-action), resolution, available multi-frame models **and what your hardware can actually run** — an over-budget pick is swapped for an affordable one with the reason written to the log, so a CPU-only NAS is never handed a full restoration net
 4. For each low-res video: extracts frames via FFmpeg → upscales through AI → reassembles into a new video
 5. With multi-frame VSR models (EDVR-M, RealBasicVSR, AnimeSR): uses 5-frame sliding window for temporal consistency
 6. Saves the upscaled version alongside the original (e.g., `Movie_upscaled.mkv`)
@@ -82,6 +82,22 @@ The **Scheduled Task** ("Scan & Upscale Library Images") runs weekly on Sunday a
 2. Uses different thresholds: posters < 600x900, backdrops < 1280x720
 3. Auto-scales: 4x for very low-res images, 2x otherwise
 4. Also available on-demand via `POST /api/upscaler/upscale-images/{itemId}`
+
+### Auto Mode — what it decides, and what it will not
+
+Auto mode is on by default. For every video it answers three questions and tells you the answer:
+
+| It decides | From | What it will **not** do |
+|---|---|---|
+| **Which model** | Content type (genre), source resolution, whether multi-frame models are loaded, and the hardware class the AI service reports | Override a model you selected yourself under *Preferred Anime / Live-Action Model* — that is annotated, never replaced |
+| **Which scale** | The source size. SD gets a full 4x restore; 720p and 1080p get 2x; a source that is already 4K is **cleaned up, not enlarged** | Overshoot that target silently — going past it is always a reported substitution with a reason you can read |
+| **Which filter** | Content type | Overwrite a preset you chose. Auto only suggests a look when you have not picked one. Filters are taste; models are technique |
+
+The reason is visible wherever the decision is: the dashboard, the in-player **Auto** tab, and the library-scan log (at Information level, because batch runs happen when nobody is watching).
+
+If the AI service is unreachable, auto does not block — it runs uncapped with the hardware class marked *unknown*.
+
+**In the player**, the panel's first tab is *Auto*: the decision for the file that is playing, plus live switches for auto mode, video filters, face restoration and real-time upscaling. Everything there takes effect immediately, without opening the full configuration page.
 
 ### Real-Time Upscaling During Playback
 When you press play, the plugin enhances the video in real-time. It offers several **honest tiers** (pick one, or let *Auto* choose) — each labelled for what it actually is, not marketing:
@@ -275,8 +291,8 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 | **Scale Factor** | 2x, 3x, or 4x |
 | **Min Resolution** | Threshold for scheduled task (default: 1920x1080) |
 | **Model Fallback Chain** | Comma-separated fallback models (e.g., `realesrgan-x4,span-x4,edsr-x4`) |
-| **Preferred Anime Model** | Model for anime content when auto-selection is enabled |
-| **Preferred Live-Action Model** | Model for live-action content when auto-selection is enabled |
+| **Preferred Anime Model** | Model for anime content (empty = let the heuristic decide). A value here is treated as a deliberate override: it is exempt from the hardware cap and the scale logic |
+| **Preferred Live-Action Model** | Model for live-action content (empty = let the heuristic decide). Same override semantics as above |
 | **Enable Processing Queue** | Priority queue with pause/resume (default: true) |
 | **Max Queue Size** | Maximum items in queue (default: 100) |
 | **Pause Queue During Playback** | Pause processing when user is watching (default: true) |

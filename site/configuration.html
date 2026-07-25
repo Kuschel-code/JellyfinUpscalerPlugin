@@ -10,7 +10,7 @@
 <body>
 <header class="topbar">
   <div class="topbar-inner">
-    <a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.13</span></a>
+    <a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.18</span></a>
     <nav class="nav" data-nav></nav>
     <div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div>
   </div>
@@ -42,14 +42,31 @@
   </table>
 
   <h3>Auto Model Selection</h3>
-  <p>New in v1.6.1.15. When enabled, the plugin calls <code>/Upscaler/recommend-model</code> at playback start and picks both model and color-filter preset per video based on genre tags.</p>
+  <p>On by default. The plugin calls <code>/Upscaler/recommend-model</code> and decides per video from four inputs: content type (genre), source resolution, whether multi-frame models are loaded, and <strong>the hardware class the AI service reports</strong>. The decision always comes back with the reason, shown on the dashboard, in the player's <em>Auto</em> tab, and in the library-scan log.</p>
+
+  <p>What it picks, before the hardware cap is applied:</p>
+  <table>
+    <thead><tr><th>Source</th><th>Model</th><th>Scale</th></tr></thead>
+    <tbody>
+      <tr><td>Already 4K or larger</td><td><code>dejpg-realplksr-1x</code> / <code>denoise-realplksr-1x</code></td><td>1× — cleaned up, not enlarged</td></tr>
+      <tr><td>Anime, batch, SD</td><td><code>realesrgan-animevideo-x4</code></td><td>4×</td></tr>
+      <tr><td>Anime, batch, 720p/1080p</td><td><code>apisr-anime-x2</code></td><td>2×</td></tr>
+      <tr><td>Anime, real time</td><td><code>anime-compact-x4</code></td><td>4×</td></tr>
+      <tr><td>Live action, batch, very low res</td><td><code>ultrasharp-v2-x4</code></td><td>4×</td></tr>
+      <tr><td>Live action, batch, SD</td><td><code>realesrgan-x4</code></td><td>4×</td></tr>
+      <tr><td>Live action, batch, 720p/1080p</td><td><code>realesrgan-x2-plus</code></td><td>2× — 4× here would target 8K</td></tr>
+      <tr><td>Live action, real time</td><td><code>span-x2</code> / <code>nomosuni-compact-x2</code></td><td>2×</td></tr>
+      <tr><td>Multi-frame models loaded, batch</td><td><code>edvr-m-x4</code> / <code>realbasicvsr-x4</code> / <code>animesr-v2-x4</code></td><td>4×</td></tr>
+    </tbody>
+  </table>
+
+  <p>Then two filters run over that choice:</p>
   <ul>
-    <li>Anime → <code>animesr-v2-x4</code> / <code>anime-compact-x4</code> + <em>Vivid</em> filter</li>
-    <li>Horror/thriller → <code>realesrgan-x4plus</code> + <em>Drama</em></li>
-    <li>Sci-fi → <code>hat-x4</code> + <em>Cyberpunk</em></li>
-    <li>Documentary/low-res → <code>swinir-m-x4</code> + <em>Sharp HD</em></li>
-    <li>Multi-frame batch → <code>edvr-m-x4</code> / <code>realbasicvsr-x4</code></li>
+    <li><strong>Hardware budget</strong> — models are banded Light / Medium / Heavy and matched against the service's tier (<code>strong-gpu</code>, <code>mid-gpu</code>, <code>igpu</code>, <code>strong-cpu</code>, <code>weak-cpu</code>). An over-budget pick is replaced by the best affordable one and reported: <em>"realesrgan-x4 suits the material but is too heavy for this weak CPU (no GPU)&nbsp;…"</em>. An unknown tier caps nothing — auto never blocks on an unreachable service.</li>
+    <li><strong>Scale ceiling</strong> — the substitute must not overshoot the target factor. If nothing satisfies both limits, the smallest available overshoot wins, and it is always reported, never silent.</li>
   </ul>
+
+  <p>A value in <em>Preferred Anime Model</em> or <em>Preferred Live-Action Model</em> is treated as a deliberate override: it is exempt from both filters and only annotated when it is heavy for your hardware. The colour-filter preset is chosen separately and is a <em>suggestion</em> — auto never overwrites a preset you picked.</p>
 
   <h2>AI Models tab</h2>
   <p>Live model catalog pulled from <code>/models</code>. Each row shows:</p>

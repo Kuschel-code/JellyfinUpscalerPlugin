@@ -7,13 +7,32 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.13</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.18</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.13 - Auto mode explains itself + reproducible builds <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.18 - Auto mode gets its own tab in the player <span class="tag success">latest</span></h2>
+  <p class="date">2026-07-25</p>
+  <ul>
+    <li><strong>Auto tab in the in-player panel</strong>, and it leads. Auto mode has been the default since v1.8.3.12, but the panel only ever asked the Custom-mode questions ("pick a model", "pick a filter"). It now answers the one that matters while a video is running: what auto decided for <em>this</em> file, at what scale, to what output size, and why - with the "what it looked at" signals and any substitution warning.</li>
+    <li><strong>Everything switchable without leaving the player</strong> - auto mode itself, video filters, face restoration and real-time upscaling, each writing straight to the config and taking effect immediately. Turning real-time upscaling on or off restarts the loop, because that is when it reads its settings.</li>
+    <li><strong>Re-apply to this video</strong> re-runs the decision and hands it to the running upscaler. No page reload, no full configuration page.</li>
+    <li>The filter row says what is true: auto <em>suggests</em> a look and never overwrites a preset you chose (v1.8.3.14 stopped it doing that silently).</li>
+  </ul>
+
+  <h2>v1.8.3.14 - v1.8.3.17 - Auto mode respects your hardware</h2>
+  <p class="date">2026-07-25</p>
+  <ul>
+    <li><strong>The two recommenders finally talk.</strong> Content selection ("what suits this material?") and the AI service's hardware advisor ("what can this box run?") were separate systems that never exchanged a word, so a CPU-only NAS could be handed a full restoration net. An over-budget pick now falls back with a stated reason: <em>"realesrgan-x4 suits the material but is too heavy for this weak CPU (no GPU) - clearreality-x4 was used instead so the job actually finishes."</em> An unknown hardware class caps nothing, and a model you picked yourself is never overridden.</li>
+    <li><strong>The scale you were shown was not the scale you got.</strong> The AI service ignores the requested factor and uses the model's native one, so the library scan logged <code>scale=2x</code> while auto ran a 4x model - a 1080p batch job silently produced 8K frames. The real factor is now read from the model, reported by the API and used by the job. A 4K source is <em>cleaned up, not enlarged</em>.</li>
+    <li><strong>Every downloadable model has a Get button</strong> (27 had none), with real byte progress instead of a hardcoded "~300 MB". "Not DL" split into <em>Not downloaded</em> and <em>Self-host only</em> - no public ONNX build, nothing to wait for.</li>
+    <li><strong>Pause / Resume / Cancel on the dashboard</strong>, not just the Jobs tab.</li>
+    <li>Three of these four releases exist because deploying to a real CPU-only server found what the unit tests had passed over: a shipped default that the resolver could not tell from a deliberate user choice, a substitution that overshot the target size, and a scale parser that knew only half the catalog's naming conventions. 273 tests now pin all of it.</li>
+  </ul>
+
+  <h2>v1.8.3.13 - Auto mode explains itself + reproducible builds</h2>
   <p class="date">2026-07-25</p>
   <ul>
     <li><strong>Auto transparency</strong> - the automatic model choice wrote its reasoning to a debug log that is off by default and returned a bare model name, so users saw a model they never picked. The dashboard now shows <code>Auto &rarr; model</code> with the reason, an expandable "what it looked at" list, and an <strong>amber warning when a model was substituted</strong> (the preferred multi-frame model has no public ONNX build). The in-player notification and the sidebar carry the reason too.</li>
