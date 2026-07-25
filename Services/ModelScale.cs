@@ -21,10 +21,22 @@ namespace JellyfinUpscalerPlugin.Services
     /// </summary>
     internal static class ModelScale
     {
-        // Catalog ids encode their native factor as a "-x<N>" suffix (realesrgan-x4,
-        // span-x2, lapsrn-x8). Anchored at the end so "realesrgan-x4-256" — a tiled
-        // 4x variant — still reads as 4x rather than 256.
-        private static readonly Regex ScaleSuffix = new(@"-x(\d+)(?:-\w+)?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        // The catalog uses BOTH orders, and reading only one cost v1.8.3.16 a live
+        // defect: the "x<N>" form (realesrgan-x4, span-x2, lapsrn-x8) and the "<N>x"
+        // form used by the 1x restoration models (dejpg-realplksr-1x) and by
+        // OpenModelDB imports (omdb-4x-nomos8k-atd). With only the first pattern every
+        // 1x model read as "unknown", so the resolver could not tell that it does not
+        // enlarge at all — and a 4K source got upscaled anyway.
+        //
+        // End-anchored patterns come first so "realesrgan-x4-256", a tiled 4x variant,
+        // reads as 4x and not 256x; the mid-id patterns then catch "realesrgan-x2-plus".
+        private static readonly Regex[] ScalePatterns =
+        {
+            new(@"-x(\d+)(?:-\w+)?$", RegexOptions.Compiled | RegexOptions.IgnoreCase),
+            new(@"-(\d+)x(?:-\w+)?$", RegexOptions.Compiled | RegexOptions.IgnoreCase),
+            new(@"-x(\d+)-", RegexOptions.Compiled | RegexOptions.IgnoreCase),
+            new(@"-(\d+)x-", RegexOptions.Compiled | RegexOptions.IgnoreCase),
+        };
 
         /// <summary>
         /// Native scale factor encoded in a model id, or 0 when the id does not say.
@@ -35,18 +47,17 @@ namespace JellyfinUpscalerPlugin.Services
         {
             if (string.IsNullOrWhiteSpace(modelId)) return 0;
 
-            // "realesrgan-x2-plus" carries the factor in the middle, not at the end.
-            var match = ScaleSuffix.Match(modelId);
-            if (!match.Success)
+            foreach (var pattern in ScalePatterns)
             {
-                match = Regex.Match(modelId, @"-x(\d+)-", RegexOptions.IgnoreCase);
-                if (!match.Success) return 0;
+                var match = pattern.Match(modelId);
+                if (!match.Success) continue;
+                if (int.TryParse(match.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var scale)
+                    && scale >= 1 && scale <= 8)
+                {
+                    return scale;
+                }
             }
-
-            return int.TryParse(match.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var scale)
-                   && scale >= 1 && scale <= 8
-                ? scale
-                : 0;
+            return 0;
         }
 
         /// <summary>

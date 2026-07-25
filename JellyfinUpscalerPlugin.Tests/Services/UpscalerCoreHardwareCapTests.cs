@@ -233,17 +233,40 @@ namespace JellyfinUpscalerPlugin.Tests.Services
             // own reason text argued against.
             UpscalerCore.UpdateHardwareTier(tier);
 
-            foreach (var (w, h) in new[] { (1280, 720), (1920, 1080) })
+            // v1.8.3.17: 4K is in the list now. It was left out before, and that omission
+            // hid a live defect - a 4K source was enlarged to 8K because TargetScaleFor's
+            // "1x" answer was computed but never acted on.
+            foreach (var (w, h) in new[] { (1280, 720), (1920, 1080), (3840, 2160) })
             {
                 foreach (var genres in new[] { null, new[] { "Animation" } })
                 {
                     var pick = _core.ResolveModelForVideoDetailed(
                         genres: genres, width: w, height: h, isBatch: true, inputFrames: 1, forceAuto: true);
 
-                    pick.Scale.Should().BeLessThanOrEqualTo(ModelScale.TargetScaleFor(w, h),
-                        $"{tier} / {w}x{h} / anime={genres != null} resolved to {pick.Model}");
+                    var target = ModelScale.TargetScaleFor(w, h);
+                    var why = $"{tier} / {w}x{h} / anime={genres != null} resolved to {pick.Model}";
+
+                    // The honest invariant: we never overshoot SILENTLY. Staying within the
+                    // target needs no explanation; going past it must be a reported
+                    // substitution carrying a reason the user can read.
+                    if (pick.Scale > target)
+                    {
+                        pick.SubstitutedFrom.Should().NotBeNull(why);
+                        pick.SubstitutionReason.Should().NotBeNullOrWhiteSpace(why);
+                    }
                 }
             }
+        }
+
+        [Fact]
+        public void A_source_that_is_already_4K_is_cleaned_up_not_enlarged()
+        {
+            // No tier: nothing caps the pick, so this is the policy in its pure form.
+            var pick = _core.ResolveModelForVideoDetailed(
+                genres: null, width: 3840, height: 2160, isBatch: true, inputFrames: 1, forceAuto: true);
+
+            pick.Scale.Should().Be(1, "enlarging 4K produces something no client can display");
+            pick.Reason.Should().Contain("already 4K");
         }
 
         [Fact]

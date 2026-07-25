@@ -86,6 +86,9 @@ namespace JellyfinUpscalerPlugin.Services
             ["realesrgan-animevideo-x4"] = Weight.Medium,
             ["realesrgan-x4-256"] = Weight.Medium,
             ["apisr-anime-x2"] = Weight.Medium,
+            // 1x restoration: no enlargement, but a full RealPLKSR net per frame.
+            ["dejpg-realplksr-1x"] = Weight.Medium,
+            ["denoise-realplksr-1x"] = Weight.Medium,
 
             // Heavy — full restoration nets and multi-frame VSR
             ["realesrgan-x4"] = Weight.Heavy,
@@ -157,9 +160,12 @@ namespace JellyfinUpscalerPlugin.Services
         {
             if (max >= Weight.Medium)
             {
+                // The 1x entries are last on purpose: they only win when the caller's
+                // target factor is 1 (source already 4K), because the scale filter in
+                // UpscalerCore rejects everything above the target before reaching them.
                 return isAnime
-                    ? new[] { "realesrgan-animevideo-x4", "apisr-anime-x2", "anime-compact-x4", "span-x2" }
-                    : new[] { "nomos2-realplksr-x4", "span-x4", "lsdir-compact-x4", "span-x2" };
+                    ? new[] { "realesrgan-animevideo-x4", "apisr-anime-x2", "anime-compact-x4", "span-x2", "denoise-realplksr-1x" }
+                    : new[] { "nomos2-realplksr-x4", "span-x4", "lsdir-compact-x4", "span-x2", "dejpg-realplksr-1x", "denoise-realplksr-1x" };
             }
             return isAnime
                 ? new[] { "anime-compact-x4", "nomosuni-compact-x2", "fsrcnn-x2" }

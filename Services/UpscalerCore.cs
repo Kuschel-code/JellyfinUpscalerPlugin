@@ -520,6 +520,17 @@ namespace JellyfinUpscalerPlugin.Services
                 return new AutoPick(picked, reason, signals.ToArray(), preferred, why, ModelScale.NativeScaleOf(picked));
             }
 
+            // v1.8.3.17 - ModelScale.TargetScaleFor has always answered "1x" for sources
+            // that are already 4K, but no branch acted on it: only the substitution filter
+            // read it, so a 4K source was still enlarged to 8K. Enlarging 4K gains nothing
+            // a client can show; cleaning up compression artefacts does.
+            if (ModelScale.TargetScaleFor(width, height) <= 1)
+            {
+                return Pick($"{width}x{height} is already 4K - clean up compression artefacts instead of enlarging.",
+                    isAnime ? "denoise-realplksr-1x" : "dejpg-realplksr-1x",
+                    "denoise-realplksr-1x", "nomosuni-compact-x2");
+            }
+
             if (isBatch && inputFrames > 1)
             {
                 if (isAnime)

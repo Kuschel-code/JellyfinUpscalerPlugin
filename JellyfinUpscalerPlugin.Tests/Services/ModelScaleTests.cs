@@ -21,6 +21,11 @@ namespace JellyfinUpscalerPlugin.Tests.Services
         [InlineData("realesrgan-x2-plus", 2)]     // factor sits in the middle, not at the end
         [InlineData("realesrgan-x4-256", 4)]      // tiled variant: 4x, not 256x
         [InlineData("anime-compact-x4", 4)]
+        // v1.8.3.17: the catalog also uses the reversed "<N>x" order. Missing it left
+        // every 1x restoration model at "unknown", so a 4K source was enlarged anyway.
+        [InlineData("dejpg-realplksr-1x", 1)]
+        [InlineData("denoise-realplksr-1x", 1)]
+        [InlineData("omdb-4x-nomos8k-atd", 4)]
         public void NativeScaleOf_reads_the_catalog_naming_convention(string modelId, int expected)
         {
             ModelScale.NativeScaleOf(modelId).Should().Be(expected);
@@ -30,7 +35,6 @@ namespace JellyfinUpscalerPlugin.Tests.Services
         [InlineData(null)]
         [InlineData("")]
         [InlineData("clearreality")]              // no suffix at all
-        [InlineData("omdb-4x-nomos8k-atd")]       // imported ids do not follow the convention
         public void NativeScaleOf_says_unknown_instead_of_guessing(string? modelId)
         {
             // Returning a plausible-looking 2 here would recreate the exact bug this
