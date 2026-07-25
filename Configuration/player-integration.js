@@ -1596,6 +1596,7 @@
 
                 // 2. What it decided for THIS video, with the reasoning the resolver returns.
                 if (pick && pick.success) {
+                    var scaleNum = parseInt(pick.recommended_scale, 10) || 0;
                     var over = pick.substitution_reason
                         ? '<div class="ai-menu__auto-warn">' + esc(pick.substitution_reason) + '</div>' : '';
                     var sig = (pick.signals && pick.signals.length)
@@ -1606,7 +1607,12 @@
                     html += '<div class="ai-menu__auto-card">' +
                                 '<div class="ai-menu__auto-card-head">' +
                                     '<span class="ai-menu__auto-card-title">' + (autoOn ? 'Running now' : 'Auto would pick') + '</span>' +
-                                    (pick.recommended_scale ? '<span class="ai-menu__auto-scale">' + pick.recommended_scale + '&times;</span>' : '') +
+                                    // Coerced rather than escaped: this is the only numeric
+                                    // interpolation in the pane, and "every value entering
+                                    // innerHTML is escaped or coerced" is a rule you can audit
+                                    // at a glance - "this one is safe because of where it comes
+                                    // from" is not.
+                                    (scaleNum ? '<span class="ai-menu__auto-scale">' + scaleNum + '&times;</span>' : '') +
                                 '</div>' +
                                 '<div class="ai-menu__auto-model">' + esc(pick.recommended_model || '—') + '</div>' +
                                 (pick.output_size ? '<div class="ai-menu__auto-size">' + esc(pick.output_size) + '</div>' : '') +
