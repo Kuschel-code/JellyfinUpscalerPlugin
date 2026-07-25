@@ -277,6 +277,7 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
             var scaleFactor = config.ScaleFactor > 0 ? config.ScaleFactor : 2;
             var successCount = 0;
             var failCount = 0;
+            var scaleMismatchLogged = false;
 
             _logger.LogInformation(
                 "AI Upscaler: Starting upscaling of {Count} videos, scale={Scale}x, service input_frames={InputFrames}",
@@ -333,9 +334,15 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                     var nativeScale = Services.ModelScale.NativeScaleOf(model);
                     if (nativeScale > 0 && nativeScale != scaleFactor)
                     {
-                        _logger.LogInformation(
-                            "Model {Model} is a {Native}x model - the configured {Configured}x is not applied to AI upscaling.",
-                            model, nativeScale, scaleFactor);
+                        // Same model for the whole run, so this is a property of the config,
+                        // not of the file - say it once instead of once per episode.
+                        if (!scaleMismatchLogged)
+                        {
+                            scaleMismatchLogged = true;
+                            _logger.LogInformation(
+                                "Model {Model} is a {Native}x model - the configured {Configured}x is not applied to AI upscaling.",
+                                model, nativeScale, scaleFactor);
+                        }
                         effectiveScale = nativeScale;
                     }
                 }

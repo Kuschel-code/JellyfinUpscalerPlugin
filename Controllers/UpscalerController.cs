@@ -814,13 +814,21 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
+        // The hardware tier changes when the box changes, not when the video does.
+        // Refreshing it per request would put a second HTTP round-trip (and, on a dead
+        // service, a second timeout) in front of every auto decision.
+        private static DateTime _tierCheckedUtc = DateTime.MinValue;
+        private static readonly TimeSpan TierTtl = TimeSpan.FromMinutes(10);
+
         /// <summary>
-        /// v1.8.3.14 - refresh the cached hardware tier before an auto decision. Short
-        /// timeout and fully non-fatal: if the service is slow or down, the resolver simply
-        /// runs uncapped (its "Hardware: unknown" signal says so).
+        /// v1.8.3.14 - refresh the cached hardware tier if it is stale. Short timeout and
+        /// fully non-fatal: if the service is slow or down, the resolver simply runs
+        /// uncapped (its "Hardware: unknown" signal says so).
         /// </summary>
         private async Task RefreshHardwareTierAsync()
         {
+            if (DateTime.UtcNow - _tierCheckedUtc < TierTtl) return;
+            _tierCheckedUtc = DateTime.UtcNow;   // set first: a failing service must not retry per request
             try
             {
                 var baseUrl = GetValidatedServiceUrl();

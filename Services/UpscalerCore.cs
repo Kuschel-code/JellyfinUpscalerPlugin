@@ -465,6 +465,7 @@ namespace JellyfinUpscalerPlugin.Services
                     string? affordable = null;
                     foreach (var candidate in fallbacks)
                     {
+                        if (string.IsNullOrWhiteSpace(candidate)) continue;
                         if (ModelAvailability.IsKnownUnavailable(candidate)) continue;
                         if (!HardwareBudget.FitsTier(candidate, tier)) continue;
                         affordable = candidate;
