@@ -230,7 +230,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.8.3.14 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.8.3.15 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -603,7 +603,7 @@
                             <div class="fieldDescription" style="margin-bottom:0.5rem;"><b>Default: off.</b> When enabled, the plugin picks the best AI model and color-filter preset for each video on playback start — using genre (anime/horror/sci-fi/documentary), source resolution, and multi-frame capability. Overrides your chosen model only for the current video; your saved preferences remain unchanged. Batch library scans follow the same heuristic when active.</div>
                             <div class="inputContainer"><label class="inputLabel" for="ModelFallbackChain">Model Fallback Chain</label><input type="text" id="ModelFallbackChain" placeholder="realesrgan-x4,span-x4,edsr-x4" /><div class="fieldDescription">Comma-separated model names. If primary fails, tries next in chain.</div></div>
                             <div class="form-row" style="margin-top:0.5rem;">
-                                <div class="form-col inputContainer"><label class="inputLabel" for="PreferredAnimeModel">Preferred Anime Model</label><select id="PreferredAnimeModel" is="emby-select"><option value="">Auto (use heuristic)</option></select><div class="fieldDescription">Override for anime content. Default: anime-compact-x4. Populated from /Upscaler/models on page load (anime category only).</div></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="PreferredAnimeModel">Preferred Anime Model</label><select id="PreferredAnimeModel" is="emby-select"><option value="">Auto (use heuristic)</option></select><div class="fieldDescription">Override for anime content (empty = auto-select per heuristic). Populated from /Upscaler/models on page load (anime category only).</div></div>
                                 <div class="form-col inputContainer"><label class="inputLabel" for="PreferredLiveActionModel">Preferred Live-Action Model</label><select id="PreferredLiveActionModel" is="emby-select"><option value="">Auto (use heuristic)</option></select><div class="fieldDescription">Override for live-action content (empty = auto-select per heuristic).</div></div>
                             </div>
                         </div>
@@ -2172,7 +2172,7 @@
                 if (faceModelEl) config.FaceRestoreModel = faceModelEl.value;
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.8.3.14';
+                config.PluginVersion = '1.8.3.15';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');

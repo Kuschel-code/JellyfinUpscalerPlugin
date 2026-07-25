@@ -157,6 +157,70 @@ namespace JellyfinUpscalerPlugin.Tests.Services
             pick.Scale.Should().Be(4, "small sources are exactly where a 4x restore pays off");
         }
 
+        // ------------------------------------------------------------------
+        // Found by live-testing v1.8.3.14 on a CPU-only NAS (tier weak-cpu).
+        // Every one of these passed the unit tests and still misbehaved in
+        // production, so they are pinned here.
+        // ------------------------------------------------------------------
+
+        [Fact]
+        public void Anime_batch_on_1080p_does_not_target_8K_either()
+        {
+            // The first cut only fixed the live-action branch; anime 1920x1080 still
+            // resolved to a 4x model, i.e. 7680x4320.
+            var pick = _core.ResolveModelForVideoDetailed(
+                genres: new[] { "Animation" }, width: 1920, height: 1080,
+                isBatch: true, inputFrames: 1, forceAuto: true);
+
+            pick.Scale.Should().BeLessThanOrEqualTo(2,
+                "anime is not exempt from 4x-on-1080p being 8K");
+        }
+
+        [Fact]
+        public void A_weak_cpu_gets_the_best_light_model_not_the_crudest()
+        {
+            // Live finding: the branch fallback chains contain no Light model, so the
+            // walk fell through to the last-resort fsrcnn-x2 for EVERY live-action job -
+            // while clearreality-x4 is Light, 4x and ~32x faster than realesrgan-x4.
+            UpscalerCore.UpdateHardwareTier("weak-cpu");
+
+            var pick = _core.ResolveModelForVideoDetailed(
+                genres: null, width: 640, height: 480, isBatch: true, inputFrames: 1, forceAuto: true);
+
+            pick.Model.Should().NotBe("fsrcnn-x2",
+                "the last resort must stay a last resort, not the everyday answer");
+            HardwareBudget.WeightOf(pick.Model).Should().Be(HardwareBudget.Weight.Light);
+        }
+
+        [Fact]
+        public void A_weak_cpu_anime_job_gets_an_anime_model()
+        {
+            UpscalerCore.UpdateHardwareTier("weak-cpu");
+
+            var pick = _core.ResolveModelForVideoDetailed(
+                genres: new[] { "Animation" }, width: 1920, height: 1080,
+                isBatch: true, inputFrames: 1, forceAuto: true);
+
+            HardwareBudget.WeightOf(pick.Model).Should().Be(HardwareBudget.Weight.Light);
+            pick.Model.Should().NotBe("fsrcnn-x2", "a generic 2x model is a poor answer for anime");
+        }
+
+        [Fact]
+        public void A_reason_never_names_a_model_that_was_substituted_away()
+        {
+            // Live finding: the reason read "-> Real-ESRGAN 4x." next to a fsrcnn-x2
+            // pick. Reasons now describe the MATERIAL, so they stay true whatever the
+            // budget filter does with them.
+            UpscalerCore.UpdateHardwareTier("weak-cpu");
+
+            foreach (var pick in new[] { LiveActionRealtimeSd(), LiveActionBatchHd() })
+            {
+                if (pick.SubstitutedFrom == null) continue;
+                pick.Reason.Should().NotContain(pick.SubstitutedFrom,
+                    $"the reason must not advertise '{pick.SubstitutedFrom}', which is not what runs");
+            }
+        }
+
         [Fact]
         public void The_capped_fallback_is_always_a_model_the_service_can_actually_load()
         {

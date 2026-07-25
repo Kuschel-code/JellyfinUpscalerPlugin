@@ -223,10 +223,17 @@ namespace JellyfinUpscalerPlugin
         /// <summary>Comma-separated fallback models if primary fails (e.g. "realesrgan-x4,span-x4").</summary>
         public string ModelFallbackChain { get; set; } = "";
 
-        /// <summary>Override model for anime content. Defaults to anime-compact-x4 (5MB, available=true)
-        /// to avoid the auto-mode falling through to animesr-v2-x4 (self-host required).
-        /// Set to empty string to opt out of the override and let auto-selection pick.</summary>
-        public string PreferredAnimeModel { get; set; } = "anime-compact-x4";
+        /// <summary>Override model for anime content (empty = auto-select).
+        ///
+        /// v1.8.3.15: this used to default to anime-compact-x4 to stop auto-mode falling
+        /// through to animesr-v2-x4, which needs self-hosting. ModelAvailability
+        /// .KnownUnavailable has handled that centrally since v1.6.1.20, so the workaround
+        /// was obsolete - and harmful: a shipped default is indistinguishable from a
+        /// deliberate user override, so EVERY anime pick took the override path, skipping
+        /// both the hardware budget and the scale logic. A CPU-only box was handed a 4x
+        /// model on 1080p (7680x4320) with no way for auto-mode to intervene.
+        /// Existing installs keep their persisted value; only fresh ones get the heuristic.</summary>
+        public string PreferredAnimeModel { get; set; } = "";
 
         /// <summary>Override model for live-action content (empty = auto-select).</summary>
         public string PreferredLiveActionModel { get; set; } = "";
@@ -541,6 +548,6 @@ namespace JellyfinUpscalerPlugin
         // ── Version Tracking ─────────────────────────────────────────────
 
         /// <summary>Current plugin version string for webhook payloads and diagnostics.</summary>
-        public string PluginVersion { get; set; } = "1.8.3.14";
+        public string PluginVersion { get; set; } = "1.8.3.15";
     }
 }

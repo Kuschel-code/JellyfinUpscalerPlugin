@@ -135,14 +135,14 @@ namespace JellyfinUpscalerPlugin.Tests.Services
         [Theory]
         [InlineData(true)]   // batch
         [InlineData(false)]  // realtime
-        public void Anime_SingleFrame_HonorsPreferredAnimeModel_Override(bool isBatch)
+        public void Anime_SingleFrame_ReturnsAnAnimeModel(bool isBatch)
         {
-            // The default for PreferredAnimeModel is "anime-compact-x4" (set in PluginConfiguration.cs).
-            // ResolveModelForVideo must read Config.PreferredAnimeModel and route through PickAvailable.
-            // This test does not (and cannot easily) mock Plugin.Instance.Configuration, so it relies
-            // on the production default being "anime-compact-x4". If the override is empty/null,
-            // the heuristic falls through to realesrgan-animevideo-x4 (batch) or anime-compact-x4 (realtime).
-
+            // v1.8.3.15: PreferredAnimeModel used to default to "anime-compact-x4", and this
+            // test asserted that default. The default was removed - a shipped value is
+            // indistinguishable from a deliberate override, so every anime pick took the
+            // override path and skipped the hardware budget and the scale logic entirely.
+            // With no override the heuristic runs, so what this test can still guarantee is
+            // that an anime source gets an anime-appropriate model that actually exists.
             var model = _core.ResolveModelForVideo(
                 genres: new[] { "Animation" },
                 width: 1920, height: 1080,
@@ -150,11 +150,11 @@ namespace JellyfinUpscalerPlugin.Tests.Services
                 inputFrames: 1,
                 forceAuto: true);
 
-            // Either the default override "anime-compact-x4" is honored,
-            // OR the heuristic-fallback returns one of the two known-good anime models.
             model.Should().BeOneOf(
                 "anime-compact-x4",
-                "realesrgan-animevideo-x4");
+                "realesrgan-animevideo-x4",
+                "apisr-anime-x2",
+                "span-x2");
         }
 
         // ──────────────────────────────────────────────────────────────────────

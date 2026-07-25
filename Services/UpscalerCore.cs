@@ -471,6 +471,24 @@ namespace JellyfinUpscalerPlugin.Services
                         affordable = candidate;
                         break;
                     }
+                    // The branch fallbacks carry no Light option, so on a weak CPU every
+                    // job used to collapse to the crudest model in the catalog. Walk a
+                    // quality-ordered ladder within the affordable weight class first
+                    // (found by live-testing v1.8.3.14 on a CPU-only NAS).
+                    if (affordable == null)
+                    {
+                        var max = HardwareBudget.MaxWeightFor(tier);
+                        if (max != null)
+                        {
+                            foreach (var candidate in HardwareBudget.AffordableLadder(max.Value, isAnime))
+                            {
+                                if (ModelAvailability.IsKnownUnavailable(candidate)) continue;
+                                if (!HardwareBudget.FitsTier(candidate, tier)) continue;
+                                affordable = candidate;
+                                break;
+                            }
+                        }
+                    }
                     // Last resort: the lightest model in the catalog always runs.
                     affordable ??= "fsrcnn-x2";
                     return new AutoPick(affordable, reason, signals.ToArray(), overBudget,
@@ -515,8 +533,16 @@ namespace JellyfinUpscalerPlugin.Services
                 }
                 if (isBatch)
                 {
-                    return Pick("Anime content in a batch job -> Real-ESRGAN anime-video (quality first).",
-                        "realesrgan-animevideo-x4", "anime-compact-x4", "realesrgan-x4");
+                    // Live-test finding: this branch still handed 1080p a 4x model, i.e.
+                    // 7680x4320. The live-action side already refuses that; anime is not
+                    // a special case just because the source is drawn.
+                    if (ModelScale.TargetScaleFor(width, height) >= 4)
+                    {
+                        return Pick("Anime content in a batch job - quality first.",
+                            "realesrgan-animevideo-x4", "anime-compact-x4", "realesrgan-x4");
+                    }
+                    return Pick($"Anime batch job on {(width > 0 ? $"{width}x{height}" : "large")} material - 2x; a 4x pass would target 8K for no visible gain.",
+                        "apisr-anime-x2", "span-x2", "realesrgan-animevideo-x4");
                 }
                 return Pick("Anime content in real time -> lightweight anime compact model (speed first).",
                     "anime-compact-x4", "realesrgan-animevideo-x4", "realesrgan-x4");
@@ -543,21 +569,21 @@ namespace JellyfinUpscalerPlugin.Services
 
             if (isVeryLowRes)
             {
-                return Pick($"Very low resolution ({width}x{height}) in a batch job -> UltraSharp V2 for the best restore quality.",
+                return Pick($"Very low resolution ({width}x{height}) in a batch job - restore quality comes first.",
                     "ultrasharp-v2-x4", "nomos2-realplksr-x4", "realesrgan-x4");
             }
             if (isLowRes)
             {
-                return Pick($"Low resolution ({width}x{height}) in a batch job -> Real-ESRGAN 4x.", "realesrgan-x4");
+                return Pick($"Low resolution ({width}x{height}) in a batch job - a full 4x restore is worth the time.", "realesrgan-x4");
             }
             // v1.8.3.14 - 4x on 1080p is 8K: four times the compute of a 2x pass for an
             // output no client can display. The 4x default only earns its cost on small
             // sources, which the two low-res branches above already cover.
             if (ModelScale.TargetScaleFor(width, height) >= 4)
             {
-                return Pick("General batch job -> Real-ESRGAN 4x (balanced default).", "realesrgan-x4");
+                return Pick("General batch job - balanced 4x default.", "realesrgan-x4");
             }
-            return Pick($"Batch job on {(width > 0 ? $"{width}x{height}" : "large")} material -> Real-ESRGAN 2x; a 4x pass would target 8K for no visible gain.",
+            return Pick($"Batch job on {(width > 0 ? $"{width}x{height}" : "large")} material - 2x; a 4x pass would target 8K for no visible gain.",
                 "realesrgan-x2-plus", "span-x2", "realesrgan-x4");
         }
 

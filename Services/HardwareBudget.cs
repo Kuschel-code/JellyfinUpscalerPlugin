@@ -143,6 +143,29 @@ namespace JellyfinUpscalerPlugin.Services
             return WeightOf(modelId) <= max.Value;
         }
 
+        /// <summary>
+        /// v1.8.3.14 (live-test fix) - ordered stand-ins that fit <paramref name="max"/>.
+        ///
+        /// The first cut only walked a branch's own declared fallbacks, and those chains
+        /// contain no Light model: on a weak CPU every live-action job collapsed to the
+        /// last-resort fsrcnn-x2, the crudest thing in the catalog, even though
+        /// clearreality-x4 is Light, 4x, and measured ~32x faster than realesrgan-x4 per
+        /// CPU tile. This ladder is what the branch fallbacks cannot express: quality
+        /// order WITHIN a weight class.
+        /// </summary>
+        public static string[] AffordableLadder(Weight max, bool isAnime)
+        {
+            if (max >= Weight.Medium)
+            {
+                return isAnime
+                    ? new[] { "realesrgan-animevideo-x4", "apisr-anime-x2", "anime-compact-x4", "span-x2" }
+                    : new[] { "nomos2-realplksr-x4", "span-x4", "lsdir-compact-x4", "span-x2" };
+            }
+            return isAnime
+                ? new[] { "anime-compact-x4", "nomosuni-compact-x2", "fsrcnn-x2" }
+                : new[] { "clearreality-x4", "nomosuni-compact-x2", "fsrcnn-x2" };
+        }
+
         /// <summary>Human-readable tier label for signals and substitution reasons.</summary>
         public static string DescribeTier(string? tier) => (tier ?? string.Empty).Trim().ToLowerInvariant() switch
         {
