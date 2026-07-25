@@ -13,7 +13,14 @@
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.18 - Auto mode gets its own tab in the player <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.19 - The Auto tab no longer states a default as a fact <span class="tag success">latest</span></h2>
+  <p class="date">2026-07-25</p>
+  <ul>
+    <li>Browser-testing the new tab against a live server caught it reporting <em>"RUNNING NOW / nomosuni-compact-x2 / HD content in real time"</em> on a page where no video was playing. With no video element the resolver is handed 0&times;0 and falls through to its HD branch &mdash; and the pane presented that fallback as a decision about the file in front of you, while printing the literal string "unknown output size" as though it were data.</li>
+    <li>Three headings now, matched to what is actually known: <strong>Running now</strong>, <strong>Auto would pick</strong> (auto off), and <strong>Default pick &mdash; start playback for this file</strong>. In the last state the output size and the resolution-derived reason are omitted rather than printed, because both would be fabricated. The model, its scale and the signals stay: <em>"Resolution: unknown"</em> is true and useful.</li>
+  </ul>
+
+  <h2>v1.8.3.18 - Auto mode gets its own tab in the player</h2>
   <p class="date">2026-07-25</p>
   <ul>
     <li><strong>Auto tab in the in-player panel</strong>, and it leads. Auto mode has been the default since v1.8.3.12, but the panel only ever asked the Custom-mode questions ("pick a model", "pick a filter"). It now answers the one that matters while a video is running: what auto decided for <em>this</em> file, at what scale, to what output size, and why - with the "what it looked at" signals and any substitution warning.</li>
