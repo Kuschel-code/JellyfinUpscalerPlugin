@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.8.3.14",
+        "changelog": "v1.8.3.14: Auto mode respects your hardware, and tells the truth about scale. The content heuristic and the AI service's hardware advisor were two separate recommenders that never spoke to each other, so a CPU-only NAS could be handed a full restoration net; the hardware class is now cached and an over-budget pick falls back with a stated reason (an unknown class caps nothing, and a model you picked yourself is never overridden). The service ignores the requested scale and uses the model's native factor, so the library scan logged scale=2x while auto ran a 4x model - a 1080p batch job silently produced 8K frames; the real factor is now read from the model, reported by the API, used by the job, and a 1080p batch no longer defaults to 4x. Every downloadable catalog model gets a Get button (27 of them had none) with real byte progress, and 'Not DL' is split into 'Not downloaded' vs 'Self-host only'. Pause/Resume/Cancel added to the dashboard activity strip. Auto mode no longer overwrites a filter preset you chose. Batch runs log their model reasoning at Information instead of Debug. Stray scrollbar next to the tab row removed. 262 tests green.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.3.14/JellyfinUpscalerPlugin-v1.8.3.14.zip",
+        "checksum": "ff0e4f42c0b1c981c4d599d0e5b066ea",
+        "timestamp": "2026-07-25T01:45:00.000Z"
+      },
+      {
         "version": "1.8.3.13",
         "changelog": "v1.8.3.13: Auto mode explains itself + reproducible builds. The automatic model choice now returns Reason, Signals and SubstitutedFrom instead of writing them to a debug log that is off by default: the dashboard shows Auto -> model with the reason, an expandable list of what it looked at, and an amber warning when a preferred model was substituted (Custom mode is labelled honestly instead of advertising an unused pick). New activity strip joins running file, phase, progress and model into one line (paused jobs shown as paused). The sidebar's hardware recommendation carries a reason too. Build side: APP_VERSION defaults removed from all 7 Dockerfiles (six said 1.8.2, one 1.8.3.8 - the service reported a wrong version) with a release-guard assert, new weekly lock workflow resolving each Python layer inside its real base image, and CI now builds five image variants per push instead of one. New docs/DOCKER-IMAGES.md with real image sizes and the AMD stack CVE + exit trigger. Tests: xUnit 199, pytest 112.",
         "targetAbi": "10.11.8.0",
