@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.8.3.18';
+    const PLUGIN_VERSION = '1.8.3.19';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -1539,6 +1539,10 @@
             var video = this.findVideoElement();
             var w = (video && video.videoWidth) | 0;
             var h = (video && video.videoHeight) | 0;
+            // v1.8.3.19 - whether the answer is about THIS file or a generic default.
+            // With no video element the resolver is handed 0x0 and falls through to its
+            // HD branch; presenting that as "running now" would state a default as a fact.
+            var known = w > 0 && h > 0;
             var itemId = this._getPlayingItemId();
             var fetchItem = itemId && window.ApiClient
                 ? window.ApiClient.getItem(ApiClient.getCurrentUserId(), itemId).catch(function() { return null; })
@@ -1549,7 +1553,11 @@
                 var url = ApiClient.getUrl('Upscaler/recommend-model') +
                     '?width=' + w + '&height=' + h + '&isBatch=false' +
                     (genres ? ('&genres=' + encodeURIComponent(genres)) : '');
-                return ApiClient.ajax({ type: 'GET', url: url, dataType: 'json' });
+                return ApiClient.ajax({ type: 'GET', url: url, dataType: 'json' })
+                    .then(function(res) {
+                        if (res) { res._sourceKnown = known; }
+                        return res;
+                    });
             }).catch(function() { return null; });
         },
 
@@ -1604,9 +1612,15 @@
                           pick.signals.map(function(s) { return '<li>' + esc(s) + '</li>'; }).join('') +
                           '</ul></details>'
                         : '';
+                    // v1.8.3.19 - three honest headings instead of one confident one.
+                    // Without video dimensions the answer is a default, not a decision
+                    // about this file, and the output size is unknowable - so it is
+                    // omitted rather than printed as the string "unknown output size".
+                    var head = !pick._sourceKnown ? 'Default pick - start playback for this file'
+                             : autoOn ? 'Running now' : 'Auto would pick';
                     html += '<div class="ai-menu__auto-card">' +
                                 '<div class="ai-menu__auto-card-head">' +
-                                    '<span class="ai-menu__auto-card-title">' + (autoOn ? 'Running now' : 'Auto would pick') + '</span>' +
+                                    '<span class="ai-menu__auto-card-title">' + head + '</span>' +
                                     // Coerced rather than escaped: this is the only numeric
                                     // interpolation in the pane, and "every value entering
                                     // innerHTML is escaped or coerced" is a rule you can audit
@@ -1615,8 +1629,8 @@
                                     (scaleNum ? '<span class="ai-menu__auto-scale">' + scaleNum + '&times;</span>' : '') +
                                 '</div>' +
                                 '<div class="ai-menu__auto-model">' + esc(pick.recommended_model || '—') + '</div>' +
-                                (pick.output_size ? '<div class="ai-menu__auto-size">' + esc(pick.output_size) + '</div>' : '') +
-                                (pick.reason ? '<div class="ai-menu__auto-reason">' + esc(pick.reason) + '</div>' : '') +
+                                (pick._sourceKnown && pick.output_size ? '<div class="ai-menu__auto-size">' + esc(pick.output_size) + '</div>' : '') +
+                                (pick._sourceKnown && pick.reason ? '<div class="ai-menu__auto-reason">' + esc(pick.reason) + '</div>' : '') +
                                 over + sig +
                             '</div>';
                 } else {
