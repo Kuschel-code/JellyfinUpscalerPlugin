@@ -424,6 +424,9 @@ namespace JellyfinUpscalerPlugin.Controllers
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                 using var response = await GetAiServiceClient().GetAsync($"{baseUrl}/recommend", cts.Token);
                 var json = await response.Content.ReadAsStringAsync();
+                // v1.8.3.14 - remember the hardware tier so the (synchronous) content
+                // resolver can cap its picks without ever making a network call.
+                CacheHardwareTier(json);
                 return new ContentResult
                 {
                     StatusCode = (int)response.StatusCode,
@@ -788,6 +791,52 @@ namespace JellyfinUpscalerPlugin.Controllers
             return ProxyServiceAsync(HttpMethod.Delete, $"/models/upload/{Uri.EscapeDataString(modelName)}");
         }
 
+        /// <summary>
+        /// v1.8.3.14 - extract "tier" from a /recommend payload and hand it to
+        /// <see cref="Services.UpscalerCore.UpdateHardwareTier"/>. Failures are swallowed on
+        /// purpose: an unreadable payload must leave auto-mode uncapped, not broken.
+        /// </summary>
+        private void CacheHardwareTier(string? recommendJson)
+        {
+            if (string.IsNullOrWhiteSpace(recommendJson)) return;
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(recommendJson);
+                if (doc.RootElement.TryGetProperty("tier", out var tierEl) &&
+                    tierEl.ValueKind == System.Text.Json.JsonValueKind.String)
+                {
+                    Services.UpscalerCore.UpdateHardwareTier(tierEl.GetString());
+                }
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                _logger.LogDebug("Could not read hardware tier from /recommend: {Message}", ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// v1.8.3.14 - refresh the cached hardware tier before an auto decision. Short
+        /// timeout and fully non-fatal: if the service is slow or down, the resolver simply
+        /// runs uncapped (its "Hardware: unknown" signal says so).
+        /// </summary>
+        private async Task RefreshHardwareTierAsync()
+        {
+            try
+            {
+                var baseUrl = GetValidatedServiceUrl();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                using var resp = await GetAiServiceClient().GetAsync($"{baseUrl}/recommend", cts.Token);
+                if (resp.IsSuccessStatusCode)
+                {
+                    CacheHardwareTier(await resp.Content.ReadAsStringAsync());
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug("Hardware tier refresh skipped: {Message}", ex.Message);
+            }
+        }
+
         /// <summary>Request body for <see cref="ComputeVmaf"/>.</summary>
         public class VmafRequest
         {
@@ -963,6 +1012,9 @@ namespace JellyfinUpscalerPlugin.Controllers
                 // recommendation (the in-player panel only calls it when Auto-Mode
                 // is enabled). forceAuto=true so the heuristic runs even if the
                 // user has a non-auto Model value saved.
+                // v1.8.3.14 - make sure the hardware tier is current before deciding.
+                await RefreshHardwareTierAsync();
+
                 // v1.8.3.13 - keep the reasoning: the detailed resolver returns why this
                 // model was chosen and whether a substitution happened, so the UI can show it.
                 var pick = _upscalerCore.ResolveModelForVideoDetailed(
@@ -990,6 +1042,11 @@ namespace JellyfinUpscalerPlugin.Controllers
                     signals = pick.Signals,
                     substituted_from = pick.SubstitutedFrom,
                     substitution_reason = pick.SubstitutionReason,
+                    // v1.8.3.14 - the scale the output will REALLY grow by (the service uses
+                    // the model's native factor, not the configured one). 0 = model id does
+                    // not encode a scale, so the UI keeps showing the configured value.
+                    recommended_scale = pick.Scale,
+                    output_size = Services.ModelScale.DescribeOutput(width, height, pick.Scale),
                     recommended_filter = recommendedFilter,
                     input_frames = inputFrames,
                     auto_selection_enabled = config?.EnableAutoModelSelection ?? false,

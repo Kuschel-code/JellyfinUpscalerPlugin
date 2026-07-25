@@ -2504,8 +2504,14 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
         return False
 
 
-async def download_model(model_name: str) -> bool:
-    """Download a model from the repository. Thread-safe per model name."""
+async def download_model(model_name: str, progress_cb=None) -> bool:
+    """Download a model from the repository. Thread-safe per model name.
+
+    progress_cb(downloaded_bytes, total_bytes) is called while streaming so a
+    caller can surface real progress; total_bytes is 0 when the server sends no
+    Content-Length. Added in v1.8.3.14 — the plugin now offers a download button
+    for every catalog model, and a 300 MB fetch with no feedback reads as a hang.
+    """
     if model_name not in AVAILABLE_MODELS:
         logger.error(f"Unknown model: {model_name}")
         return False
@@ -2561,9 +2567,25 @@ async def download_model(model_name: str) -> bool:
             async with httpx.AsyncClient(timeout=600.0, follow_redirects=True) as dl_client:
                 async with dl_client.stream("GET", download_url) as response:
                     response.raise_for_status()
+                    try:
+                        total = int(response.headers.get("content-length") or 0)
+                    except ValueError:
+                        total = 0
+                    done = 0
+                    next_report = 0
                     with open(temp_path, "wb") as f:
                         async for chunk in response.aiter_bytes(chunk_size=65536):
                             f.write(chunk)
+                            if progress_cb is None:
+                                continue
+                            done += len(chunk)
+                            # Report at most every 2 MB: the callback takes a lock, and
+                            # doing that per 64 KB chunk would cost more than the write.
+                            if done >= next_report:
+                                next_report = done + 2 * 1024 * 1024
+                                progress_cb(done, total)
+                    if progress_cb is not None:
+                        progress_cb(done, total or done)
 
             # Integrity gate — catalog entries may pin a sha256; verify BEFORE the
             # file becomes visible as a valid model (supply-chain / corruption guard).
@@ -4311,8 +4333,18 @@ async def _run_download_job(job_id: str, model_name: str):
     with _download_jobs_guard:
         if job_id in _download_jobs:
             _download_jobs[job_id]["status"] = "downloading"
+    def _record_progress(done: int, total: int):
+        with _download_jobs_guard:
+            job = _download_jobs.get(job_id)
+            if job is None:
+                return
+            job["downloaded_mb"] = round(done / 1024 / 1024, 1)
+            if total:
+                job["total_mb"] = round(total / 1024 / 1024, 1)
+                job["progress"] = min(99, int(done * 100 / total))
+
     try:
-        ok = await download_model(model_name)
+        ok = await download_model(model_name, progress_cb=_record_progress)
         model_path = get_model_path(model_name)
         size_mb = model_path.stat().st_size / 1024 / 1024 if model_path.exists() else 0
         with _download_jobs_guard:

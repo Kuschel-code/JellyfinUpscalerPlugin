@@ -295,18 +295,49 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
 
                 // Auto-select best model for this specific video's content (or use configured model)
                 string model;
+                // v1.8.3.14 - the AI service ignores the requested scale and uses the loaded
+                // model's native one, so the configured factor was only ever a label. Track
+                // what will REALLY happen, per video, and report that instead.
+                var effectiveScale = scaleFactor;
                 if (config.EnableAutoModelSelection && (string.IsNullOrEmpty(config.Model) || config.Model == "auto"))
                 {
-                    model = _upscalerCore.ResolveModelForVideo(
+                    // v1.8.3.14 - use the detailed resolver and LOG the reasoning at
+                    // Information level. Batch runs are exactly where nobody is
+                    // watching a UI, so "why did it pick that model for episode 7"
+                    // has to be answerable from the log afterwards (LogDebug is off
+                    // by default in Jellyfin and would be useless here).
+                    var autoPick = _upscalerCore.ResolveModelForVideoDetailed(
                         genres: video.Genres,
                         width: width,
                         height: height,
                         isBatch: true,
                         inputFrames: serviceInputFrames);
+                    model = autoPick.Model;
+                    if (autoPick.Scale > 0) effectiveScale = autoPick.Scale;
+                    if (autoPick.SubstitutedFrom != null)
+                    {
+                        _logger.LogInformation(
+                            "Auto-model for {File}: {Model} - {Reason} (substituted for {Preferred}: {Why})",
+                            System.IO.Path.GetFileName(video.Path), autoPick.Model, autoPick.Reason,
+                            autoPick.SubstitutedFrom, autoPick.SubstitutionReason);
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Auto-model for {File}: {Model} - {Reason}",
+                            System.IO.Path.GetFileName(video.Path), autoPick.Model, autoPick.Reason);
+                    }
                 }
                 else
                 {
                     model = config.Model ?? "realesrgan-x4";
+                    var nativeScale = Services.ModelScale.NativeScaleOf(model);
+                    if (nativeScale > 0 && nativeScale != scaleFactor)
+                    {
+                        _logger.LogInformation(
+                            "Model {Model} is a {Native}x model - the configured {Configured}x is not applied to AI upscaling.",
+                            model, nativeScale, scaleFactor);
+                        effectiveScale = nativeScale;
+                    }
                 }
 
                 // Progress: 30% scan + 70% processing
@@ -314,15 +345,17 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                 progress.Report(processingProgress);
 
                 _logger.LogInformation(
-                    "AI Upscaler: [{Index}/{Total}] Processing: {Name} ({Width}x{Height}) model={Model} -> {Output}",
-                    i + 1, lowResVideos.Count, video.Name, width, height, model, Path.GetFileName(outputPath));
+                    "AI Upscaler: [{Index}/{Total}] Processing: {Name} ({Size}) model={Model} scale={Scale}x -> {Output}",
+                    i + 1, lowResVideos.Count, video.Name,
+                    Services.ModelScale.DescribeOutput(width, height, effectiveScale),
+                    model, effectiveScale, Path.GetFileName(outputPath));
 
                 try
                 {
                     var options = new VideoProcessingOptions
                     {
                         Model = model,
-                        ScaleFactor = scaleFactor,
+                        ScaleFactor = effectiveScale,
                         QualityLevel = config.QualityLevel ?? "medium",
                         PreserveAudio = true,
                         PreserveSubtitles = true,

@@ -30,12 +30,19 @@ namespace JellyfinUpscalerPlugin.Services
     /// <param name="Signals">The facts the heuristic reacted to (content, resolution, job type).</param>
     /// <param name="SubstitutedFrom">Set when the preferred model was unavailable and a stand-in was used.</param>
     /// <param name="SubstitutionReason">Why the substitution happened (null when none).</param>
+    /// <param name="Scale">
+    /// v1.8.3.14 - the factor the output will REALLY grow by. The AI service ignores the
+    /// requested scale and uses the loaded model's native one, so reporting the configured
+    /// value made a 1080p job claim "2x" while producing 8K frames. 0 means the model id
+    /// does not encode a scale; callers then keep their configured value.
+    /// </param>
     public record AutoPick(
         string Model,
         string Reason,
         string[] Signals,
         string? SubstitutedFrom,
-        string? SubstitutionReason);
+        string? SubstitutionReason,
+        int Scale = 0);
 
     public class UpscalerCore : IUpscalerCore, IDisposable
     {
@@ -351,6 +358,26 @@ namespace JellyfinUpscalerPlugin.Services
             => ResolveModelForVideoDetailed(genres, width, height, isBatch, inputFrames, forceAuto).Model;
 
         /// <summary>
+        /// v1.8.3.14 - hardware tier from the service's /recommend ("strong-gpu", "weak-cpu", ...),
+        /// cached because it effectively never changes for a given box. The resolver is
+        /// synchronous and must never perform a network call, so this is refreshed by callers
+        /// that are async anyway. Null means "unknown" and disables the cap entirely.
+        /// </summary>
+        private static volatile string? _hardwareTier;
+
+        /// <summary>Last known hardware tier, or null when the service was never reached.</summary>
+        public static string? HardwareTier => _hardwareTier;
+
+        /// <summary>
+        /// Store the tier reported by the AI service. A null/blank value clears the cap
+        /// rather than pinning a stale one.
+        /// </summary>
+        public static void UpdateHardwareTier(string? tier)
+        {
+            _hardwareTier = string.IsNullOrWhiteSpace(tier) ? null : tier.Trim();
+        }
+
+        /// <summary>
         /// v1.8.3.13 - same heuristic as <see cref="ResolveModelForVideo"/>, but it KEEPS the
         /// reasoning instead of writing it to a debug log nobody has enabled. The UI shows
         /// Reason/Signals next to the picked model, and a substitution (multi-frame model has no
@@ -369,7 +396,7 @@ namespace JellyfinUpscalerPlugin.Services
             if (!forceAuto && !string.IsNullOrEmpty(configured) && configured != "auto")
             {
                 return new AutoPick(configured, "Custom mode: your configured model is used as-is.",
-                    new[] { "Mode: Custom" }, null, null);
+                    new[] { "Mode: Custom" }, null, null, ModelScale.NativeScaleOf(configured));
             }
 
             var genreList = genres?.Select(g => g.ToLowerInvariant()).ToList() ?? new List<string>();
@@ -392,17 +419,72 @@ namespace JellyfinUpscalerPlugin.Services
             signals.Add(isBatch ? "Job: batch (quality first)" : "Job: real-time (speed first)");
             if (inputFrames > 1) signals.Add($"Multi-frame available: {inputFrames} frames");
 
+            // v1.8.3.14 - hardware budget. The content heuristic knows what SUITS the
+            // material; the service's /recommend knows what the MACHINE can do. Until now
+            // nothing joined them, so auto could hand a Celeron a full restoration net.
+            // The tier is cached (never fetched inside this synchronous resolver) and an
+            // unknown tier means "no cap" - auto must never block on a missing service.
+            var tier = HardwareTier;
+            if (!string.IsNullOrEmpty(tier))
+            {
+                signals.Add($"Hardware: {HardwareBudget.DescribeTier(tier)}");
+            }
+            else
+            {
+                signals.Add("Hardware: unknown (service unreachable - no cap applied)");
+            }
+
+            // v1.8.3.14 - an explicit user override is never capped: the user asked for
+            // this model, so we run it and merely note that it is heavy for this box.
+            AutoPick PickOverride(string reason, string preferred, params string[] fallbacks)
+            {
+                var picked = PickAvailable(preferred, fallbacks);
+                var localSignals = new List<string>(signals);
+                if (!HardwareBudget.FitsTier(picked, tier))
+                {
+                    localSignals.Add($"Note: {picked} is heavy for this {HardwareBudget.DescribeTier(tier)} - kept because you selected it.");
+                }
+                if (string.Equals(picked, preferred, StringComparison.OrdinalIgnoreCase))
+                {
+                    return new AutoPick(picked, reason, localSignals.ToArray(), null, null, ModelScale.NativeScaleOf(picked));
+                }
+                return new AutoPick(picked, reason, localSignals.ToArray(), preferred,
+                    $"{preferred} is not available on this service, so the closest available model was used instead.",
+                    ModelScale.NativeScaleOf(picked));
+            }
+
             AutoPick Pick(string reason, string preferred, params string[] fallbacks)
             {
                 var picked = PickAvailable(preferred, fallbacks);
+
+                // Step 2: walk the same ordered candidate list again, this time skipping
+                // anything too heavy for the detected hardware.
+                if (!HardwareBudget.FitsTier(picked, tier))
+                {
+                    var overBudget = picked;
+                    string? affordable = null;
+                    foreach (var candidate in fallbacks)
+                    {
+                        if (ModelAvailability.IsKnownUnavailable(candidate)) continue;
+                        if (!HardwareBudget.FitsTier(candidate, tier)) continue;
+                        affordable = candidate;
+                        break;
+                    }
+                    // Last resort: the lightest model in the catalog always runs.
+                    affordable ??= "fsrcnn-x2";
+                    return new AutoPick(affordable, reason, signals.ToArray(), overBudget,
+                        $"{overBudget} suits the material but is too heavy for this {HardwareBudget.DescribeTier(tier)} - {affordable} was used instead so the job actually finishes.",
+                        ModelScale.NativeScaleOf(affordable));
+                }
+
                 if (picked == preferred)
                 {
-                    return new AutoPick(picked, reason, signals.ToArray(), null, null);
+                    return new AutoPick(picked, reason, signals.ToArray(), null, null, ModelScale.NativeScaleOf(picked));
                 }
                 var why = ModelAvailability.IsKnownUnavailable(preferred)
                     ? $"{preferred} has no public ONNX build (self-host required), so the closest available model was used instead."
                     : $"{preferred} is not available on this service, so the closest available model was used instead.";
-                return new AutoPick(picked, reason, signals.ToArray(), preferred, why);
+                return new AutoPick(picked, reason, signals.ToArray(), preferred, why, ModelScale.NativeScaleOf(picked));
             }
 
             if (isBatch && inputFrames > 1)
@@ -427,7 +509,7 @@ namespace JellyfinUpscalerPlugin.Services
                 if (!string.IsNullOrWhiteSpace(animeOverride))
                 {
                     signals.Add("Override: Preferred Anime Model is set");
-                    return Pick($"Anime content and your Preferred Anime Model ({animeOverride}) applies.",
+                    return PickOverride($"Anime content and your Preferred Anime Model ({animeOverride}) applies.",
                         animeOverride, "realesrgan-animevideo-x4", "anime-compact-x4");
                 }
                 if (isBatch)
@@ -443,7 +525,7 @@ namespace JellyfinUpscalerPlugin.Services
             if (!string.IsNullOrWhiteSpace(liveActionOverride))
             {
                 signals.Add("Override: Preferred Live-Action Model is set");
-                return Pick($"Live action and your Preferred Live-Action Model ({liveActionOverride}) applies.",
+                return PickOverride($"Live action and your Preferred Live-Action Model ({liveActionOverride}) applies.",
                     liveActionOverride, "ultrasharp-v2-x4", "nomos2-realplksr-x4", "realesrgan-x4");
             }
 
@@ -467,7 +549,15 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 return Pick($"Low resolution ({width}x{height}) in a batch job -> Real-ESRGAN 4x.", "realesrgan-x4");
             }
-            return Pick("General batch job -> Real-ESRGAN 4x (balanced default).", "realesrgan-x4");
+            // v1.8.3.14 - 4x on 1080p is 8K: four times the compute of a 2x pass for an
+            // output no client can display. The 4x default only earns its cost on small
+            // sources, which the two low-res branches above already cover.
+            if (ModelScale.TargetScaleFor(width, height) >= 4)
+            {
+                return Pick("General batch job -> Real-ESRGAN 4x (balanced default).", "realesrgan-x4");
+            }
+            return Pick($"Batch job on {(width > 0 ? $"{width}x{height}" : "large")} material -> Real-ESRGAN 2x; a 4x pass would target 8K for no visible gain.",
+                "realesrgan-x2-plus", "span-x2", "realesrgan-x4");
         }
 
         /// <summary>

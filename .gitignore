@@ -96,3 +96,9 @@ truenas-catalog/
 .a4k-build/pub*/
 .a4k-build/ZIP_MD5.txt
 .a4k-build/preview.html
+
+# v1.8.3.14 - release staging dirs ("publish_*/" above misses the hyphen form) and
+# local agent state. A git add -A once committed 6 MB of build artifacts from these.
+publish-*/
+zip-stage-*/
+.claude/

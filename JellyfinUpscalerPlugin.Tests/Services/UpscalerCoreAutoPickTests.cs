@@ -19,6 +19,7 @@ namespace JellyfinUpscalerPlugin.Tests.Services
     /// silently swallowed. The bare <see cref="UpscalerCore.ResolveModelForVideo"/>
     /// must keep returning exactly what the detailed variant picks (no behaviour change).
     /// </summary>
+    [Collection(UpscalerCoreStaticCollection.Name)]
     public class UpscalerCoreAutoPickTests
     {
         private readonly UpscalerCore _core;

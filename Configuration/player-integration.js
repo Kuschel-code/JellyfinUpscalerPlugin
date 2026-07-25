@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.8.3.13';
+    const PLUGIN_VERSION = '1.8.3.14';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -1864,8 +1864,7 @@
                             model: res.recommended_model,
                             filter: res.recommended_filter,
                             reason: res.reason,
-                            substitutedFrom: res.substituted_from,
-                            autoMessage: autoMsg
+                            substitutedFrom: res.substituted_from
                         };
                     });
             }).catch(function(err) {
@@ -1876,8 +1875,21 @@
 
         // POST the auto-picked filter preset so FFmpeg applies it on next seek.
         // Fire-and-forget — failure to apply the filter shouldn't block RT upscaling.
-        _applyAutoFilter: function(presetKey) {
+        // v1.8.3.14 - only suggest, never overwrite a deliberate choice.
+        // Before this the auto filter was POSTed to /filter-config on every playback,
+        // which PERSISTED it into the saved config: a user who had picked "cinematic"
+        // found it silently rewritten to "vivid" after watching one anime episode -
+        // directly contradicting the "does not persist back to config" comment on the
+        // caller. Filters are taste, models are technique: a model may be swapped
+        // automatically, a look may not.
+        _applyAutoFilter: function(presetKey, currentPreset) {
             if (!presetKey || presetKey === 'none') return;
+            var chosen = (currentPreset || '').toLowerCase();
+            if (chosen && chosen !== 'none' && chosen !== 'auto') {
+                console.log('AI Upscaler Auto: keeping your filter preset "' + currentPreset +
+                    '" (auto would have suggested "' + presetKey + '")');
+                return;
+            }
             var body = { ActiveFilterPreset: presetKey, EnableVideoFilters: true };
             ApiClient.ajax({
                 type: 'POST',
@@ -1906,7 +1918,7 @@
                 return PlayerIntegration._autoSelectForVideo(video, config).then(function(pick) {
                     if (pick && pick.model) {
                         config = Object.assign({}, config, { Model: pick.model });
-                        PlayerIntegration._applyAutoFilter(pick.filter);
+                        PlayerIntegration._applyAutoFilter(pick.filter, config.ActiveFilterPreset);
                         // v1.8.3.13 - say WHY, and never swap the model silently: a
                         // substitution (preferred model has no public ONNX) is shown as
                         // a warning instead of looking like a wrong pick.

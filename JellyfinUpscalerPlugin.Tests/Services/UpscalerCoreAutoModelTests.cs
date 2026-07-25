@@ -22,6 +22,7 @@ namespace JellyfinUpscalerPlugin.Tests.Services
     /// available in the future, they MUST also remove it from _knownUnavailable in
     /// UpscalerCore.cs — these tests will turn red the moment that drift starts.
     /// </summary>
+    [Collection(UpscalerCoreStaticCollection.Name)]
     public class UpscalerCoreAutoModelTests
     {
         private readonly UpscalerCore _core;

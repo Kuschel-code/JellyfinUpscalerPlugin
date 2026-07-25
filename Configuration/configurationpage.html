@@ -31,7 +31,14 @@
     #UpscalerConfigurationPage .upscaler-tabs {
         display: flex; align-items: center; gap: 4px;
         border-bottom: 1px solid var(--border);
-        margin-bottom: 1.25rem; padding-bottom: 0; overflow-x: auto;
+        margin-bottom: 1.25rem; padding-bottom: 0;
+        /* v1.8.3.14 - overflow-x:auto alone forces overflow-y from visible to auto
+           (CSS overflow spec): the tabs' -1px margin + 2px active border overflowed
+           by a hair and Jellyfin's theme painted a stray vertical scrollbar next to
+           the tab row. Pinning overflow-y removes it without touching the horizontal
+           scroll that keeps the tab row usable on narrow screens. */
+        overflow-x: auto; overflow-y: hidden;
+        scrollbar-width: thin;
     }
     #UpscalerConfigurationPage .upscaler-tab {
         padding: 10px 12px; color: var(--text-secondary); cursor: pointer;
@@ -223,7 +230,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.8.3.13 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.8.3.14 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -374,7 +381,8 @@
                 <!-- Model Catalog -->
                 <div class="upscaler-card">
                     <h3 id="model-catalog-title">Model Catalog</h3>
-                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">All available AI upscaling models. Click "Load & Bench" to benchmark a specific model.</div>
+                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">The models this AI service ships with. <strong>Get</strong> downloads one, <strong>Bench</strong> measures it on your hardware. Entries marked <em>Self-host only</em> have no public ONNX build &mdash; nothing to download, ever.</div>
+                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">Something not in this list (H.264 artefact removal, game footage, more anime models)? <strong>Import from OpenModelDB</strong> below installs hundreds more with one click.</div>
                     <div id="model-catalog-table" style="max-height:400px;overflow-y:auto;">
                         <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
                             <thead><tr style="border-bottom:1px solid var(--border);color:var(--text-secondary);">
@@ -382,7 +390,7 @@
                                 <th style="text-align:center;padding:0.4rem 0.3rem;">Scale</th>
                                 <th style="text-align:center;padding:0.4rem 0.3rem;">Type</th>
                                 <th style="text-align:center;padding:0.4rem 0.3rem;">Status</th>
-                                <th style="text-align:center;padding:0.4rem 0.3rem;">Bench</th>
+                                <th style="text-align:center;padding:0.4rem 0.3rem;">Actions</th>
                             </tr></thead>
                             <tbody id="model-catalog-body"><tr><td colspan="5" style="text-align:center;padding:1rem;opacity:0.5;">Loading models...</td></tr></tbody>
                         </table>
@@ -1203,7 +1211,11 @@
             var endpoint = 'Upscaler/jobs/' + encodeURIComponent(jobId) + '/' + action;
             ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl(endpoint) }).then(function() {
                 var page = document.querySelector('#UpscalerConfigurationPage');
-                if (page) refreshJobs(page);
+                if (!page) return;
+                refreshJobs(page);
+                // v1.8.3.14 - these buttons now also live in the dashboard activity strip,
+                // which would otherwise keep showing the pre-click state until its next poll.
+                refreshDashboard(page);
             });
         });
 
@@ -1314,8 +1326,11 @@
             var lbl = page.querySelector('#dashboard-mode-label');
             var desc = page.querySelector('#dashboard-mode-desc');
             if (lbl) lbl.textContent = isAuto ? 'Auto' : 'Custom';
+            // v1.8.3.14 - this used to say the pick came "from your benchmarks", which it
+            // never did: the resolver reads genres, resolution, job type and (new) the
+            // hardware class the AI service reports. Benchmarks are a separate tool.
             if (desc) desc.textContent = isAuto
-                ? 'Auto: model and filters are picked per video from your benchmarks and content type. Flip off for Custom.'
+                ? 'Auto: model and filter are chosen per video from content type, resolution and what your hardware can run. Flip off for Custom.'
                 : 'Custom: your manual model/scale/filter settings apply exactly as configured.';
         }
         function attachDashboardMode(page) {
@@ -1356,10 +1371,15 @@
                     var html = isAuto
                         ? '<strong>Auto → ' + _escHtml(r.recommended_model) + '</strong>'
                         : '<strong>Custom mode</strong> <span style="color:var(--text-muted);">— Auto would pick ' + _escHtml(r.recommended_model) + '</span>';
+                    if (r.recommended_scale) {
+                        html += ' <span style="color:var(--text-muted);">' + r.recommended_scale + 'x</span>';
+                    }
                     if (r.reason) html += '<div style="color:var(--text-muted);margin-top:0.15rem;">' + _escHtml(r.reason) + '</div>';
                     if (r.substituted_from) {
-                        html += '<div style="color:#fbbf24;margin-top:0.15rem;">⚠ ' + _escHtml(r.substituted_from) +
-                            ' was preferred but is unavailable — ' + _escHtml(r.substitution_reason || 'a stand-in was used') + '</div>';
+                        // v1.8.3.14 - a substitution can now also be a hardware cap, so the
+                        // cause is no longer hardcoded here; the reason string carries it.
+                        html += '<div style="color:#fbbf24;margin-top:0.15rem;">⚠ ' +
+                            _escHtml(r.substitution_reason || (r.substituted_from + ' was preferred but a stand-in was used')) + '</div>';
                     }
                     if (r.signals && r.signals.length) {
                         html += '<details style="margin-top:0.2rem;"><summary style="cursor:pointer;color:var(--text-muted);font-size:0.76rem;">What it looked at</summary>' +
@@ -1390,8 +1410,18 @@
             var prog = Math.min(Math.max(Math.round(j.progress || 0), 0), 100);
             // Review fix: a paused job keeps status "Processing" and only carries
             // isPaused - showing it as running contradicted the Jobs tab's Resume button.
+            // v1.8.3.14 - the pause/resume/cancel endpoints existed since v1.7 but the
+            // buttons lived only in the Jobs tab, so the dashboard could tell you a job was
+            // eating the box and offer nothing to do about it. Same data-action/data-jobid
+            // contract as the Jobs tab, so the existing delegated handler picks these up.
+            var jobId = _escHtml(j.jobId || '');
+            function ctl(action, label, extra) {
+                if (!jobId) return '';
+                return '<button type="button" class="quick-action-btn" data-action="' + action +
+                       '" data-jobid="' + jobId + '" style="font-size:0.7rem;padding:1px 7px;margin-left:6px;vertical-align:baseline;' + (extra || '') + '">' + label + '</button>';
+            }
             if (j.isPaused) {
-                el.innerHTML = '<span style="color:#94a3b8;">❚❚</span> <strong>' + _escHtml(name) + '</strong> · paused at ' + prog + '%';
+                el.innerHTML = '<span style="color:#94a3b8;">❚❚</span> <strong>' + _escHtml(name) + '</strong> · paused at ' + prog + '%' + ctl('resume', 'Resume') + ctl('cancel', 'Cancel', 'color:var(--danger);');
                 return;
             }
             var phase = j.phase || (prog < 15 ? 'Extracting frames' : prog < 95 ? 'Upscaling' : 'Encoding');
@@ -1404,7 +1434,7 @@
                 if (_autoPickCache && _autoPickCache.recommended_model === j.model) m += ' <span style="color:var(--text-muted);">(Auto)</span>';
                 parts.push(m);
             }
-            el.innerHTML = parts.join(' · ');
+            el.innerHTML = parts.join(' · ') + ctl('pause', 'Pause') + ctl('cancel', 'Cancel', 'color:var(--danger);');
         }
         function _errorHint(msg) {
             var m = String(msg || '');
@@ -2142,7 +2172,7 @@
                 if (faceModelEl) config.FaceRestoreModel = faceModelEl.value;
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.8.3.13';
+                config.PluginVersion = '1.8.3.14';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -2167,15 +2197,28 @@
                     return;
                 }
                 var html = '';
+                var downloadable = 0;
                 models.forEach(function(m) {
-                    var status = m.loaded ? '<span style="color:var(--success);">Loaded</span>' : m.downloaded ? '<span style="color:var(--accent);">Ready</span>' : '<span style="color:var(--text-muted);">Not DL</span>';
+                    // v1.8.3.14 - "Not DL" used to cover two very different states: a model
+                    // you can fetch with one click, and one with no public ONNX build that
+                    // will never appear no matter how long you wait. Say which is which.
+                    var canGet = !m.downloaded && m.available !== false;
+                    if (canGet) downloadable++;
+                    var status = m.loaded ? '<span style="color:var(--success);">Loaded</span>'
+                        : m.downloaded ? '<span style="color:var(--accent);">Ready</span>'
+                        : canGet ? '<span style="color:var(--text-muted);">Not downloaded</span>'
+                        : '<span style="color:var(--warning);" title="No public ONNX build - self-hosting required. See the Import tab.">Self-host only</span>';
                     var scales = Array.isArray(m.scale) ? m.scale.join('/') : (m.scale || '?');
                     html += '<tr style="border-bottom:1px solid var(--border);">';
                     html += '<td style="padding:0.35rem 0.3rem;">' + esc(m.name || m.id) + '</td>';
                     html += '<td style="text-align:center;padding:0.35rem 0.3rem;">' + esc(String(scales)) + 'x</td>';
                     html += '<td style="text-align:center;padding:0.35rem 0.3rem;">' + esc(m.type || '?') + '</td>';
                     html += '<td style="text-align:center;padding:0.35rem 0.3rem;">' + status + '</td>';
-                    html += '<td style="text-align:center;padding:0.35rem 0.3rem;" id="bench-' + esc(m.id) + '"><button type="button" class="raised" style="font-size:0.72rem;padding:2px 8px;" data-bench-model="' + esc(m.id) + '">Bench</button></td>';
+                    html += '<td style="text-align:center;padding:0.35rem 0.3rem;" id="bench-' + esc(m.id) + '">';
+                    if (canGet) {
+                        html += '<button type="button" class="raised" style="font-size:0.72rem;padding:2px 8px;margin-right:4px;" data-get-model="' + esc(m.id) + '" title="Download this model to the AI service">Get</button>';
+                    }
+                    html += '<button type="button" class="raised" style="font-size:0.72rem;padding:2px 8px;" data-bench-model="' + esc(m.id) + '">Bench</button></td>';
                     html += '</tr>';
                 });
                 tbody.innerHTML = html;
@@ -2185,6 +2228,11 @@
                     if (catalogTable && !catalogTable._benchListenerAttached) {
                         catalogTable._benchListenerAttached = true;
                         catalogTable.addEventListener('click', function(e) {
+                            var getBtn = e.target.closest('[data-get-model]');
+                            if (getBtn) {
+                                window.AiUpscaler._downloadModel(getBtn.getAttribute('data-get-model'), page);
+                                return;
+                            }
                             var btn = e.target.closest('[data-bench-model]');
                             if (btn) {
                                 window.AiUpscaler._benchModel(btn.getAttribute('data-bench-model'));
@@ -2197,7 +2245,11 @@
 
                 // Update header count
                 var h3 = page.querySelector('#model-catalog-table')?.closest('.upscaler-card')?.querySelector('h3');
-                if (h3) h3.textContent = 'Model Catalog (' + models.length + ' Models)';
+                if (h3) {
+                    h3.textContent = downloadable > 0
+                        ? 'Model Catalog (' + models.length + ' models, ' + downloadable + ' ready to download)'
+                        : 'Model Catalog (' + models.length + ' models)';
+                }
             }).catch(function() {
                 var tbody = page.querySelector('#model-catalog-body');
                 if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1rem;"><span style="color:#94a3b8;">Not configured</span></td></tr>';
@@ -2206,6 +2258,66 @@
 
         // Benchmark a single model: load it, run benchmark, show result
         window.AiUpscaler = window.AiUpscaler || {};
+
+        // v1.8.3.14 - download a single catalog model on demand. The AI service could
+        // always fetch these (POST /models/download-async is model-agnostic), but only
+        // the Face tab ever offered a button, so 27 of the 82 catalog entries sat at
+        // "Not DL" with no way to change that short of benchmarking them.
+        // Same background-job + polling shape as the face loader: the download runs
+        // server-side, this only watches it, so a slow 300 MB fetch cannot time out
+        // the browser request.
+        // v1.8.3.14 - the service now reports real byte progress (main.py download_model
+        // streams with a progress callback). Older services send neither field, so every
+        // one is optional and the label degrades to a plain "Downloading...".
+        window.AiUpscaler._downloadLabel = function(js) {
+            if (!js) return 'Downloading...';
+            if (js.progress && js.total_mb) return 'Downloading ' + js.progress + '% (' + js.downloaded_mb + '/' + js.total_mb + ' MB)';
+            if (js.downloaded_mb) return 'Downloading ' + js.downloaded_mb + ' MB...';
+            return js.status === 'queued' ? 'Queued...' : 'Downloading...';
+        };
+
+        window.AiUpscaler._downloadModel = function(modelId, page) {
+            var cell = document.getElementById('bench-' + modelId);
+            var getBtn = cell && cell.querySelector('[data-get-model]');
+            if (getBtn) { getBtn.disabled = true; getBtn.textContent = '...'; }
+            function say(text, color) {
+                if (!cell) return;
+                cell.innerHTML = '<span style="color:' + (color || 'var(--warning)') + ';font-size:0.72rem;">' + esc(text) + '</span>';
+            }
+            function finish(ok, message) {
+                say(message, ok ? 'var(--success)' : 'var(--danger)');
+                showToast(ok ? (modelId + ' downloaded') : (modelId + ': ' + message), ok ? null : '#f87171');
+                // Re-read the catalog so the row flips to "Ready" and loses its Get button.
+                if (ok && page) setTimeout(function() { loadModelCatalog(page); }, 1200);
+            }
+            var auth = { 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' };
+            var fd = new FormData();
+            fd.append('modelName', modelId);
+            say('Starting...');
+            fetch(ApiClient.getUrl('Upscaler/models/download-async'), { method: 'POST', headers: auth, body: fd })
+                .then(function(resp) { return resp.json().catch(function() { return {}; }).then(function(j) { return { ok: resp.ok, j: j }; }); })
+                .then(function(r) {
+                    if (!r.ok) throw new Error(r.j.detail || r.j.error || 'Service refused the download');
+                    if (r.j.already_present || r.j.status === 'completed') return finish(true, 'Ready');
+                    if (!r.j.job_id) throw new Error(r.j.error || 'Service returned no job id');
+                    var polls = 0;
+                    (function poll() {
+                        setTimeout(function() {
+                            fetch(ApiClient.getUrl('Upscaler/models/download-status/' + r.j.job_id), { headers: auth })
+                                .then(function(pr) { return pr.json(); })
+                                .then(function(js) {
+                                    if (js.status === 'completed') return finish(true, 'Ready');
+                                    if (js.status === 'failed') return finish(false, js.error || 'Download failed');
+                                    say(window.AiUpscaler._downloadLabel(js));
+                                    if (++polls < 400) poll(); else finish(false, 'Timed out');
+                                })
+                                .catch(function() { if (++polls < 400) poll(); else finish(false, 'Status lost'); });
+                        }, 3000);
+                    })();
+                })
+                .catch(function(err) { finish(false, (err && err.message) || 'Download failed'); });
+        };
+
         window.AiUpscaler._benchModel = function(modelId) {
             var cell = document.getElementById('bench-' + modelId);
             // Check if model needs downloading first
@@ -2930,7 +3042,7 @@
                                             btn.disabled = false;
                                             return;
                                         }
-                                        statusEl.textContent = 'Downloading ' + model + ' in the background (~300 MB)\u2026';
+                                        statusEl.textContent = 'Downloading ' + model + ' - ' + window.AiUpscaler._downloadLabel(js);
                                         if (++polls < 600) poll(); else { statusEl.textContent = 'Download timed out'; btn.disabled = false; }
                                     })
                                     .catch(function() { if (++polls < 600) poll(); else { statusEl.textContent = 'Download status lost'; btn.disabled = false; } });
