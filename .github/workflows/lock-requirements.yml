@@ -87,6 +87,13 @@ jobs:
           # --generate-hashes is what makes the lock verifiable: before it, the file
           # pinned VERSIONS but not CONTENT, so a re-uploaded wheel at the same version
           # installed silently. The Dockerfiles pass --require-hashes against these.
+          #
+          # pip and pip-tools are PINNED. This step used to install "latest of both",
+          # which is the same unpinned-input problem the locks exist to solve, one level
+          # up: it worked on 2026-07-27 and by 2026-08-01 every variant died on
+          # "cannot import name 'stdlib_pkgs' from pip._internal.utils.compat" because
+          # pip had dropped a private module the resolved pip-tools still used. A
+          # generator that drifts cannot produce a reproducible artefact.
           docker run --rm -u 0 -v "$PWD:/w" -w /w "${{ steps.base.outputs.image }}" \
             sh -c 'PY=$(command -v python3 || command -v python) || true; \
                    if [ -z "$PY" ]; then \
@@ -95,7 +102,7 @@ jobs:
                        { echo "could not provision python"; exit 1; }; \
                      PY=$(command -v python3); \
                    fi; \
-                   "$PY" -m pip install --quiet --upgrade pip setuptools wheel typing_extensions pip-tools && \
+                   "$PY" -m pip install --quiet --upgrade "pip==25.2" setuptools wheel typing_extensions "pip-tools==7.5.1" && \
                    "$PY" -m piptools compile --quiet --no-header --strip-extras --generate-hashes \
                      --output-file "/w/requirements-${{ matrix.variant }}.lock" \
                      "/w/${{ matrix.requirements }}" && \
