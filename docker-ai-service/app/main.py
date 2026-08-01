@@ -2504,6 +2504,25 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
         return False
 
 
+# v1.8.3.20 - hoisted out of download_model. It was a local tuple plus an inline
+# condition, which meant the SSRF gate could not be unit-tested at all and a test
+# exercising the download mechanics had no way to point at a local fixture server
+# except by disabling the whole function. Hostname-based (not prefix-based) so
+# "https://huggingface.co.evil.test/x" cannot pass.
+_ALLOWED_DOWNLOAD_HOSTS = (
+    "huggingface.co",
+    "github.com",
+    "raw.githubusercontent.com",
+)
+
+
+def _is_allowed_download_url(url: str) -> bool:
+    """True when url is https AND its host is on the allowlist. Both conditions are
+    load-bearing: http would be MITM-able, and any host would be an SSRF primitive."""
+    parsed = urllib.parse.urlparse(url)
+    return parsed.scheme == "https" and parsed.hostname in _ALLOWED_DOWNLOAD_HOSTS
+
+
 async def download_model(model_name: str, progress_cb=None) -> bool:
     """Download a model from the repository. Thread-safe per model name.
 
@@ -2552,15 +2571,12 @@ async def download_model(model_name: str, progress_cb=None) -> bool:
                     return True
                 raise ValueError(f"No download URL for model {model_name}")
 
-            # Validate download URL against allowlist (hostname-based to prevent SSRF bypass)
-            _ALLOWED_DOWNLOAD_HOSTS = (
-                "huggingface.co",
-                "github.com",
-                "raw.githubusercontent.com",
-            )
-            parsed_url = urllib.parse.urlparse(download_url)
-            if parsed_url.scheme != "https" or parsed_url.hostname not in _ALLOWED_DOWNLOAD_HOSTS:
-                raise ValueError(f"Download URL not from allowed domain: {parsed_url.hostname}")
+            # Validate download URL against the allowlist (see _is_allowed_download_url).
+            if not _is_allowed_download_url(download_url):
+                raise ValueError(
+                    f"Download URL not from allowed domain: "
+                    f"{urllib.parse.urlparse(download_url).hostname}"
+                )
 
             logger.info(f"Downloading model {model_name} from {download_url}")
 

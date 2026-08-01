@@ -23,7 +23,12 @@ def _disable_auth():
 def test_download_async_starts_job_and_completes(client, monkeypatch):
     from app import main
 
-    async def fake_dl(name):
+    # **kwargs on purpose: v1.8.3.14 added progress_cb to download_model and this mock
+    # kept the old arity, so every call raised TypeError and the job reported "failed".
+    # The test stayed red for six releases because pytest was not part of the release
+    # gate. A tolerant mock cannot break again on the next optional parameter - and the
+    # real signature is now covered for real in test_download_fixture.py.
+    async def fake_dl(name, **kwargs):
         return True
     monkeypatch.setattr(main, "download_model", fake_dl)
 
@@ -49,7 +54,7 @@ def test_download_async_starts_job_and_completes(client, monkeypatch):
 def test_download_async_reports_failure(client, monkeypatch):
     from app import main
 
-    async def fake_dl(name):
+    async def fake_dl(name, **kwargs):
         return False
     monkeypatch.setattr(main, "download_model", fake_dl)
 
