@@ -6254,12 +6254,13 @@ from .model_import import (  # noqa: E402  (module-level import after app setup,
     _download_capped,
     _download_pinned,
     _extract_pinned_onnx_from_zip,
-    _fetch_import_catalog,
     _fetch_import_catalog_async,
     _import_gate,
-    _import_host_allowed,
     _to_import_model_name,
 )
+# _fetch_import_catalog and _import_host_allowed are deliberately NOT re-exported:
+# nothing in main calls them, and a name imported only to be patchable is a trap -
+# it looks like a seam and is not one (the callers resolve them in their own module).
 from . import model_import as _model_import
 
 # Single source of truth for the cap stays here, next to the other limits and the
