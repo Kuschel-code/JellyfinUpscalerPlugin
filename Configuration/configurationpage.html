@@ -1400,7 +1400,9 @@
             var running = (jobs || []).filter(function(j) { return j.status === 'Processing' || j.status === 'Starting'; });
             if (!running.length) {
                 var modeCb = page.querySelector('#DashboardAutoMode');
-                var mode = (modeCb && modeCb.checked) ? 'Auto mode active' : 'Custom mode';
+                var mode = (modeCb && modeCb.checked)
+                    ? t('strip.autoActive', null, 'Auto mode active')
+                    : t('strip.customMode', null, 'Custom mode');
                 // v1.8.3.20 - this counted `status === 'Completed'` inside the jobs list,
                 // a set that is ALWAYS empty: VideoProcessor removes a job from _activeJobs
                 // in its finally block on every terminal path, so /jobs only ever returns
@@ -1432,7 +1434,7 @@
                        '" data-jobid="' + jobId + '" style="font-size:0.7rem;padding:1px 7px;margin-left:6px;vertical-align:baseline;' + (extra || '') + '">' + label + '</button>';
             }
             if (j.isPaused) {
-                el.innerHTML = '<span style="color:#94a3b8;">❚❚</span> <strong>' + _escHtml(name) + '</strong> · paused at ' + prog + '%' + ctl('resume', 'Resume') + ctl('cancel', 'Cancel', 'color:var(--danger);');
+                el.innerHTML = '<span style="color:#94a3b8;">❚❚</span> <strong>' + _escHtml(name) + '</strong> · paused at ' + prog + '%' + ctl('resume', t('job.resume', null, 'Resume')) + ctl('cancel', t('job.cancel', null, 'Cancel'), 'color:var(--danger);');
                 // A paused job produces no frames, so the fast cadence would poll for
                 // nothing until it is resumed.
                 _setStripLive(page, false);
@@ -1444,9 +1446,12 @@
             // it after the websocket send). Each is optional: during extraction, or on a
             // method that does not go frame-by-frame, they are absent and the segment is
             // dropped rather than padded with zeroes.
-            var phaseTxt = 'phase <strong>' + _escHtml(phase) + '</strong>';
+            var phaseTxt = t('strip.phase', null, 'phase') + ' <strong>' + _escHtml(phase) + '</strong>';
             if (j.currentFrame > 0) {
-                phaseTxt += ' (frame ' + j.currentFrame + (j.totalFrames > 0 ? ' of ' + j.totalFrames : '') + ')';
+                phaseTxt += ' (' + (j.totalFrames > 0
+                    ? t('strip.frameOf', { current: j.currentFrame, total: j.totalFrames },
+                        'frame ' + j.currentFrame + ' of ' + j.totalFrames)
+                    : t('strip.frame', { current: j.currentFrame }, 'frame ' + j.currentFrame)) + ')';
             } else {
                 phaseTxt += ' (' + prog + '%)';
             }
@@ -1461,9 +1466,9 @@
                 }
                 parts.push(m);
             }
-            if (j.fps > 0) parts.push(j.fps.toFixed(1) + ' fps');
-            if (j.etaSeconds > 0) parts.push('ETA ' + _durationText(j.etaSeconds));
-            el.innerHTML = parts.join(' · ') + ctl('pause', 'Pause') + ctl('cancel', 'Cancel', 'color:var(--danger);');
+            if (j.fps > 0) parts.push(t('strip.fps', { fps: j.fps.toFixed(1) }, j.fps.toFixed(1) + ' fps'));
+            if (j.etaSeconds > 0) parts.push(t('strip.eta', { time: _durationText(j.etaSeconds) }, 'ETA ' + _durationText(j.etaSeconds)));
+            el.innerHTML = parts.join(' · ') + ctl('pause', t('job.pause', null, 'Pause')) + ctl('cancel', t('job.cancel', null, 'Cancel'), 'color:var(--danger);');
             _setStripLive(page, true);
         }
         // Finished-job counters travel in the same /jobs response (see the controller);
@@ -1478,7 +1483,9 @@
         }
         function _agoText(ms) {
             var sec = Math.max(0, Math.round(ms / 1000));
-            return sec < 90 ? 'just now' : _durationText(sec) + ' ago';
+            return sec < 90
+                ? t('strip.justNow', null, 'just now')
+                : t('strip.ago', { duration: _durationText(sec) }, _durationText(sec) + ' ago');
         }
         // v1.8.3.20 - one interval, two speeds. A strip showing frames and fps is useless
         // at the 15s idle cadence, and 3s polling while nothing runs is pointless load.
@@ -3320,6 +3327,33 @@
             });
         }
 
+        // ===== I18N =====
+        // English is the SOURCE language: Configuration/strings.en.json is where these
+        // strings live, not a translation of them. docs/I18N.md records what has been
+        // migrated and what is deliberately still inline.
+        var _i18nPromise = null;
+        function _ensureI18n() {
+            if (_i18nPromise) return _i18nPromise;
+            _i18nPromise = new Promise(function(resolve) {
+                if (window.AiUpscalerI18n) return resolve(window.AiUpscalerI18n.ready());
+                var sc = document.createElement('script');
+                sc.src = ApiClient.getUrl('web/ConfigurationPage', { name: 'UPSCALERI18n' });
+                sc.onload = function() { resolve(window.AiUpscalerI18n ? window.AiUpscalerI18n.ready() : null); };
+                sc.onerror = function() { resolve(null); };   // never block the page on it
+                document.head.appendChild(sc);
+            });
+            return _i18nPromise;
+        }
+        // Callable before the helper has loaded: falls back to the literal that used to
+        // be inline, so the first paint is never blank while the catalogue is in flight.
+        function t(key, params, fallback) {
+            if (window.AiUpscalerI18n) {
+                var v = window.AiUpscalerI18n.t(key, params);
+                if (v !== key) return v;
+            }
+            return fallback !== undefined ? fallback : key;
+        }
+
         // ===== INITIALIZATION =====
         var _pageShowRunning = false;
         function onPageShow() {
@@ -3329,6 +3363,11 @@
 
             var page = document.querySelector('#UpscalerConfigurationPage');
             if (!page) { _pageShowRunning = false; return; }
+
+            // v1.8.3.20 - load the i18n helper and its catalogue before the first
+            // render. Both are page resources: one fetch each on first open, cached
+            // afterwards. A failure is non-fatal - t() falls back to the inline text.
+            _ensureI18n();
 
             if (!_initialized) {
                 initNav(page);

@@ -205,6 +205,20 @@ namespace JellyfinUpscalerPlugin
                 {
                     Name = "UPSCALERAnime4K",
                     EmbeddedResourcePath = GetType().Namespace + ".Configuration.anime4k.js"
+                },
+                // v1.8.3.20 - i18n groundwork. English is the SOURCE language here: the
+                // catalogue is where these strings live, not a translation of them.
+                // Adding a locale means shipping a second json and pointing the loader
+                // at it; no UI code changes.
+                new PluginPageInfo
+                {
+                    Name = "UPSCALERI18n",
+                    EmbeddedResourcePath = GetType().Namespace + ".Configuration.i18n.js"
+                },
+                new PluginPageInfo
+                {
+                    Name = "UPSCALERStringsEn",
+                    EmbeddedResourcePath = GetType().Namespace + ".Configuration.strings.en.json"
                 }
             };
         }

@@ -42,6 +42,8 @@
     <EmbeddedResource Include="Configuration\webgl-upscaler.js" />
     <EmbeddedResource Include="Configuration\webgpu-ai-realtime.js" />
     <EmbeddedResource Include="Configuration\anime4k.js" />
+    <EmbeddedResource Include="Configuration\i18n.js" />
+    <EmbeddedResource Include="Configuration\strings.en.json" />
     <!-- Auto-generated fallback model list, regenerate via Scripts/sync-fallback-models.ps1 -->
     <EmbeddedResource Include="Resources\models-fallback.json" />
     <EmbeddedResource Include="thumb.png" />
