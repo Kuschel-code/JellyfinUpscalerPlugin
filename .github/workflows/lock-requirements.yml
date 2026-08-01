@@ -74,17 +74,46 @@ jobs:
         run: |
           set -euo pipefail
           cd docker-ai-service
-          # The CUDA and Intel bases ship python3 only (no `python` on PATH),
-          # so resolve the interpreter inside the container instead of assuming.
-          docker run --rm -v "$PWD:/w" -w /w "${{ steps.base.outputs.image }}" \
-            sh -c 'PY=$(command -v python3 || command -v python) || { echo "no python in base image"; exit 1; }; \
+          # Two bases needed a fix before they could resolve at all (v1.8.3.20):
+          #
+          #   intel  - openvino/ubuntu22_runtime runs as the unprivileged `openvino` user
+          #            and could not write the lock into the bind mount ("Permission
+          #            denied"). -u 0 fixes it; the file is chowned back to the runner
+          #            afterwards so upload-artifact and the commit job can read it.
+          #   nvidia - nvidia/cuda:*-runtime ships NO python at all (not "python3 only",
+          #            which is what the old comment guessed). Its Dockerfile apt-installs
+          #            python3 itself, so the resolve has to do the same.
+          #
+          # --generate-hashes is what makes the lock verifiable: before it, the file
+          # pinned VERSIONS but not CONTENT, so a re-uploaded wheel at the same version
+          # installed silently. The Dockerfiles pass --require-hashes against these.
+          docker run --rm -u 0 -v "$PWD:/w" -w /w "${{ steps.base.outputs.image }}" \
+            sh -c 'PY=$(command -v python3 || command -v python) || true; \
+                   if [ -z "$PY" ]; then \
+                     echo "no python in this base - provisioning one to resolve against"; \
+                     { apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 python3-pip; } >/dev/null 2>&1 || \
+                       { echo "could not provision python"; exit 1; }; \
+                     PY=$(command -v python3); \
+                   fi; \
                    "$PY" -m pip install --quiet --upgrade pip setuptools wheel typing_extensions pip-tools && \
-                   "$PY" -m piptools compile --quiet --no-header --strip-extras \
+                   "$PY" -m piptools compile --quiet --no-header --strip-extras --generate-hashes \
                      --output-file "/w/requirements-${{ matrix.variant }}.lock" \
-                     "/w/${{ matrix.requirements }}"'
+                     "/w/${{ matrix.requirements }}" && \
+                   chown "$(stat -c %u /w/${{ matrix.requirements }})":"$(stat -c %g /w/${{ matrix.requirements }})" \
+                     "/w/requirements-${{ matrix.variant }}.lock"'
           echo '--- resolved core versions ---'
           grep -iE '^(numpy|opencv|onnxruntime|torch|fastapi|pillow)' \
             "requirements-${{ matrix.variant }}.lock" || true
+
+      - name: Assert the lock carries hashes
+        # A hashless lock makes `pip install --require-hashes` fail during the IMAGE
+        # build - far from the change that caused it. Catch it in the job that produced it.
+        run: |
+          cd docker-ai-service
+          LOCK="requirements-${{ matrix.variant }}.lock"
+          COUNT=$(grep -c -- '--hash=sha256:' "$LOCK" || true)
+          echo "$LOCK carries $COUNT hashes"
+          [ "$COUNT" -gt 0 ] || { echo "FAIL: no hashes in $LOCK"; exit 1; }
 
       - name: Assert deliberate caps survived
         # The AMD/ROCm stack deliberately keeps numpy<2 + opencv<4.12 (base ships
