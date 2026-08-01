@@ -2208,10 +2208,14 @@
                         // v1.8.3.13 - say WHY, and never swap the model silently: a
                         // substitution (preferred model has no public ONNX) is shown as
                         // a warning instead of looking like a wrong pick.
-                        var notice = 'Auto: ' + pick.model +
-                            (pick.filter && pick.filter !== 'none' ? ' + ' + pick.filter : '');
+                        // v1.8.3.20 - this used to read "Auto: <model> + <filter>", which
+                        // was true only while auto applied the filter itself. It no longer
+                        // does, so the notice names the model it really set and points at
+                        // the tab where the look is OFFERED rather than implying it is on.
+                        var notice = 'Auto: ' + pick.model;
                         if (pick.reason) notice += ' — ' + pick.reason;
                         if (pick.substitutedFrom) notice += ' (' + pick.substitutedFrom + ' unavailable — stand-in used)';
+                        if (pick.filter && pick.filter !== 'none') notice += ' · look suggested in the Auto tab';
                         PlayerIntegration.showPlayerNotification(notice, pick.substitutedFrom ? 'warning' : 'info');
                     }
                     PlayerIntegration._startRtWithConfig(video, config);
