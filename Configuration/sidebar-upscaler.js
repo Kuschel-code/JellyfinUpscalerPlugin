@@ -285,7 +285,7 @@
         }
 
         // Fetch hardware info
-        ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/recommendations')).then(function(data) {
+        ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/hardware-benchmark')).then(function(data) {
             if (data && data.success) {
                 var statusEl = document.getElementById('pluginStatus');
                 if (statusEl) { statusEl.textContent = 'Active'; statusEl.style.color = '#00c853'; }
@@ -479,7 +479,7 @@
     function autoOptimize() {
         if (!window.ApiClient) { showToast('ApiClient not available'); return; }
         // Call recommendations endpoint, then apply optimal settings
-        ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/recommendations')).then(function(data) {
+        ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/hardware-benchmark')).then(function(data) {
             if (data && data.success && data.recommendations) {
                 var rec = data.recommendations;
                 // Update plugin config with recommended settings

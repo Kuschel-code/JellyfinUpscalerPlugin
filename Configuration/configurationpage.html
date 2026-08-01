@@ -1242,7 +1242,7 @@
 
         // ===== SYSTEM =====
         function refreshSystem(page) {
-            ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/recommendations'), dataType: 'json' }).then(function(data) {
+            ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Upscaler/hardware-benchmark'), dataType: 'json' }).then(function(data) {
                 if (data && data.system) {
                     page.querySelector('#hw-cpu').textContent = data.system.ProcessorCount + ' Cores (' + data.system.Architecture + ')';
                     page.querySelector('#hw-platform').textContent = data.system.Platform || '-';

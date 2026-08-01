@@ -978,9 +978,9 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// for a specific video). All three are consumed by different UI surfaces —
         /// they look alike but are not aliases of each other.
         /// </summary>
-        [HttpGet("recommendations")]
+        [HttpGet("hardware-benchmark")]
         [Produces(MediaTypeNames.Application.Json)]
-        public async Task<ActionResult<object>> GetHardwareRecommendations()
+        public async Task<ActionResult<object>> GetHardwareBenchmark()
         {
             try
             {
@@ -988,9 +988,42 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to get hardware recommendations");
+                _logger.LogError(ex, "Failed to get hardware benchmark");
                 return StatusCode(500, new { success = false, error = "Internal server error" });
             }
+        }
+
+        // v1.8.3.20 - one of the three "recommend" names is not a recommendation at all.
+        //
+        // /recommend proxies the service's hardware model pick, /recommend-model picks a
+        // model for one video - and this one runs the LOCAL benchmark and returns
+        // hardware.cpuCores, hardware.cudaAvailable and system.platform. Three names that
+        // read as variants of each other, one of which answers a different question.
+        //
+        // The honest fix is a correct name, not a shared schema: folding this onto the
+        // /recommend shape would delete the hardware.* and system.* fields that the
+        // sidebar, the quick menu and the System tab render. So the payload is untouched
+        // and only the route is renamed; this alias keeps every external caller working.
+        private static int _deprecatedRecommendationsHits;
+
+        /// <summary>
+        /// Deprecated alias of <see cref="GetHardwareBenchmark"/>. Identical payload.
+        /// Use <c>GET /Upscaler/hardware-benchmark</c>.
+        /// </summary>
+        [HttpGet("recommendations")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public async Task<ActionResult<object>> GetHardwareRecommendations()
+        {
+            // Warn once per server lifetime: this is polled by the sidebar, so logging per
+            // request would bury the log it is trying to be visible in.
+            if (System.Threading.Interlocked.Exchange(ref _deprecatedRecommendationsHits, 1) == 0)
+            {
+                _logger.LogWarning(
+                    "GET /Upscaler/recommendations is deprecated and will be removed in a future release - " +
+                    "it returns a hardware benchmark, not a model recommendation. Use /Upscaler/hardware-benchmark " +
+                    "(identical payload).");
+            }
+            return await GetHardwareBenchmark();
         }
 
         /// <summary>

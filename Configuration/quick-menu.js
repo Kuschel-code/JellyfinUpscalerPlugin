@@ -42,7 +42,7 @@
 
             // First try to get server-side recommendations
             if (window.ApiClient) {
-                ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/recommendations')).then(function(data) {
+                ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/hardware-benchmark')).then(function(data) {
                     if (data && data.success && data.recommendations) {
                         var rec = data.recommendations;
                         var settings = {
