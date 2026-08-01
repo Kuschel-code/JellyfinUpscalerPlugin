@@ -54,6 +54,12 @@ jobs:
           - variant: converter
             dockerfile: Dockerfile.converter
             requirements: requirements-converter.txt
+            # The only variant without hashes. requirements-converter.txt pulls
+            # CPU-only torch from --extra-index-url download.pytorch.org, an index
+            # pip-tools cannot hash. Dropping it means PyPI's CUDA torch instead:
+            # 0.53 GB -> ~2.5 GB to gain a hash. Versions stay pinned by the .txt
+            # ranges; the content guarantee is what this one variant does without.
+            hashes: 'false'
           - variant: nvidia
             dockerfile: Dockerfile
             requirements: requirements.txt
@@ -94,7 +100,9 @@ jobs:
           # "cannot import name 'stdlib_pkgs' from pip._internal.utils.compat" because
           # pip had dropped a private module the resolved pip-tools still used. A
           # generator that drifts cannot produce a reproducible artefact.
-          docker run --rm -u 0 -v "$PWD:/w" -w /w "${{ steps.base.outputs.image }}" \
+          HASHFLAG=$([ "${{ matrix.hashes }}" = "false" ] && echo "" || echo "--generate-hashes")
+          echo "hash generation: ${HASHFLAG:-DISABLED for this variant}"
+          docker run --rm -u 0 -e HASHFLAG="$HASHFLAG" -v "$PWD:/w" -w /w "${{ steps.base.outputs.image }}" \
             sh -c 'PY=$(command -v python3 || command -v python) || true; \
                    if [ -z "$PY" ]; then \
                      echo "no python in this base - provisioning one to resolve against"; \
@@ -103,7 +111,7 @@ jobs:
                      PY=$(command -v python3); \
                    fi; \
                    "$PY" -m pip install --quiet --upgrade "pip==25.2" setuptools wheel typing_extensions "pip-tools==7.5.1" && \
-                   "$PY" -m piptools compile --quiet --no-header --strip-extras --generate-hashes \
+                   "$PY" -m piptools compile --quiet --no-header --strip-extras ${HASHFLAG} \
                      --output-file "/w/requirements-${{ matrix.variant }}.lock" \
                      "/w/${{ matrix.requirements }}" && \
                    chown "$(stat -c %u /w/${{ matrix.requirements }})":"$(stat -c %g /w/${{ matrix.requirements }})" \
@@ -113,6 +121,7 @@ jobs:
             "requirements-${{ matrix.variant }}.lock" || true
 
       - name: Assert the lock carries hashes
+        if: ${{ matrix.hashes != 'false' }}
         # A hashless lock makes `pip install --require-hashes` fail during the IMAGE
         # build - far from the change that caused it. Catch it in the job that produced it.
         run: |

@@ -84,11 +84,16 @@ RUN groupadd -f render && groupadd -f video && \
     usermod -aG video openvino 2>/dev/null || true
 
 # Copy requirements first for better caching
-COPY requirements-intel.txt ./requirements.txt
+# v1.8.3.20 - installs the LOCK, not the .txt.
+# The .txt carries human-readable ranges; the .lock is the resolved, hash-pinned
+# build input (generated inside this exact base image by lock-requirements.yml).
+# --require-hashes makes pip refuse anything whose content does not match, so a
+# re-uploaded wheel at the same version can no longer slip in unnoticed.
+COPY requirements-intel.lock ./requirements.lock
 
 # Install Python dependencies (Intel/OpenVINO version)
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install -r requirements.txt
+    pip install --require-hashes -r requirements.lock
 
 # Build-time provider assert (issue #69 root-cause guard): fail the build if the
 # OpenVINO ExecutionProvider is not present. This is the exact bug that shipped in

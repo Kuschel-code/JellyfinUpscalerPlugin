@@ -40,6 +40,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements-cpu.txt ./requirements-cpu.txt
+# v1.8.3.20 - NOT hash-pinned, and this is deliberate.
+# requirements-converter.txt pulls CPU-only torch from --extra-index-url
+# download.pytorch.org, an index pip-tools cannot produce hashes against. Dropping
+# that index would mean PyPI's torch, i.e. the CUDA build: the image goes from
+# 0.53 GB to ~2.5 GB to gain a hash. Versions are still pinned by the .txt ranges;
+# the content guarantee is the one thing this variant does not get.
+# Tracked in docs/DOCKER-IMAGES.md.
 COPY requirements-converter.txt ./requirements.txt
 
 RUN --mount=type=cache,target=/root/.cache/pip \

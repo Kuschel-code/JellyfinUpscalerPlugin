@@ -60,12 +60,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Copy requirements first for layer caching
-COPY requirements-apple.txt requirements.txt
+# v1.8.3.20 - installs the LOCK, not the .txt.
+# The .txt carries human-readable ranges; the .lock is the resolved, hash-pinned
+# build input (generated inside this exact base image by lock-requirements.yml).
+# --require-hashes makes pip refuse anything whose content does not match, so a
+# re-uploaded wheel at the same version can no longer slip in unnoticed.
+COPY requirements-apple.lock requirements.lock
 
 # Install Python dependencies
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip && \
-    pip install -r requirements.txt
+    pip install --require-hashes -r requirements.lock
 
 # Copy application code
 COPY app/ ./app/

@@ -19,6 +19,38 @@ of magnitude larger than the CPU one.
 > not estimated. Apple now matches the CPU image, which is consistent with what the
 > table already says: Docker on macOS cannot pass through the Apple GPU.
 
+## Reproducibility: what each variant actually guarantees
+
+Since v1.8.3.20 the images install a resolved `.lock` instead of the `.txt` with
+ranges, and five of seven verify every wheel's hash.
+
+| Variant | Installs | `--require-hashes` |
+|---|---|:--:|
+| `docker7` (NVIDIA) | `requirements-nvidia.lock` | yes |
+| `docker7-cpu` | `requirements-cpu.lock` | yes |
+| `docker7-intel` | `requirements-intel.lock` | yes |
+| `docker7-vulkan` | `requirements-vulkan.lock` | yes |
+| `docker7-apple` | `requirements-apple.lock` | yes |
+| `docker7-converter` | `requirements-converter.txt` | **no** |
+| `docker7-amd` | `requirements-amd.txt` | **no** |
+
+The two exceptions are deliberate and neither is a shortcut:
+
+- **converter** pulls CPU-only torch from `--extra-index-url download.pytorch.org`,
+  which pip-tools cannot generate hashes against. Removing that index would pull
+  PyPI's torch, i.e. the CUDA build, taking the image from 0.27 GB of shared base
+  plus deps to roughly 2.5 GB - a very large price for a hash.
+- **amd** resolves its stack inside the ROCm base, which ships torch 2.3 compiled
+  against numpy 1.x. It deliberately keeps `numpy<2` and `opencv<4.12`; locking it
+  here would fight that resolution rather than record it.
+
+Both still pin versions through their `.txt` ranges. What they do without is the
+content guarantee - a re-uploaded wheel at the same version would install.
+
+`intel` and `nvidia` had **never** produced a lock before v1.8.3.20: the OpenVINO
+base runs as a non-root user and could not write the output file, and the CUDA
+runtime base ships no Python at all. Both are fixed in the generator workflow.
+
 ## Why `docker7-amd` is 20 GB
 
 The base is `rocm/pytorch:rocm6.2_…_pytorch_2.3.0`, which ships a full PyTorch

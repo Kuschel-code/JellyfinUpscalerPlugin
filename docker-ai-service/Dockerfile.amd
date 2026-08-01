@@ -57,6 +57,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Copy requirements first for layer caching
+# v1.8.3.20 - NOT hash-pinned, and this is deliberate.
+# The ROCm base ships torch 2.3 compiled against numpy 1.x, so the stack is
+# resolved IN the base by the weekly workflow and deliberately keeps numpy<2 and
+# opencv<4.12. Locking it here would fight that resolution rather than record it.
+# Tracked in docs/DOCKER-IMAGES.md.
 COPY requirements-amd.txt requirements.txt
 
 # Install Python dependencies, then the ROCm ONNX Runtime.

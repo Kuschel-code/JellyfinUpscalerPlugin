@@ -57,13 +57,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && ln -s /usr/bin/python3 /usr/bin/python
 
 # Copy requirements first for better caching
-COPY requirements.txt .
+# v1.8.3.20 - installs the LOCK, not the .txt.
+# The .txt carries human-readable ranges; the .lock is the resolved, hash-pinned
+# build input (generated inside this exact base image by lock-requirements.yml).
+# --require-hashes makes pip refuse anything whose content does not match, so a
+# re-uploaded wheel at the same version can no longer slip in unnoticed.
+COPY requirements-nvidia.lock ./requirements.lock
 
 # Install Python dependencies (GPU version)
 # Use python -m pip because the CUDA base image has pip3 not pip in PATH
 # BuildKit cache mount persists pip's wheel cache across builds (shaves ~90% off rebuilds)
 RUN --mount=type=cache,target=/root/.cache/pip \
-    python -m pip install -r requirements.txt
+    python -m pip install --require-hashes -r requirements.lock
 
 # Build-time provider assert (issue #69 lesson): fail the build if the CUDA
 # ExecutionProvider is not actually present. Prevents shipping a GPU image that
