@@ -34,7 +34,23 @@ namespace JellyfinUpscalerPlugin.Services
 
         /// <summary>Idempotently drop a job's cached frame progress. Call on every terminal path
         /// (completed/cancelled/failed) so the static cache can't leak over server uptime.</summary>
-        public static void ClearFrameProgress(string jobId) => _latestFrameProgress.TryRemove(jobId, out _);
+        public static void ClearFrameProgress(string jobId)
+        {
+            _latestFrameProgress.TryRemove(jobId, out _);
+            _latestFrameStats.TryRemove(jobId, out _);
+        }
+
+        // v1.8.3.20 - the frame counters, throughput and ETA were ALREADY computed on this
+        // path and then thrown away after the websocket send, so the polled dashboard could
+        // only ever show a percentage. Cache them next to the fraction (same chokepoint, same
+        // lifetime, cleared by the same ClearFrameProgress) so the activity strip can state
+        // what a job is really doing. This adds no measurement and no endpoint - it stops
+        // discarding numbers the pipeline had in hand.
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, FrameStats> _latestFrameStats = new();
+
+        /// <summary>Latest frame counters/throughput for a job, or null if none reported yet.</summary>
+        public static FrameStats? GetFrameStats(string jobId)
+            => _latestFrameStats.TryGetValue(jobId, out var st) ? st : null;
 
         // v1.7.11 - extraction-phase progress (Gap 1). Frame extraction is a single blocking ffmpeg
         // call that reports nothing, so the polled status used to sit on the 95%-capped time estimate
@@ -159,6 +175,11 @@ namespace JellyfinUpscalerPlugin.Services
             _latestFrameProgress[jobId] = hasTotal ? progress : -1;
             var framesRemaining = totalFrames - currentFrame;
             var secondsRemaining = fps > 0 ? framesRemaining / fps : 0;
+            // TotalFrames stays as reported: 0/-1 means "unknown", and the UI must be able
+            // to tell that apart from a genuine total so it can omit the "of N" instead of
+            // printing a wrong one.
+            _latestFrameStats[jobId] = new FrameStats(currentFrame, hasTotal ? totalFrames : 0, fps,
+                hasTotal && fps > 0 ? secondsRemaining : (double?)null);
 
             await SendProgressUpdate(new UpscalerProgressMessage
             {
@@ -173,6 +194,16 @@ namespace JellyfinUpscalerPlugin.Services
             });
         }
     }
+
+    /// <summary>
+    /// v1.8.3.20 - the numbers behind a running job, cached from the frame-progress
+    /// chokepoint so a polled UI can show them without a websocket.
+    /// </summary>
+    /// <param name="CurrentFrame">Frames finished so far.</param>
+    /// <param name="TotalFrames">Total frames, or 0 when the pipeline could not determine one.</param>
+    /// <param name="Fps">Frames per second over the job so far.</param>
+    /// <param name="EtaSeconds">Seconds remaining, or null when the total or the rate is unknown.</param>
+    public record FrameStats(int CurrentFrame, int TotalFrames, double Fps, double? EtaSeconds);
 
     /// <summary>
     /// Progress message data structure

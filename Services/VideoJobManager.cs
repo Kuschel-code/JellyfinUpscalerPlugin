@@ -41,8 +41,13 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         public List<object> GetActiveJobs()
         {
-            return _activeJobs.Values.Select(job => new
+            return _activeJobs.Values.Select(job =>
             {
+                // One lookup per job: four separate reads would be four dictionary hits
+                // and could in principle straddle an update mid-projection.
+                var stats = UpscalerProgressHub.GetFrameStats(job.Id);
+                return (object)new
+                {
                 jobId = job.Id,
                 inputPath = Path.GetFileName(job.InputPath),
                 outputPath = Path.GetFileName(job.OutputPath),
@@ -58,8 +63,16 @@ namespace JellyfinUpscalerPlugin.Services
                 model = !string.IsNullOrWhiteSpace(job.OptimizedOptions?.Model) && job.OptimizedOptions.Model != "auto"
                     ? job.OptimizedOptions.Model
                     : job.Options?.Model ?? "",
-                isPaused = _pausedJobs.GetValueOrDefault(job.Id, false)
-            }).Cast<object>().ToList();
+                isPaused = _pausedJobs.GetValueOrDefault(job.Id, false),
+                // v1.8.3.20 - counters the pipeline already produced. All four are null when
+                // no frame has been reported yet (extraction phase, or a method that does not
+                // go frame-by-frame); the UI omits them rather than printing zeroes.
+                currentFrame = stats?.CurrentFrame,
+                totalFrames = stats?.TotalFrames,
+                fps = stats?.Fps,
+                etaSeconds = stats?.EtaSeconds
+                };
+            }).ToList();
         }
 
         /// <summary>

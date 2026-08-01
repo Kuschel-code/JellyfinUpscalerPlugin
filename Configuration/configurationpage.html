@@ -1400,9 +1400,19 @@
             if (!running.length) {
                 var modeCb = page.querySelector('#DashboardAutoMode');
                 var mode = (modeCb && modeCb.checked) ? 'Auto mode active' : 'Custom mode';
-                var done = (jobs || []).filter(function(j) { return j.status === 'Completed'; }).length;
+                // v1.8.3.20 - "5 jobs completed" says nothing about whether the pipeline
+                // ran an hour ago or last month. startTime + duration are already in the
+                // projection, so the strip can say when instead of only how many.
+                var finished = (jobs || []).filter(function(j) { return j.status === 'Completed' && j.startTime; });
+                var last = null;
+                finished.forEach(function(j) {
+                    var end = new Date(j.startTime).getTime() + (j.duration || 0) * 1000;
+                    if (!isNaN(end) && (last === null || end > last)) last = end;
+                });
                 el.innerHTML = '<span style="color:#4ade80;">●</span> Ready · ' + mode +
-                    (done ? ' · ' + done + ' job' + (done === 1 ? '' : 's') + ' completed' : '');
+                    (last !== null ? ' · last job ' + _agoText(Date.now() - last) : '') +
+                    (finished.length ? ' · ' + finished.length + ' completed' : '');
+                _setStripLive(page, false);
                 return;
             }
             var j = running[0];
@@ -1422,19 +1432,69 @@
             }
             if (j.isPaused) {
                 el.innerHTML = '<span style="color:#94a3b8;">❚❚</span> <strong>' + _escHtml(name) + '</strong> · paused at ' + prog + '%' + ctl('resume', 'Resume') + ctl('cancel', 'Cancel', 'color:var(--danger);');
+                // A paused job produces no frames, so the fast cadence would poll for
+                // nothing until it is resumed.
+                _setStripLive(page, false);
                 return;
             }
             var phase = j.phase || (prog < 15 ? 'Extracting frames' : prog < 95 ? 'Upscaling' : 'Encoding');
-            var parts = ['<span style="color:#fbbf24;">●</span> <strong>' + _escHtml(name) + '</strong>',
-                         'phase <strong>' + _escHtml(phase) + '</strong> (' + prog + '%)'];
-            // model comes from the /jobs projection (added in v1.8.3.13); no fps field
-            // exists on a job, so nothing is invented here.
+            // v1.8.3.20 - frame counters, throughput and ETA now reach the projection
+            // (UpscalerProgressHub caches what it already computed instead of discarding
+            // it after the websocket send). Each is optional: during extraction, or on a
+            // method that does not go frame-by-frame, they are absent and the segment is
+            // dropped rather than padded with zeroes.
+            var phaseTxt = 'phase <strong>' + _escHtml(phase) + '</strong>';
+            if (j.currentFrame > 0) {
+                phaseTxt += ' (frame ' + j.currentFrame + (j.totalFrames > 0 ? ' of ' + j.totalFrames : '') + ')';
+            } else {
+                phaseTxt += ' (' + prog + '%)';
+            }
+            var parts = ['<span style="color:#fbbf24;">●</span> <strong>' + _escHtml(name) + '</strong>', phaseTxt];
             if (j.model) {
                 var m = 'model <strong>' + _escHtml(j.model) + '</strong>';
-                if (_autoPickCache && _autoPickCache.recommended_model === j.model) m += ' <span style="color:var(--text-muted);">(Auto)</span>';
+                // The auto reason is trimmed to its first clause: this is a one-line strip,
+                // and the full sentence already has a home in the Auto pick card above.
+                if (_autoPickCache && _autoPickCache.recommended_model === j.model) {
+                    var why = String(_autoPickCache.reason || '').split(' - ')[0];
+                    m += ' <span style="color:var(--text-muted);">(Auto' + (why ? ': ' + _escHtml(why) : '') + ')</span>';
+                }
                 parts.push(m);
             }
+            if (j.fps > 0) parts.push(j.fps.toFixed(1) + ' fps');
+            if (j.etaSeconds > 0) parts.push('ETA ' + _durationText(j.etaSeconds));
             el.innerHTML = parts.join(' · ') + ctl('pause', 'Pause') + ctl('cancel', 'Cancel', 'color:var(--danger);');
+            _setStripLive(page, true);
+        }
+        function _durationText(sec) {
+            sec = Math.max(0, Math.round(sec));
+            if (sec < 60) return sec + 's';
+            var m = Math.floor(sec / 60), r = sec % 60;
+            if (m < 60) return m + 'm ' + (r < 10 ? '0' : '') + r + 's';
+            return Math.floor(m / 60) + 'h ' + ((m % 60) < 10 ? '0' : '') + (m % 60) + 'm';
+        }
+        function _agoText(ms) {
+            var sec = Math.max(0, Math.round(ms / 1000));
+            return sec < 90 ? 'just now' : _durationText(sec) + ' ago';
+        }
+        // v1.8.3.20 - one interval, two speeds. A strip showing frames and fps is useless
+        // at the 15s idle cadence, and 3s polling while nothing runs is pointless load.
+        // The rate follows the strip's own state; the tab gate inside _scheduleRefresh is
+        // unchanged, so nothing polls at all while another tab is open.
+        var _stripLive = false;
+        function _setStripLive(page, live) {
+            if (live === _stripLive) return;
+            _stripLive = live;
+            _scheduleRefresh(page);
+        }
+        function _scheduleRefresh(page) {
+            if (refreshInterval) clearInterval(refreshInterval);
+            refreshInterval = setInterval(function() {
+                var activeTab = page.querySelector('.upscaler-tab.active');
+                if (!activeTab) return;
+                var tab = activeTab.getAttribute('data-tab');
+                if (tab === 'dashboard') refreshDashboard(page);
+                else if (tab === 'jobs') refreshJobs(page);
+            }, _stripLive ? 3000 : 15000);
         }
         function _errorHint(msg) {
             var m = String(msg || '');
@@ -3292,14 +3352,7 @@
 
             if (refreshInterval) clearInterval(refreshInterval);
             refreshInterval = null;
-            refreshInterval = setInterval(function() {
-                var activeTab = page.querySelector('.upscaler-tab.active');
-                if (activeTab) {
-                    var tab = activeTab.getAttribute('data-tab');
-                    if (tab === 'dashboard') refreshDashboard(page);
-                    else if (tab === 'jobs') refreshJobs(page);
-                }
-            }, 15000);
+            _scheduleRefresh(page);
         }
 
         var events = ['pageshow', 'viewshow'];
