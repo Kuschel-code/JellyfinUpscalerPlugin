@@ -1392,7 +1392,10 @@ namespace JellyfinUpscalerPlugin.Controllers
             try
             {
                 var jobs = _videoProcessor.GetActiveJobs();
-                return Ok(new { success = true, jobs = jobs });
+                // v1.8.3.20 - folded into the SAME response rather than a new endpoint: the
+                // dashboard needs both to render one status line, and two polls for one line
+                // would double the request rate for no benefit.
+                return Ok(new { success = true, jobs = jobs, history = _videoProcessor.GetCompletionSummary() });
             }
             catch (Exception ex)
             {

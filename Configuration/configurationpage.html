@@ -1137,6 +1137,7 @@
                                 '</div>';
                         }
                     });
+                    _lastJobsHistory = data.history || null;
                     renderActivityStrip(page, data.jobs);
                     page.querySelector('#stat-active').textContent = active;
                     page.querySelector('#stat-completed').textContent = completed;
@@ -1400,18 +1401,18 @@
             if (!running.length) {
                 var modeCb = page.querySelector('#DashboardAutoMode');
                 var mode = (modeCb && modeCb.checked) ? 'Auto mode active' : 'Custom mode';
-                // v1.8.3.20 - "5 jobs completed" says nothing about whether the pipeline
-                // ran an hour ago or last month. startTime + duration are already in the
-                // projection, so the strip can say when instead of only how many.
-                var finished = (jobs || []).filter(function(j) { return j.status === 'Completed' && j.startTime; });
-                var last = null;
-                finished.forEach(function(j) {
-                    var end = new Date(j.startTime).getTime() + (j.duration || 0) * 1000;
-                    if (!isNaN(end) && (last === null || end > last)) last = end;
-                });
+                // v1.8.3.20 - this counted `status === 'Completed'` inside the jobs list,
+                // a set that is ALWAYS empty: VideoProcessor removes a job from _activeJobs
+                // in its finally block on every terminal path, so /jobs only ever returns
+                // running ones. The "N jobs completed" the strip promised since v1.8.3.13
+                // could never appear. The numbers come from the performance history now
+                // (same response, new `history` field), which is where they always lived.
+                var h = _lastJobsHistory || {};
+                var lastMs = h.lastFinishedUtc ? new Date(h.lastFinishedUtc).getTime() : NaN;
                 el.innerHTML = '<span style="color:#4ade80;">●</span> Ready · ' + mode +
-                    (last !== null ? ' · last job ' + _agoText(Date.now() - last) : '') +
-                    (finished.length ? ' · ' + finished.length + ' completed' : '');
+                    (isNaN(lastMs) ? '' : ' · last job ' + _agoText(Date.now() - lastMs)) +
+                    (h.completed ? ' · ' + h.completed + ' completed' : '') +
+                    (h.failed ? ' · <span style="color:var(--danger);">' + h.failed + ' failed</span>' : '');
                 _setStripLive(page, false);
                 return;
             }
@@ -1465,6 +1466,9 @@
             el.innerHTML = parts.join(' · ') + ctl('pause', 'Pause') + ctl('cancel', 'Cancel', 'color:var(--danger);');
             _setStripLive(page, true);
         }
+        // Finished-job counters travel in the same /jobs response (see the controller);
+        // the strip reads them from here so it needs no second request.
+        var _lastJobsHistory = null;
         function _durationText(sec) {
             sec = Math.max(0, Math.round(sec));
             if (sec < 60) return sec + 's';

@@ -153,6 +153,31 @@ namespace JellyfinUpscalerPlugin.Services
         }
 
         /// <summary>
+        /// v1.8.3.20 - what finished, and when.
+        ///
+        /// GetActiveJobs only ever returns RUNNING jobs: VideoProcessor removes a job from
+        /// _activeJobs in its finally block, on every terminal path. The dashboard strip has
+        /// been counting `status === 'Completed'` in that list since v1.8.3.13, which is a
+        /// set that is always empty - the "N jobs completed" it promised could never appear.
+        ///
+        /// _performanceHistory already records Success and Timestamp per finished job (capped
+        /// at 100). This surfaces it rather than adding a second store.
+        /// </summary>
+        public object GetCompletionSummary()
+        {
+            var entries = _performanceHistory.Values.ToList();
+            var succeeded = entries.Count(m => m.Success);
+            DateTime? last = entries.Count > 0 ? entries.Max(m => m.Timestamp) : null;
+            return new
+            {
+                completed = succeeded,
+                failed = entries.Count - succeeded,
+                // UTC on the wire; the browser renders it in local time.
+                lastFinishedUtc = last?.ToUniversalTime()
+            };
+        }
+
+        /// <summary>
         /// Update statistics (for timer callback)
         /// </summary>
         public void UpdateStatistics(object? state)

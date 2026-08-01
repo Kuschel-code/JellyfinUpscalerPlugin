@@ -355,6 +355,13 @@ namespace JellyfinUpscalerPlugin.Services
         public List<object> GetActiveJobs() => _jobManager.GetActiveJobs();
 
         /// <summary>
+        /// v1.8.3.20 - counts and last timestamp of FINISHED jobs. GetActiveJobs cannot
+        /// answer this: a job is removed from _activeJobs in the finally block below, on
+        /// every terminal path. See VideoJobManager.GetCompletionSummary.
+        /// </summary>
+        public object GetCompletionSummary() => _jobManager.GetCompletionSummary();
+
+        /// <summary>
         /// Pause a running job
         /// </summary>
         public bool PauseJob(string jobId) => _jobManager.PauseJob(jobId);
