@@ -1034,7 +1034,7 @@ namespace JellyfinUpscalerPlugin.Controllers
                     forceAuto: true);
                 var recommendedModel = pick.Model;
 
-                var recommendedFilter = _upscalerCore.ResolveFilterForVideo(
+                var filterPick = _upscalerCore.ResolveFilterForVideoDetailed(
                     genres: genreList,
                     width: width,
                     height: height);
@@ -1055,7 +1055,10 @@ namespace JellyfinUpscalerPlugin.Controllers
                     // not encode a scale, so the UI keeps showing the configured value.
                     recommended_scale = pick.Scale,
                     output_size = Services.ModelScale.DescribeOutput(width, height, pick.Scale),
-                    recommended_filter = recommendedFilter,
+                    recommended_filter = filterPick.Preset,
+                    // v1.8.3.20 - the filter is a SUGGESTION now, never applied for the
+                    // user, so it has to say what it is based on or it cannot be judged.
+                    filter_reason = filterPick.Reason,
                     input_frames = inputFrames,
                     auto_selection_enabled = config?.EnableAutoModelSelection ?? false,
                     parameters = new { genres = genreList, width, height, is_batch = isBatch }

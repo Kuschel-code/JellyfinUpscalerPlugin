@@ -599,7 +599,7 @@
                 <details>
                         <summary>Auto Model Selection &amp; Fallback</summary>
                         <div class="details-body">
-                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableAutoModelSelection" /> Enable Auto Mode (AI picks model + filter per video)</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="EnableAutoModelSelection" /> Enable Auto Mode (AI picks the model per video)</label></div>
                             <div class="fieldDescription" style="margin-bottom:0.5rem;"><b>Default: off.</b> When enabled, the plugin picks the best AI model and color-filter preset for each video on playback start — using genre (anime/horror/sci-fi/documentary), source resolution, and multi-frame capability. Overrides your chosen model only for the current video; your saved preferences remain unchanged. Batch library scans follow the same heuristic when active.</div>
                             <div class="inputContainer"><label class="inputLabel" for="ModelFallbackChain">Model Fallback Chain</label><input type="text" id="ModelFallbackChain" placeholder="realesrgan-x4,span-x4,edsr-x4" /><div class="fieldDescription">Comma-separated model names. If primary fails, tries next in chain.</div></div>
                             <div class="form-row" style="margin-top:0.5rem;">
@@ -1330,7 +1330,7 @@
             // never did: the resolver reads genres, resolution, job type and (new) the
             // hardware class the AI service reports. Benchmarks are a separate tool.
             if (desc) desc.textContent = isAuto
-                ? 'Auto: model and filter are chosen per video from content type, resolution and what your hardware can run. Flip off for Custom.'
+                ? 'Auto: the model is chosen per video from content type, resolution and what your hardware can run. A filter is only ever suggested - never applied for you. Flip off for Custom.'
                 : 'Custom: your manual model/scale/filter settings apply exactly as configured.';
         }
         function attachDashboardMode(page) {

@@ -118,6 +118,14 @@
             '<div><strong>Providers:</strong> <span id="providersInfo">Detecting...</span></div>' +
             '<div><strong>Recommended Model:</strong> <span id="recommendedModel">Analyzing...</span></div>' +
             '<div id="recommendedModelReason" style="font-size:11px;opacity:0.75;margin-top:2px;"></div>' +
+            // v1.8.3.20 - the filter suggestion, mirroring the player's Auto tab. Hidden
+            // until there IS a suggestion that differs from the current preset; applying
+            // goes through the normal /filter-config save path, never automatically.
+            '<div id="suggestedFilterRow" style="display:none;margin-top:6px;font-size:11px;">' +
+              '<span id="suggestedFilterText" style="opacity:0.85;"></span> ' +
+              '<button type="button" id="applySuggestedFilterBtn" class="raised" ' +
+                'style="font-size:10px;padding:1px 7px;margin-left:4px;">Apply</button>' +
+            '</div>' +
             '</div></div></div>' +
 
             '<!-- Cache & Jobs -->' +
@@ -305,12 +313,60 @@
                     var reasonEl = document.getElementById('recommendedModelReason');
                     if (reasonEl) reasonEl.textContent = rec.reason || rec.recommendationReason || '';
                 }
+                loadFilterSuggestion();
             }
         }).catch(function(error) {
             console.error('Failed to load system info:', error);
             var statusEl = document.getElementById('pluginStatus');
             if (statusEl) { statusEl.textContent = 'Error'; statusEl.style.color = '#ff5252'; }
         });
+
+        // v1.8.3.20 - the filter suggestion. Auto never applies a look on its own any
+        // more (that silently decided your taste on first playback); it offers one here
+        // and in the player, and only when its opinion differs from what you have set.
+        function loadFilterSuggestion() {
+            var row = document.getElementById('suggestedFilterRow');
+            if (!row) return;
+            Promise.all([
+                ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/recommend-model') + '?isBatch=true'),
+                ApiClient.getPluginConfiguration('f87f700e-679d-43e6-9c7c-b3a410dc3f22')
+            ]).then(function(res) {
+                var pick = res[0] || {}, cfg = res[1] || {};
+                var suggested = pick.recommended_filter || '';
+                var current = (cfg.ActiveFilterPreset || '').toLowerCase();
+                var autoOn = cfg.EnableAutoModelSelection !== false;
+                if (!autoOn || !suggested || suggested === 'none' || suggested.toLowerCase() === current) {
+                    row.style.display = 'none';
+                    return;
+                }
+                var txt = document.getElementById('suggestedFilterText');
+                if (txt) {
+                    txt.textContent = 'Suggested look' + (pick.filter_reason ? ' (' + pick.filter_reason + ')' : '') +
+                        ': ' + suggested;
+                }
+                var btn = document.getElementById('applySuggestedFilterBtn');
+                if (btn && !btn._wired) {
+                    btn._wired = true;
+                    btn.addEventListener('click', function() {
+                        btn.disabled = true;
+                        ApiClient.ajax({
+                            type: 'POST',
+                            url: ApiClient.getUrl('Upscaler/filter-config'),
+                            data: JSON.stringify({ ActiveFilterPreset: suggested, EnableVideoFilters: true }),
+                            contentType: 'application/json',
+                            dataType: 'json'
+                        }).then(function() {
+                            showToast('Filter preset set to ' + suggested);
+                            row.style.display = 'none';
+                        }).catch(function() {
+                            btn.disabled = false;
+                            showToast('Could not set the preset');
+                        });
+                    });
+                }
+                row.style.display = '';
+            }).catch(function() { row.style.display = 'none'; });
+        }
 
         // Check AI service health via backend proxy
         ApiClient.getJSON(ApiClient.getUrl('api/Upscaler/service-health')).then(function(data) {

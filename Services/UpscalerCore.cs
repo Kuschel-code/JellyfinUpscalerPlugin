@@ -44,6 +44,14 @@ namespace JellyfinUpscalerPlugin.Services
         string? SubstitutionReason,
         int Scale = 0);
 
+    /// <summary>
+    /// v1.8.3.20 - a filter SUGGESTION and the signal behind it. Deliberately separate
+    /// from <see cref="AutoPick"/>: a model pick is applied, a filter pick is offered.
+    /// </summary>
+    /// <param name="Preset">Preset key, or "none" when no filter is worth suggesting.</param>
+    /// <param name="Reason">Short phrase naming the signal, shown inline in the player.</param>
+    public record FilterPick(string Preset, string Reason);
+
     public class UpscalerCore : IUpscalerCore, IDisposable
     {
         private readonly ILogger<UpscalerCore> _logger;
@@ -621,48 +629,63 @@ namespace JellyfinUpscalerPlugin.Services
             IEnumerable<string>? genres = null,
             int width = 0,
             int height = 0)
+            => ResolveFilterForVideoDetailed(genres, width, height).Preset;
+
+        /// <summary>
+        /// v1.8.3.20 - the filter choice WITH the signal it reacted to.
+        ///
+        /// Until now this returned a bare preset key, and the player applied it silently.
+        /// A filter is taste, not technique: it is now only ever offered as a suggestion,
+        /// and a suggestion has to say what it is based on ("Anime content") or the user
+        /// cannot judge it. The reason is short by design - it is rendered inline next to
+        /// the preset name in the player, not as a paragraph.
+        /// </summary>
+        public FilterPick ResolveFilterForVideoDetailed(
+            IEnumerable<string>? genres = null,
+            int width = 0,
+            int height = 0)
         {
             var genreList = genres?.Select(g => g.ToLowerInvariant()).ToList() ?? new List<string>();
 
             bool isAnime = genreList.Any(g => g.Contains("anime") || g.Contains("animation") || g.Contains("cartoon"));
             if (isAnime)
             {
-                _logger.LogDebug("Auto-filter: anime content → vivid");
-                return "vivid";
+                _logger.LogDebug("Auto-filter: anime content -> vivid");
+                return new FilterPick("vivid", "Anime content");
             }
 
             bool isHorror = genreList.Any(g => g.Contains("horror") || g.Contains("thriller"));
             if (isHorror)
             {
-                _logger.LogDebug("Auto-filter: horror/thriller → drama");
-                return "drama";
+                _logger.LogDebug("Auto-filter: horror/thriller -> drama");
+                return new FilterPick("drama", "Horror or thriller");
             }
 
             bool isSciFi = genreList.Any(g => g.Contains("sci-fi") || g.Contains("science fiction") || g.Contains("cyberpunk"));
             if (isSciFi)
             {
-                _logger.LogDebug("Auto-filter: sci-fi → cyberpunk");
-                return "cyberpunk";
+                _logger.LogDebug("Auto-filter: sci-fi -> cyberpunk");
+                return new FilterPick("cyberpunk", "Sci-fi");
             }
 
             bool isDoc = genreList.Any(g => g.Contains("documentary") || g.Contains("news"));
             if (isDoc)
             {
-                _logger.LogDebug("Auto-filter: documentary → sharp-hd");
-                return "sharp-hd";
+                _logger.LogDebug("Auto-filter: documentary -> sharp-hd");
+                return new FilterPick("sharp-hd", "Documentary or news");
             }
 
             // Low-res/SD source gets mild sharpening to recover detail lost to upscaling.
             bool isLowRes = width > 0 && height > 0 && (width < 1280 || height < 720);
             if (isLowRes)
             {
-                _logger.LogDebug("Auto-filter: low-res ({W}x{H}) → sharp-hd", width, height);
-                return "sharp-hd";
+                _logger.LogDebug("Auto-filter: low-res ({W}x{H}) -> sharp-hd", width, height);
+                return new FilterPick("sharp-hd", $"Low-resolution source ({width}x{height})");
             }
 
             // HD content where we don't have genre signal — no filter beats a wrong filter.
-            _logger.LogDebug("Auto-filter: no strong signal → none");
-            return "none";
+            _logger.LogDebug("Auto-filter: no strong signal -> none");
+            return new FilterPick("none", "No strong signal - no filter beats a wrong one");
         }
 
         /// <summary>

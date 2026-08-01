@@ -1361,6 +1361,20 @@
                         PlayerIntegration._applyAutoNow(menu);
                     } else if (action === 'auto-refresh') {
                         PlayerIntegration._renderAutoPane(menu);
+                    } else if (action === 'filter-suggest-apply') {
+                        var key = target.getAttribute('data-preset-key');
+                        target.disabled = true;
+                        PlayerIntegration._applySuggestedFilter(key).then(function(ok) {
+                            PlayerIntegration.showPlayerNotification(
+                                ok ? ('Filter preset set to ' + key) : 'Nothing to apply', 'info');
+                            // Re-render: the suggestion has to disappear now that it IS the
+                            // current preset, otherwise it would invite an endless re-apply.
+                            PlayerIntegration._renderAutoPane(menu);
+                        }).catch(function(err) {
+                            target.disabled = false;
+                            PlayerIntegration.showPlayerNotification(
+                                'Could not set the preset: ' + ((err && err.message) || 'unknown error'), 'warning');
+                        });
                     } else if (action === 'filter-reset') {
                         PlayerIntegration._resetFilters(menu);
                     } else if (action === 'filter-save') {
@@ -1640,6 +1654,27 @@
                             '</div>';
                 }
 
+                // 3. The filter SUGGESTION. Shown only when auto actually has a different
+                //    opinion than your current preset - a suggestion that repeats what you
+                //    already chose is noise. Applying is one click and goes through the
+                //    same /filter-config save path as a manual pick; nothing happens on
+                //    its own. Not shown in Custom mode: there is no auto decision to offer.
+                var suggested = (pick && pick.recommended_filter) || '';
+                var currentPreset = (cfg.ActiveFilterPreset || '').toLowerCase();
+                if (autoOn && suggested && suggested !== 'none' && suggested.toLowerCase() !== currentPreset) {
+                    html += '<div class="ai-menu__auto-suggest" data-filter-suggestion>' +
+                                '<div class="ai-menu__auto-suggest-text">' +
+                                    '<span class="ai-menu__auto-suggest-label">Suggested look' +
+                                        (pick.filter_reason ? ' - ' + esc(pick.filter_reason) : '') + '</span>' +
+                                    '<span class="ai-menu__auto-suggest-value">' + esc(suggested) +
+                                        (currentPreset ? ' <span class="ai-menu__auto-suggest-cur">(now: ' + esc(cfg.ActiveFilterPreset) + ')</span>' : '') +
+                                    '</span>' +
+                                '</div>' +
+                                '<button class="ai-menu__filter-btn ai-menu__filter-btn--primary" ' +
+                                    'data-action="filter-suggest-apply" data-preset-key="' + esc(suggested) + '">Apply</button>' +
+                            '</div>';
+                }
+
                 // 3. Live switches for the four things auto touches. Filters are listed
                 //    but deliberately described as a suggestion: v1.8.3.14 stopped auto
                 //    overwriting a preset the user picked, and this text must not
@@ -1724,7 +1759,8 @@
                         PlayerIntegration.showPlayerNotification('Auto had nothing to apply', 'warning');
                         return;
                     }
-                    PlayerIntegration._applyAutoFilter(pick.filter, cfg.ActiveFilterPreset);
+                    // v1.8.3.20 - the model is applied, the filter is not: it is only
+                    // ever offered as a suggestion below.
                     PlayerIntegration._startRtWithConfig(video, Object.assign({}, cfg, { Model: pick.model }));
                     var msg = 'Applied ' + pick.model + (pick.reason ? ' — ' + pick.reason : '');
                     PlayerIntegration.showPlayerNotification(msg, pick.substitutedFrom ? 'warning' : 'info');
@@ -2130,33 +2166,27 @@
             });
         },
 
-        // POST the auto-picked filter preset so FFmpeg applies it on next seek.
-        // Fire-and-forget — failure to apply the filter shouldn't block RT upscaling.
-        // v1.8.3.14 - only suggest, never overwrite a deliberate choice.
-        // Before this the auto filter was POSTed to /filter-config on every playback,
-        // which PERSISTED it into the saved config: a user who had picked "cinematic"
-        // found it silently rewritten to "vivid" after watching one anime episode -
-        // directly contradicting the "does not persist back to config" comment on the
-        // caller. Filters are taste, models are technique: a model may be swapped
-        // automatically, a look may not.
-        _applyAutoFilter: function(presetKey, currentPreset) {
-            if (!presetKey || presetKey === 'none') return;
-            var chosen = (currentPreset || '').toLowerCase();
-            if (chosen && chosen !== 'none' && chosen !== 'auto') {
-                console.log('AI Upscaler Auto: keeping your filter preset "' + currentPreset +
-                    '" (auto would have suggested "' + presetKey + '")');
-                return;
-            }
-            var body = { ActiveFilterPreset: presetKey, EnableVideoFilters: true };
-            ApiClient.ajax({
+        // v1.8.3.20 - auto no longer applies a filter, at all.
+        //
+        // The UI promised "AI picks model + filter per video" and the code half-kept it:
+        // v1.8.3.14 stopped auto OVERWRITING a preset you had chosen, but it still wrote
+        // its own choice whenever the field was empty - so the first playback silently
+        // decided your look, and the setting then read as if you had picked it.
+        //
+        // Models are technique: swapping one for a hardware reason is a correction the
+        // user cannot make better themselves. A filter is taste. Auto now surfaces its
+        // suggestion in the Auto tab with an Apply button and writes nothing on its own.
+        // ResolveFilterForVideo keeps its single caller - the display endpoint - which is
+        // exactly what a suggestion needs.
+        _applySuggestedFilter: function(presetKey) {
+            if (!presetKey || presetKey === 'none') return Promise.resolve(false);
+            return ApiClient.ajax({
                 type: 'POST',
                 url: ApiClient.getUrl('Upscaler/filter-config'),
-                data: JSON.stringify(body),
+                data: JSON.stringify({ ActiveFilterPreset: presetKey, EnableVideoFilters: true }),
                 contentType: 'application/json',
                 dataType: 'json'
-            }).catch(function(err) {
-                console.warn('AI Upscaler Auto: filter-config apply failed —', err && (err.message || err));
-            });
+            }).then(function() { return true; });
         },
 
         startRealtimeUpscaling: function() {
@@ -2175,7 +2205,6 @@
                 return PlayerIntegration._autoSelectForVideo(video, config).then(function(pick) {
                     if (pick && pick.model) {
                         config = Object.assign({}, config, { Model: pick.model });
-                        PlayerIntegration._applyAutoFilter(pick.filter, config.ActiveFilterPreset);
                         // v1.8.3.13 - say WHY, and never swap the model silently: a
                         // substitution (preferred model has no public ONNX) is shown as
                         // a warning instead of looking like a wrong pick.
@@ -2374,6 +2403,11 @@
                 '.ai-menu__auto-row-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}',
                 '.ai-menu__auto-row-label{font-size:12px;color:#e6e8ec}',
                 '.ai-menu__auto-row-sub{font-size:10px;line-height:1.45;color:#5c6472}',
+                '.ai-menu__auto-suggest{display:flex;align-items:center;gap:10px;margin-top:10px;padding:9px 11px;border:1px solid rgba(52,211,153,.35);border-radius:6px;background:rgba(52,211,153,.07)}',
+                '.ai-menu__auto-suggest-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}',
+                '.ai-menu__auto-suggest-label{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#5c6472}',
+                '.ai-menu__auto-suggest-value{font-size:12px;color:#e6e8ec}',
+                '.ai-menu__auto-suggest-cur{color:#5c6472;font-size:11px}',
                 '.ai-menu__auto-actions{display:flex;gap:8px;margin-top:14px}',
                 '.ai-menu__auto-actions .ai-menu__filter-btn{flex:1}',
 
