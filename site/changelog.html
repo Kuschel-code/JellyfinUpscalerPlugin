@@ -7,13 +7,22 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.20</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.21</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.20 - Honesty, visibility, reproducibility <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.21 - Maintainability groundwork <span class="tag success">latest</span></h2>
+  <p class="date">2026-08-01</p>
+  <ul>
+    <li><strong>model_import.py</strong> - the OpenModelDB import and pth&rarr;ONNX conversion block moved out of main.py (6808 &rarr; 6627 lines) as a verbatim extraction. Every function body is byte-identical and no route moved; the endpoints keep their decorators. Three test monkeypatch targets moved with it - and one of them turned out to have been passing for the wrong reason.</li>
+    <li><strong>i18n groundwork.</strong> English is now the <em>source</em> language, read from a catalogue rather than hardcoded: <code>strings.en.json</code> plus a small <code>t()</code> helper. Adding a locale is copying the file, translating values, and one line of code. <strong>Nothing was translated</strong> - this phase proves the structure.</li>
+    <li>A full extraction would be ~485 strings; 58 are migrated - the activity strip and auto-mode texts, all of them new or rewritten in v1.8.3.20. Migrating text nobody is editing risks a regression for no benefit. <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/I18N.md">docs/I18N.md</a> records the numbers and how to continue per tab.</li>
+    <li>A missing key renders as the key name, never as an empty string - a blank label is invisible in a screenshot. 7 tests guard the catalogue, including that both assets are embedded <em>and</em> registered, since getting that wrong 404s silently and turns every label into its key.</li>
+  </ul>
+
+  <h2>v1.8.3.20 - Honesty, visibility, reproducibility</h2>
   <p class="date">2026-08-01</p>
   <ul>
     <li><strong>The filter promise is settled.</strong> The UI said "AI picks model + filter per video" and the code half-kept it: it stopped overwriting a preset you had chosen, but still wrote its own whenever the field was empty - so the first playback quietly decided your look. Auto now <em>suggests</em> a look with an Apply button, in the player's Auto tab and the sidebar, and only when its opinion differs from yours. It writes nothing on its own.</li>
