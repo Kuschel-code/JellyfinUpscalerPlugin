@@ -109,8 +109,11 @@ def test_zip_rejects_garbage(client):
 
 
 def test_converter_unavailable_gives_501(client, monkeypatch):
-    from app import main
-    monkeypatch.setattr(main, "_converter_available", lambda: False)
+    # v1.8.3.20: patch where the function is DEFINED. _convert_pth_bytes_to_onnx
+    # calls _converter_available through its own module globals, so patching the
+    # name re-exported into main would no longer reach it.
+    from app import main, model_import
+    monkeypatch.setattr(model_import, "_converter_available", lambda: False)
     with pytest.raises(HTTPException) as ei:
         main._convert_pth_bytes_to_onnx(b"fake")
     assert ei.value.status_code == 501
@@ -137,17 +140,20 @@ def test_import_async_requires_id(client, no_auth):
 
 
 def test_import_async_unknown_id_404(client, no_auth, monkeypatch):
-    from app import main
-    monkeypatch.setattr(main, "_fetch_import_catalog", lambda: {"direct_onnx": [], "requires_conversion": []})
+    # This one asserted 404 and got 404 even with a stale patch target - the real
+    # catalog fetch simply failed and produced the same code. Patching the right
+    # module makes it test what it claims to.
+    from app import model_import
+    monkeypatch.setattr(model_import, "_fetch_import_catalog", lambda: {"direct_onnx": [], "requires_conversion": []})
     r = client.post("/models/import-async", json={"id": "does-not-exist"})
     assert r.status_code == 404
 
 
 def test_import_async_gate_rejected_400(client, no_auth, monkeypatch):
-    from app import main
+    from app import model_import
     entry = {"id": "bad-host", "name": "x", "scale": 2, "license": "MIT",
              "download_url": "https://mega.nz/file/x.onnx", "sha256": "a" * 64, "size_bytes": 10}
-    monkeypatch.setattr(main, "_fetch_import_catalog", lambda: {"direct_onnx": [entry], "requires_conversion": []})
+    monkeypatch.setattr(model_import, "_fetch_import_catalog", lambda: {"direct_onnx": [entry], "requires_conversion": []})
     r = client.post("/models/import-async", json={"id": "bad-host"})
     assert r.status_code == 400
     assert "allowlisted" in r.json()["detail"]
