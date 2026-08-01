@@ -34,6 +34,20 @@ def _disable_auth():
 
 
 @pytest.fixture
+def app_main(client):
+    """The imported `app.main` module.
+
+    Depends on `client` for its SIDE EFFECT, not its value: that fixture is what
+    installs the cv2/onnx/ncnn/torch stubs into sys.modules. Importing app.main
+    without it raises ModuleNotFoundError('cv2') anywhere opencv is not installed —
+    which is every CI runner. The first cut of this file imported directly and went
+    red in CI while passing on a dev box that happened to have opencv.
+    """
+    from app import main
+    return main
+
+
+@pytest.fixture
 def fixture_server():
     """A loopback HTTP server serving PAYLOAD at /model.onnx.
 
@@ -71,9 +85,8 @@ def fixture_server():
     "https://github.com/x/releases/download/v1/model.onnx",
     "https://raw.githubusercontent.com/x/main/model.onnx",
 ])
-def test_allowlisted_https_urls_pass(url):
-    from app.main import _is_allowed_download_url
-    assert _is_allowed_download_url(url)
+def test_allowlisted_https_urls_pass(url, app_main):
+    assert app_main._is_allowed_download_url(url)
 
 
 @pytest.mark.parametrize("url", [
@@ -83,19 +96,16 @@ def test_allowlisted_https_urls_pass(url):
     "https://127.0.0.1/model.onnx",                    # SSRF at the loopback interface
     "file:///etc/passwd",                              # not even http
 ])
-def test_everything_else_is_refused(url):
-    from app.main import _is_allowed_download_url
-    assert not _is_allowed_download_url(url)
+def test_everything_else_is_refused(url, app_main):
+    assert not app_main._is_allowed_download_url(url)
 
 
 # ── The mechanics ──────────────────────────────────────────────────────────
 
 @pytest.fixture
-def registered_model(fixture_server, tmp_path, monkeypatch):
+def registered_model(fixture_server, tmp_path, monkeypatch, app_main):
     """Register a model pointing at the fixture server and route downloads to tmp_path."""
-    from app import main
-
-    monkeypatch.setitem(main.AVAILABLE_MODELS, "fixture-model-x2", {
+    monkeypatch.setitem(app_main.AVAILABLE_MODELS, "fixture-model-x2", {
         "name": "Fixture Model",
         "type": "onnx",
         "scale": 2,
@@ -103,19 +113,18 @@ def registered_model(fixture_server, tmp_path, monkeypatch):
         "url": f"{fixture_server}/model.onnx",
         "sha256": PAYLOAD_SHA,
     })
-    monkeypatch.setattr(main, "get_model_path", lambda n: tmp_path / f"{n}.onnx")
-    # The loopback fixture is http and 127.0.0.1 - exactly what the real gate must
+    monkeypatch.setattr(app_main, "get_model_path", lambda n: tmp_path / f"{n}.onnx")
+    # The loopback fixture is http on 127.0.0.1 — exactly what the real gate must
     # refuse. Swap the predicate rather than loosening it.
-    monkeypatch.setattr(main, "_is_allowed_download_url", lambda url: True)
+    monkeypatch.setattr(app_main, "_is_allowed_download_url", lambda url: True)
     return "fixture-model-x2", tmp_path
 
 
 @pytest.mark.asyncio
-async def test_download_writes_the_verified_file_to_disk(registered_model):
-    from app import main
+async def test_download_writes_the_verified_file_to_disk(registered_model, app_main):
     name, tmp_path = registered_model
 
-    assert await main.download_model(name) is True
+    assert await app_main.download_model(name) is True
 
     dest = tmp_path / f"{name}.onnx"
     assert dest.exists(), "the model must land on disk under its final name"
@@ -124,34 +133,36 @@ async def test_download_writes_the_verified_file_to_disk(registered_model):
 
 
 @pytest.mark.asyncio
-async def test_a_sha_mismatch_refuses_to_publish_the_file(fixture_server, tmp_path, monkeypatch):
+async def test_a_sha_mismatch_refuses_to_publish_the_file(
+    fixture_server, tmp_path, monkeypatch, app_main
+):
     """The integrity gate, against a real wrong download rather than a stub."""
-    from app import main
-
-    monkeypatch.setitem(main.AVAILABLE_MODELS, "fixture-bad-x2", {
+    monkeypatch.setitem(app_main.AVAILABLE_MODELS, "fixture-bad-x2", {
         "name": "Fixture Bad", "type": "onnx", "scale": 2, "available": True,
         "url": f"{fixture_server}/truncated.onnx",
         "sha256": PAYLOAD_SHA,               # deliberately does not match the body
     })
-    monkeypatch.setattr(main, "get_model_path", lambda n: tmp_path / f"{n}.onnx")
-    monkeypatch.setattr(main, "_is_allowed_download_url", lambda url: True)
+    monkeypatch.setattr(app_main, "get_model_path", lambda n: tmp_path / f"{n}.onnx")
+    monkeypatch.setattr(app_main, "_is_allowed_download_url", lambda url: True)
 
-    assert await main.download_model("fixture-bad-x2") is False
+    assert await app_main.download_model("fixture-bad-x2") is False
     assert not (tmp_path / "fixture-bad-x2.onnx").exists(), \
         "a mismatched download must never become visible as a valid model"
     assert not list(tmp_path.glob("*.tmp.*")), "the temp file must be cleaned up on failure"
 
 
 @pytest.mark.asyncio
-async def test_progress_is_reported_while_streaming(registered_model):
-    """v1.8.3.14 added progress_cb so the UI could show real bytes. Nothing covered it -
+async def test_progress_is_reported_while_streaming(registered_model, app_main):
+    """v1.8.3.14 added progress_cb so the UI could show real bytes. Nothing covered it —
     and a signature change to this callback silently broke test_download_async for six
     releases, because that test's mock still had the old arity."""
-    from app import main
     name, _ = registered_model
 
     seen = []
-    assert await main.download_model(name, progress_cb=lambda done, total: seen.append((done, total))) is True
+    ok = await app_main.download_model(
+        name, progress_cb=lambda done, total: seen.append((done, total))
+    )
+    assert ok is True
 
     assert seen, "progress_cb must be called at least once"
     done, total = seen[-1]
