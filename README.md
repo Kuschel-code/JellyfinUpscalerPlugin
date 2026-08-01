@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.19
+# Jellyfin AI Upscaler Plugin v1.8.3.20
 
 [![Built with Claude Opus 5](https://img.shields.io/badge/Built%20with-Claude%20Opus%205-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.19):**
+**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.20):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -39,7 +39,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.19   │  │
+│  │  AI Upscaler Plugin v1.8.3.20   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -91,7 +91,7 @@ Auto mode is on by default. For every video it answers three questions and tells
 |---|---|---|
 | **Which model** | Content type (genre), source resolution, whether multi-frame models are loaded, and the hardware class the AI service reports | Override a model you selected yourself under *Preferred Anime / Live-Action Model* — that is annotated, never replaced |
 | **Which scale** | The source size. SD gets a full 4x restore; 720p and 1080p get 2x; a source that is already 4K is **cleaned up, not enlarged** | Overshoot that target silently — going past it is always a reported substitution with a reason you can read |
-| **Which filter** | Content type | Overwrite a preset you chose. Auto only suggests a look when you have not picked one. Filters are taste; models are technique |
+| **Which filter** | Content type | Apply one. **Ever.** As of v1.8.3.20 auto never writes a filter preset - it offers one in the player's Auto tab and the sidebar with an Apply button, and only when its opinion differs from yours. Filters are taste; models are technique |
 
 The reason is visible wherever the decision is: the dashboard, the in-player **Auto** tab, and the library-scan log (at Information level, because batch runs happen when nobody is watching).
 

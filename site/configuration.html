@@ -10,7 +10,7 @@
 <body>
 <header class="topbar">
   <div class="topbar-inner">
-    <a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.19</span></a>
+    <a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.20</span></a>
     <nav class="nav" data-nav></nav>
     <div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div>
   </div>
@@ -67,6 +67,10 @@
   </ul>
 
   <p>A value in <em>Preferred Anime Model</em> or <em>Preferred Live-Action Model</em> is treated as a deliberate override: it is exempt from both filters and only annotated when it is heavy for your hardware. The colour-filter preset is chosen separately and is a <em>suggestion</em> — auto never overwrites a preset you picked.</p>
+
+  <h3>The filter suggestion</h3>
+  <p>Auto <strong>never applies a colour filter</strong>. Until v1.8.3.20 it wrote its own choice into your config whenever the field was empty, so the first playback quietly decided your look and the setting then read back as if you had picked it. A model swap is a correction you cannot make better yourself; a filter is taste.</p>
+  <p>The player's <em>Auto</em> tab and the sidebar now show <em>&ldquo;Suggested look (Anime content): vivid&rdquo;</em> with an <strong>Apply</strong> button, and only when the suggestion differs from your current preset. Applying goes through the same save path as a manual pick.</p>
 
   <h2>AI Models tab</h2>
   <p>Live model catalog pulled from <code>/models</code>. Each row shows:</p>

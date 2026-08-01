@@ -7,13 +7,24 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.19</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.20</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.19 - The Auto tab no longer states a default as a fact <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.20 - Honesty, visibility, reproducibility <span class="tag success">latest</span></h2>
+  <p class="date">2026-08-01</p>
+  <ul>
+    <li><strong>The filter promise is settled.</strong> The UI said "AI picks model + filter per video" and the code half-kept it: it stopped overwriting a preset you had chosen, but still wrote its own whenever the field was empty - so the first playback quietly decided your look. Auto now <em>suggests</em> a look with an Apply button, in the player's Auto tab and the sidebar, and only when its opinion differs from yours. It writes nothing on its own.</li>
+    <li><strong>The activity strip says what a job is doing:</strong> phase, frame x of y, model with the auto reason, fps and ETA on one line. Those numbers were computed on every frame and thrown away after the websocket send; they are cached now, so a polled dashboard can show them. Idle says when the last job finished - the old "N jobs completed" counted a list that never contains completed jobs, so it could never appear.</li>
+    <li><strong>docs/ENDPOINT-AUDIT.md</strong> reports all 66 routes against their real callers. 20 have no reference in the repo, grouped by what they are - including a real gap: the settings page offers three Processing Queue controls over a queue whose six endpoints no UI ever calls. Nothing was deleted.</li>
+    <li><strong><code>/Upscaler/hardware-benchmark</code></strong> replaces the misleadingly named <code>/Upscaler/recommendations</code>, which returns a hardware benchmark rather than a model recommendation. The old route stays as a deprecated alias with an identical payload.</li>
+    <li><strong>Reproducible builds now actually are.</strong> Lock files existed since v1.8.3.13 and no image installed one. Five variants now install a hash-pinned lock with <code>--require-hashes</code>; <code>intel</code> and <code>nvidia</code> produced their first lock ever (a non-root base that could not write the file, and a base with no Python at all). Two variants stay unhashed for documented reasons - see <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/DOCKER-IMAGES.md">DOCKER-IMAGES.md</a>.</li>
+    <li>The Python suite had been red since v1.8.3.14 - a mock kept an old signature after <code>download_model</code> gained a progress callback - and shipped over six releases because pytest was not a release gate. It is now. The download path is also covered for real against a loopback fixture server, including the SSRF gate, which had no tests at all. 293 C# + 123 Python tests green.</li>
+  </ul>
+
+  <h2>v1.8.3.19 - The Auto tab no longer states a default as a fact</h2>
   <p class="date">2026-07-25</p>
   <ul>
     <li>Browser-testing the new tab against a live server caught it reporting <em>"RUNNING NOW / nomosuni-compact-x2 / HD content in real time"</em> on a page where no video was playing. With no video element the resolver is handed 0&times;0 and falls through to its HD branch &mdash; and the pane presented that fallback as a decision about the file in front of you, while printing the literal string "unknown output size" as though it were data.</li>
