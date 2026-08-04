@@ -229,9 +229,24 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                     // Pick appropriate scale: 2x for slightly low-res, 4x for very low-res
                     int scale = (width < 300 || height < 400) ? 4 : 2;
 
-                    var upscaledData = await _upscalerCore.UpscaleImageAsync(originalData, "auto", scale, cancellationToken);
+                    // v1.8.3.22 - the detailed call, because UpscaleImageAsync never returns
+                    // null: on any failure it hands back a Lanczos resize, or the untouched
+                    // original. Storing that as "<name>_upscaled" made the scan filter skip
+                    // the image on every future run - one AI-service outage mid-run used to
+                    // poison the rest of the library with results that were never AI and
+                    // would never be retried.
+                    var upscale = await _upscalerCore.UpscaleImageDetailedAsync(originalData, "auto", scale, cancellationToken);
+                    var upscaledData = upscale.Data;
 
-                    if (upscaledData != null && upscaledData.Length > 0)
+                    if (!upscale.UsedAi)
+                    {
+                        failCount++;
+                        _logger.LogWarning(
+                            "AI Upscaler Images: skipping {Type} for {Name} - no AI result ({Reason}). " +
+                            "Nothing was written, so the next run retries it.",
+                            imageType, item.Name, upscale.FallbackReason ?? "unknown");
+                    }
+                    else if (upscaledData != null && upscaledData.Length > 0)
                     {
                         var dir = Path.GetDirectoryName(imagePath) ?? "";
                         var ext = Path.GetExtension(imagePath);

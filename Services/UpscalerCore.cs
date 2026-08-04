@@ -52,6 +52,21 @@ namespace JellyfinUpscalerPlugin.Services
     /// <param name="Reason">Short phrase naming the signal, shown inline in the player.</param>
     public record FilterPick(string Preset, string Reason);
 
+    /// <summary>
+    /// v1.8.3.22 - an image upscale AND whether AI actually produced it.
+    ///
+    /// UpscaleImageAsync returns byte[] and never null: on any failure it falls back to a
+    /// Lanczos resize, and as a last resort to the untouched input. A caller holding only
+    /// bytes cannot tell those apart - so ImageUpscaleScanTask stored Lanczos output as
+    /// "&lt;name&gt;_upscaled", counted it a success, fired the completion webhook, and its scan
+    /// filter then skipped that image forever. One AI-service outage mid-run poisoned the
+    /// rest of the library with resizes that would never be retried.
+    /// </summary>
+    /// <param name="Data">The image bytes, whatever produced them.</param>
+    /// <param name="UsedAi">False when this is a Lanczos resize or the untouched original.</param>
+    /// <param name="FallbackReason">Why AI did not produce it (null when UsedAi is true).</param>
+    public record ImageUpscaleResult(byte[] Data, bool UsedAi, string? FallbackReason);
+
     public class UpscalerCore : IUpscalerCore, IDisposable
     {
         private readonly ILogger<UpscalerCore> _logger;
@@ -135,6 +150,29 @@ namespace JellyfinUpscalerPlugin.Services
         /// <param name="scale">Scale factor (2 or 4)</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Upscaled image bytes</returns>
+        // v1.8.3.22 - set by the fallback paths below, read by UpscaleImageDetailedAsync.
+        // A lock keeps the pair consistent for concurrent callers; the scan task is
+        // sequential, but the endpoints are not.
+        private readonly object _lastImageLock = new();
+        private bool _lastImageUsedAi = true;
+        private string? _lastImageFallbackReason;
+
+        /// <summary>
+        /// v1.8.3.22 - the upscale AND whether AI produced it. Prefer this over
+        /// <see cref="UpscaleImageAsync"/> anywhere the answer gets STORED or reported,
+        /// because that overload cannot distinguish an AI result from a Lanczos resize.
+        /// </summary>
+        public async Task<ImageUpscaleResult> UpscaleImageDetailedAsync(
+            byte[] imageData, string model = "auto", int scale = 2, CancellationToken cancellationToken = default)
+        {
+            lock (_lastImageLock) { _lastImageUsedAi = true; _lastImageFallbackReason = null; }
+            var data = await UpscaleImageAsync(imageData, model, scale, cancellationToken);
+            lock (_lastImageLock)
+            {
+                return new ImageUpscaleResult(data, _lastImageUsedAi, _lastImageFallbackReason);
+            }
+        }
+
         public async Task<byte[]> UpscaleImageAsync(byte[] imageData, string model = "auto", int scale = 2, CancellationToken cancellationToken = default)
         {
             var stopwatch = Stopwatch.StartNew();
@@ -180,11 +218,13 @@ namespace JellyfinUpscalerPlugin.Services
                 }
 
                 _logger.LogError("All models in chain failed, using fallback resize");
+                lock (_lastImageLock) { _lastImageUsedAi = false; _lastImageFallbackReason = "every model in the fallback chain failed"; }
                 return await FallbackResizeAsync(imageData, scale);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "AI upscaling failed, using fallback resize");
+                lock (_lastImageLock) { _lastImageUsedAi = false; _lastImageFallbackReason = ex.Message; }
                 return await FallbackResizeAsync(imageData, scale);
             }
         }

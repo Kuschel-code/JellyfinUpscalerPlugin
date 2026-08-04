@@ -262,8 +262,23 @@ namespace JellyfinUpscalerPlugin.Services
                 }
                 else
                 {
-                    // Remove invalid entry
-                    _cacheIndex.TryRemove(cacheKey, out _);
+                    // v1.8.3.22 - dropping the index entry alone ORPHANED the file: nothing
+                    // else ever looks at it again (the hourly cleanup and ValidateCacheEntries
+                    // both iterate the index), so multi-GB videos accumulated on disk while
+                    // the size counter stayed inflated and triggered premature evictions of
+                    // valid entries. Delete the file and give the bytes back.
+                    if (_cacheIndex.TryRemove(cacheKey, out var staleEntry) && staleEntry != null)
+                    {
+                        try
+                        {
+                            if (File.Exists(staleEntry.FilePath)) File.Delete(staleEntry.FilePath);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Could not delete expired cache file {Path}", staleEntry.FilePath);
+                        }
+                        Interlocked.Add(ref _totalCacheSize, -staleEntry.FileSize);
+                    }
                 }
             }
 

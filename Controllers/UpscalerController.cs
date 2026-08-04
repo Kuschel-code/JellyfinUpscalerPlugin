@@ -91,6 +91,51 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Uses IHttpClientFactory for proper DNS refresh and connection pooling.
         /// </summary>
         private HttpClient GetAiServiceClient() => _httpClientFactory.CreateClient("AiUpscaler");
+
+        /// <summary>
+        /// v1.8.3.22 — is this path inside a Jellyfin media library?
+        ///
+        /// Every endpoint that takes a filesystem path from the request body needs this.
+        /// They each had their own copy, and ProcessVideo had none at all: the whole class
+        /// carries only [Authorize], so ANY authenticated non-admin user could hand it any
+        /// path on the server. Combined with ffmpeg's -y that was an arbitrary-overwrite
+        /// primitive, and the "input file not found" reply worked as a file-existence
+        /// oracle for paths the user has no business probing.
+        ///
+        /// The comparison appends a directory separator on purpose. A bare StartsWith lets
+        /// "/media/mov-private" pass an allowlist that only contains "/media/mov".
+        /// </summary>
+        private bool IsInsideMediaLibrary(string fullPath)
+        {
+            if (string.IsNullOrEmpty(fullPath)) return false;
+            foreach (var folder in _libraryManager.GetVirtualFolders())
+            {
+                foreach (var loc in folder.Locations)
+                {
+                    if (string.IsNullOrWhiteSpace(loc)) continue;
+                    var root = Path.GetFullPath(loc);
+                    var rootWithSep = root.EndsWith(Path.DirectorySeparatorChar)
+                        ? root
+                        : root + Path.DirectorySeparatorChar;
+                    if (fullPath.Equals(root, StringComparison.OrdinalIgnoreCase) ||
+                        fullPath.StartsWith(rootWithSep, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// v1.8.3.22 — refuse to write over a file that already exists.
+        ///
+        /// The pipeline calls ffmpeg with -y, so naming an existing file as the output
+        /// destroys it without a word. The output allowlist only constrains the DIRECTORY,
+        /// which means "the other film in the same folder" was always a legal target.
+        /// </summary>
+        private static bool WouldOverwriteExistingFile(string fullOutputPath)
+            => !string.IsNullOrEmpty(fullOutputPath) && IOFile.Exists(fullOutputPath);
         // v1.7.12 - longer-timeout clients for the two slow operation classes that hit the 120s wall:
         // first-load auto-downloads (~380MB) and CPU benchmarks on weak hardware (#72-class boxes).
         private HttpClient GetDownloadClient() => _httpClientFactory.CreateClient("AiUpscalerDownload");   // 570s (< 600s UI)
@@ -1320,6 +1365,23 @@ namespace JellyfinUpscalerPlugin.Controllers
                 var fullInputPath = Path.GetFullPath(request.InputPath);
                 var fullOutputPath = Path.GetFullPath(request.OutputPath);
 
+                // v1.8.3.22 - the check this endpoint never had. Its siblings EnqueueJob
+                // and PreProcessVideo have gated on the library allowlist since v1.7.5;
+                // this one only checked that the file exists, so any authenticated user
+                // could name any path on the server.
+                if (!IsInsideMediaLibrary(fullInputPath))
+                {
+                    _logger.LogWarning("ProcessVideo rejected: input path is outside every media library");
+                    return BadRequest(new { success = false, error = "Input path must be within a Jellyfin media library" });
+                }
+
+                // ffmpeg runs with -y. Without this, "output" could name the film next to
+                // the input and silently replace it.
+                if (WouldOverwriteExistingFile(fullOutputPath))
+                {
+                    return BadRequest(new { success = false, error = "Output file already exists - refusing to overwrite it" });
+                }
+
                 // Whitelist: output must be in same directory as input (sibling file)
                 // or in a subdirectory of the input's parent
                 var inputDir = Path.GetFullPath(Path.GetDirectoryName(fullInputPath) ?? string.Empty);
@@ -1539,16 +1601,20 @@ namespace JellyfinUpscalerPlugin.Controllers
             if (!System.IO.File.Exists(inputPath))
                 return BadRequest(new { success = false, error = "Input file does not exist" });
 
-            var libraryFolders = _libraryManager.GetVirtualFolders();
-            var isInLibrary = libraryFolders.Any(folder =>
-                folder.Locations.Any(loc =>
-                    inputPath.StartsWith(Path.GetFullPath(loc), StringComparison.OrdinalIgnoreCase)));
-            if (!isInLibrary)
+            // v1.8.3.22 - shared helper. The inline version compared without a trailing
+            // separator, so "/media/mov-private" passed an allowlist holding "/media/mov".
+            if (!IsInsideMediaLibrary(inputPath))
                 return BadRequest(new { success = false, error = "Input path must be within a Jellyfin media library" });
 
             if (outputPath != null)
             {
                 outputPath = Path.GetFullPath(outputPath);
+
+                // v1.8.3.22 - the directory allowlist below constrains WHERE the output may
+                // go, never WHAT it may replace. ffmpeg runs with -y, so "the other film in
+                // this folder" was a legal target and would be destroyed without a word.
+                if (WouldOverwriteExistingFile(outputPath))
+                    return BadRequest(new { success = false, error = "Output file already exists - refusing to overwrite it" });
 
                 // Restrict output to be under the same parent directory as input or under the Jellyfin transcode path
                 var inputParent = Path.GetFullPath(Path.GetDirectoryName(inputPath) ?? string.Empty);
@@ -1737,11 +1803,8 @@ namespace JellyfinUpscalerPlugin.Controllers
 
                 // Path traversal protection — allowlist (must be in a Jellyfin library)
                 var normalizedPath = Path.GetFullPath(request.InputPath);
-                var libFolders = _libraryManager.GetVirtualFolders();
-                var pathInLibrary = libFolders.Any(folder =>
-                    folder.Locations.Any(loc =>
-                        normalizedPath.StartsWith(Path.GetFullPath(loc), StringComparison.OrdinalIgnoreCase)));
-                if (!pathInLibrary)
+                // v1.8.3.22 - shared helper (separator-safe prefix; see IsInsideMediaLibrary).
+                if (!IsInsideMediaLibrary(normalizedPath))
                     return BadRequest(new { success = false, error = "Input path must be within a Jellyfin media library" });
 
                 var success = await _cacheManager.PreProcessContentAsync(

@@ -87,7 +87,11 @@ namespace JellyfinUpscalerPlugin.Services
                 _logger.LogInformation("Applying denoise prefilter '{Filter}' before upscale for {File}", denoisePrefilter, Path.GetFileName(inputPath));
             }
 
-            vfFilters.Add($"fps={effectiveFps}");
+            // v1.8.3.22 - a comma is the FILTER SEPARATOR in an ffmpeg filtergraph. On any
+            // comma-decimal locale (de-DE, fr-FR) 23.976 rendered as "fps=23,976" and ffmpeg
+            // died with "No such filter: '976'" - i.e. every frame-by-frame job on those
+            // servers. Lines 484/490 of this same file already did this correctly.
+            vfFilters.Add($"fps={effectiveFps.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
 
             // Camera-style video filters (applied during frame extraction)
             var videoFilterChain = new VideoFilterService().BuildFilterChain(Config);
@@ -169,7 +173,7 @@ namespace JellyfinUpscalerPlugin.Services
             var result = await Cli.Wrap(ffmpeg)
                 .WithArguments(args =>
                 {
-                    args.Add("-ss").Add(position.TotalSeconds.ToString("F2"))
+                    args.Add("-ss").Add(position.TotalSeconds.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))
                         .Add("-i").Add(videoPath)
                         .Add("-frames:v").Add("1")
                         .Add("-f").Add("image2pipe")
@@ -214,7 +218,7 @@ namespace JellyfinUpscalerPlugin.Services
             var result = await Cli.Wrap(ffmpeg)
                 .WithArguments(args =>
                 {
-                    args.Add("-ss").Add(position.TotalSeconds.ToString("F2"))
+                    args.Add("-ss").Add(position.TotalSeconds.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))
                         .Add("-i").Add(videoPath)
                         .Add("-frames:v").Add("1");
                     if (!string.IsNullOrWhiteSpace(filterChain))
@@ -393,7 +397,12 @@ namespace JellyfinUpscalerPlugin.Services
             }
 
             var config = Plugin.Instance?.Configuration;
-            var baseUrl = config?.AiServiceUrl ?? "http://localhost:5000";
+            // v1.8.3.22 - TrimEnd. A configured URL with a trailing slash produced
+            // "http://host:5000//upscale-hdr", which FastAPI answers with 404 - and the
+            // caller silently copied every original frame through, so the whole HDR job
+            // re-encoded unchanged and reported success. HttpUpscalerService.GetServiceUrl
+            // has trimmed for releases; this copy never did.
+            var baseUrl = (config?.AiServiceUrl ?? "http://localhost:5000").TrimEnd('/');
             var client = _httpClientFactory.CreateClient("UpscalerHDR");
 
             using var content = new MultipartFormDataContent();

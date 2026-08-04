@@ -130,7 +130,15 @@ namespace JellyfinUpscalerPlugin.Services
                 {
                     if (_queue.Count == 0)
                     {
-                        _signal.Release(); // Restore consumed signal to prevent deadlock
+                        // v1.8.3.22 - this used to Release() the permit back "to prevent
+                        // deadlock", which turned a surplus permit into a 100%-CPU spin:
+                        // Wait succeeds instantly, the queue is still empty, release, loop.
+                        //
+                        // Dropping it cannot deadlock. Enqueue adds to _queue INSIDE this
+                        // same lock and releases its permit afterwards, so a job that
+                        // arrives while we hold the lock still brings its own permit. An
+                        // empty queue means the permit we just consumed was surplus by
+                        // definition - the only correct thing to do with it is nothing.
                         continue;
                     }
 
@@ -187,7 +195,12 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 if (_jobLookup.TryRemove(jobId, out var job))
                 {
-                    _queue.Remove(job);
+                    var wasPending = _queue.Remove(job);
+                    // v1.8.3.22 - a pending job owns one permit (released by Enqueue).
+                    // Removing the job without consuming it left the permit behind, and the
+                    // worker then spun on an empty queue. Wait(0) takes it back without
+                    // blocking; false simply means the worker had already claimed it.
+                    if (wasPending) _signal.Wait(0);
                     job.Status = QueueJobStatus.Cancelled;
                     _completedJobs[jobId] = job;
                     RequestPersist();
@@ -232,9 +245,10 @@ namespace JellyfinUpscalerPlugin.Services
             lock (_queueLock)
             {
                 _paused = false;
-                // Signal once to wake dequeue loop; it will process all available items
-                if (_queue.Count > 0)
-                    _signal.Release();
+                // v1.8.3.22 - no Release() here. Enqueue already released exactly one
+                // permit per queued job, so adding another handed the loop a permit with
+                // no job behind it - one of the two sources of the empty-queue spin. The
+                // worker wakes on its own: the pause branch polls every 500 ms.
             }
             _logger.LogInformation("Processing queue resumed");
         }

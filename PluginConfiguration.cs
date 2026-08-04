@@ -10,7 +10,15 @@ namespace JellyfinUpscalerPlugin
     public class PluginConfiguration : BasePluginConfiguration
     {
         // ── Default Constants ────────────────────────────────────────────
-        private const string DefaultModel = "realesrgan-x4";
+        // v1.8.3.22 - was "realesrgan-x4". A shipped value in an override field is
+        // indistinguishable from a user's choice, and the nightly scan gates on
+        // (EnableAutoModelSelection && Model is empty or "auto") - so with the shipped
+        // defaults that gate was ALWAYS false. Auto mode has been the documented default
+        // since v1.8.3.12 while every batch run silently used realesrgan-x4 at 4x,
+        // skipping the hardware cap and the 8K guard built in v1.8.3.14-.17.
+        // Same bug class as PreferredAnimeModel in v1.8.3.15: an override default must
+        // be empty. Existing installs keep their persisted value.
+        private const string DefaultModel = "";
         private const int DefaultScaleFactor = 2;
         private const string DefaultQualityLevel = "medium";
         private const int DefaultMaxVRAM = 2048;

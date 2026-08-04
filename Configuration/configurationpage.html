@@ -1863,6 +1863,14 @@
                 var prevValue = select.value;
                 while (select.firstChild) select.removeChild(select.firstChild);
 
+                // v1.8.3.22 - without this the dropdown had no way to express "auto", so a
+                // user could never return to it and an empty config value rendered as a
+                // blank select. Auto is the shipped default; it belongs first.
+                var autoOpt = document.createElement('option');
+                autoOpt.value = '';
+                autoOpt.textContent = 'Auto (pick the model per video)';
+                select.appendChild(autoOpt);
+
                 // v1.8.3.7 - pinned models first (duplicated up top with a ★ prefix;
                 // select.value matches the first option carrying the id)
                 if (_favoriteModels.length) {

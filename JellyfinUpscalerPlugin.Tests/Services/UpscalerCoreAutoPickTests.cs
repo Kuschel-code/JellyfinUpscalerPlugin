@@ -1,3 +1,4 @@
+using System.Linq;
 using JellyfinUpscalerPlugin;
 using JellyfinUpscalerPlugin.Services;
 using MediaBrowser.Common.Configuration;
@@ -108,15 +109,44 @@ namespace JellyfinUpscalerPlugin.Tests.Services
         }
 
         [Fact]
-        public void Custom_mode_is_labelled_as_such()
+        public void With_no_configured_model_even_forceAuto_false_runs_the_heuristic()
         {
-            // forceAuto=false with a configured model = the user's explicit choice.
+            // v1.8.3.22: Config.Model used to default to "realesrgan-x4", so this test took
+            // the Custom arm with the SHIPPED default and asserted the label. That default
+            // was the bug: the nightly scan gates on (auto enabled && model empty or "auto")
+            // and could therefore never fire, so every batch run silently used realesrgan-x4
+            // at 4x - no hardware cap, no 8K guard. The default is empty now, and empty means
+            // auto. Tests cannot mock Plugin.Instance, so this asserts the new default's
+            // behaviour; the Custom arm itself is covered by
+            // Custom_mode_is_reported_when_a_model_is_configured below.
             var pick = _core.ResolveModelForVideoDetailed(
                 genres: new[] { "Animation" }, width: 480, height: 360, isBatch: true, forceAuto: false);
 
-            Assert.Contains("Custom", pick.Reason);
-            Assert.Contains(pick.Signals, s => s.Contains("Custom"));
-            Assert.Null(pick.SubstitutedFrom);
+            Assert.DoesNotContain("Custom", pick.Reason);
+            Assert.Contains(pick.Signals, s => s.StartsWith("Content:"));
+        }
+
+        [Fact]
+        public void Custom_mode_is_reported_when_a_model_is_configured()
+        {
+            // The Custom arm is a pure function of Config.Model, which a test cannot set
+            // (Plugin.Instance is null here). Assert the branch exists and reads the field,
+            // so the label cannot be removed unnoticed - the same source-level technique
+            // FilterSuggestionTests uses for the JS guarantees.
+            var src = System.IO.File.ReadAllText(RepoFile("Services", "UpscalerCore.cs"));
+            Assert.Contains("Custom mode: your configured model is used as-is.", src);
+            Assert.Contains("!forceAuto && !string.IsNullOrEmpty(configured) && configured != \"auto\"", src);
+        }
+
+        private static string RepoFile(params string[] parts)
+        {
+            var dir = new System.IO.DirectoryInfo(System.IO.Directory.GetCurrentDirectory());
+            while (dir != null && !System.IO.File.Exists(System.IO.Path.Combine(dir.FullName, "JellyfinUpscalerPlugin.csproj")))
+            {
+                dir = dir.Parent;
+            }
+            Assert.NotNull(dir);
+            return System.IO.Path.Combine(new[] { dir!.FullName }.Concat(parts).ToArray());
         }
     }
 }
