@@ -5707,6 +5707,8 @@ async def load_detector_endpoint(request: Request, model_name: str = Form(...), 
     upscaler, so loading one must not evict the other.
     """
     _require_api_token(request)
+    if not ONNX_AVAILABLE or ort is None:
+        raise HTTPException(status_code=503, detail="ONNX Runtime not available - object masking disabled")
     model_name = _resolve_model_key(model_name)
     path = get_model_path(model_name)
     if not path.exists():
@@ -5718,8 +5720,17 @@ async def load_detector_endpoint(request: Request, model_name: str = Form(...), 
     if not 64 <= input_size <= 1920:
         raise HTTPException(status_code=400, detail="input_size must be between 64 and 1920")
 
+    # Same provider selection the face-restore loader uses. There is no shared helper
+    # for this in the service, and inventing a call to one that does not exist is how
+    # this endpoint shipped dead in the first place.
+    available = ort.get_available_providers()
+    providers = []
+    if 'CUDAExecutionProvider' in available and state.use_gpu:
+        providers.append('CUDAExecutionProvider')
+    providers.append('CPUExecutionProvider')
+
     def _load():
-        return ort.InferenceSession(str(path), providers=_get_providers())
+        return ort.InferenceSession(str(path), providers=providers)
 
     loop = asyncio.get_running_loop()
     sess = await loop.run_in_executor(_cpu_executor, _load)
