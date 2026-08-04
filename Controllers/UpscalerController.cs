@@ -2311,8 +2311,19 @@ namespace JellyfinUpscalerPlugin.Controllers
         {
             try
             {
+                // A preview frame is a single JPEG. Reading an unbounded request body into
+                // the Jellyfin heap is the same pattern the review flagged on the import
+                // path, so cap it here rather than discovering the limit under memory
+                // pressure. 32 MB is far above any single frame and far below trouble.
+                const int MaxPreviewFrameBytes = 32 * 1024 * 1024;
+                if (Request.ContentLength > MaxPreviewFrameBytes)
+                    return StatusCode(413, new { message = "Frame too large" });
+
                 using var ms = new MemoryStream();
                 await Request.Body.CopyToAsync(ms, HttpContext.RequestAborted);
+                if (ms.Length > MaxPreviewFrameBytes)
+                    return StatusCode(413, new { message = "Frame too large" });
+
                 var bytes = ms.ToArray();
                 if (bytes.Length == 0)
                     return BadRequest(new { message = "Empty body" });

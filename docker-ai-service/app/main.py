@@ -204,6 +204,12 @@ class AppState:
 
         # Face-restore model (v1.6.1.7: GFPGAN / CodeFormer)
         self.face_restore_session = None
+        # v1.8.3.23 (discussion #11) - object-detection session for the masking
+        # endpoint. Separate from the upscaler session on purpose: masking runs
+        # alongside upscaling, not instead of it.
+        self.detector_session = None
+        self.detector_name = None
+        self.detector_input_size = 640
         self.face_restore_model_name: Optional[str] = None
         self.face_restore_loaded: bool = False
         self.face_restore_input_size: int = 512   # Models standardised on 512x512 face crops
@@ -5693,6 +5699,105 @@ async def face_restore_status(request: Request = None):
     }
 
 
+@app.post("/models/load-detector", tags=["Object masking"])
+async def load_detector_endpoint(request: Request, model_name: str = Form(...), input_size: int = Form(640)):
+    """Load an ONNX object detector for /detect-mask.
+
+    Deliberately separate from /models/load: the detector runs ALONGSIDE the
+    upscaler, so loading one must not evict the other.
+    """
+    _require_api_token(request)
+    model_name = _resolve_model_key(model_name)
+    path = get_model_path(model_name)
+    if not path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"{model_name} is not on disk. Import or upload a detection model first "
+                   f"(POST /models/upload) - none is bundled, because the catalog only carries "
+                   f"models with a verified sha256 pin.")
+    if not 64 <= input_size <= 1920:
+        raise HTTPException(status_code=400, detail="input_size must be between 64 and 1920")
+
+    def _load():
+        return ort.InferenceSession(str(path), providers=_get_providers())
+
+    loop = asyncio.get_running_loop()
+    sess = await loop.run_in_executor(_cpu_executor, _load)
+    state.detector_session = sess
+    state.detector_name = model_name
+    state.detector_input_size = input_size
+    logger.info(f"Object detector loaded: {model_name} (input {input_size}x{input_size})")
+    return {"status": "success", "model": model_name, "input_size": input_size}
+
+
+@app.post("/detect-mask", tags=["Object masking"])
+async def detect_mask_endpoint(
+    request: Request,
+    classes: str = "animals",
+    mode: str = "box",
+    confidence: float = 0.35,
+    pad: int = 8,
+):
+    """Cover detected objects in a single frame. Raw image bytes in, image out.
+
+    Answers discussion #11 without touching ffmpeg. The requested route was ffmpeg's
+    dnn_detect + drawbox via a custom -vf chain, but jellyfin-ffmpeg ships without any
+    DNN backend (no libopenvino/libtensorflow/libtorch in its build), so those filters
+    cannot run there at all - and exposing arbitrary -vf would hand every authenticated
+    user ffmpeg's file-reading filters (movie=, subtitles=). Detection belongs in the
+    service that already loads ONNX models per frame.
+
+    classes: comma-separated COCO names, or "animals" for the group.
+    mode:    "box" fills the region, "blur" obscures it while keeping motion.
+    """
+    _require_api_token(request)
+    _check_circuit_breaker()
+
+    if state.detector_session is None:
+        raise HTTPException(status_code=400, detail="No detector loaded. POST /models/load-detector first.")
+
+    body = await request.body()
+    if not body:
+        raise HTTPException(status_code=400, detail="Empty body")
+    if len(body) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail=f"Image too large ({len(body)} bytes)")
+
+    img = cv2.imdecode(np.frombuffer(body, np.uint8), cv2.IMREAD_COLOR)
+    if img is None:
+        raise HTTPException(status_code=400, detail="Failed to decode image")
+
+    wanted = object_mask.class_indices(classes.split(","))
+    if not wanted:
+        raise HTTPException(status_code=400, detail=f"No known classes in '{classes}'")
+
+    net = state.detector_input_size
+    sess = state.detector_session
+
+    def _run():
+        blob = object_mask.preprocess(img, net)
+        raw = sess.run(None, {sess.get_inputs()[0].name: blob})[0]
+        h, w = img.shape[:2]
+        dets = object_mask.decode_detections(raw, w, h, net, conf_threshold=confidence, wanted=wanted)
+        return object_mask.apply_masks(img, dets, mode=mode, pad=pad), len(dets)
+
+    loop = asyncio.get_running_loop()
+    try:
+        # The executor matters: this is full-frame inference, and running it inline
+        # would freeze the event loop for every other request while it works.
+        masked, count = await loop.run_in_executor(_cpu_executor, _run)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning("detect-mask failed", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Detection failed: {e}")
+
+    ok, buf = cv2.imencode(".jpg", masked, [int(cv2.IMWRITE_JPEG_QUALITY), 92])
+    if not ok:
+        raise HTTPException(status_code=500, detail="Failed to encode result")
+    return Response(content=buf.tobytes(), media_type="image/jpeg",
+                    headers={"X-Detections": str(count)})
+
+
 @app.post("/face-restore/frame")
 async def face_restore_frame_endpoint(request: Request):
     """Detect and restore faces in a single frame.
@@ -6283,6 +6388,7 @@ from .model_import import (  # noqa: E402  (module-level import after app setup,
 # nothing in main calls them, and a name imported only to be patchable is a trap -
 # it looks like a seam and is not one (the callers resolve them in their own module).
 from . import model_import as _model_import
+from . import object_mask
 
 # Single source of truth for the cap stays here, next to the other limits and the
 # _safe_int_env parsing; the module gets it wired rather than re-reading the env.
