@@ -150,30 +150,24 @@ namespace JellyfinUpscalerPlugin.Services
         /// <param name="scale">Scale factor (2 or 4)</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Upscaled image bytes</returns>
-        // v1.8.3.22 - set by the fallback paths below, read by UpscaleImageDetailedAsync.
-        // A lock keeps the pair consistent for concurrent callers; the scan task is
-        // sequential, but the endpoints are not.
-        private readonly object _lastImageLock = new();
-        private bool _lastImageUsedAi = true;
-        private string? _lastImageFallbackReason;
-
         /// <summary>
         /// v1.8.3.22 - the upscale AND whether AI produced it. Prefer this over
         /// <see cref="UpscaleImageAsync"/> anywhere the answer gets STORED or reported,
         /// because that overload cannot distinguish an AI result from a Lanczos resize.
+        ///
+        /// The first cut of this carried the flag in instance fields. A lock kept the two
+        /// fields consistent but not their PAIRING across the await, so two concurrent
+        /// callers could swap results. Both overloads now share a private core that returns
+        /// the flag with the bytes - no shared state, correct under any concurrency.
         /// </summary>
-        public async Task<ImageUpscaleResult> UpscaleImageDetailedAsync(
+        public Task<ImageUpscaleResult> UpscaleImageDetailedAsync(
             byte[] imageData, string model = "auto", int scale = 2, CancellationToken cancellationToken = default)
-        {
-            lock (_lastImageLock) { _lastImageUsedAi = true; _lastImageFallbackReason = null; }
-            var data = await UpscaleImageAsync(imageData, model, scale, cancellationToken);
-            lock (_lastImageLock)
-            {
-                return new ImageUpscaleResult(data, _lastImageUsedAi, _lastImageFallbackReason);
-            }
-        }
+            => UpscaleImageCoreAsync(imageData, model, scale, cancellationToken);
 
         public async Task<byte[]> UpscaleImageAsync(byte[] imageData, string model = "auto", int scale = 2, CancellationToken cancellationToken = default)
+            => (await UpscaleImageCoreAsync(imageData, model, scale, cancellationToken)).Data;
+
+        private async Task<ImageUpscaleResult> UpscaleImageCoreAsync(byte[] imageData, string model = "auto", int scale = 2, CancellationToken cancellationToken = default)
         {
             var stopwatch = Stopwatch.StartNew();
 
@@ -206,7 +200,7 @@ namespace JellyfinUpscalerPlugin.Services
                             stopwatch.Stop();
                             _logger.LogInformation("Image upscaled with {Model}: {InputSize} -> {OutputSize} bytes in {Time}ms",
                                 candidateModel, imageData.Length, result.Length, stopwatch.ElapsedMilliseconds);
-                            return result;
+                            return new ImageUpscaleResult(result, true, null);
                         }
 
                         _logger.LogWarning("Model {Model} returned empty result, trying next", candidateModel);
@@ -218,14 +212,14 @@ namespace JellyfinUpscalerPlugin.Services
                 }
 
                 _logger.LogError("All models in chain failed, using fallback resize");
-                lock (_lastImageLock) { _lastImageUsedAi = false; _lastImageFallbackReason = "every model in the fallback chain failed"; }
-                return await FallbackResizeAsync(imageData, scale);
+                return new ImageUpscaleResult(
+                    await FallbackResizeAsync(imageData, scale), false, "every model in the fallback chain failed");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "AI upscaling failed, using fallback resize");
-                lock (_lastImageLock) { _lastImageUsedAi = false; _lastImageFallbackReason = ex.Message; }
-                return await FallbackResizeAsync(imageData, scale);
+                return new ImageUpscaleResult(
+                    await FallbackResizeAsync(imageData, scale), false, ex.Message);
             }
         }
 
