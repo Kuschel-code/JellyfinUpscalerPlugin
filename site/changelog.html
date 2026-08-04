@@ -7,13 +7,25 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.21</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.22</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.21 - Maintainability groundwork <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.22 - Code-review fixes: one critical, nine confirmed highs <span class="tag success">latest</span></h2>
+  <p class="date">2026-08-03</p>
+  <ul>
+    <li><strong>Security.</strong> <code>POST /process</code> accepted <em>any</em> path on the server. The controller carries only <code>[Authorize]</code>, and unlike its two sibling endpoints it had no media-library allowlist &mdash; with ffmpeg's <code>-y</code> that was an arbitrary-overwrite primitive, and its "input file not found" reply doubled as a file-existence oracle. There is now one shared, separator-safe allowlist helper, and neither job entry point will overwrite an existing file.</li>
+    <li><strong>Auto mode was never running in batch.</strong> <code>Model</code> defaulted to <code>realesrgan-x4</code>, but the nightly scan gates on "auto enabled <em>and</em> model empty" &mdash; so with shipped defaults that gate was always false. Every batch run used a 4&times; model and skipped the hardware cap and 8K guard built in v1.8.3.14&ndash;.17, while the dashboard displayed "Auto". Same bug class as <code>PreferredAnimeModel</code> in v1.8.3.15: an override field's default must be empty. The dropdown has an <em>Auto</em> entry now, which it never did.</li>
+    <li><strong>Every frame-by-frame job failed on comma-decimal locales.</strong> <code>fps=</code> and both <code>-ss</code> values used the current culture, so 23.976 became <code>fps=23,976</code> &mdash; and a comma is the ffmpeg filter separator. de-DE/fr-FR servers got "No such filter: '976'".</li>
+    <li><strong>100% CPU after any job cancel.</strong> Two permit leaks (Cancel kept one, Resume minted one) plus an empty-queue branch that handed the surplus straight back: wait succeeds, queue empty, release, repeat.</li>
+    <li><strong>Three silent misreports:</strong> a Lanczos fallback stored as an AI result (poisoning the library for all future runs), an HDR URL that 404'd on a trailing slash while reporting success, and expired cache entries orphaning multi-GB files on disk.</li>
+    <li><strong>The Docker cleanup script would have deleted every current tag.</strong> It pinned <code>v1.7.8</code> while the repo shipped v1.8.3.21 &mdash; an <code>-Execute</code> run would have removed all 71 current tags and re-pointed <code>:latest</code> back to a v1.7.8 image. The version is derived from <code>meta.json</code> now and it refuses to run if its target tag is missing.</li>
+    <li>14 regression guards. 315 C# + 123 Python tests green.</li>
+  </ul>
+
+  <h2>v1.8.3.21 - Maintainability groundwork</h2>
   <p class="date">2026-08-01</p>
   <ul>
     <li><strong>model_import.py</strong> - the OpenModelDB import and pth&rarr;ONNX conversion block moved out of main.py (6808 &rarr; 6627 lines) as a verbatim extraction. Every function body is byte-identical and no route moved; the endpoints keep their decorators. Three test monkeypatch targets moved with it - and one of them turned out to have been passing for the wrong reason.</li>
