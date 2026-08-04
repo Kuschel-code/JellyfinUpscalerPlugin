@@ -2296,6 +2296,56 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// <summary>
         /// Proxy: Load a face-restore model (GFPGAN / CodeFormer) on the Docker service.
         /// </summary>
+        /// <summary>
+        /// v1.8.3.22 - the proxy route the config page has been calling since the feature
+        /// shipped. Only /face-restore/load, /status and /unload were ever defined here, so
+        /// "Preview on Selected Media" ended in HTTP 404 every single time - the feature was
+        /// entirely dead. The endpoint exists on the AI service; only the plugin hop was
+        /// missing.
+        ///
+        /// Raw image bytes in, processed image out, with the service's X-Face-Count header
+        /// forwarded because the UI reads it to report how many faces were found.
+        /// </summary>
+        [HttpPost("face-restore/frame")]
+        public async Task<ActionResult> FaceRestoreFrame()
+        {
+            try
+            {
+                using var ms = new MemoryStream();
+                await Request.Body.CopyToAsync(ms, HttpContext.RequestAborted);
+                var bytes = ms.ToArray();
+                if (bytes.Length == 0)
+                    return BadRequest(new { message = "Empty body" });
+
+                var serviceUrl = GetValidatedServiceUrl();
+                using var content = new ByteArrayContent(bytes);
+                content.Headers.ContentType =
+                    new System.Net.Http.Headers.MediaTypeHeaderValue(
+                        Request.ContentType?.StartsWith("image/") == true ? Request.ContentType : "image/jpeg");
+
+                using var response = await GetBenchmarkClient()
+                    .PostAsync($"{serviceUrl}/face-restore/frame", content, HttpContext.RequestAborted);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var err = await response.Content.ReadAsStringAsync();
+                    return new ContentResult { Content = err, ContentType = "application/json", StatusCode = (int)response.StatusCode };
+                }
+
+                if (response.Headers.TryGetValues("X-Face-Count", out var faceCount))
+                {
+                    Response.Headers["X-Face-Count"] = faceCount.FirstOrDefault();
+                }
+                var image = await response.Content.ReadAsByteArrayAsync();
+                return File(image, response.Content.Headers.ContentType?.MediaType ?? "image/jpeg");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Face-restore frame proxy failed");
+                return StatusCode(500, new { error = "Face-restore preview failed" });
+            }
+        }
+
         [HttpPost("face-restore/load")]
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<ActionResult> FaceRestoreLoad([FromQuery] string model_name = "gfpgan-v1.4")

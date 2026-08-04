@@ -2183,7 +2183,14 @@
             return ApiClient.ajax({
                 type: 'POST',
                 url: ApiClient.getUrl('Upscaler/filter-config'),
-                data: JSON.stringify({ ActiveFilterPreset: presetKey, EnableVideoFilters: true }),
+                // v1.8.3.22 - the DTO is FilterConfigUpdate { Enabled, Preset, ... }
+                // (UpscalerController.cs). This posted ActiveFilterPreset/EnableVideoFilters -
+                // the CONFIG field names - so ASP.NET bound nothing, every property stayed
+                // null, and the endpoint still answered success:true. The Apply button has
+                // therefore never worked since it shipped in v1.8.3.20: the toast claimed the
+                // preset was set, the config was untouched, and the suggestion came straight
+                // back on the next render.
+                data: JSON.stringify({ Preset: presetKey, Enabled: true }),
                 contentType: 'application/json',
                 dataType: 'json'
             }).then(function() { return true; });

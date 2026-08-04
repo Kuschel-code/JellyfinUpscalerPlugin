@@ -352,7 +352,8 @@
                         ApiClient.ajax({
                             type: 'POST',
                             url: ApiClient.getUrl('Upscaler/filter-config'),
-                            data: JSON.stringify({ ActiveFilterPreset: suggested, EnableVideoFilters: true }),
+                            // v1.8.3.22 - see player-integration.js: the DTO is { Enabled, Preset }.
+                            data: JSON.stringify({ Preset: suggested, Enabled: true }),
                             contentType: 'application/json',
                             dataType: 'json'
                         }).then(function() {

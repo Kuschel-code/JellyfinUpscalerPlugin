@@ -1950,14 +1950,35 @@ app = FastAPI(
     openapi_url="/openapi.json" if ENABLE_API_DOCS else None,
 )
 
+# v1.8.3.22 - routes that legitimately carry a model-sized body. Kept next to the
+# middleware so the two cannot drift apart.
+_MODEL_UPLOAD_PATHS = (
+    "/models/upload",
+    "/models/convert-upload",
+    "/models/upload-face-enhance",
+)
+
+
+def _is_model_upload_path(path: str) -> bool:
+    return any(path.startswith(p) for p in _MODEL_UPLOAD_PATHS)
+
+
 # Middleware: reject oversized requests before reading body into memory
 @app.middleware("http")
 async def limit_body_size(request: Request, call_next):
     content_length = request.headers.get("content-length")
     if content_length:
+        # v1.8.3.22 - model uploads have their OWN, much larger cap. This global check
+        # rejected every request over MAX_UPLOAD_BYTES (50 MB default) including
+        # /models/upload, so the endpoints' own MAX_MODEL_UPLOAD_BYTES checks (500 MB
+        # default, up to 2 GB) were dead code for anything between the two limits - and
+        # no real model could be uploaded at all: GFPGAN is ~340 MB, NAFNet ~446 MB.
+        # The per-endpoint checks below still enforce the model cap; this only stops the
+        # image-sized limit from being applied to a model-sized route.
+        limit = MAX_MODEL_UPLOAD_BYTES if _is_model_upload_path(request.url.path) else MAX_UPLOAD_BYTES
         try:
-            if int(content_length) > MAX_UPLOAD_BYTES:
-                return JSONResponse(status_code=413, content={"detail": f"Request too large ({content_length} bytes, max {MAX_UPLOAD_BYTES})"})
+            if int(content_length) > limit:
+                return JSONResponse(status_code=413, content={"detail": f"Request too large ({content_length} bytes, max {limit})"})
         except ValueError:
             return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header"})
     return await call_next(request)

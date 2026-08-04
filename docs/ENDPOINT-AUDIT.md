@@ -13,14 +13,14 @@ Generated for v1.8.3.20 by extracting every `[HttpVerb(...)]` from
 **This is a report. Nothing here has been deleted.** A route with no caller is
 not automatically dead: several are deliberate external API, and one is
 groundwork for a feature that has not shipped. The point is to know which is
-which, rather than carrying 66 routes and guessing.
+which, rather than carrying 67 routes and guessing.
 
 ## Summary
 
 | | Count |
 |---|---:|
-| Routes on the controller | **66** |
-| Called by the plugin's own UI | 45 |
+| Routes on the controller | **67** |
+| Called by the plugin's own UI | 46 |
 | Documented but not called by the UI | 1 |
 | **No reference anywhere in this repo** | **20** |
 

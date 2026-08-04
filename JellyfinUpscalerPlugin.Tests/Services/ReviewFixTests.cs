@@ -175,6 +175,49 @@ namespace JellyfinUpscalerPlugin.Tests.Services
             src.Should().Contain("Refusing to run", "it must refuse if the target tag is absent");
         }
 
+        // ── Found by checking the report's remaining highs myself ────────────
+
+        [Fact]
+        public void The_face_restore_preview_route_exists_on_the_plugin_too()
+        {
+            // The config page has POSTed to this since the feature shipped; only
+            // load/status/unload were ever defined, so every click was a 404.
+            RepoFile("Controllers", "UpscalerController.cs")
+                .Should().Contain("[HttpPost(\"face-restore/frame\")]");
+        }
+
+        [Fact]
+        public void The_preview_proxy_forwards_the_face_count_header()
+        {
+            // The UI reads X-Face-Count to report how many faces were found; dropping it
+            // would make the feature "work" while always reporting "?".
+            RepoFile("Controllers", "UpscalerController.cs")
+                .Should().Contain("X-Face-Count");
+        }
+
+        [Fact]
+        public void Model_downloads_use_the_client_registered_for_them()
+        {
+            // /models/download is synchronous server-side and runs to ~380 MB. On the 120s
+            // client it aborted with TaskCanceledException, which the retry loop treats as
+            // a cancellation - break, no retry - so large models never downloaded at all.
+            var src = RepoFile("Services", "HttpUpscalerService.cs");
+            src.Should().Contain("GetDownloadClient()");
+            src.Should().NotContain("GetClient().PostAsync($\"{baseUrl}/models/download\"",
+                "the 120s client must not be used for a multi-hundred-MB download");
+        }
+
+        [Fact]
+        public void The_global_body_limit_does_not_apply_to_model_uploads()
+        {
+            // MAX_UPLOAD_BYTES defaults to 50 MB and was applied to EVERY request, so
+            // /models/upload could never accept a real model (GFPGAN ~340 MB) and its own
+            // 500 MB check was dead code.
+            var src = RepoFile("docker-ai-service", "app", "main.py");
+            src.Should().Contain("_is_model_upload_path");
+            src.Should().Contain("MAX_MODEL_UPLOAD_BYTES if _is_model_upload_path");
+        }
+
         [Fact]
         public void The_cleanup_keeps_rolling_tags_by_shape_not_by_a_list()
         {

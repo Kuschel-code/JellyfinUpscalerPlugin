@@ -68,6 +68,22 @@ namespace JellyfinUpscalerPlugin.Services
             return _fallbackClient;
         }
 
+        /// <summary>
+        /// v1.8.3.22 - the 570s client registered for model downloads in v1.8.2 and then
+        /// never used. /models/download is synchronous server-side and a first download runs
+        /// to ~380 MB, so the 120s default aborted with a TaskCanceledException - which the
+        /// retry loop reads as a cancellation and breaks on without retrying. Larger models
+        /// could therefore never be fetched for the first time at all.
+        /// </summary>
+        private HttpClient GetDownloadClient()
+        {
+            if (_httpClientFactory != null)
+            {
+                return _httpClientFactory.CreateClient("AiUpscalerDownload");
+            }
+            return _fallbackClient;
+        }
+
         private string GetServiceUrl()
         {
             var config = Plugin.Instance?.Configuration;
@@ -320,7 +336,8 @@ namespace JellyfinUpscalerPlugin.Services
                 {
                     using var content = new MultipartFormDataContent();
                     content.Add(new StringContent(modelName), "model_name");
-                    using var response = await GetClient().PostAsync($"{baseUrl}/models/download", content, cancellationToken);
+                    using var response = await GetDownloadClient()
+                        .PostAsync($"{baseUrl}/models/download", content, cancellationToken);
                     if (response.IsSuccessStatusCode) return true;
                     // Don't retry on 4xx client errors
                     if ((int)response.StatusCode < 500) return false;
