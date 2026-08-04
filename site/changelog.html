@@ -7,13 +7,25 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.22</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.23</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Full line-by-line history is in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/CHANGELOG.md">docs/CHANGELOG.md</a> and the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.22 - Code-review fixes: one critical, nine confirmed highs <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.23 - Object masking <span class="tag success">latest</span></h2>
+  <p class="date">2026-08-05</p>
+  <ul>
+    <li><strong>Cover things you do not want on screen.</strong> Answers <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions/11">discussion #11</a>: a user's dog reacts to dogs and cats on TV. <code>POST /models/load-detector</code> loads a detector <em>alongside</em> the upscaler, and <code>POST /detect-mask</code> returns the frame with detections covered by a filled box or a blur &mdash; by COCO class or the <code>animals</code> group, with padding, because a detector's box hugs the animal and the ears sticking out set a dog off just as well.</li>
+    <li><strong>Why not ffmpeg, which is what was asked for.</strong> jellyfin-ffmpeg's build carries 46 <code>--enable-*</code> flags and no DNN backend at all &mdash; no <code>libopenvino</code>, no <code>libtensorflow</code>, no <code>libtorch</code>; the string <code>dnn</code> does not appear in it. <code>dnn_detect</code> cannot run on the ffmpeg Jellyfin ships whatever the plugin passes it. And accepting arbitrary <code>-vf</code> would be a hole rather than a feature: ffmpeg filter syntax includes <code>movie=</code> and <code>subtitles=</code>, which read files, handing every authenticated user the same primitive v1.8.3.22 had just closed.</li>
+    <li><strong>Both detector families, decided by reading the model.</strong> Single-head exports (YOLOv5/v7/v8/v9) return raw anchors and need NMS from the caller; the ONNX YOLOv3 exports &mdash; including the <code>yolo-v3-tiny-onnx</code> the request named &mdash; take a second input, run NMS inside the graph and return boxes as <code>(y,x,y,x)</code> already in source coordinates. The service reads the loaded model's own inputs and outputs to tell them apart, and rejects anything it does not recognise <em>at load time</em>: a misread tensor does not raise, it paints boxes over the wrong part of the picture.</li>
+    <li><strong>No detection model ships with it.</strong> Every catalog entry carries a verified sha256 pin, and inventing one for an unhashed model would break exactly the guarantee the importer provides. Bring your own through the existing import path.</li>
+    <li><strong>A static check that every global name the AI service references exists.</strong> Written because the detector loader called a helper this service has never had &mdash; Python resolves those at call time, so the module imported cleanly, the route appeared in the schema, and the endpoint would have raised <code>NameError</code> the first time anyone used it. It reports exactly that one name against the pre-fix file across 5&thinsp;800 lines, and nothing else.</li>
+    <li>Also: the face-restore preview proxy read request bodies into the Jellyfin heap unbounded &mdash; now capped at 32&nbsp;MB. And the object-masking tests were not running in CI at all (<code>cv2</code> missing there), which is why the test dependency is now declared.</li>
+    <li>321 C# + 150 Python tests green.</li>
+  </ul>
+
+  <h2>v1.8.3.22 - Code-review fixes: one critical, nine confirmed highs</h2>
   <p class="date">2026-08-03</p>
   <ul>
     <li><strong>Security.</strong> <code>POST /process</code> accepted <em>any</em> path on the server. The controller carries only <code>[Authorize]</code>, and unlike its two sibling endpoints it had no media-library allowlist &mdash; with ffmpeg's <code>-y</code> that was an arbitrary-overwrite primitive, and its "input file not found" reply doubled as a file-existence oracle. There is now one shared, separator-safe allowlist helper, and neither job entry point will overwrite an existing file.</li>

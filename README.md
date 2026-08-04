@@ -117,6 +117,25 @@ When you press play, the plugin enhances the video in real-time. It offers sever
 - Button dot: Green = Server AI, Blue = WebGL
 - Menu section: Toggle on/off, switch modes manually
 
+### Object Masking (NEW in v1.8.3.23)
+Covers things you do not want on screen. It exists because of [discussion #11](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions/11): a user's dog loses her mind whenever a dog or cat appears on TV.
+
+```bash
+# load a detector you imported earlier (none ships - see below)
+curl -X POST "$BASE/models/load-detector" -H "X-Api-Token: $TOKEN" \
+     -F model_name=tiny-yolov3 -F input_size=416
+
+# cover every animal in a frame with a solid box
+curl -X POST "$BASE/detect-mask?classes=animals&mode=box&pad=12" \
+     -H "X-Api-Token: $TOKEN" --data-binary @frame.jpg -o masked.jpg
+```
+
+`classes` takes COCO names or the `animals` group, `mode` is `box` or `blur`, and `pad` grows each box — a detector's box hugs the animal, and the ears sticking out set a dog off just as well. The reply carries `X-Detections`.
+
+**Why not ffmpeg's `dnn_detect`, which is what was asked for:** jellyfin-ffmpeg is built without any DNN backend — 46 `--enable-*` flags and not one of `libopenvino` / `libtensorflow` / `libtorch`, with the string `dnn` absent from the build entirely. Those filters cannot run on the ffmpeg Jellyfin ships, whatever the plugin passes them. Accepting arbitrary `-vf` would also be a security hole rather than a feature: ffmpeg filter syntax includes `movie=` and `subtitles=`, both of which read files, so it would hand every authenticated user a file-read primitive.
+
+**No detection model ships with the plugin or the service.** Every catalog entry carries a verified sha256 pin, and inventing one for a model nobody has hashed would break the exact guarantee the importer provides. Import your own — e.g. `tiny-yolov3-11.onnx` from the ONNX model zoo — through the normal upload path, which pins and verifies it. Both families work: single-head exports (YOLOv5/v7/v8/v9) and the NMS-head ONNX YOLOv3 exports. The service tells them apart by reading the loaded model's own inputs and outputs, and rejects one it does not recognise at load time — a misread tensor does not raise, it paints boxes over the wrong part of the picture.
+
 ### Player Integration
 The in-player button lets you:
 - Select from **76 curated models** (+ hundreds importable from OpenModelDB) across 12 categories (Real-ESRGAN, SPAN, SwinIR, DAT2, EDVR-M, RealBasicVSR, AnimeSR, APISR, EDSR, LapSRN, FSRCNN, ESPCN, ncnn-Vulkan)

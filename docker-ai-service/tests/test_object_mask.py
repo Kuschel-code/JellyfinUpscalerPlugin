@@ -139,6 +139,118 @@ def test_an_unreadable_tensor_raises_instead_of_inventing_boxes():
         om.decode_detections(np.zeros((1, 10, 3), dtype=np.float32), 640, 640, 640)
 
 
+# ── The NMS-head family (yolo-v3-tiny-onnx, the model #11 actually asked for) ──
+#
+# This is a different contract, not a different tensor shape: the graph runs NMS
+# itself, undoes its own letterbox, and returns boxes in SOURCE coordinates as
+# (y_min, x_min, y_max, x_max) - per keras-yolo3's yolo_correct_boxes, which these
+# ONNX files were converted from.
+
+def test_plan_recognises_the_two_input_nms_family():
+    plan = om.plan_for(
+        inputs=[("input_1", [1, 3, 416, 416]), ("image_shape", [1, 2])],
+        outputs=[("boxes", [1, 2535, 4]), ("scores", [1, 80, 2535]), ("indices", [1, 1600, 3])],
+    )
+    assert plan.style == "nms3"
+    assert plan.net_size == 416, "the size comes from the model, not from the caller"
+    assert plan.image_input == "input_1"
+    assert plan.image_shape_input == "image_shape"
+
+
+def test_plan_recognises_a_plain_single_head():
+    plan = om.plan_for(
+        inputs=[("images", [1, 3, 640, 640])],
+        outputs=[("output0", [1, 84, 8400])],
+    )
+    assert plan.style == "single"
+    assert plan.net_size == 640
+    assert plan.image_shape_input is None
+
+
+def test_plan_falls_back_when_the_input_size_is_dynamic():
+    plan = om.plan_for(inputs=[("images", [1, 3, "height", "width"])],
+                       outputs=[("output0", [1, 84, "anchors"])], fallback_size=512)
+    assert plan.net_size == 512, "a dynamic axis must not be read as a size"
+
+
+def test_plan_refuses_an_upscaler_loaded_here_by_mistake():
+    # An upscaler has a 4-D input and a 4-D output, so it would otherwise pass as a
+    # "single" head and only fail on the first frame of playback. The realistic
+    # mistake - the model names in this service look alike - must fail at load time.
+    with pytest.raises(ValueError, match="not detections"):
+        om.plan_for(inputs=[("input", [1, 3, 256, 256])], outputs=[("output", [1, 3, 1024, 1024])])
+
+
+def test_plan_refuses_a_model_with_no_image_input():
+    with pytest.raises(ValueError, match="no 4-dimensional image input"):
+        om.plan_for(inputs=[("size", [1, 2])], outputs=[("out", [1, 100, 85])])
+
+
+def test_nms_boxes_are_read_as_y_x_y_x_not_x_y_x_y():
+    # The whole point. Reading these as (x1,y1,x2,y2) transposes every box, which on a
+    # 16:9 frame lands them somewhere plausible-looking and completely wrong.
+    dog = om.COCO_CLASSES.index("dog")
+    boxes = np.zeros((1, 4, 4), dtype=np.float32)
+    boxes[0, 2] = (100, 300, 200, 500)        # y_min, x_min, y_max, x_max
+    scores = np.zeros((1, 80, 4), dtype=np.float32)
+    scores[0, dog, 2] = 0.9
+    indices = np.array([[[0, dog, 2]]], dtype=np.int64)
+
+    dets = om.decode_nms_outputs(boxes, scores, indices, src_w=1920, src_h=1080, wanted={dog})
+
+    assert len(dets) == 1
+    cls, score, (x1, y1, x2, y2) = dets[0]
+    assert cls == dog and score == pytest.approx(0.9)
+    assert (x1, y1, x2, y2) == (300, 100, 500, 200)
+
+
+def test_nms_indices_are_accepted_in_both_documented_shapes():
+    # onnx/models documents (nbox,3); the OpenVINO zoo documents (1,nbox,3) for the
+    # very same file. Exports differ by opset, so both must work.
+    cat = om.COCO_CLASSES.index("cat")
+    boxes = np.zeros((1, 2, 4), dtype=np.float32)
+    boxes[0, 1] = (10, 20, 30, 40)
+    scores = np.zeros((1, 80, 2), dtype=np.float32)
+    scores[0, cat, 1] = 0.8
+
+    flat = om.decode_nms_outputs(boxes, scores, np.array([[0, cat, 1]]), 640, 480, wanted={cat})
+    nested = om.decode_nms_outputs(boxes, scores, np.array([[[0, cat, 1]]]), 640, 480, wanted={cat})
+    assert flat == nested and len(flat) == 1
+
+
+def test_nms_path_honours_confidence_and_class_filters():
+    dog, person = om.COCO_CLASSES.index("dog"), om.COCO_CLASSES.index("person")
+    boxes = np.zeros((1, 3, 4), dtype=np.float32)
+    boxes[0, 0] = (0, 0, 10, 10)
+    boxes[0, 1] = (0, 0, 10, 10)
+    boxes[0, 2] = (0, 0, 10, 10)
+    scores = np.zeros((1, 80, 3), dtype=np.float32)
+    scores[0, dog, 0] = 0.9        # keep
+    scores[0, dog, 1] = 0.05       # below threshold
+    scores[0, person, 2] = 0.99    # not requested
+    indices = np.array([[0, dog, 0], [0, dog, 1], [0, person, 2]])
+
+    dets = om.decode_nms_outputs(boxes, scores, indices, 640, 480,
+                                 conf_threshold=0.35, wanted={dog})
+    assert len(dets) == 1 and dets[0][1] == pytest.approx(0.9)
+
+
+def test_no_detections_from_an_empty_indices_tensor():
+    assert om.decode_nms_outputs(np.zeros((1, 1, 4)), np.zeros((1, 80, 1)),
+                                 np.zeros((0, 3)), 640, 480) == []
+
+
+def test_letterbox_preserves_aspect_and_pads_with_128():
+    img = np.full((1080, 1920, 3), 255, dtype=np.uint8)
+    blob = om.preprocess_letterbox(img, 416)
+
+    assert blob.shape == (1, 3, 416, 416)
+    # 1920x1080 into 416 -> 416x234, so rows above and below must be the 128 padding
+    # the model's internal box correction assumes.
+    assert blob[0, 0, 0, 0] == pytest.approx(128 / 255.0, abs=1e-3)
+    assert blob[0, 0, 208, 208] == pytest.approx(1.0, abs=1e-3), "the image itself sits in the middle"
+
+
 # ── Masking ──────────────────────────────────────────────────────────────
 
 def _frame(colour=(255, 255, 255)):

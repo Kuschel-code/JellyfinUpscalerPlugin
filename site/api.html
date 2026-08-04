@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="assets/style.css?v=5">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.22</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.23</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>REST API reference</h1>
@@ -140,8 +140,46 @@
       <tr><td><code>POST</code></td><td><code>/face-restore/detect</code></td><td>Returns face bounding boxes (Haar cascade).</td></tr>
       <tr><td><code>POST</code></td><td><code>/face-restore/restore</code></td><td>Applies GFPGAN or CodeFormer to a face crop.</td></tr>
       <tr><td><code>POST</code></td><td><code>/face-restore/pipeline</code></td><td>End-to-end: detect → upscale → feathered paste-back.</td></tr>
+      <tr><td><code>POST</code></td><td><code>/models/load-detector</code></td><td>Loads an ONNX object detector <em>alongside</em> the upscaler. Form: <code>model_name</code>, <code>input_size</code>.</td></tr>
+      <tr><td><code>POST</code></td><td><code>/detect-mask</code></td><td>Frame in, frame out, with detected objects covered. Query: <code>classes</code>, <code>mode</code>, <code>confidence</code>, <code>pad</code>.</td></tr>
     </tbody>
   </table>
+
+  <h2>Object masking</h2>
+  <p>Covers things you do not want on screen &mdash; the original request was to stop a dog
+  reacting to dogs and cats on TV. Detection runs here rather than in ffmpeg, because
+  jellyfin-ffmpeg is built without any DNN backend, so <code>dnn_detect</code> cannot run
+  there at all; and accepting arbitrary <code>-vf</code> would expose ffmpeg's file-reading
+  filters (<code>movie=</code>, <code>subtitles=</code>) to every authenticated user.</p>
+  <p><strong>No detection model ships with the service.</strong> Every catalog entry carries a
+  verified sha256 pin, and inventing one for an unhashed model would break the guarantee the
+  importer exists to provide. Import your own &mdash; for example
+  <code>tiny-yolov3-11.onnx</code> from the ONNX model zoo &mdash; through the normal upload
+  path, which pins and verifies it.</p>
+  <p>Both detector families work and the service picks between them by reading the loaded
+  model's own inputs and outputs, not by guessing: single-head exports (YOLOv5/v7/v8/v9, one
+  tensor of raw anchors) and the NMS-head ONNX YOLOv3 exports (two inputs, three outputs,
+  boxes already in source coordinates). A model it does not recognise is rejected at load
+  time, because a misread tensor does not raise &mdash; it paints boxes over the wrong part
+  of the picture.</p>
+  <pre><code>TOKEN=your-api-token
+BASE=http://localhost:5000
+
+# 1. load a detector you imported earlier
+curl -X POST "$BASE/models/load-detector" -H "X-Api-Token: $TOKEN" \
+     -F model_name=tiny-yolov3 -F input_size=416
+
+# 2. cover every animal in a frame with a solid box
+curl -X POST "$BASE/detect-mask?classes=animals&amp;mode=box&amp;pad=12" \
+     -H "X-Api-Token: $TOKEN" --data-binary @frame.jpg -o masked.jpg
+
+# blur instead of a filled box, and only dogs
+curl -X POST "$BASE/detect-mask?classes=dog&amp;mode=blur" \
+     -H "X-Api-Token: $TOKEN" --data-binary @frame.jpg -o masked.jpg</code></pre>
+  <p>The response carries <code>X-Detections</code> with the number of regions covered.
+  <code>classes</code> takes COCO names or the <code>animals</code> group;
+  <code>pad</code> grows each box, which matters because a detector's box hugs the animal and
+  the ears sticking out set a dog off just as well.</p>
 
   <h2>Example: load a model + upscale a frame</h2>
   <pre><code>TOKEN=your-api-token

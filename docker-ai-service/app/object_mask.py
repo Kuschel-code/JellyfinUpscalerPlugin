@@ -32,7 +32,7 @@ handles the common YOLO output layouts.
 from __future__ import annotations
 
 import logging
-from typing import Iterable, Sequence
+from typing import Iterable, NamedTuple, Sequence
 
 import cv2
 import numpy as np
@@ -184,10 +184,144 @@ def decode_detections(output: np.ndarray, src_w: int, src_h: int, net_size: int,
 
 
 def preprocess(img: np.ndarray, net_size: int) -> np.ndarray:
-    """BGR HxWx3 uint8 -> NCHW float32 in [0,1], letterboxed to a square."""
+    """BGR HxWx3 uint8 -> NCHW float32 in [0,1], stretched to a square.
+
+    A stretch rather than a letterbox, and that is deliberate: decode_detections
+    scales boxes back by (src_w/net, src_h/net), which is the exact inverse, so the
+    geometry round-trips. The NMS-head models below need a real letterbox instead,
+    because they undo it internally - see preprocess_letterbox.
+    """
     resized = cv2.resize(img, (net_size, net_size), interpolation=cv2.INTER_LINEAR)
     rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
     return np.transpose(rgb, (2, 0, 1))[np.newaxis, ...]
+
+
+def preprocess_letterbox(img: np.ndarray, net_size: int) -> np.ndarray:
+    """BGR HxWx3 uint8 -> NCHW float32 in [0,1], aspect preserved, padded with 128.
+
+    This is yolo3.utils.letterbox_image from keras-yolo3, which the ONNX YOLOv3
+    exports were converted from. The padding value is not cosmetic: the model's
+    internal box correction assumes the image sits centred in a 128-grey frame, so a
+    different pad or a plain stretch shifts every box it returns.
+    """
+    h, w = img.shape[:2]
+    scale = min(net_size / w, net_size / h)
+    nw, nh = int(w * scale), int(h * scale)
+    resized = cv2.resize(img, (nw, nh), interpolation=cv2.INTER_LINEAR)
+    canvas = np.full((net_size, net_size, 3), 128, dtype=np.uint8)
+    top, left = (net_size - nh) // 2, (net_size - nw) // 2
+    canvas[top:top + nh, left:left + nw] = resized
+    rgb = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+    return np.transpose(rgb, (2, 0, 1))[np.newaxis, ...]
+
+
+# ── Which flavour of detector is this? ───────────────────────────────────────
+#
+# The two families do not just differ in tensor layout, they split the work
+# differently. A v5/v8 head returns raw anchors and leaves NMS to the caller. The
+# ONNX YOLOv3 exports - including the yolo-v3-tiny-onnx the feature was requested
+# for - run NMS inside the graph, undo the letterbox themselves, and return boxes
+# already in source-image coordinates; for that they need the original size as a
+# second input.
+#
+# So the flavour is not guessed from the numbers. The session describes itself, and
+# this reads that description.
+
+class ModelPlan(NamedTuple):
+    style: str                      # "single" (v3/v5/v7/v8/v9 head) or "nms3"
+    net_size: int
+    image_input: str
+    image_shape_input: str | None   # second input, set only for "nms3"
+
+
+def plan_for(inputs: Sequence, outputs: Sequence, fallback_size: int = 640) -> ModelPlan:
+    """Work out how to drive a loaded detector.
+
+    `inputs`/`outputs` are (name, shape) pairs as ONNX Runtime reports them; shapes
+    may contain None or strings for dynamic axes, which is why every dimension read
+    here is guarded rather than trusted.
+    """
+    image_input = None
+    net = fallback_size
+    shape_input = None
+
+    for name, shape in inputs:
+        if shape is not None and len(shape) == 4:
+            image_input = name
+            dim = shape[2]                      # NCHW: H
+            if isinstance(dim, int) and dim > 0:
+                net = dim
+        elif shape is not None and len(shape) == 2:
+            # (1, 2) carrying the original height and width.
+            tail = shape[1]
+            if not isinstance(tail, int) or tail == 2:
+                shape_input = name
+
+    if image_input is None:
+        raise ValueError(
+            "This model has no 4-dimensional image input, so it is not an object "
+            f"detector this service can drive. Inputs: {list(inputs)}")
+
+    # A detection head emits 2-D or 3-D tensors. A 4-D output means an image came
+    # back, i.e. someone pointed this at an upscaler or a restoration model. Catching
+    # it here fails while the user is still looking at the load call, instead of on
+    # the first frame of playback.
+    if any(s is not None and len(s) == 4 for _n, s in outputs):
+        raise ValueError(
+            "This model returns an image, not detections - it looks like an upscaler "
+            "or restoration model rather than an object detector.")
+
+    if shape_input is not None and len(outputs) >= 3:
+        return ModelPlan("nms3", net, image_input, shape_input)
+
+    if shape_input is not None:
+        # Two inputs but a single head is a combination nothing in the wild produces;
+        # driving it half-right would put boxes in the wrong place silently.
+        raise ValueError(
+            "Model takes an image-size input but returns fewer than 3 outputs - "
+            "unrecognised detector variant, refusing rather than guessing.")
+
+    return ModelPlan("single", net, image_input, None)
+
+
+def decode_nms_outputs(boxes: np.ndarray, scores: np.ndarray, indices: np.ndarray,
+                       src_w: int, src_h: int, conf_threshold: float = 0.35,
+                       wanted: set[int] | None = None) -> list[tuple[int, float, tuple[int, int, int, int]]]:
+    """Decode the 3-output form: boxes (1,N,4), scores (1,C,N), indices (...,3).
+
+    Per keras-yolo3's yolo_correct_boxes, which these exports were converted from,
+    a box is (y_min, x_min, y_max, x_max) and is ALREADY in source-image
+    coordinates - the graph undoes the letterbox and rescales. Reading it as
+    (x1,y1,x2,y2) would transpose every box, which on a 16:9 frame lands them
+    somewhere plausible-looking and entirely wrong.
+
+    NMS has already run inside the graph, so nothing here suppresses further.
+    """
+    idx = np.asarray(indices)
+    if idx.size == 0:
+        return []
+    # Documented as (nbox,3) by onnx/models and as (1,nbox,3) by the OpenVINO zoo
+    # entry for the same file - opset exports differ, so accept both.
+    if idx.ndim == 3:
+        idx = idx[0]
+    if idx.ndim != 2 or idx.shape[1] != 3:
+        raise ValueError(f"Unsupported NMS indices shape {np.asarray(indices).shape}")
+
+    b = np.asarray(boxes)
+    s = np.asarray(scores)
+    out = []
+    for batch_i, cls, box_i in idx.astype(int):
+        if wanted is not None and cls not in wanted:
+            continue
+        score = float(s[batch_i, cls, box_i])
+        if score < conf_threshold:
+            continue
+        y1, x1, y2, x2 = (float(v) for v in b[batch_i, box_i])
+        out.append((
+            int(cls), score,
+            (max(0, int(x1)), max(0, int(y1)), min(src_w, int(x2)), min(src_h, int(y2))),
+        ))
+    return out
 
 
 def apply_masks(img: np.ndarray, detections: Sequence, mode: str = "box",

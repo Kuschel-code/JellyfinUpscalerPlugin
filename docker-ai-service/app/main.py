@@ -209,6 +209,7 @@ class AppState:
         # alongside upscaling, not instead of it.
         self.detector_session = None
         self.detector_name = None
+        self.detector_plan = None      # object_mask.ModelPlan, set together with the session
         self.detector_input_size = 640
         self.face_restore_model_name: Optional[str] = None
         self.face_restore_loaded: bool = False
@@ -5734,11 +5735,31 @@ async def load_detector_endpoint(request: Request, model_name: str = Form(...), 
 
     loop = asyncio.get_running_loop()
     sess = await loop.run_in_executor(_cpu_executor, _load)
+
+    # Ask the model how it wants to be driven instead of assuming one shape. A
+    # mismatch here is not an exception - it is boxes painted over the wrong part of
+    # the frame - so an unrecognised variant is rejected at load time, where the user
+    # is still looking, rather than during playback.
+    try:
+        plan = object_mask.plan_for(
+            [(i.name, i.shape) for i in sess.get_inputs()],
+            [(o.name, o.shape) for o in sess.get_outputs()],
+            fallback_size=input_size,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     state.detector_session = sess
     state.detector_name = model_name
-    state.detector_input_size = input_size
-    logger.info(f"Object detector loaded: {model_name} (input {input_size}x{input_size})")
-    return {"status": "success", "model": model_name, "input_size": input_size}
+    state.detector_plan = plan
+    state.detector_input_size = plan.net_size
+    logger.info(
+        f"Object detector loaded: {model_name} (style {plan.style}, input "
+        f"{plan.net_size}x{plan.net_size})")
+    return {
+        "status": "success", "model": model_name,
+        "input_size": plan.net_size, "style": plan.style,
+    }
 
 
 @app.post("/detect-mask", tags=["Object masking"])
@@ -5781,14 +5802,28 @@ async def detect_mask_endpoint(
     if not wanted:
         raise HTTPException(status_code=400, detail=f"No known classes in '{classes}'")
 
-    net = state.detector_input_size
     sess = state.detector_session
 
+    plan = state.detector_plan
+
     def _run():
-        blob = object_mask.preprocess(img, net)
-        raw = sess.run(None, {sess.get_inputs()[0].name: blob})[0]
         h, w = img.shape[:2]
-        dets = object_mask.decode_detections(raw, w, h, net, conf_threshold=confidence, wanted=wanted)
+        if plan.style == "nms3":
+            # This family does NMS and the letterbox correction inside the graph, and
+            # needs the source size to do it - hence the second input.
+            blob = object_mask.preprocess_letterbox(img, plan.net_size)
+            feed = {
+                plan.image_input: blob,
+                plan.image_shape_input: np.array([[h, w]], dtype=np.float32),
+            }
+            boxes, scores, indices = sess.run(None, feed)[:3]
+            dets = object_mask.decode_nms_outputs(
+                boxes, scores, indices, w, h, conf_threshold=confidence, wanted=wanted)
+        else:
+            blob = object_mask.preprocess(img, plan.net_size)
+            raw = sess.run(None, {plan.image_input: blob})[0]
+            dets = object_mask.decode_detections(
+                raw, w, h, plan.net_size, conf_threshold=confidence, wanted=wanted)
         return object_mask.apply_masks(img, dets, mode=mode, pad=pad), len(dets)
 
     loop = asyncio.get_running_loop()
