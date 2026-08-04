@@ -50,7 +50,7 @@ dotnet publish -c Release -o ./publish</code></pre>
     <li>Fork the repo, branch from <code>main</code>. Name it <code>fix/ffmpeg-path</code>, <code>feat/arm-images</code>, etc.</li>
     <li>One logical change per PR. If you're fixing a bug and adding a feature, that's two PRs.</li>
     <li>Include tests for bug fixes. "Write the test that fails without your fix" is the bar.</li>
-    <li>Update <code>docs/CHANGELOG.md</code> under <em>Unreleased</em>.</li>
+    <li>Describe the change in the PR body &mdash; release notes are written per release from the merged PRs, so there is no changelog file to edit.</li>
     <li>Open the PR against <code>main</code>. CI runs <code>dotnet build</code>, <code>dotnet test</code>, and the site linter.</li>
   </ol>
 
