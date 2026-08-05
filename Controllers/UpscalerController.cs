@@ -112,19 +112,36 @@ namespace JellyfinUpscalerPlugin.Controllers
             {
                 foreach (var loc in folder.Locations)
                 {
-                    if (string.IsNullOrWhiteSpace(loc)) continue;
-                    var root = Path.GetFullPath(loc);
-                    var rootWithSep = root.EndsWith(Path.DirectorySeparatorChar)
-                        ? root
-                        : root + Path.DirectorySeparatorChar;
-                    if (fullPath.Equals(root, StringComparison.OrdinalIgnoreCase) ||
-                        fullPath.StartsWith(rootWithSep, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return true;
-                    }
+                    if (IsPathUnderRoot(fullPath, loc)) return true;
                 }
             }
             return false;
+        }
+
+        /// <summary>
+        /// The actual containment rule, pulled out of <see cref="IsInsideMediaLibrary"/> so it
+        /// can be tested for what it does rather than for how it is written.
+        ///
+        /// It used to live inline, guarded only by a test asserting that the source contained
+        /// the string "rootWithSep". Mutation testing showed that guard was hollow: putting the
+        /// bypass back — comparing against <c>root</c> instead of <c>rootWithSep</c> — left the
+        /// declaration, and therefore the asserted string, untouched, and the suite stayed
+        /// green. A test that pins an identifier does not pin behaviour.
+        ///
+        /// The separator is the whole point: a bare StartsWith lets "/media/mov-private" pass
+        /// an allowlist that only contains "/media/mov".
+        /// </summary>
+        internal static bool IsPathUnderRoot(string fullPath, string? root)
+        {
+            if (string.IsNullOrEmpty(fullPath) || string.IsNullOrWhiteSpace(root)) return false;
+
+            var normalisedRoot = Path.GetFullPath(root);
+            if (fullPath.Equals(normalisedRoot, StringComparison.OrdinalIgnoreCase)) return true;
+
+            var rootWithSep = normalisedRoot.EndsWith(Path.DirectorySeparatorChar)
+                ? normalisedRoot
+                : normalisedRoot + Path.DirectorySeparatorChar;
+            return fullPath.StartsWith(rootWithSep, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>

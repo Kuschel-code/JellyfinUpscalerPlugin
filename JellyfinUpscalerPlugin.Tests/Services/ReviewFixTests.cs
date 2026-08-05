@@ -2,6 +2,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using FluentAssertions;
+using JellyfinUpscalerPlugin.Controllers;
 using Xunit;
 
 namespace JellyfinUpscalerPlugin.Tests.Services
@@ -42,14 +43,47 @@ namespace JellyfinUpscalerPlugin.Tests.Services
                     "the helper is defined once and must be called by ProcessVideo, EnqueueJob and PreProcessVideo");
         }
 
-        [Fact]
-        public void The_library_check_compares_with_a_directory_separator()
+        // The containment rule is now exercised, not described. The previous version of this
+        // test asserted the source contained the string "rootWithSep"; mutation testing showed
+        // that putting the bypass back left the declaration - and so the asserted string -
+        // in place, and the suite stayed green. These call the real code instead.
+
+        [Theory]
+        [InlineData("/media/movies/film.mkv", "/media/movies", true)]     // inside
+        [InlineData("/media/movies", "/media/movies", true)]              // the root itself
+        [InlineData("/media/movies/sub/a.mkv", "/media/movies", true)]    // deeper
+        [InlineData("/media/movies-private/x.mkv", "/media/movies", false)]  // THE BYPASS
+        [InlineData("/media/moviesbackup/x.mkv", "/media/movies", false)]    // no separator
+        [InlineData("/etc/passwd", "/media/movies", false)]
+        [InlineData("", "/media/movies", false)]
+        [InlineData("/media/movies/a.mkv", "", false)]
+        [InlineData("/media/movies/a.mkv", null, false)]
+        public void The_containment_rule_rejects_sibling_directories(string path, string? root, bool expected)
         {
-            // A bare StartsWith lets "/media/mov-private" pass an allowlist holding
-            // "/media/mov" - a neighbouring-directory bypass.
-            RepoFile("Controllers", "UpscalerController.cs")
-                .Should().Contain("rootWithSep",
-                    "prefix matching without a separator matches sibling directories");
+            // Path.GetFullPath makes these platform-relative, so compare like for like.
+            var fullPath = string.IsNullOrEmpty(path) ? path : Path.GetFullPath(path);
+            UpscalerController.IsPathUnderRoot(fullPath, root).Should().Be(expected);
+        }
+
+        [Fact]
+        public void The_containment_rule_ignores_a_trailing_separator_on_the_root()
+        {
+            var root = Path.GetFullPath("/media/movies");
+            var file = Path.GetFullPath("/media/movies/film.mkv");
+
+            UpscalerController.IsPathUnderRoot(file, root).Should().BeTrue();
+            UpscalerController.IsPathUnderRoot(file, root + Path.DirectorySeparatorChar)
+                .Should().BeTrue("a configured library path may or may not end in a separator");
+        }
+
+        [Fact]
+        public void Every_path_endpoint_still_routes_through_the_shared_helper()
+        {
+            // Behaviour above, wiring here: the rule is only worth anything if the endpoints
+            // actually call it.
+            var ctrl = RepoFile("Controllers", "UpscalerController.cs");
+            Regex.Matches(ctrl, @"IsPathUnderRoot\(").Count
+                .Should().BeGreaterThanOrEqualTo(2, "defined once and called by IsInsideMediaLibrary");
         }
 
         [Fact]
