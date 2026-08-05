@@ -2471,12 +2471,18 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// </summary>
         [HttpPost("object-mask/load-model")]
         [Authorize(Policy = "RequiresElevation")]
-        public async Task<ActionResult> LoadObjectMaskModel()
+        public async Task<ActionResult> LoadObjectMaskModel([FromQuery] string? modelName = null)
         {
             try
             {
+                // v1.8.3.28, reported in discussion #11: this read ONLY the saved config, so
+                // typing a new model id and pressing Load loaded the PREVIOUS one and the
+                // status line showed that previous name - "sticks on a previous model name
+                // different than the one just entered". I even wrote a comment in the UI
+                // describing this trap instead of closing it. The caller now says which model
+                // it means; the saved value remains the fallback for scripts and other clients.
                 var config = Plugin.Instance?.Configuration;
-                var model = config?.ObjectMaskModel;
+                var model = !string.IsNullOrWhiteSpace(modelName) ? modelName.Trim() : config?.ObjectMaskModel;
                 if (string.IsNullOrWhiteSpace(model))
                 {
                     return BadRequest(new

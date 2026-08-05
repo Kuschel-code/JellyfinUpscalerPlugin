@@ -176,6 +176,66 @@ namespace JellyfinUpscalerPlugin.Tests.Services
             ctrl.Substring(idx, 900).Should().Contain("MaxFrameBytes");
         }
 
+        // ── Reported by the person using it (discussion #11) ─────────────────
+
+        [Fact]
+        public void Loading_a_detector_uses_the_id_that_is_on_screen()
+        {
+            // "The status message would often stick on a previous model name different than
+            // the one just entered." The button POSTed nothing and the endpoint read only the
+            // SAVED config, so a freshly typed id loaded the PREVIOUS model - and the status
+            // truthfully reported that previous model, which looked like a bug in the message.
+            var ctrl = RepoFile("Controllers", "UpscalerController.cs");
+            ctrl.Should().Contain("LoadObjectMaskModel([FromQuery] string? modelName = null)",
+                "the caller has to be able to name the model it means");
+
+            var html = RepoFile("Configuration", "configurationpage.html");
+            html.Should().Contain("'?modelName=' + encodeURIComponent(typed)",
+                "the button must send what the user typed");
+        }
+
+        [Fact]
+        public void The_saved_config_still_works_as_a_fallback()
+        {
+            // Scripts and other clients call this without a parameter and must keep working.
+            var ctrl = RepoFile("Controllers", "UpscalerController.cs");
+            var idx = ctrl.IndexOf("LoadObjectMaskModel([FromQuery]");
+            ctrl.Substring(idx, 900).Should().Contain("config?.ObjectMaskModel");
+        }
+
+        [Fact]
+        public void Pressing_load_persists_the_masking_settings()
+        {
+            // The other half of the same report: values "put in previously" were gone after
+            // navigating away and back. Nothing on this card was stored until the global Save
+            // was pressed, while an action button sat right next to the fields suggesting
+            // otherwise.
+            var html = RepoFile("Configuration", "configurationpage.html");
+            var idx = html.IndexOf("btn-object-mask-load')?.addEventListener");
+            idx.Should().BeGreaterThan(0);
+            var handler = html.Substring(idx, Math.Min(2600, html.Length - idx));
+
+            handler.Should().Contain("updatePluginConfiguration",
+                "the card's fields must be saved by the button that acts on them");
+            handler.Should().Contain("cfg.ObjectMaskModel = typed;");
+        }
+
+        [Fact]
+        public void The_confidence_field_cannot_silently_discard_a_valid_number()
+        {
+            // step="0.05" makes a type=number input report value === '' for entries the
+            // browser rejects, and floating point puts values like 0.6 off that grid
+            // ((0.6-0.05)/0.05 = 10.999999999999998). The save path skipped empty strings, so
+            // the number was dropped without a word and the old one stayed - reported as
+            // "it seemed to ignore the confidence values that I put in".
+            var html = RepoFile("Configuration", "configurationpage.html");
+            html.Should().Contain("id=\"ObjectMaskConfidence\" min=\"0.05\" max=\"0.95\" step=\"any\"");
+            html.Should().NotContain("if (maskConf && maskConf.value !== '')",
+                "an empty string here meant 'the browser disliked it', not 'the user left it blank'");
+            html.Should().Contain("maskConf.value = cv;",
+                "the field must show the value that was actually stored");
+        }
+
         // ── Found on the live server, not by any test ────────────────────────
 
         [Fact]

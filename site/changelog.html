@@ -7,13 +7,23 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.27</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.28</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Every release carries its full notes on the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.27 - What a live server showed that no test could <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.28 - The object-masking card, as reported by someone using it <span class="tag success">latest</span></h2>
+  <p class="date">2026-08-06</p>
+  <ul>
+    <li><strong>It works.</strong> <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions/11">Discussion #11</a> reports Ultralytics YOLO exports loading (YOLO26n fastest in their testing), boxes landing where they should, and 5&ndash;10&nbsp;fps at low quality on a Ryzen&nbsp;5&nbsp;7600 through <code>docker7-cpu</code>. Two UI bugs came with that, and both were real.</li>
+    <li><strong>"The status would stick on a previous model name."</strong> Because it was telling the truth. The button POSTed nothing and the endpoint read only the <em>saved</em> config, so a newly typed id loaded the <em>previous</em> model and the status reported that one. The endpoint takes a <code>modelName</code> now and the button sends what is on screen. The saved value stays as the fallback for scripts.</li>
+    <li><strong>"It seemed to ignore the confidence values I put in."</strong> It did. <code>step="0.05"</code> makes a <code>type=number</code> input report <code>value === ''</code> for entries the browser rejects &mdash; and floating point puts values like <code>0.6</code> off that grid, since <code>(0.6-0.05)/0.05</code> is 10.999999999999998. The save path skipped empty strings, so the number vanished without a word. <code>step="any"</code>, parse, clamp, and write the stored value back into the field.</li>
+    <li><strong>Values reverted after navigating away.</strong> Nothing on this card was persisted until the global <em>Save Settings</em>, while an action button sat right next to the fields implying otherwise. <em>Load Detection Model</em> saves the card first, then loads.</li>
+    <li>Four regression tests, each verified to fail when its fix is removed. 364 C# + 166 Python tests green.</li>
+  </ul>
+
+  <h2>v1.8.3.27 - What a live server showed that no test could</h2>
   <p class="date">2026-08-05</p>
   <ul>
     <li><strong>Every translated string had been falling back to its key, on every install.</strong> <code>strings.en.json</code> was declared as an embedded resource and was never in the DLL: MSBuild reads the <code>.en.</code> in the file name as a <em>culture tag</em>, so it was compiled into a satellite assembly (<code>en/…resources.dll</code>) that the release ZIP does not ship. Jellyfin logged "Failed to get resource" on every config-page load. The test guarding this asserted that the <code>.csproj</code> <em>mentioned</em> the file &mdash; which it always did. It now asks the built assembly.</li>
@@ -553,7 +563,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.27</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.28</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

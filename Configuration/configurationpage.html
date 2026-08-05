@@ -230,7 +230,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.8.3.27 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.8.3.28 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -504,7 +504,7 @@
                             </div>
                             <div class="form-col inputContainer" style="flex:1;">
                                 <label class="inputLabel" for="ObjectMaskConfidence">Confidence</label>
-                                <input is="emby-input" type="number" id="ObjectMaskConfidence" min="0.05" max="0.95" step="0.05" />
+                                <input is="emby-input" type="number" id="ObjectMaskConfidence" min="0.05" max="0.95" step="any" />
                                 <div class="fieldDescription">Lower catches more, and more false positives.</div>
                             </div>
                         </div>
@@ -2327,11 +2327,24 @@
                 var maskPad = page.querySelector('#ObjectMaskPadding');
                 if (maskPad && maskPad.value !== '') config.ObjectMaskPadding = parseInt(maskPad.value, 10);
                 var maskConf = page.querySelector('#ObjectMaskConfidence');
-                if (maskConf && maskConf.value !== '') config.ObjectMaskConfidence = parseFloat(maskConf.value);
+                if (maskConf) {
+                    // v1.8.3.28, reported in #11: this used to be `if (value !== '')`, and a
+                    // type=number input reports '' whenever the browser considers the entry
+                    // invalid. With the old step="0.05" that included values such as 0.6, where
+                    // (0.6-0.05)/0.05 lands on 10.999999999999998 - so a perfectly reasonable
+                    // number was dropped in silence and the previous one kept. Parse, clamp, and
+                    // write back what was actually stored so the field cannot show a lie.
+                    var cv = parseFloat(maskConf.value);
+                    if (!isNaN(cv)) {
+                        cv = Math.min(0.95, Math.max(0.05, cv));
+                        config.ObjectMaskConfidence = cv;
+                        maskConf.value = cv;
+                    }
+                }
 
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.8.3.27';
+                config.PluginVersion = '1.8.3.28';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -3136,11 +3149,32 @@
                     return;
                 }
                 btn.disabled = true;
-                if (statusEl) statusEl.textContent = 'Status: loading ' + typed + '…';
-                ApiClient.ajax({
-                    type: 'POST',
-                    url: ApiClient.getUrl('Upscaler/object-mask/load-model'),
-                    dataType: 'json'
+                if (statusEl) statusEl.textContent = 'Status: saving and loading ' + typed + '…';
+
+                // v1.8.3.28, reported in #11: the button used to POST nothing and the server read
+                // the SAVED config, so a newly typed id loaded the previous model and the status
+                // showed that previous name. Two halves of one problem: the card looks like it
+                // acts on what is on screen, and nothing here was persisted until the global Save.
+                // So persist this card's fields first - which also stops the values reverting when
+                // you navigate away and back - and then name the model explicitly.
+                ApiClient.getPluginConfiguration(pluginId).then(function(cfg) {
+                    cfg.ObjectMaskModel = typed;
+                    var cls = (page.querySelector('#ObjectMaskClasses')?.value || '').trim();
+                    if (cls) cfg.ObjectMaskClasses = cls;
+                    var md = page.querySelector('#ObjectMaskMode')?.value;
+                    if (md) cfg.ObjectMaskMode = md;
+                    var pd = parseInt(page.querySelector('#ObjectMaskPadding')?.value, 10);
+                    if (!isNaN(pd)) cfg.ObjectMaskPadding = Math.min(200, Math.max(0, pd));
+                    var cf = parseFloat(page.querySelector('#ObjectMaskConfidence')?.value);
+                    if (!isNaN(cf)) cfg.ObjectMaskConfidence = Math.min(0.95, Math.max(0.05, cf));
+                    return ApiClient.updatePluginConfiguration(pluginId, cfg);
+                }).then(function() {
+                    return ApiClient.ajax({
+                        type: 'POST',
+                        url: ApiClient.getUrl('Upscaler/object-mask/load-model') +
+                             '?modelName=' + encodeURIComponent(typed),
+                        dataType: 'json'
+                    });
                 }).then(function(res) {
                     if (statusEl) {
                         statusEl.textContent = 'Status: loaded ' + (res.model || typed) +
