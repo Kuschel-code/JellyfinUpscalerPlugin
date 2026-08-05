@@ -3149,12 +3149,20 @@
                     }
                     showToast('Detection model loaded');
                 }).catch(function(err) {
-                    if (statusEl) {
-                        statusEl.textContent = 'Status: failed - ' +
-                            ((err && err.statusText) || 'is the model imported and the settings saved?');
-                    }
+                    // Surface what the service said. The two likely causes - model not
+                    // imported, settings not saved - are indistinguishable from a bare
+                    // status code, and both look like "the button is broken".
+                    var msg = 'is the model imported, and did you save the settings?';
+                    try {
+                        var j = JSON.parse(err.responseText);
+                        msg = j.detail || j.error || j.message || msg;
+                    } catch (e) { /* not JSON */ }
+                    if (statusEl) statusEl.textContent = 'Status: failed - ' + msg;
                     showToast('Could not load the detection model', '#f87171');
-                }).finally(function() { btn.disabled = false; });
+                    // A trailing then(), not finally(): the rest of this page uses that
+                    // idiom, and nothing here has ever relied on ApiClient.ajax returning
+                    // a promise that has finally().
+                }).then(function() { btn.disabled = false; });
             });
 
             // ===== Face Restore (v1.6.1.7) =====
