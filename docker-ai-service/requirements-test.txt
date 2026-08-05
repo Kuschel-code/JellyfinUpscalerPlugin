@@ -13,3 +13,10 @@ starlette>=1.0.1
 # pixels (a filled box, a blurred region, a letterbox pad), and a MagicMock would let
 # them pass without testing anything. headless = no GUI libs on the runner.
 opencv-python-headless>=4.8.0,<5.0
+# test_detect_mask_endpoints.py builds real ONNX detector graphs and drives the
+# endpoints through them. Without these it would importorskip - and a skipped test
+# reads as a passing one, which is the same trap as the collection error above.
+# CI-only: these never reach an image, so the "no plain onnxruntime beside
+# onnxruntime-rocm/-openvino" rule in CLAUDE.md is not in play here.
+onnx>=1.15.0
+onnxruntime>=1.17.0

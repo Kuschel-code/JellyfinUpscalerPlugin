@@ -208,9 +208,7 @@ class AppState:
         # endpoint. Separate from the upscaler session on purpose: masking runs
         # alongside upscaling, not instead of it.
         self.detector_session = None
-        self.detector_name = None
         self.detector_plan = None      # object_mask.ModelPlan, set together with the session
-        self.detector_input_size = 640
         self.face_restore_model_name: Optional[str] = None
         self.face_restore_loaded: bool = False
         self.face_restore_input_size: int = 512   # Models standardised on 512x512 face crops
@@ -5750,9 +5748,7 @@ async def load_detector_endpoint(request: Request, model_name: str = Form(...), 
         raise HTTPException(status_code=400, detail=str(e))
 
     state.detector_session = sess
-    state.detector_name = model_name
     state.detector_plan = plan
-    state.detector_input_size = plan.net_size
     logger.info(
         f"Object detector loaded: {model_name} (style {plan.style}, input "
         f"{plan.net_size}x{plan.net_size})")
