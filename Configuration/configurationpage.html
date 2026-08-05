@@ -230,7 +230,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.8.3.28 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.8.3.29 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -2344,7 +2344,7 @@
 
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.8.3.28';
+                config.PluginVersion = '1.8.3.29';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -3182,15 +3182,28 @@
                             ', input ' + (res.input_size || '?') + 'px)';
                     }
                     showToast('Detection model loaded');
-                }).catch(function(err) {
-                    // Surface what the service said. The two likely causes - model not
-                    // imported, settings not saved - are indistinguishable from a bare
-                    // status code, and both look like "the button is broken".
-                    var msg = 'is the model imported, and did you save the settings?';
-                    try {
-                        var j = JSON.parse(err.responseText);
-                        msg = j.detail || j.error || j.message || msg;
-                    } catch (e) { /* not JSON */ }
+                }).catch(async function(err) {
+                    // Surface what the service said, rather than a sentence that fits every
+                    // failure equally badly.
+                    // v1.8.3.28 - read the shape ApiClient actually rejects with. This used
+                    // err.responseText, an XHR field; Jellyfin 10.11's client is fetch-based
+                    // and rejects with a Response, so the parse always threw and every
+                    // failure showed the same generic sentence while the service was
+                    // returning a 404 that names the missing model. Verified live: a bogus
+                    // id produced exactly that fallback text and nothing else.
+                    var msg = 'is that model imported on the Models tab?';
+                    var body = null;
+                    if (err && typeof err.text === 'function') {
+                        try { body = await err.text(); } catch (e) { body = null; }
+                    } else if (err && err.responseText) {
+                        body = err.responseText;
+                    }
+                    if (body) {
+                        try {
+                            var j = JSON.parse(body);
+                            msg = j.detail || j.error || j.message || msg;
+                        } catch (e) { if (body.length < 300) msg = body; }
+                    }
                     if (statusEl) statusEl.textContent = 'Status: failed - ' + msg;
                     showToast('Could not load the detection model', '#f87171');
                     // A trailing then(), not finally(): the rest of this page uses that

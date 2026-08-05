@@ -7,13 +7,22 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.28</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.29</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Every release carries its full notes on the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.28 - The object-masking card, as reported by someone using it <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.29 - The error message now says what went wrong <span class="tag success">latest</span></h2>
+  <p class="date">2026-08-06</p>
+  <ul>
+    <li>Testing v1.8.3.28 on a live server showed the last piece of the same problem: a failed <em>Load Detection Model</em> always printed one generic sentence, no matter what happened. The handler read <code>err.responseText</code> &mdash; an XHR field &mdash; while Jellyfin 10.11's client is fetch-based and rejects with a <code>Response</code>. Confirmed against the running server: the rejection is <code>[object Response]</code>, <code>err.text</code> is a function, <code>err.responseText</code> does not exist, so the parse threw every single time.</li>
+    <li>Meanwhile the service was returning exactly what the user needed: <code>"definitelynotamodel is not on disk. Import or upload a detection model first"</code>. That reaches the status line now.</li>
+    <li>The old fallback also told you to save your settings &mdash; advice that stopped being true in v1.8.3.28, when the button started saving them itself.</li>
+    <li>364 C# + 166 Python tests green.</li>
+  </ul>
+
+  <h2>v1.8.3.28 - The object-masking card, as reported by someone using it</h2>
   <p class="date">2026-08-06</p>
   <ul>
     <li><strong>It works.</strong> <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions/11">Discussion #11</a> reports Ultralytics YOLO exports loading (YOLO26n fastest in their testing), boxes landing where they should, and 5&ndash;10&nbsp;fps at low quality on a Ryzen&nbsp;5&nbsp;7600 through <code>docker7-cpu</code>. Two UI bugs came with that, and both were real.</li>
@@ -563,7 +572,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.28</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.29</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>
