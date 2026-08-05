@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.24
+# Jellyfin AI Upscaler Plugin v1.8.3.25
 
 [![Built with Claude Opus 5](https://img.shields.io/badge/Built%20with-Claude%20Opus%205-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.24):**
+**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.25):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -39,7 +39,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.24   │  │
+│  │  AI Upscaler Plugin v1.8.3.25   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -122,7 +122,7 @@ Covers things you do not want on screen. It exists because of [discussion #11](h
 
 **Setup (three steps):**
 
-1. Import a detection model on the **Models** tab — e.g. `tiny-yolov3-11.onnx` from the ONNX model zoo. None ships with the plugin (see below).
+1. Import a detection model on the **Models** tab (needs **v1.8.3.25+** — earlier builds rejected detection models at import with "Expected 4D output") — e.g. `tiny-yolov3-11.onnx` from the ONNX model zoo. None ships with the plugin (see below).
 2. On the **Settings** tab, tick *Enable Object Masking*, enter the model id, pick the classes (`animals` by default), save, then press **Load Detection Model**.
 3. Start a video. The player's capture loop sends each frame to the masking endpoint instead of the upscaler, and draws the covered frame back onto the overlay. The switch is also in the player menu under *Auto → Cover objects*.
 

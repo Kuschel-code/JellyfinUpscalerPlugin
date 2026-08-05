@@ -1850,17 +1850,25 @@ def _register_custom_models_from_disk(models_dir, available_models) -> int:
                 continue
             if model_name in available_models:
                 continue  # built-in or already restored — never shadow
+            # v1.8.3.25 - the category has to survive the restart too. Hardcoding
+            # "super-resolution" here would turn an imported detector back into an
+            # upscaler on the next container start, and the model dropdowns would
+            # offer it for video. Sidecars written before this release have no
+            # category, and super-resolution is the right default for them.
+            category = meta.get("category") or "super-resolution"
+            scale = int(meta.get("scale", 2)) if category == "super-resolution" else 0
             available_models[model_name] = {
                 "name": model_name,
                 "description": meta.get("description") or f"Custom uploaded model ({meta.get('scale', 2)}x)",
                 "url": "",
                 "filename": filename,
                 "type": "onnx",
-                "scale": int(meta.get("scale", 2)),
-                "category": "super-resolution",
+                "scale": scale,
+                "category": category,
                 "input_channels": meta.get("input_channels"),
                 "available": True,
                 "custom": True,
+                "detector": meta.get("detector"),
             }
             restored += 1
         except Exception:
@@ -6306,6 +6314,59 @@ async def upload_face_enhance_model(request: Request, file: UploadFile = File(..
 # Feature: Custom ONNX Model Upload + OpenModelDB import/convert (v1.8.3.8)
 # ══════════════════════════════════════════════════════════════════════════════
 
+def _classify_onnx_model(session) -> dict:
+    """Decide what kind of model this is, or refuse it.
+
+    v1.8.3.25, reported in discussion #11: the import gate hard-required a 4D output,
+    so it rejected every detection model with
+    "Expected 4D output (N, C, H, W), got shape [1, None, 4]" - that is the boxes
+    tensor of exactly the yolo-v3-tiny export the object-masking feature was built
+    for. v1.8.3.24 could load a detector and mask with it, and there was no way to
+    get one into the service. I had verified the code I wrote and not the path a
+    user walks.
+
+    The detection branch deliberately calls object_mask.plan_for - the SAME function
+    that decides how to drive the model at load time. Sharing it is the point: a
+    model that imports is a model that loads. A separate, laxer import check would
+    just move the rejection to a later step, which is worse, because by then the user
+    believes the model is installed.
+    """
+    inputs = [(i.name, i.shape) for i in session.get_inputs()]
+    outputs = [(o.name, o.shape) for o in session.get_outputs()]
+    inp, out = session.get_inputs()[0], session.get_outputs()[0]
+
+    # Upscalers and restoration models: image in, image out.
+    if len(inp.shape) == 4 and len(out.shape) == 4:
+        return {
+            "category": "super-resolution",
+            "input_channels": inp.shape[1],
+            "output_channels": out.shape[1],
+            "detector": None,
+        }
+
+    # Detectors: whatever plan_for can drive, this service can accept.
+    try:
+        plan = object_mask.plan_for(inputs, outputs)
+    except ValueError as det_err:
+        # Report BOTH expectations. "Expected 4D output" alone sent the reporter
+        # looking for a mistake in his import, when the model was fine and the gate
+        # was wrong.
+        raise ValueError(
+            f"Not a supported model. An upscaler needs a 4D input and a 4D output "
+            f"(N, C, H, W); this one has input {inp.shape} and output {out.shape}. "
+            f"As an object detector it was rejected because: {det_err}"
+        ) from det_err
+
+    return {
+        "category": "object-detection",
+        # A detector consumes an image and returns numbers, so the channel fields the
+        # upscaler registry carries do not apply. 3 in, 0 out says exactly that.
+        "input_channels": 3,
+        "output_channels": 0,
+        "detector": {"style": plan.style, "net_size": plan.net_size},
+    }
+
+
 def _ingest_onnx_bytes(data: bytes, model_name: str, scale: int, description: str) -> dict:
     """Validate, persist and register ONNX model bytes.
 
@@ -6328,17 +6389,9 @@ def _ingest_onnx_bytes(data: bytes, model_name: str, scale: int, description: st
 
     try:
         test_session = ort.InferenceSession(tmp_path, providers=["CPUExecutionProvider"])
-        inp = test_session.get_inputs()[0]
-        out = test_session.get_outputs()[0]
-
-        # Must be image model: (N, C, H, W)
-        if len(inp.shape) != 4:
-            raise ValueError(f"Expected 4D input (N, C, H, W), got shape {inp.shape}")
-        if len(out.shape) != 4:
-            raise ValueError(f"Expected 4D output (N, C, H, W), got shape {out.shape}")
-
-        input_channels = inp.shape[1]
-        output_channels = out.shape[1]
+        kind = _classify_onnx_model(test_session)
+        input_channels = kind["input_channels"]
+        output_channels = kind["output_channels"]
 
         del test_session
     except ValueError as e:
@@ -6378,6 +6431,11 @@ def _ingest_onnx_bytes(data: bytes, model_name: str, scale: int, description: st
                 "description": description or f"Custom uploaded model ({scale}x)",
                 "input_channels": input_channels,
                 "output_channels": output_channels,
+                # v1.8.3.25 - without these a detector comes back as a
+                # super-resolution model after a restart and the model list offers it
+                # for upscaling.
+                "category": kind["category"],
+                "detector": kind["detector"],
             }, fh)
     except OSError:
         logger.warning(f"Could not write custom-model sidecar for {model_name} — model will not survive a restart", exc_info=True)
@@ -6390,11 +6448,14 @@ def _ingest_onnx_bytes(data: bytes, model_name: str, scale: int, description: st
             "url": "",  # No download URL for custom models
             "filename": model_filename,
             "type": "onnx",
-            "scale": scale,
-            "category": "super-resolution",
+            # A detector has no scale factor. Reporting one would put it in the
+            # upscaler dropdowns and let auto-mode pick it for a video.
+            "scale": scale if kind["category"] == "super-resolution" else 0,
+            "category": kind["category"],
             "input_channels": input_channels,
             "available": True,
             "custom": True,
+            "detector": kind["detector"],
         }
     _invalidate_models_cache()
 

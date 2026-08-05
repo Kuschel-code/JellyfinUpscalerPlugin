@@ -236,3 +236,86 @@ def test_a_missing_model_says_so_and_does_not_500(service):
     r = service.post("/models/load-detector", data={"model_name": "nope"})
     assert r.status_code == 404
     assert "upload" in r.json()["detail"].lower(), "it must point at the import path"
+
+
+# ── Import, reported from discussion #11 ─────────────────────────────────
+#
+# v1.8.3.24 could load a detector and mask with it, and there was NO WAY TO GET ONE
+# IN: the import gate hard-required a 4D output and rejected every detection model
+# with "Expected 4D output (N, C, H, W), got shape [1, None, 4]" - the boxes tensor
+# of the very export the feature was built for. The tests above all start from a
+# model already sitting in MODELS_DIR, so none of them touched the path a user walks.
+
+def _upload(client, name, model):
+    import io
+    buf = io.BytesIO(model.SerializeToString())
+    return client.post(
+        "/models/upload",
+        files={"file": (f"{name}.onnx", buf, "application/octet-stream")},
+        data={"model_name": name, "scale": "2"},
+    )
+
+
+def test_a_detection_model_can_be_imported(service):
+    r = _upload(service, "importedyolo", _nms_head_model())
+
+    assert r.status_code == 200, r.text
+    assert "4D output" not in r.text, "the upscaler-only shape gate must not fire on a detector"
+
+
+def test_an_imported_detector_is_registered_as_one_not_as_an_upscaler(service):
+    _upload(service, "importedyolo", _nms_head_model())
+
+    entry = next(m for m in service.get("/models").json()["models"] if m["name"] == "importedyolo")
+
+    assert entry["category"] == "object-detection"
+    # Reporting a scale would put it in the upscaler dropdowns and let auto-mode
+    # pick it for a video.
+    assert entry.get("scale") == 0
+
+
+def test_import_then_load_is_one_working_path(service):
+    # The user's actual journey, end to end. Sharing plan_for between the import gate
+    # and the loader is what makes this hold: a model that imports is one that loads.
+    assert _upload(service, "importedyolo", _nms_head_model()).status_code == 200
+
+    r = service.post("/models/load-detector", data={"model_name": "importedyolo"})
+
+    assert r.status_code == 200, r.text
+    assert r.json()["style"] == "nms3"
+    assert r.json()["input_size"] == 416
+
+    masked = service.post("/detect-mask?classes=dog&mode=box&pad=0", content=_frame())
+    assert masked.status_code == 200
+    assert masked.headers["X-Detections"] == "1"
+
+
+def test_a_single_head_detector_imports_too(service):
+    r = _upload(service, "importedv8", _single_head_model())
+    assert r.status_code == 200, r.text
+    assert service.post("/models/load-detector",
+                        data={"model_name": "importedv8"}).json()["style"] == "single"
+
+
+def test_an_upscaler_still_imports_as_a_super_resolution_model(service):
+    # The fix must not turn the gate into a rubber stamp.
+    up = _const_graph("up", [("input", [1, 3, 64, 64])],
+                      [("output", np.zeros((1, 3, 256, 256), dtype=np.float32))])
+
+    assert _upload(service, "importedupscaler", up).status_code == 200
+    entry = next(m for m in service.get("/models").json()["models"] if m["name"] == "importedupscaler")
+    assert entry["category"] == "super-resolution"
+    assert entry["scale"] == 2
+
+
+def test_a_model_that_is_neither_is_refused_naming_both_expectations(service):
+    # "Expected 4D output" alone sent the reporter looking for a mistake in his own
+    # import when the model was fine and the gate was wrong.
+    junk = _const_graph("junk", [("x", [1, 5])], [("y", np.zeros((1, 5), dtype=np.float32))])
+
+    r = _upload(service, "junkmodel", junk)
+
+    assert r.status_code == 400
+    detail = r.json()["detail"]
+    assert "upscaler" in detail.lower()
+    assert "detector" in detail.lower(), "it must say why BOTH readings failed"

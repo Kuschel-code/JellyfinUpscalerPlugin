@@ -7,13 +7,24 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.24</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.25</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Every release carries its full notes on the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.24 - Object masking during playback <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.25 - Detection models can actually be imported <span class="tag success">latest</span></h2>
+  <p class="date">2026-08-05</p>
+  <ul>
+    <li><strong>Reported in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions/11">discussion #11</a>, and it was mine.</strong> The import gate hard-required a 4D output, so every detection model was rejected with <code>Expected 4D output (N, C, H, W), got shape [1, None, 4]</code> &mdash; that is the boxes tensor of exactly the <code>yolo-v3-tiny</code> export the feature was built for. v1.8.3.24 could load a detector and mask with it, and there was no way to get one in. I had verified the code I wrote, not the path a user walks.</li>
+    <li><strong>The fix is a shared gate, not an override switch.</strong> The importer now classifies the model, and for detectors it calls the same <code>plan_for</code> that decides how to drive it at load time. Sharing it is the point: a model that imports is a model that loads. A separate, laxer import check would only move the rejection to a later step &mdash; worse, because by then the user believes it is installed.</li>
+    <li>An imported detector is registered as <code>object-detection</code> with no scale factor, so it stays out of the upscaler dropdowns and auto-mode cannot pick it for a video. The category survives a container restart; before this it would have come back as a super-resolution model.</li>
+    <li>A model that is neither is now refused with <em>both</em> reasons stated. "Expected 4D output" alone sent the reporter looking for a mistake in his own import when the model was fine and the gate was wrong.</li>
+    <li>Six tests covering import &rarr; load &rarr; mask as one path. Against the old gate five of them fail with the reporter's exact message.</li>
+    <li>354 C# + 166 Python tests green.</li>
+  </ul>
+
+  <h2>v1.8.3.24 - Object masking during playback</h2>
   <p class="date">2026-08-05</p>
   <ul>
     <li><strong>The part of <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions/11">discussion #11</a> that v1.8.3.23 did not deliver.</strong> The requester asked for a <em>real-time filter</em>; what shipped was a service endpoint nothing called. The player's capture loop already ran for server-side upscaling &mdash; it just had nowhere to send frames. With masking enabled it now posts to <code>Upscaler/detect-mask</code> and draws the covered frame back onto the overlay. Switch it in Settings, or in the player menu under <em>Auto &rarr; Cover objects</em>.</li>
@@ -522,7 +533,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.24</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.25</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>
