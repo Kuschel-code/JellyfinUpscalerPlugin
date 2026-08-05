@@ -7,13 +7,23 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.26</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.27</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Every release carries its full notes on the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.26 - The plugin downloads the detector itself <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.27 - What a live server showed that no test could <span class="tag success">latest</span></h2>
+  <p class="date">2026-08-05</p>
+  <ul>
+    <li><strong>Every translated string had been falling back to its key, on every install.</strong> <code>strings.en.json</code> was declared as an embedded resource and was never in the DLL: MSBuild reads the <code>.en.</code> in the file name as a <em>culture tag</em>, so it was compiled into a satellite assembly (<code>en/…resources.dll</code>) that the release ZIP does not ship. Jellyfin logged "Failed to get resource" on every config-page load. The test guarding this asserted that the <code>.csproj</code> <em>mentioned</em> the file &mdash; which it always did. It now asks the built assembly.</li>
+    <li><strong><code>/hardware-info</code> reported three things it had never checked.</strong> <code>GpuAvailable</code> returned the <em>HardwareAcceleration config toggle</em> (default on), so a CPU-only server was told it had a GPU while <code>/gpu-verify</code> on the same box reported no devices at all. <code>FFmpegAvailable</code> and <code>OnnxRuntime</code> were the literals <code>true</code> and <code>"Available"</code>. All three are observations now, and what the user <em>asked</em> for is a separate field.</li>
+    <li><strong>The frame proxies threw away the diagnosis.</strong> On a freshly restarted container the service answers <code>{"detail": "No model loaded"}</code> &mdash; one line naming the fix &mdash; and the plugin replaced it with "Frame upscaling failed". The service's own message is passed through now.</li>
+    <li>Two documentation errors found the same way: <code>/Upscaler/health</code> is listed on the API page and does not exist (only <code>health/detailed</code>), and <code>benchmark-frame</code> is a <strong>GET</strong>, not a POST.</li>
+    <li>360 C# + 166 Python tests green.</li>
+  </ul>
+
+  <h2>v1.8.3.26 - The plugin downloads the detector itself</h2>
   <p class="date">2026-08-05</p>
   <ul>
     <li><strong>No more "bring your own model".</strong> <code>tiny-yolov3</code> is in the catalog, so the Models tab downloads and verifies it like any other model. That was only possible once the pin could be <em>verified</em> rather than asserted: the file was downloaded, its sha384 checked against the OpenVINO model zoo's own <code>model.yml</code>, and the sha256 in the catalog computed from those exact bytes.</li>
@@ -543,7 +553,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.26</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.27</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

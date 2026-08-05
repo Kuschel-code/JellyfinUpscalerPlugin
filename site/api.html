@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="assets/style.css?v=5">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.26</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.27</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>REST API reference</h1>
@@ -74,14 +74,14 @@
   <table>
     <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
     <tbody>
-      <tr><td><code>GET</code></td><td><code>/Upscaler/health</code></td><td>Proxies AI service <code>/health</code>; returns online/offline + auth posture.</td></tr>
+      <tr><td><code>GET</code></td><td><code>/Upscaler/health/detailed</code></td><td>Proxies the AI service health check; returns status, circuit-breaker state and GPU posture. <em>(There is no bare <code>/Upscaler/health</code> &mdash; it was documented for a while and never existed.)</em></td></tr>
       <tr><td><code>GET</code></td><td><code>/Upscaler/libraries</code></td><td>Enumerates Jellyfin virtual folders (ID, name, collectionType, paths). Used by the Select-Libraries chip picker.</td></tr>
       <tr><td><code>GET</code></td><td><code>/Upscaler/models</code></td><td>Model catalog proxied from service, merged with per-user preference marks.</td></tr>
       <tr><td><code>POST</code></td><td><code>/Upscaler/models/{id}/load</code></td><td>Warms the model in GPU memory via service. Admin only.</td></tr>
       <tr><td><code>POST</code></td><td><code>/Upscaler/models/{id}/download</code></td><td>Pulls ONNX weights. Admin only.</td></tr>
       <tr><td><code>GET</code></td><td><code>/Upscaler/jobs</code></td><td>Active jobs list. <strong>Admin only</strong> - previously leaked paths to any authenticated user, fixed in v1.6.1.11.</td></tr>
       <tr><td><code>POST</code></td><td><code>/Upscaler/upscale-frame</code></td><td>Base64-encoded frame in, upscaled frame out. Uses currently-loaded model.</td></tr>
-      <tr><td><code>POST</code></td><td><code>/Upscaler/benchmark-frame</code></td><td>Single-frame benchmark pass; returns ms + provider used.</td></tr>
+      <tr><td><code>GET</code></td><td><code>/Upscaler/benchmark-frame?width=&amp;height=</code></td><td>Single-frame benchmark pass; returns fps + ms. <strong>GET</strong>, not POST &mdash; documented wrongly until v1.8.3.27. Needs a loaded model, otherwise 400 with <code>detail: "No model loaded"</code>.</td></tr>
       <tr><td><code>GET</code></td><td><code>/Upscaler/filter-preview/frame/{itemId}</code></td><td>Extracts a real frame from a Jellyfin library item, applies the selected preset, returns before/after PNGs.</td></tr>
       <tr><td><code>POST</code></td><td><code>/Upscaler/filter-config</code></td><td>Persists the 6 advanced filter params (gamma/sharpness/temp/vignette/grain/denoise).</td></tr>
       <tr><td><code>GET</code></td><td><code>/Upscaler/recommend-model</code></td><td>Content-based pick for one video: model, scale, reason, signals, and a filter <em>suggestion</em> (never applied automatically). Used by Auto-Mode.</td></tr>
@@ -213,7 +213,7 @@ curl -X POST -H "X-Api-Token: $TOKEN" -H "Content-Type: application/json" \
   <p>Model IDs and filter preset IDs are validated against <code>^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*$</code> - dot-separated segments are allowed (for <code>rife-v4.9</code> etc) but traversal patterns (<code>..</code>, leading/trailing dots) are blocked.</p>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.26</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.27</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

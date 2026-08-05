@@ -179,6 +179,47 @@ namespace JellyfinUpscalerPlugin.Tests.Services
         // ── Found on the live server, not by any test ────────────────────────
 
         [Fact]
+        public void A_failed_frame_proxy_passes_the_services_reason_through()
+        {
+            // Live, on a freshly restarted container: the service answered
+            // {"detail":"No model loaded"} - one line naming the fix - and both frame proxies
+            // replaced it with "Frame upscaling failed" / "Frame benchmark failed". The user
+            // sees a broken feature instead of a model they need to load.
+            var ctrl = RepoFile("Controllers", "UpscalerController.cs");
+            ctrl.Should().Contain("ReadServiceDetailAsync",
+                "the helper that recovers the service's own message");
+            Regex.Matches(ctrl, @"ReadServiceDetailAsync\(").Count
+                .Should().BeGreaterThanOrEqualTo(3,
+                    "defined once and used by the upscale-frame and benchmark-frame proxies");
+            ctrl.Should().NotContain("StatusCode((int)response.StatusCode, \"Frame upscaling failed\")",
+                "the bare message discarded the diagnosis");
+        }
+
+        [Fact]
+        public void Hardware_info_reports_what_it_observed_not_what_was_configured()
+        {
+            // On a CPU-only server this endpoint answered GpuAvailable: true, because the
+            // field returned the HardwareAcceleration CONFIG TOGGLE (default on) rather than
+            // any observation - while /gpu-verify on the same box reported gpu_list: [],
+            // nvidia-smi missing and /dev/dri absent. FFmpegAvailable and OnnxRuntime were
+            // literal `true` and `"Available"` and had never checked anything at all.
+            var ctrl = RepoFile("Controllers", "UpscalerController.cs");
+            var start = ctrl.IndexOf("public async Task<ActionResult<object>> GetHardwareInfo()");
+            start.Should().BeGreaterThan(0, "the endpoint has to consult the service, so it is async");
+            var body = ctrl.Substring(start, Math.Min(2200, ctrl.Length - start));
+
+            body.Should().NotContain("GpuAvailable = hardwareAcceleration",
+                "a configuration toggle is not a hardware observation");
+            body.Should().NotContain("FFmpegAvailable = true,", "that literal checked nothing");
+            body.Should().NotContain("OnnxRuntime = \"Available\"", "that literal checked nothing");
+            body.Should().Contain("status.UsingGpu");
+            body.Should().Contain("IOFile.Exists(ffmpegPath)");
+            body.Should().Contain("GpuAccelerationRequested",
+                "what the user asked for still belongs in the payload - just not as the answer "
+                + "to what exists");
+        }
+
+        [Fact]
         public void Releasing_the_processing_permit_survives_a_disposed_semaphore()
         {
             // From the test server's log during a shutdown with a job still running:

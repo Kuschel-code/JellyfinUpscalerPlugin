@@ -7,9 +7,9 @@
     <TreatWarningsAsErrors Condition="'$(Configuration)'=='Release'">true</TreatWarningsAsErrors>
     <TreatWarningsAsErrors Condition="'$(Configuration)'!='Release'">false</TreatWarningsAsErrors>
     <AssemblyTitle>AI Upscaler Plugin</AssemblyTitle>
-    <Version>1.8.3.26</Version>
-    <AssemblyVersion>1.8.3.26</AssemblyVersion>
-    <FileVersion>1.8.3.26</FileVersion>
+    <Version>1.8.3.27</Version>
+    <AssemblyVersion>1.8.3.27</AssemblyVersion>
+    <FileVersion>1.8.3.27</FileVersion>
     <NoWarn>CS8632</NoWarn>
     <Nullable>enable</Nullable>
     <!-- AI processing now handled by external Docker service - minimal dependencies -->
@@ -43,7 +43,16 @@
     <EmbeddedResource Include="Configuration\webgpu-ai-realtime.js" />
     <EmbeddedResource Include="Configuration\anime4k.js" />
     <EmbeddedResource Include="Configuration\i18n.js" />
-    <EmbeddedResource Include="Configuration\strings.en.json" />
+    <!-- v1.8.3.27 - WithCulture=false is load-bearing, not decoration. MSBuild reads the
+         ".en." in the file name as a culture tag, so this was compiled into a SATELLITE
+         assembly (en/JellyfinUpscalerPlugin.resources.dll) instead of the main DLL - and
+         the release ZIP ships only the DLLs, so it never reached a server at all. Jellyfin
+         logged "Failed to get resource ...strings.en.json" on every config-page load and
+         every translated string fell back to its key. Found by reading a live server's log;
+         the test guarding this asserted the csproj MENTIONED the file, which it always did. -->
+    <EmbeddedResource Include="Configuration\strings.en.json"
+                      WithCulture="false"
+                      LogicalName="JellyfinUpscalerPlugin.Configuration.strings.en.json" />
     <!-- Auto-generated fallback model list, regenerate via Scripts/sync-fallback-models.ps1 -->
     <EmbeddedResource Include="Resources\models-fallback.json" />
     <EmbeddedResource Include="thumb.png" />

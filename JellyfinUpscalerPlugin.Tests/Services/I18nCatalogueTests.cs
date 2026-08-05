@@ -89,14 +89,43 @@ namespace JellyfinUpscalerPlugin.Tests.Services
         }
 
         [Fact]
-        public void Both_i18n_assets_are_embedded_and_registered()
+        public void Both_i18n_assets_are_really_inside_the_built_assembly()
         {
-            // A catalogue that is not embedded 404s at runtime and every string falls
-            // back to its key - the UI would look broken in a way no unit test sees.
-            var csproj = File.ReadAllText(Path.Combine(RepoRoot().FullName, "JellyfinUpscalerPlugin.csproj"));
-            csproj.Should().Contain("Configuration\\i18n.js");
-            csproj.Should().Contain("Configuration\\strings.en.json");
+            // This used to assert that the .csproj MENTIONED the two files, and it passed
+            // for months while strings.en.json was not in the DLL at all: MSBuild reads the
+            // ".en." in the name as a culture tag and compiled it into a satellite assembly
+            // (en/JellyfinUpscalerPlugin.resources.dll) that the release ZIP does not ship.
+            // A live server logged "Failed to get resource ...strings.en.json" on every
+            // config-page load and every translated string fell back to its key.
+            //
+            // So ask the assembly, not the project file. Anything that changes the name, the
+            // namespace, the build action or the culture handling fails here.
+            var embedded = typeof(Plugin).Assembly.GetManifestResourceNames();
 
+            embedded.Should().Contain("JellyfinUpscalerPlugin.Configuration.i18n.js");
+            embedded.Should().Contain("JellyfinUpscalerPlugin.Configuration.strings.en.json",
+                "a catalogue outside the main assembly is unreachable at runtime - and it is " +
+                "only in the main assembly because WithCulture=false says so");
+        }
+
+        [Fact]
+        public void The_embedded_catalogue_is_the_file_on_disk()
+        {
+            // Embedded under the right name but stale would be the next failure mode.
+            using var stream = typeof(Plugin).Assembly
+                .GetManifestResourceStream("JellyfinUpscalerPlugin.Configuration.strings.en.json");
+            stream.Should().NotBeNull();
+            using var reader = new StreamReader(stream!);
+            using var fromAssembly = JsonDocument.Parse(reader.ReadToEnd());
+            using var fromDisk = JsonDocument.Parse(ConfigFile("strings.en.json"));
+
+            fromAssembly.RootElement.EnumerateObject().Count()
+                .Should().Be(fromDisk.RootElement.EnumerateObject().Count());
+        }
+
+        [Fact]
+        public void Both_i18n_assets_are_registered_as_pages()
+        {
             var plugin = File.ReadAllText(Path.Combine(RepoRoot().FullName, "Plugin.cs"));
             plugin.Should().Contain("UPSCALERI18n", "the helper needs a page route to be fetchable");
             plugin.Should().Contain("UPSCALERStringsEn", "the catalogue needs a page route to be fetchable");

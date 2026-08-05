@@ -152,6 +152,44 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// destroys it without a word. The output allowlist only constrains the DIRECTORY,
         /// which means "the other film in the same folder" was always a legal target.
         /// </summary>
+        /// <summary>
+        /// v1.8.3.27 — extract the AI service's own error text from a failed proxy response.
+        ///
+        /// FastAPI answers {"detail": "..."}; the proxies used to drop it and substitute a
+        /// generic message, so "No model loaded" — which names the fix — reached the user as
+        /// "Frame upscaling failed". Returns null when there is nothing useful to add, so the
+        /// caller's own message stands rather than being padded with noise.
+        /// </summary>
+        private static async Task<string?> ReadServiceDetailAsync(HttpResponseMessage response)
+        {
+            try
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                if (string.IsNullOrWhiteSpace(body)) return null;
+                if (body.Length > 500) body = body.Substring(0, 500);
+
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(body);
+                    if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                        doc.RootElement.TryGetProperty("detail", out var d))
+                    {
+                        return d.ValueKind == System.Text.Json.JsonValueKind.String ? d.GetString() : d.ToString();
+                    }
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    // Not JSON - an HTML error page from a reverse proxy, say. The raw text is
+                    // still more use than nothing.
+                }
+                return body;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         private static bool WouldOverwriteExistingFile(string fullOutputPath)
             => !string.IsNullOrEmpty(fullOutputPath) && IOFile.Exists(fullOutputPath);
         // v1.7.12 - longer-timeout clients for the two slow operation classes that hit the 120s wall:
@@ -1011,18 +1049,39 @@ namespace JellyfinUpscalerPlugin.Controllers
 
         [HttpGet("hardware-info")]
         [Produces(MediaTypeNames.Application.Json)]
-        public ActionResult<object> GetHardwareInfo()
+        public async Task<ActionResult<object>> GetHardwareInfo()
         {
             try
             {
+                // v1.8.3.27 - all three of these used to be assertions, not observations.
+                // GpuAvailable returned the HardwareAcceleration CONFIG TOGGLE (default on),
+                // so a CPU-only server was told it had a GPU; FFmpegAvailable and OnnxRuntime
+                // were literal true / "Available" and had never checked anything. Caught on a
+                // live box whose /gpu-verify said gpu_list: [], nvidia-smi missing, /dev/dri
+                // absent - while this endpoint cheerfully reported a GPU.
                 var config = Plugin.Instance?.Configuration;
-                var hardwareAcceleration = config?.HardwareAcceleration ?? false;
-                
+                var status = await _benchmarkService.GetServiceStatusAsync();
+
+                // null is not false. "The service has not answered yet" and "there is no GPU"
+                // are different facts, and reporting the second for the first is how the old
+                // version came to claim a GPU on a box that has none.
+                bool? gpuAvailable = status == null ? null : status.UsingGpu;
+
+                var ffmpegPath = _mediaEncoder?.EncoderPath;
+
                 return Ok(new
                 {
-                    GpuAvailable = hardwareAcceleration,
-                    FFmpegAvailable = true,
-                    OnnxRuntime = "Available",
+                    GpuAvailable = gpuAvailable,
+                    // What the user asked for, kept separate from what actually exists. The
+                    // old field conflated the two and only ever reported this one.
+                    GpuAccelerationRequested = config?.HardwareAcceleration ?? false,
+                    FFmpegAvailable = !string.IsNullOrEmpty(ffmpegPath) && IOFile.Exists(ffmpegPath),
+                    FFmpegPath = ffmpegPath,
+                    OnnxRuntime = status == null
+                        ? "unknown (service not reached)"
+                        : (status.AvailableProviders.Length > 0
+                            ? string.Join(", ", status.AvailableProviders)
+                            : "unavailable"),
                     Platform = Environment.OSVersion.Platform.ToString(),
                     PluginVersion = typeof(Plugin).Assembly.GetName().Version?.ToString(4) ?? "1.5.2.9"
                 });
@@ -2742,7 +2801,15 @@ namespace JellyfinUpscalerPlugin.Controllers
                     return StatusCode(503, "AI service busy");
 
                 if (!response.IsSuccessStatusCode)
-                    return StatusCode((int)response.StatusCode, "Frame upscaling failed");
+                {
+                    // v1.8.3.27 - pass the service's own reason through. On a freshly started
+                    // container the service answers {"detail":"No model loaded"} - one line
+                    // that tells the user exactly what to do - and this used to replace it
+                    // with "Frame upscaling failed", which tells them nothing. Found by
+                    // calling the endpoint on a live server after a container restart.
+                    var detail = await ReadServiceDetailAsync(response);
+                    return StatusCode((int)response.StatusCode, new { error = "Frame upscaling failed", detail });
+                }
 
                 var result = await response.Content.ReadAsByteArrayAsync();
                 return File(result, "image/jpeg");
@@ -2839,7 +2906,8 @@ namespace JellyfinUpscalerPlugin.Controllers
                     return Content(json, "application/json");
                 }
 
-                return StatusCode((int)response.StatusCode, new { error = "Frame benchmark failed" });
+                return StatusCode((int)response.StatusCode,
+                    new { error = "Frame benchmark failed", detail = await ReadServiceDetailAsync(response) });
             }
             catch (Exception ex)
             {
