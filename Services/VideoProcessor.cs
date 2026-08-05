@@ -336,7 +336,21 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 if (semaphoreAcquired)
                 {
-                    _processingSemaphore.Release();
+                    // v1.8.3.25 - seen on a live server during shutdown: Dispose() disposes
+                    // the semaphore while a job is still in flight, this Release throws
+                    // ObjectDisposedException, and because it is the FIRST statement in the
+                    // finally block everything below it is skipped - the job stays in
+                    // _activeJobs, its CTS is never disposed and the progress caches are
+                    // never cleared. A shutdown then looks like a processing failure.
+                    // Dispose() already swallows exactly this exception elsewhere.
+                    try
+                    {
+                        _processingSemaphore.Release();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // Shutting down; nothing is waiting on the permit any more.
+                    }
                 }
                 _activeJobs.TryRemove(jobId, out _);
                 if (_jobCancellationTokens.TryRemove(jobId, out var removedCts))

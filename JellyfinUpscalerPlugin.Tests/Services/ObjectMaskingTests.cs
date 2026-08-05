@@ -1,3 +1,4 @@
+using System;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -173,6 +174,39 @@ namespace JellyfinUpscalerPlugin.Tests.Services
             var ctrl = RepoFile("Controllers", "UpscalerController.cs");
             var idx = ctrl.IndexOf("[HttpPost(\"detect-mask\")]");
             ctrl.Substring(idx, 900).Should().Contain("MaxFrameBytes");
+        }
+
+        // ── Found on the live server, not by any test ────────────────────────
+
+        [Fact]
+        public void Releasing_the_processing_permit_survives_a_disposed_semaphore()
+        {
+            // From the test server's log during a shutdown with a job still running:
+            //   ObjectDisposedException: 'System.Threading.SemaphoreSlim'
+            //     at VideoProcessor.ProcessVideoAsync
+            // Release() was the FIRST statement in the finally block, so the throw skipped
+            // everything after it - the job stayed in _activeJobs, its CTS was never
+            // disposed, and the progress caches were never cleared. A clean shutdown was
+            // logged as a processing failure.
+            var src = RepoFile("Services", "VideoProcessor.cs");
+            // Wide enough for the explanation above the guard. A window sized to today's
+            // comment is a test that breaks when someone edits the comment.
+            var start = src.IndexOf("if (semaphoreAcquired)");
+            var finallyBlock = src.Substring(start, Math.Min(1800, src.Length - start));
+
+            finallyBlock.Should().Contain("catch (ObjectDisposedException)",
+                "the release must not abort the rest of the cleanup on shutdown");
+        }
+
+        [Fact]
+        public void A_shutdown_does_not_log_a_stack_trace_for_a_dropped_progress_update()
+        {
+            // Same shutdown, same log: SessionManager is disposed before in-flight jobs
+            // finish, and every one of them logged a warning with a stack trace for
+            // something entirely normal.
+            var src = RepoFile("Services", "UpscalerProgressHub.cs");
+            var idx = src.IndexOf("public async Task SendProgressUpdate");
+            src.Substring(idx, 1600).Should().Contain("catch (ObjectDisposedException)");
         }
 
         [Fact]

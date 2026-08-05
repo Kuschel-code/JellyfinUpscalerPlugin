@@ -119,6 +119,14 @@ namespace JellyfinUpscalerPlugin.Services
 
                 _logger.LogDebug("Progress update sent: {FileName} - {Progress:F1}%", message.FileName, message.Progress);
             }
+            catch (ObjectDisposedException)
+            {
+                // v1.8.3.25 - Jellyfin disposes SessionManager before in-flight jobs finish,
+                // so every shutdown with a running job logged a warning plus a stack trace
+                // for something entirely normal. Nobody is listening for progress on a
+                // server that is going down.
+                _logger.LogDebug("Progress update dropped: the session manager is shutting down");
+            }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to send progress update");
