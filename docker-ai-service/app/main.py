@@ -822,6 +822,31 @@ AVAILABLE_MODELS = {
     # NC-licensed candidates (UltraSharp V2 stays flagged, Adore 2x) were
     # rejected or flagged; see docs/MODEL-EVAL-2026-07.md.
     # ============================================================
+    # === v1.8.3.26 — object detection (discussion #11) ===
+    # The first entry that is not an upscaler. It is here because the pin could finally
+    # be verified rather than asserted: the file was downloaded, its sha384 checked
+    # against the OpenVINO model zoo's own model.yml, and the sha256 below computed from
+    # those exact bytes. Until that was done the honest answer was "bring your own".
+    #
+    # net_size 416 is not cosmetic. This export declares its spatial dims as dynamic
+    # ('N', 3, None, None), so nothing in the file says 416 - but the anchors are trained
+    # for it. Without this the loader falls back to 640 and the boxes drift. Found by
+    # loading the real model on a live server; every synthetic test model declares a
+    # fixed size and therefore never took this path.
+    "tiny-yolov3": {
+        "name": "YOLOv3-tiny (object detection)",
+        "url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/public/2022.1/yolo-v3-tiny-onnx/tiny-yolov3-11.onnx",
+        "scale": 0,
+        "description": "Detects the 80 COCO classes - used by object masking to cover animals during playback. 34MB, CPU-friendly. Not an upscaler.",
+        "type": "onnx",
+        "category": "object-detection",
+        "model_type": "yolo",
+        "license": "MIT",
+        "attribution": "ONNX Model Zoo / keras-yolo3 (github.com/onnx/models, vision/object_detection_segmentation/tiny-yolov3)",
+        "sha256": "f715cc2d99740d22d312777e20d9de2b2ecdc250155be8fd3752ce7e8b823521",
+        "detector": {"style": "nms3", "net_size": 416},
+        "available": True
+    },
     "purephoto-realplksr-x4": {
         "name": "PurePhoto RealPLKSR x4 (Photo/Portrait)",
         "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4xPurePhoto-RealPLSKR.onnx",
@@ -5746,11 +5771,17 @@ async def load_detector_endpoint(request: Request, model_name: str = Form(...), 
     # mismatch here is not an exception - it is boxes painted over the wrong part of
     # the frame - so an unrecognised variant is rejected at load time, where the user
     # is still looking, rather than during playback.
+    # v1.8.3.26 - the fallback order matters, and only a real model showed why. The
+    # yolo-v3-tiny export declares ('N', 3, None, None): nothing in the file states its
+    # trained size, so without the catalog's net_size the loader used the generic 640 and
+    # the anchors were off. Model metadata wins; then what the catalog knows about this
+    # model; then whatever the caller asked for.
+    catalog_size = (AVAILABLE_MODELS.get(model_name, {}).get("detector") or {}).get("net_size")
     try:
         plan = object_mask.plan_for(
             [(i.name, i.shape) for i in sess.get_inputs()],
             [(o.name, o.shape) for o in sess.get_outputs()],
-            fallback_size=input_size,
+            fallback_size=catalog_size or input_size,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

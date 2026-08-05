@@ -7,13 +7,23 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.25</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.26</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Every release carries its full notes on the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.25 - Detection models can actually be imported <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.26 - The plugin downloads the detector itself <span class="tag success">latest</span></h2>
+  <p class="date">2026-08-05</p>
+  <ul>
+    <li><strong>No more "bring your own model".</strong> <code>tiny-yolov3</code> is in the catalog, so the Models tab downloads and verifies it like any other model. That was only possible once the pin could be <em>verified</em> rather than asserted: the file was downloaded, its sha384 checked against the OpenVINO model zoo's own <code>model.yml</code>, and the sha256 in the catalog computed from those exact bytes.</li>
+    <li><strong>A real model found a real bug.</strong> Loading the actual <code>tiny-yolov3</code> on a live server reported <code>input_size: 640</code>. The export declares its spatial dims as <code>('N', 3, None, None)</code> &mdash; nothing in the file says 416, so the loader fell back to the generic default while the anchors are trained for 416. Every synthetic test model declares a fixed size, so no test could ever reach that path. The catalog now carries the size and the loader prefers it.</li>
+    <li><strong>The catalog sync script had been broken since v1.8.3.23</strong> and nobody noticed, because it is only run by hand. It <em>executed</em> <code>main.py</code> to read the model list, which needs fastapi, OpenCV and ONNX Runtime installed &mdash; and since <code>from . import object_mask</code> was added it failed outright with "attempted relative import". It parses the file with <code>ast</code> now: a literal dict needs no imports at all.</li>
+    <li><strong>&hellip; and it would have mangled the file it writes.</strong> PowerShell captures command output as an array of lines and <code>Out-File -NoNewline</code> concatenates array elements with no separator, so a run collapsed the whole pretty-printed catalog onto a single line &mdash; a 1000-line diff with no semantic change. Both bugs found by running it.</li>
+    <li>356 C# + 166 Python tests green.</li>
+  </ul>
+
+  <h2>v1.8.3.25 - Detection models can actually be imported</h2>
   <p class="date">2026-08-05</p>
   <ul>
     <li><strong>Reported in <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions/11">discussion #11</a>, and it was mine.</strong> The import gate hard-required a 4D output, so every detection model was rejected with <code>Expected 4D output (N, C, H, W), got shape [1, None, 4]</code> &mdash; that is the boxes tensor of exactly the <code>yolo-v3-tiny</code> export the feature was built for. v1.8.3.24 could load a detector and mask with it, and there was no way to get one in. I had verified the code I wrote, not the path a user walks.</li>
@@ -533,7 +543,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.25</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.26</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

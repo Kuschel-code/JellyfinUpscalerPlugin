@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-07-03",
+  "generated_at": "2026-08-05",
   "source": "docker-ai-service/app/main.py:AVAILABLE_MODELS",
   "generator": "Scripts/sync-fallback-models.ps1",
   "notice": "AUTO-GENERATED - DO NOT EDIT BY HAND. Regenerate via the script when main.py changes.",
-  "total": 76,
+  "total": 77,
   "models": [
     {
       "id": "realesrgan-x4",
@@ -418,6 +418,19 @@
       "category": "nextgen",
       "type": "onnx",
       "available": false,
+      "downloaded": false,
+      "loaded": false
+    },
+    {
+      "id": "tiny-yolov3",
+      "name": "YOLOv3-tiny (object detection)",
+      "description": "Detects the 80 COCO classes - used by object masking to cover animals during playback. 34MB, CPU-friendly. Not an upscaler.",
+      "scale": [
+        0
+      ],
+      "category": "object-detection",
+      "type": "onnx",
+      "available": true,
       "downloaded": false,
       "loaded": false
     },

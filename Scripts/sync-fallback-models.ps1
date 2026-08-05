@@ -22,16 +22,48 @@ if (-not (Test-Path $mainPy)) {
 
 $mainPyEsc = $mainPy.Replace('\', '\\')
 $pythonScript = @"
-import json, importlib.util, sys
+# v1.8.3.26 - reads AVAILABLE_MODELS with ast instead of importing main.py.
+# The old version called exec_module(), which runs the whole service module: it needed
+# fastapi, cv2 and onnxruntime installed, and since v1.8.3.23 it failed outright with
+# "attempted relative import with no known parent package" because main.py does
+# `from . import object_mask` and this loads the file as a standalone module. The
+# catalog has therefore been un-regenerable since then. Parsing beats executing here -
+# a literal dict needs no imports at all.
+import json, ast, sys
 from datetime import date
 
-spec = importlib.util.spec_from_file_location('mainmodule', r'$mainPyEsc')
-m = importlib.util.module_from_spec(spec)
-sys.modules['mainmodule'] = m
-spec.loader.exec_module(m)
+with open(r'$mainPyEsc', encoding='utf-8') as fh:
+    tree = ast.parse(fh.read())
+
+available = None
+for node in tree.body:
+    targets = node.targets if isinstance(node, ast.Assign) else ([node.target] if isinstance(node, ast.AnnAssign) else [])
+    for t in targets:
+        if isinstance(t, ast.Name) and t.id == 'AVAILABLE_MODELS':
+            available = node.value
+if available is None:
+    print('AVAILABLE_MODELS not found', file=sys.stderr)
+    sys.exit(1)
+
+# One entry sets `available` from the runtime flag NCNN_AVAILABLE rather than a literal,
+# so a plain literal_eval of the whole dict raises. Values that are not literals are
+# reported and treated as True: this file is a FALLBACK catalog shipped inside the DLL and
+# read when the service is unreachable, so a runtime capability flag cannot be known here
+# anyway. The old exec-based version silently froze whatever the build machine happened to
+# have installed, which was worse - it was a guess that did not look like one.
+def literal(node, where):
+    try:
+        return ast.literal_eval(node)
+    except ValueError:
+        if isinstance(node, ast.Dict):
+            return {literal(k, where): literal(v, where) for k, v in zip(node.keys, node.values)}
+        print(f'note: {where} is not a literal ({ast.dump(node)[:60]}) - assuming True', file=sys.stderr)
+        return True
+
+catalog = {literal(k, 'key'): literal(v, literal(k, 'key')) for k, v in zip(available.keys, available.values)}
 
 models = []
-for mid, info in m.AVAILABLE_MODELS.items():
+for mid, info in catalog.items():
     models.append({
         'id': mid,
         'name': info.get('name', ''),
@@ -68,7 +100,13 @@ if (-not (Test-Path $resourcesDir)) {
     New-Item -ItemType Directory -Path $resourcesDir | Out-Null
 }
 
-$json | Out-File -FilePath $jsonOut -Encoding UTF8 -NoNewline
+# PowerShell captures native-command output as an ARRAY of lines, and Out-File -NoNewline
+# concatenates array elements with no separator - so piping it straight through collapsed
+# the whole pretty-printed catalog onto one line, turning every run into a ~1000-line diff
+# with no semantic change. Join explicitly, and with LF: this file is read on Linux inside
+# the container and the repo keeps it LF.
+$text = ($json -join "`n")
+[System.IO.File]::WriteAllText($jsonOut, $text, (New-Object System.Text.UTF8Encoding($false)))
 
 # Parse for summary stats
 $registry = $json | ConvertFrom-Json
