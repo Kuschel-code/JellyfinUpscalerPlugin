@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.23
+# Jellyfin AI Upscaler Plugin v1.8.3.24
 
 [![Built with Claude Opus 5](https://img.shields.io/badge/Built%20with-Claude%20Opus%205-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.23):**
+**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.24):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -39,7 +39,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.23   │  │
+│  │  AI Upscaler Plugin v1.8.3.24   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -117,8 +117,18 @@ When you press play, the plugin enhances the video in real-time. It offers sever
 - Button dot: Green = Server AI, Blue = WebGL
 - Menu section: Toggle on/off, switch modes manually
 
-### Object Masking (NEW in v1.8.3.23)
+### Object Masking (NEW in v1.8.3.23, live during playback since v1.8.3.24)
 Covers things you do not want on screen. It exists because of [discussion #11](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions/11): a user's dog loses her mind whenever a dog or cat appears on TV.
+
+**Setup (three steps):**
+
+1. Import a detection model on the **Models** tab — e.g. `tiny-yolov3-11.onnx` from the ONNX model zoo. None ships with the plugin (see below).
+2. On the **Settings** tab, tick *Enable Object Masking*, enter the model id, pick the classes (`animals` by default), save, then press **Load Detection Model**.
+3. Start a video. The player's capture loop sends each frame to the masking endpoint instead of the upscaler, and draws the covered frame back onto the overlay. The switch is also in the player menu under *Auto → Cover objects*.
+
+**It replaces real-time upscaling while it runs.** Two full inference passes per frame — upscale *and* detect — do not keep up with playback on any realistic server, so the stream does one or the other. Batch upscaling is unaffected.
+
+You can also drive it directly, without the player:
 
 ```bash
 # load a detector you imported earlier (none ships - see below)

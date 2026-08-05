@@ -30,12 +30,21 @@ if (-not $sitePages -or $sitePages.Count -eq 0) {
 $pattern = '<span class="brand-version">v[0-9]+(\.[0-9]+)*</span>'
 $replacement = '<span class="brand-version">v' + $DisplayVersion + '</span>'
 
+# v1.8.3.24 - the footer carries the version too, and this script never touched it: every
+# page showed v1.8.3.24 at the top and v1.8.3.13 at the bottom, eleven releases stale. The
+# audit only compared the topbar, so nothing caught it.
+# Two footer wordings exist ("... <B7> vX" and "... <B7> MIT License <B7> vX"), so match up to
+# the version rather than the exact separators.
+$footerPattern = '(<strong>Jellyfin AI Upscaler Plugin</strong>[^<]*?)v[0-9]+(\.[0-9]+)*'
+$footerReplacement = '${1}v' + $DisplayVersion
+
 $changed = 0
 $total = 0
 foreach ($page in $sitePages) {
     $total++
     $content = Get-Content -Path $page.FullName -Raw -Encoding UTF8
     $updated = [regex]::Replace($content, $pattern, $replacement)
+    $updated = [regex]::Replace($updated, $footerPattern, $footerReplacement)
     if ($updated -ne $content) {
         Set-Content -Path $page.FullName -Value $updated -NoNewline -Encoding UTF8
         Write-Host "  Updated: $($page.Name)" -ForegroundColor Green

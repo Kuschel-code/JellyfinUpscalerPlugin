@@ -7,13 +7,25 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.23</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.24</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Every release carries its full notes on the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.23 - Object masking <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.24 - Object masking during playback <span class="tag success">latest</span></h2>
+  <p class="date">2026-08-05</p>
+  <ul>
+    <li><strong>The part of <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions/11">discussion #11</a> that v1.8.3.23 did not deliver.</strong> The requester asked for a <em>real-time filter</em>; what shipped was a service endpoint nothing called. The player's capture loop already ran for server-side upscaling &mdash; it just had nowhere to send frames. With masking enabled it now posts to <code>Upscaler/detect-mask</code> and draws the covered frame back onto the overlay. Switch it in Settings, or in the player menu under <em>Auto &rarr; Cover objects</em>.</li>
+    <li><strong>It replaces upscaling on that stream, on purpose.</strong> Upscaling <em>and</em> detecting is two full inference passes per frame, which no realistic server sustains at playback rate. One endpoint per frame. Batch upscaling is untouched.</li>
+    <li>Settings for classes, mode (box or blur), padding and confidence, plus an admin-only button that loads the detector. Padding defaults to 12&nbsp;px because a detector's box hugs the animal and the ears sticking out set a dog off just as well.</li>
+    <li><strong>Tests that can actually fail.</strong> Mutation testing on the previous release found two guards asserting text rather than behaviour: the neighbouring-directory bypass could be put back with the suite green, and the critical path check could be made unreachable while a source-count guard still passed. Both are now exercised &mdash; the containment rule is a tested function, and <code>ProcessVideo</code> is called with a mocked library manager. The same pass found a state field written but never read, now deleted.</li>
+    <li>The AI service's object-masking endpoints are driven end to end by real synthesised ONNX models, one per detector family. Nothing had ever called them.</li>
+    <li>A <code>CODE_OF_CONDUCT.md</code>, which the contributing page had been promising while the file did not exist.</li>
+    <li>354 C# + 160 Python tests green.</li>
+  </ul>
+
+  <h2>v1.8.3.23 - Object masking</h2>
   <p class="date">2026-08-05</p>
   <ul>
     <li><strong>Cover things you do not want on screen.</strong> Answers <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions/11">discussion #11</a>: a user's dog reacts to dogs and cats on TV. <code>POST /models/load-detector</code> loads a detector <em>alongside</em> the upscaler, and <code>POST /detect-mask</code> returns the frame with detections covered by a filled box or a blur &mdash; by COCO class or the <code>animals</code> group, with padding, because a detector's box hugs the animal and the ears sticking out set a dog off just as well.</li>
@@ -510,7 +522,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.13</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.24</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.8.3.23';
+    const PLUGIN_VERSION = '1.8.3.24';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -197,6 +197,10 @@
         _currentFps: 0,
         _lowFpsStart: 0,
         _config: null,
+        // v1.8.3.24 - read once when the loop starts, not per frame: switching the target
+        // endpoint mid-flight would mix masked and unmasked frames on the same overlay.
+        _objectMaskEnabled: false,
+        _lastDetectionCount: 0,
         _benchmarkResult: null,
         _webglInstance: null,
         _anime4kInstance: null,
@@ -206,6 +210,8 @@
             this._videoElement = video;
             this._config = config;
             this._benchmarkResult = benchmarkResult;
+            this._objectMaskEnabled = config.EnableObjectMasking === true;
+            this._lastDetectionCount = 0;
 
             var mode = (config.RealtimeMode || 'auto').toLowerCase();
             // v1.7.0 - 'webgl' rebrand: it was always Lanczos+Sharpen (no AI), so call it that.
@@ -570,11 +576,21 @@
             canvas.toBlob(function(blob) {
                 if (!blob || !self._active) { self._pendingFrame = false; return; }
 
-                fetch(ApiClient.getUrl('Upscaler/upscale-frame'), {
+                // v1.8.3.24 - discussion #11. The capture loop already existed; masking
+                // just had nowhere to send its frames. One endpoint per frame on purpose:
+                // upscaling AND masking would mean two full inference passes per frame,
+                // which no realistic server keeps up with at playback rate.
+                var endpoint = self._objectMaskEnabled ? 'Upscaler/detect-mask' : 'Upscaler/upscale-frame';
+
+                fetch(ApiClient.getUrl(endpoint), {
                     method: 'POST',
                     headers: { 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' },
                     body: blob
                 }).then(function(resp) {
+                    if (self._objectMaskEnabled && resp.headers) {
+                        var found = resp.headers.get('X-Detections');
+                        if (found !== null) self._lastDetectionCount = parseInt(found, 10) || 0;
+                    }
                     if (resp.status === 503) {
                         // Server busy, skip frame
                         self._pendingFrame = false;
@@ -1692,6 +1708,12 @@
                 html += PlayerIntegration._autoRow('realtime', 'Real-time upscaling',
                             'Upscale during playback instead of only in batch jobs',
                             cfg.EnableRealtimeUpscaling !== false, false);
+                html += PlayerIntegration._autoRow('mask', 'Cover objects',
+                            esc(cfg.ObjectMaskClasses || 'animals') + ' — ' +
+                            (cfg.ObjectMaskMode === 'blur' ? 'blurred' : 'covered with a box') +
+                            '. Replaces upscaling on this stream: two inference passes per frame ' +
+                            'do not keep up with playback',
+                            cfg.EnableObjectMasking === true, false);
 
                 html += '<div class="ai-menu__auto-actions">' +
                             '<button class="ai-menu__filter-btn ai-menu__filter-btn--primary" data-action="auto-apply"' +
@@ -1714,7 +1736,10 @@
                 master: 'EnableAutoModelSelection',
                 filters: 'EnableVideoFilters',
                 face: 'EnableFaceRestore',
-                realtime: 'EnableRealtimeUpscaling'
+                realtime: 'EnableRealtimeUpscaling',
+                // Takes effect on the next playback start, not mid-stream - see
+                // _objectMaskEnabled.
+                mask: 'EnableObjectMasking'
             };
             var field = map[key];
             if (!field) return;

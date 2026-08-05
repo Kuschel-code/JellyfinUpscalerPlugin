@@ -553,9 +553,51 @@ namespace JellyfinUpscalerPlugin
         }
         private int _faceRestoreMaxWidth = 1920;
 
+        // ── Object Masking (discussion #11) ──────────────────────────────
+        //
+        // Covers detected objects during playback. Requested so a dog stops reacting to
+        // dogs and cats on screen, which is why the defaults name the animal group and a
+        // filled box rather than something subtler.
+
+        /// <summary>Cover detected objects during real-time playback. Off by default: it needs a detection model the user imports themselves.</summary>
+        public bool EnableObjectMasking { get; set; } = false;
+
+        /// <summary>
+        /// Detection model id, imported through the normal model path. Empty by default,
+        /// because none is bundled - every catalog entry carries a verified sha256 pin and
+        /// inventing one for an unhashed model would break that guarantee.
+        /// </summary>
+        public string ObjectMaskModel { get; set; } = "";
+
+        /// <summary>Comma-separated COCO class names, or "animals" for the whole group.</summary>
+        public string ObjectMaskClasses { get; set; } = "animals";
+
+        /// <summary>"box" fills the region with a solid colour; "blur" obscures it while keeping motion.</summary>
+        public string ObjectMaskMode { get; set; } = "box";
+
+        /// <summary>
+        /// Pixels added around each detection. Not cosmetic: a detector's box hugs the
+        /// animal, and the ears and tail sticking out of a tight box set a dog off just as
+        /// well as the whole animal.
+        /// </summary>
+        public int ObjectMaskPadding
+        {
+            get => _objectMaskPadding;
+            set => _objectMaskPadding = Math.Clamp(value, 0, 200);
+        }
+        private int _objectMaskPadding = 12;
+
+        /// <summary>Minimum detection score (0.05-0.95). Lower catches more and false-positives more.</summary>
+        public double ObjectMaskConfidence
+        {
+            get => _objectMaskConfidence;
+            set => _objectMaskConfidence = Math.Clamp(value, 0.05, 0.95);
+        }
+        private double _objectMaskConfidence = 0.35;
+
         // ── Version Tracking ─────────────────────────────────────────────
 
         /// <summary>Current plugin version string for webhook payloads and diagnostics.</summary>
-        public string PluginVersion { get; set; } = "1.8.3.23";
+        public string PluginVersion { get; set; } = "1.8.3.24";
     }
 }

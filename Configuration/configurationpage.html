@@ -230,7 +230,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.8.3.23 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.8.3.24 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -457,6 +457,68 @@
                 </div>
 
                 <!-- Live Video Benchmark -->
+                <div class="upscaler-card">
+                    <h3>Object Masking</h3>
+                    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.7rem;">
+                        Covers detected objects during playback — built for
+                        <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions/11" target="_blank">discussion #11</a>,
+                        where a dog reacts to dogs and cats on screen.
+                        <strong>Replaces</strong> real-time upscaling while it runs: two inference passes per frame do not keep up with playback.
+                        <br><br>
+                        <strong>No detection model ships with the plugin.</strong> Every catalog entry carries a verified sha256 pin,
+                        and inventing one for an unhashed model would break that guarantee — import your own
+                        (e.g. <code>tiny-yolov3-11.onnx</code> from the ONNX model zoo) on the Models tab first.
+                        Both YOLO export families work; the service reads the model's own inputs and outputs to tell them apart.
+                    </div>
+
+                    <div class="checkboxContainer" style="margin-bottom:0.6rem;">
+                        <label><input type="checkbox" id="EnableObjectMasking" /> Enable Object Masking</label>
+                    </div>
+
+                    <div id="object-mask-options" style="opacity:0.5;pointer-events:none;">
+                        <div class="form-row" style="margin-bottom:0.7rem;gap:0.8rem;">
+                            <div class="form-col inputContainer" style="flex:1;">
+                                <label class="inputLabel" for="ObjectMaskModel">Detection model id</label>
+                                <input is="emby-input" type="text" id="ObjectMaskModel" placeholder="tiny-yolov3" />
+                                <div class="fieldDescription">The id you imported it under. Empty means nothing is loaded.</div>
+                            </div>
+                            <div class="form-col inputContainer" style="flex:1;">
+                                <label class="inputLabel" for="ObjectMaskClasses">Classes to cover</label>
+                                <input is="emby-input" type="text" id="ObjectMaskClasses" placeholder="animals" />
+                                <div class="fieldDescription">COCO names such as <code>dog,cat</code> — or <code>animals</code> for the group.</div>
+                            </div>
+                        </div>
+
+                        <div class="form-row" style="margin-bottom:0.7rem;gap:0.8rem;">
+                            <div class="form-col selectContainer" style="flex:1;">
+                                <label class="selectLabel" for="ObjectMaskMode">Mode</label>
+                                <select id="ObjectMaskMode" style="width:100%;padding:0.4rem;background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;">
+                                    <option value="box">Solid box (fully hides it)</option>
+                                    <option value="blur">Blur (obscures, keeps motion)</option>
+                                </select>
+                            </div>
+                            <div class="form-col inputContainer" style="flex:1;">
+                                <label class="inputLabel" for="ObjectMaskPadding">Padding (px)</label>
+                                <input is="emby-input" type="number" id="ObjectMaskPadding" min="0" max="200" />
+                                <div class="fieldDescription">A detector's box hugs the animal; ears and tail outside it still set a dog off.</div>
+                            </div>
+                            <div class="form-col inputContainer" style="flex:1;">
+                                <label class="inputLabel" for="ObjectMaskConfidence">Confidence</label>
+                                <input is="emby-input" type="number" id="ObjectMaskConfidence" min="0.05" max="0.95" step="0.05" />
+                                <div class="fieldDescription">Lower catches more, and more false positives.</div>
+                            </div>
+                        </div>
+
+                        <div id="object-mask-status" style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">
+                            Status: not loaded
+                        </div>
+
+                        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                            <button type="button" id="btn-object-mask-load" class="raised">Load Detection Model</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="upscaler-card">
                     <h3>AI Face Restoration</h3>
                     <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.7rem;">
@@ -2137,7 +2199,7 @@
                     'WebhookOnComplete','WebhookOnFailure',
                     'RestrictToUnwatchedContent','SkipUpscaledOnRescan',
                     'EnableRealtimeUpscaling','EnableVideoFilters','EnableDenoisePrefilter','EnablePipelineParallelism',
-                    'EnableFaceRestore'];
+                    'EnableFaceRestore','EnableObjectMasking'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) {
@@ -2147,11 +2209,22 @@
                     }
                 });
 
-                var selects = ['Model','QualityLevel','ButtonPosition','OutputCodec','RealtimeMode','ActiveFilterPreset','FaceRestoreModel','DenoisePrefilterMethod'];
+                var selects = ['Model','QualityLevel','ButtonPosition','OutputCodec','RealtimeMode','ActiveFilterPreset','FaceRestoreModel','DenoisePrefilterMethod','ObjectMaskMode'];
                 selects.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el && config[f]) el.value = config[f];
                 });
+                // v1.8.3.24 - object masking fields. Explicit because two are free text and
+                // two are numbers the config clamps, so an empty box must not read as 0.
+                ['ObjectMaskModel','ObjectMaskClasses'].forEach(function(f) {
+                    var el = page.querySelector('#' + f);
+                    if (el) el.value = config[f] || '';
+                });
+                var padEl = page.querySelector('#ObjectMaskPadding');
+                if (padEl) padEl.value = (config.ObjectMaskPadding !== undefined) ? config.ObjectMaskPadding : 12;
+                var confEl = page.querySelector('#ObjectMaskConfidence');
+                if (confEl) confEl.value = (config.ObjectMaskConfidence !== undefined) ? config.ObjectMaskConfidence : 0.35;
+
                 _favoriteModels = parseFavorites(config);
                 updateFavoriteButton(page);
                 renderFavoritesCard(page);
@@ -2227,13 +2300,13 @@
                     'WebhookOnComplete','WebhookOnFailure',
                     'RestrictToUnwatchedContent','SkipUpscaledOnRescan',
                     'EnableRealtimeUpscaling','EnableVideoFilters','EnableDenoisePrefilter','EnablePipelineParallelism',
-                    'EnableFaceRestore'];
+                    'EnableFaceRestore','EnableObjectMasking'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) config[f] = !!el.checked;
                 });
 
-                var strings = ['FilterLutPath'];
+                var strings = ['FilterLutPath','ObjectMaskModel','ObjectMaskClasses','ObjectMaskMode'];
                 strings.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) config[f] = el.value;
@@ -2249,9 +2322,16 @@
                 if (denoiseMethodEl) config.DenoisePrefilterMethod = denoiseMethodEl.value;
                 var faceModelEl = page.querySelector('#FaceRestoreModel');
                 if (faceModelEl) config.FaceRestoreModel = faceModelEl.value;
+                // v1.8.3.24 - object masking. Numbers are parsed here rather than sent as
+                // strings: the config setters clamp, and a string silently becomes 0.
+                var maskPad = page.querySelector('#ObjectMaskPadding');
+                if (maskPad && maskPad.value !== '') config.ObjectMaskPadding = parseInt(maskPad.value, 10);
+                var maskConf = page.querySelector('#ObjectMaskConfidence');
+                if (maskConf && maskConf.value !== '') config.ObjectMaskConfidence = parseFloat(maskConf.value);
+
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.8.3.23';
+                config.PluginVersion = '1.8.3.24';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -3032,6 +3112,49 @@
                 _filterPreviewDebounce = setTimeout(function() {
                     runFilterPreviewCurrent(page, { auto: true, silent: true });
                 }, 300);
+            });
+
+            // ===== Object Masking (v1.8.3.24, discussion #11) =====
+            function updateObjectMaskUI() {
+                var cb = page.querySelector('#EnableObjectMasking');
+                var opts = page.querySelector('#object-mask-options');
+                if (!cb || !opts) return;
+                opts.style.opacity = cb.checked ? '1' : '0.5';
+                opts.style.pointerEvents = cb.checked ? '' : 'none';
+            }
+            page.querySelector('#EnableObjectMasking')?.addEventListener('change', updateObjectMaskUI);
+            updateObjectMaskUI();
+
+            page.querySelector('#btn-object-mask-load')?.addEventListener('click', function() {
+                var statusEl = page.querySelector('#object-mask-status');
+                var btn = this;
+                // The model id is read from the SAVED config server-side, so an unsaved box
+                // would load the previous model and look like the button did nothing.
+                var typed = (page.querySelector('#ObjectMaskModel')?.value || '').trim();
+                if (!typed) {
+                    if (statusEl) statusEl.textContent = 'Status: enter a detection model id first - none ships with the plugin.';
+                    return;
+                }
+                btn.disabled = true;
+                if (statusEl) statusEl.textContent = 'Status: loading ' + typed + '…';
+                ApiClient.ajax({
+                    type: 'POST',
+                    url: ApiClient.getUrl('Upscaler/object-mask/load-model'),
+                    dataType: 'json'
+                }).then(function(res) {
+                    if (statusEl) {
+                        statusEl.textContent = 'Status: loaded ' + (res.model || typed) +
+                            ' (' + (res.style === 'nms3' ? 'YOLOv3-style, NMS in the graph' : 'single-head') +
+                            ', input ' + (res.input_size || '?') + 'px)';
+                    }
+                    showToast('Detection model loaded');
+                }).catch(function(err) {
+                    if (statusEl) {
+                        statusEl.textContent = 'Status: failed - ' +
+                            ((err && err.statusText) || 'is the model imported and the settings saved?');
+                    }
+                    showToast('Could not load the detection model', '#f87171');
+                }).finally(function() { btn.disabled = false; });
             });
 
             // ===== Face Restore (v1.6.1.7) =====

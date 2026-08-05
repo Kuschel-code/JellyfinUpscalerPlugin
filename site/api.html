@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="assets/style.css?v=5">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.23</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.24</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>REST API reference</h1>
@@ -146,6 +146,18 @@
   </table>
 
   <h2>Object masking</h2>
+  <p><strong>Since v1.8.3.24 this runs during playback.</strong> The player already captured
+  frames for server-side upscaling; with masking enabled it sends them to
+  <code>Upscaler/detect-mask</code> instead and draws the covered frame back onto the overlay.
+  It <em>replaces</em> upscaling on that stream — two full inference passes per frame do not
+  keep up with playback. Enable it on the Settings tab, or in the player menu under
+  <em>Auto &rarr; Cover objects</em>.</p>
+  <table>
+    <tbody>
+      <tr><td><code>POST</code></td><td><code>/Upscaler/detect-mask</code></td><td>Plugin proxy used by the player. Masking parameters come from the plugin config, not the query string.</td></tr>
+      <tr><td><code>POST</code></td><td><code>/Upscaler/object-mask/load-model</code></td><td>Loads the configured detector into the AI service. <strong>Admin only.</strong></td></tr>
+    </tbody>
+  </table>
   <p>Covers things you do not want on screen &mdash; the original request was to stop a dog
   reacting to dogs and cats on TV. Detection runs here rather than in ffmpeg, because
   jellyfin-ffmpeg is built without any DNN backend, so <code>dnn_detect</code> cannot run
@@ -201,7 +213,7 @@ curl -X POST -H "X-Api-Token: $TOKEN" -H "Content-Type: application/json" \
   <p>Model IDs and filter preset IDs are validated against <code>^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*$</code> - dot-separated segments are allowed (for <code>rife-v4.9</code> etc) but traversal patterns (<code>..</code>, leading/trailing dots) are blocked.</p>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.13</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.24</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

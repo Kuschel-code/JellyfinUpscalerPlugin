@@ -1,6 +1,6 @@
 # Endpoint audit — which routes anything actually calls
 
-Generated for v1.8.3.20 by extracting every `[HttpVerb(...)]` from
+Regenerated for v1.8.3.24 by extracting every `[HttpVerb(...)]` from
 `Controllers/UpscalerController.cs` and searching for its real call form
 (`Upscaler/<path>` and `api/Upscaler/<path>`) across three consumer groups:
 
@@ -19,8 +19,8 @@ which, rather than carrying 67 routes and guessing.
 
 | | Count |
 |---|---:|
-| Routes on the controller | **67** |
-| Called by the plugin's own UI | 46 |
+| Routes on the controller | **69** |
+| Called by the plugin's own UI | 48 |
 | Documented but not called by the UI | 1 |
 | **No reference anywhere in this repo** | **20** |
 
@@ -30,9 +30,10 @@ Grouped by what they are, because the right answer differs per group.
 
 ### Deliberate external API — keep, document
 
-> The count stayed at 20 across this release for a reason worth stating: the new
-> `GET /hardware-benchmark` joined the *called* set, and `GET /recommendations`
-> left it, because the UI was moved off the deprecated name. One in, one out.
+> v1.8.3.24 added two routes and both are called, so the unreferenced count is
+> unchanged at 20: `POST /detect-mask` is what the player's capture loop posts
+> frames to during playback, and `POST /object-mask/load-model` is behind the
+> button on the settings page.
 
 
 These exist for other clients (scripts, Home Assistant, the `:5000` dashboard,

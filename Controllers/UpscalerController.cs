@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -2323,6 +2324,130 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// Raw image bytes in, processed image out, with the service's X-Face-Count header
         /// forwarded because the UI reads it to report how many faces were found.
         /// </summary>
+        /// <summary>
+        /// v1.8.3.24 — cover detected objects in one frame, for the real-time player loop.
+        ///
+        /// This is what discussion #11 actually needed and what v1.8.3.23 still lacked: the
+        /// masking existed as a service endpoint nothing called. The player captures frames
+        /// already; it just had nowhere to send them.
+        ///
+        /// Masking parameters come from the plugin config rather than the query string. The
+        /// caller is the player running in a browser, so anything it could pass a user could
+        /// pass, and every value here is forwarded to the AI service.
+        /// </summary>
+        [HttpPost("detect-mask")]
+        public async Task<ActionResult> DetectMaskFrame()
+        {
+            try
+            {
+                const int MaxFrameBytes = 32 * 1024 * 1024;
+                if (Request.ContentLength > MaxFrameBytes)
+                    return StatusCode(413, new { message = "Frame too large" });
+
+                using var ms = new MemoryStream();
+                await Request.Body.CopyToAsync(ms, HttpContext.RequestAborted);
+                if (ms.Length > MaxFrameBytes)
+                    return StatusCode(413, new { message = "Frame too large" });
+
+                var bytes = ms.ToArray();
+                if (bytes.Length == 0)
+                    return BadRequest(new { message = "Empty body" });
+
+                var config = Plugin.Instance?.Configuration;
+                if (config?.EnableObjectMasking != true)
+                    return BadRequest(new { message = "Object masking is disabled in the plugin settings" });
+
+                var serviceUrl = GetValidatedServiceUrl();
+                var query = BuildObjectMaskQuery(config);
+
+                using var content = new ByteArrayContent(bytes);
+                content.Headers.ContentType =
+                    new System.Net.Http.Headers.MediaTypeHeaderValue(
+                        Request.ContentType?.StartsWith("image/") == true ? Request.ContentType : "image/jpeg");
+
+                using var response = await GetBenchmarkClient()
+                    .PostAsync($"{serviceUrl}/detect-mask{query}", content, HttpContext.RequestAborted);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var err = await response.Content.ReadAsStringAsync();
+                    return new ContentResult { Content = err, ContentType = "application/json", StatusCode = (int)response.StatusCode };
+                }
+
+                // The player shows this so the user can tell "nothing was found" from
+                // "the feature is not running".
+                if (response.Headers.TryGetValues("X-Detections", out var detections))
+                {
+                    Response.Headers["X-Detections"] = detections.FirstOrDefault();
+                }
+                var image = await response.Content.ReadAsByteArrayAsync();
+                return File(image, response.Content.Headers.ContentType?.MediaType ?? "image/jpeg");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Object-mask frame proxy failed");
+                return StatusCode(500, new { error = "Object masking failed" });
+            }
+        }
+
+        /// <summary>
+        /// Builds the query string for /detect-mask from configuration.
+        /// Split out so the encoding can be tested without a controller: a class list like
+        /// "dog,cat" must survive as two classes, and a stray "&amp;" must not turn into an
+        /// extra parameter.
+        /// </summary>
+        internal static string BuildObjectMaskQuery(PluginConfiguration config)
+        {
+            var classes = string.IsNullOrWhiteSpace(config.ObjectMaskClasses) ? "animals" : config.ObjectMaskClasses;
+            var mode = config.ObjectMaskMode == "blur" ? "blur" : "box";
+            return "?classes=" + Uri.EscapeDataString(classes.Trim()) +
+                   "&mode=" + mode +
+                   "&confidence=" + config.ObjectMaskConfidence.ToString("0.##", CultureInfo.InvariantCulture) +
+                   "&pad=" + config.ObjectMaskPadding.ToString(CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>
+        /// v1.8.3.24 — load the detection model into the AI service. Admin only: it reads a
+        /// file from the service's model directory and holds it in memory.
+        /// </summary>
+        [HttpPost("object-mask/load-model")]
+        [Authorize(Policy = "RequiresElevation")]
+        public async Task<ActionResult> LoadObjectMaskModel()
+        {
+            try
+            {
+                var config = Plugin.Instance?.Configuration;
+                var model = config?.ObjectMaskModel;
+                if (string.IsNullOrWhiteSpace(model))
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        error = "No detection model configured. Import one first - none ships with the plugin, " +
+                                "because every catalog entry carries a verified sha256 pin.",
+                    });
+                }
+
+                var serviceUrl = GetValidatedServiceUrl();
+                using var form = new MultipartFormDataContent { { new StringContent(model), "model_name" } };
+                using var response = await GetBenchmarkClient()
+                    .PostAsync($"{serviceUrl}/models/load-detector", form, HttpContext.RequestAborted);
+
+                var body = await response.Content.ReadAsStringAsync();
+                return new ContentResult
+                {
+                    Content = body,
+                    ContentType = "application/json",
+                    StatusCode = (int)response.StatusCode,
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Loading the detection model failed");
+                return StatusCode(500, new { error = "Could not load the detection model" });
+            }
+        }
+
         [HttpPost("face-restore/frame")]
         public async Task<ActionResult> FaceRestoreFrame()
         {
