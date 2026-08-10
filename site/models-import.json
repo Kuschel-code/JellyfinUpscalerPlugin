@@ -1,5 +1,5 @@
 {
- "generated": "2026-08-03",
+ "generated": "2026-08-10",
  "source": "OpenModelDB/open-model-database",
  "direct_onnx": [
   {
@@ -484,6 +484,44 @@
    "download_url": "https://github.com/Phhofm/models/releases/download/2xAoMR_mosr/2xAoMR_mosr_static_3_256_256_fp32.onnx",
    "sha256": "bbb2d937d4bf048b64811fa9a9fe1ce568a7020244af8b82640aed10257bb9d3",
    "size_bytes": 17176545,
+   "import": "direct"
+  },
+  {
+   "id": "2x-Fallin-Soft",
+   "name": "Fallin Soft",
+   "author": "renarchi",
+   "scale": 2,
+   "architecture": "cugan",
+   "license": "CC-BY-4.0",
+   "tags": [
+    "anime",
+    "restoration"
+   ],
+   "description": "Purpose: Real time upscaler for 1080p anime\n\n Fallin has two versions: “Soft” and \"Strong\" \n\n For most users, “Soft” is a more safe choice, it has no oversharpening artifacts, and it is better at removing compression artifacts and denoising. If you want a safe choice, you should choose “Soft”.\n\n “Strong” is the oversharpened version of Soft. Oversharpening artifacts may appear on lines, and lines may not always look good due to oversharpening. Unlike “Soft”, it has a problem with whitening faces. If you like sharpness, choose “Strong”. And I think “Strong” is better in DOF\n\n Note: Keep in mind that Strong produces oversharpening artifacts.\n\nThanks to @styler00dollar  for helping me fix the color issue.",
+   "date": "2025-09-14",
+   "omdb_url": "https://openmodeldb.info/models/2x-Fallin-Soft",
+   "download_url": "https://github.com/renarchi/Re-SISR/releases/download/Fallin/2x_Fallin_soft_renarchi_fp16.onnx",
+   "sha256": "17a4c0c6af5a187389f52a9bd026553a8819f148b70dea1a242d1517a352dfec",
+   "size_bytes": 2852267,
+   "import": "direct"
+  },
+  {
+   "id": "2x-Fallin-Strong",
+   "name": "Fallin Strong",
+   "author": "renarchi",
+   "scale": 2,
+   "architecture": "cugan",
+   "license": "CC-BY-4.0",
+   "tags": [
+    "anime",
+    "restoration"
+   ],
+   "description": "Purpose: Real time upscaler for 1080p anime\n\n Fallin has two versions: “Soft” and \"Strong\" \n\n For most users, “Soft” is a more safe choice, it has no oversharpening artifacts, and it is better at removing compression artifacts and denoising. If you want a safe choice, you should choose “Soft”.\n\n “Strong” is the oversharpened version of Soft. Oversharpening artifacts may appear on lines, and lines may not always look good due to oversharpening. Unlike “Soft”, it has a problem with whitening faces. If you like sharpness, choose “Strong”. And I think “Strong” is better in DOF\n\n Note: Keep in mind that Strong produces oversharpening artifacts.\n\nThanks to @styler00dollar  for helping me fix the color issue.",
+   "date": "2025-09-14",
+   "omdb_url": "https://openmodeldb.info/models/2x-Fallin-Strong",
+   "download_url": "https://github.com/renarchi/Re-SISR/releases/download/Fallin/2x_Fallin_strong_renarchi_fp16.onnx",
+   "sha256": "f3d636e298a22fd54ad66571e74f6c91afc6cc7929799d224dc6ebb864c128df",
+   "size_bytes": 2852267,
    "import": "direct"
   },
   {
@@ -3649,7 +3687,7 @@
    "date": "2024-02-08",
    "omdb_url": "https://openmodeldb.info/models/1x-SPANGELION-INTERPOLATED",
    "source_platform": "pytorch",
-   "download_url": "https://github.com/terrainer/AI-Upscaling-Models/raw/main/1xSPANGELION/1xSPANGELION.pth",
+   "download_url": "https://github.com/terrainer/AI-Upscaling-Models/raw/main/1xSPANGELION/1xSPANGELION_INTERPOLATED.pth",
    "sha256": "0c5650f0c5b38aa0e071ecc6929e23a38ef00f45c973d848f679a620fd26a196",
    "size_bytes": 8944458,
    "import": "convert"
@@ -3669,7 +3707,7 @@
    "date": "2024-02-08",
    "omdb_url": "https://openmodeldb.info/models/1x-SPANGELION-SHARP",
    "source_platform": "pytorch",
-   "download_url": "https://github.com/terrainer/AI-Upscaling-Models/raw/main/1xSPANGELION/1xSPANGELION.pth",
+   "download_url": "https://github.com/terrainer/AI-Upscaling-Models/raw/main/1xSPANGELION/1xSPANGELION_SHARP.pth",
    "sha256": "1fe9b52df243cb18a202264bed9bf5cfe3890525fa1480402318154cb3a4a13f",
    "size_bytes": 8938861,
    "import": "convert"
@@ -3942,8 +3980,8 @@
    "omdb_url": "https://openmodeldb.info/models/1x-SuperScale-Alt-RPLKSR-S",
    "source_platform": "pytorch",
    "download_url": "https://github.com/Kim2091/Kim2091-Models/releases/download/1x-SuperScale/1x-SuperScale_Alt_RPLKSR_S.safetensors",
-   "sha256": "f5844dd72922a6579cf73c44de5cf35f0d700bd407982ae8d03bcdf720924425",
-   "size_bytes": 1195070,
+   "sha256": "7fd6ba2488c2f7af731356cd280ae94096ac0390a22ca903eb4b7bfdaa3d24da",
+   "size_bytes": 9395932,
    "import": "convert"
   },
   {
@@ -3964,8 +4002,8 @@
    "omdb_url": "https://openmodeldb.info/models/1x-SuperScale-RPLKSR-S",
    "source_platform": "pytorch",
    "download_url": "https://github.com/Kim2091/Kim2091-Models/releases/download/1x-SuperScale/1x-SuperScale_RPLKSR_S.safetensors",
-   "sha256": "f5844dd72922a6579cf73c44de5cf35f0d700bd407982ae8d03bcdf720924425",
-   "size_bytes": 1195070,
+   "sha256": "8620aa99ef5421d5d0614c103cffa7c605f77050745247f894eb24d41b5fb0ed",
+   "size_bytes": 9395932,
    "import": "convert"
   },
   {
@@ -3986,8 +4024,8 @@
    "omdb_url": "https://openmodeldb.info/models/1x-SuperScale",
    "source_platform": "pytorch",
    "download_url": "https://github.com/Kim2091/Kim2091-Models/releases/download/1x-SuperScale/1x-SuperScale_SPAN.safetensors",
-   "sha256": "f5844dd72922a6579cf73c44de5cf35f0d700bd407982ae8d03bcdf720924425",
-   "size_bytes": 1195070,
+   "sha256": "703e497308ec1ba0efdb720a04d055f4c91422bbd406a91553f77de8f16df489",
+   "size_bytes": 8888072,
    "import": "convert"
   },
   {
@@ -4146,8 +4184,8 @@
    "omdb_url": "https://openmodeldb.info/models/1x-UnResizeOnly-RCAN",
    "source_platform": "pytorch",
    "download_url": "https://github.com/Kim2091/Kim2091-Models/releases/download/1x-UnResizeOnly_RCAN/1x-UnResizeOnly_RCAN.pth",
-   "sha256": "b88289e770207e634181b595845e0d240cc397714aefe659bcf9b70478b64373",
-   "size_bytes": 30757598,
+   "sha256": "c3f3041a51347f64b0951e2a9e161aac27c3fd2a7287520821d871dcc075b8e5",
+   "size_bytes": 31259352,
    "import": "convert"
   },
   {
@@ -5369,46 +5407,6 @@
    "download_url": "https://objectstorage.us-phoenix-1.oraclecloud.com/n/ax6ygfvpvzka/b/open-modeldb-files/o/2x-FakeFaith-Lite.pth",
    "sha256": "51ee3b4b05422f1e48aee115c05dc6dca8fd5ff7b8341e7f6b84be820696c9db",
    "size_bytes": 20135976,
-   "import": "convert"
-  },
-  {
-   "id": "2x-Fallin-Soft",
-   "name": "Fallin Soft",
-   "author": "renarchi",
-   "scale": 2,
-   "architecture": "cugan",
-   "license": "CC-BY-4.0",
-   "tags": [
-    "anime",
-    "restoration"
-   ],
-   "description": "Purpose: Real time upscaler for 1080p anime\n\n Fallin has two versions: “Soft” and \"Strong\" \n\n For most users, “Soft” is a more safe choice, it has no oversharpening artifacts, and it is better at removing compression artifacts and denoising. If you want a safe choice, you should choose “Soft”.\n\n “Strong” is the oversharpened version of Soft. Oversharpening artifacts may appear on lines, and lines may not always look good due to oversharpening. Unlike “Soft”, it has a problem with whitening faces. If you like sharpness, choose “Strong”. And I think “Strong” is better in DOF\n\n Note: Keep in mind that Strong produces oversharpening artifacts.\n\nThanks to @styler00dollar  for helping me fix the color issue.",
-   "date": "2025-09-14",
-   "omdb_url": "https://openmodeldb.info/models/2x-Fallin-Soft",
-   "source_platform": "pytorch",
-   "download_url": "https://mega.nz/file/LwoxXZgS#J5kh2DIkn7NhxbSKOqhyX4gIO39MrVWLCTJGOZd9yzo",
-   "sha256": "526a4bb8a01273b420105458f850435576d7be95c4029add6cc05cad57d2c3b4",
-   "size_bytes": 5657145,
-   "import": "convert"
-  },
-  {
-   "id": "2x-Fallin-Strong",
-   "name": "Fallin Strong",
-   "author": "renarchi",
-   "scale": 2,
-   "architecture": "cugan",
-   "license": "CC-BY-4.0",
-   "tags": [
-    "anime",
-    "restoration"
-   ],
-   "description": "Purpose: Real time upscaler for 1080p anime\n\n Fallin has two versions: “Soft” and \"Strong\" \n\n For most users, “Soft” is a more safe choice, it has no oversharpening artifacts, and it is better at removing compression artifacts and denoising. If you want a safe choice, you should choose “Soft”.\n\n “Strong” is the oversharpened version of Soft. Oversharpening artifacts may appear on lines, and lines may not always look good due to oversharpening. Unlike “Soft”, it has a problem with whitening faces. If you like sharpness, choose “Strong”. And I think “Strong” is better in DOF\n\n Note: Keep in mind that Strong produces oversharpening artifacts.\n\nThanks to @styler00dollar  for helping me fix the color issue.",
-   "date": "2025-09-14",
-   "omdb_url": "https://openmodeldb.info/models/2x-Fallin-Strong",
-   "source_platform": "pytorch",
-   "download_url": "https://github.com/renarchi/Re-SISR/releases/tag/Fallin",
-   "sha256": "b05afbd8e67b93a35959aad5b2fd11af067799ef44be083bc205cff926433f78",
-   "size_bytes": 5657145,
    "import": "convert"
   },
   {
@@ -11155,8 +11153,8 @@
    "omdb_url": "https://openmodeldb.info/models/4x-PBRify-UpscalerV4",
    "source_platform": "pytorch",
    "download_url": "https://github.com/Kim2091/Kim2091-Models/releases/download/4x-PBRify_UpscalerV4/4x-PBRify_UpscalerV4.pth",
-   "sha256": "a00fa50116895a9b766aeb012edad0a14d66f3afda65539efc0f6fc28c991ba2",
-   "size_bytes": 139793020,
+   "sha256": "82db39e31e01da6816a9814c0553a8dcdb7bd2d655353e67075c9295068cb789",
+   "size_bytes": 140345646,
    "import": "convert"
   },
   {
@@ -11539,7 +11537,7 @@
    "date": "2021-04-09",
    "omdb_url": "https://openmodeldb.info/models/4x-Remacri",
    "source_platform": "pytorch",
-   "download_url": "https://u.pcloud.link/publink/show?code=kZgSLsXZ0M1fT3kFGfRXg2tNtoUgbSI4kcSy",
+   "download_url": "https://huggingface.co/FacehugmanIII/4x_foolhardy_Remacri/resolve/main/4x_foolhardy_Remacri.pth?download=true",
    "sha256": "e1a73bd89c2da1ae494774746398689048b5a892bd9653e146713f9df8bca86a",
    "size_bytes": 67025055,
    "import": "convert"
