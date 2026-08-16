@@ -7,13 +7,24 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.29</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.30</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Every release carries its full notes on the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.29 - The error message now says what went wrong <span class="tag success">latest</span></h2>
+  <h2>v1.8.3.30 - Notifications stack instead of piling up <span class="tag success">latest</span></h2>
+  <p class="date">2026-08-16</p>
+  <ul>
+    <li><strong><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/77">Issue #77</a>: "if you hit a toggle in quick succession, the notifications will simply pile on top of each other."</strong> They did &mdash; literally. Every notification was its own <code>position: fixed</code> element anchored to the same corner, so two of them resolved to the identical coordinates and the second covered the first. Measured in a browser against the real CSS: three toasts all reported <code>top 1185 / bottom 1226</code>.</li>
+    <li>They are flow children of one fixed host now, and the host stacks them. Same measurement after the fix: 1185, 1136, 1087, no overlap.</li>
+    <li><strong>Repeating a message no longer clones it.</strong> Pressing a toggle repeatedly produces the <em>same</em> text over and over, and a tidy stack of five identical lines is still noise. An identical message still on screen has its timer restarted instead. Verified: firing "Settings saved!" five times leaves one.</li>
+    <li>The stack is capped at four, so holding a control down cannot fill the viewport.</li>
+    <li><strong>The plugin had three copies of this code</strong> &mdash; config page, player overlay, quick menu &mdash; each with the same defect. All three are fixed, because fixing one is how a bug gets reported twice. The sidebar was already correct: it defers to Jellyfin's own toast, and there is now a test keeping it that way.</li>
+    <li>Eleven regression tests; each of five reintroduced defects is caught. 375 C# + 166 Python tests green.</li>
+  </ul>
+
+  <h2>v1.8.3.29 - The error message now says what went wrong</h2>
   <p class="date">2026-08-06</p>
   <ul>
     <li>Testing v1.8.3.28 on a live server showed the last piece of the same problem: a failed <em>Load Detection Model</em> always printed one generic sentence, no matter what happened. The handler read <code>err.responseText</code> &mdash; an XHR field &mdash; while Jellyfin 10.11's client is fetch-based and rejects with a <code>Response</code>. Confirmed against the running server: the rejection is <code>[object Response]</code>, <code>err.text</code> is a function, <code>err.responseText</code> does not exist, so the parse threw every single time.</li>
@@ -572,7 +583,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.29</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.30</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

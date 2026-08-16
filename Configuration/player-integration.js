@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.8.3.29';
+    const PLUGIN_VERSION = '1.8.3.30';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -2109,14 +2109,49 @@
             this._cleanupMenu();
         },
 
+        // v1.8.3.30, issue #77 - same defect as the config page had: every notification was
+        // its own position:fixed element at the same corner, so a second one covered the
+        // first instead of stacking. Host does the stacking; an identical message still on
+        // screen restarts its timer rather than being duplicated; the stack is capped.
+        _notifHost: function() {
+            var host = document.querySelector('.ai-notif-host');
+            if (!host) {
+                host = document.createElement('div');
+                host.className = 'ai-notif-host';
+                document.body.appendChild(host);
+            }
+            return host;
+        },
+
         showPlayerNotification: function(message, type) {
             type = type || 'info';
+            var host = this._notifHost();
+
+            var existing = host.querySelectorAll('.ai-notif');
+            for (var i = 0; i < existing.length; i++) {
+                if (existing[i].textContent === message) {
+                    clearTimeout(existing[i]._aiTimer);
+                    existing[i]._aiTimer = setTimeout(function (el) {
+                        return function () { if (el.parentElement) el.remove(); };
+                    }(existing[i]), 3000);
+                    return;
+                }
+            }
+
             var notification = document.createElement('div');
             notification.className = 'ai-notif ai-notif--' + type;
             notification.textContent = message;
-            document.body.appendChild(notification);
-            setTimeout(function() {
+            host.appendChild(notification);
+
+            while (host.children.length > 4) {
+                clearTimeout(host.children[0]._aiTimer);
+                host.children[0].remove();
+            }
+
+            notification._aiTimer = setTimeout(function() {
                 if (notification.parentElement) notification.remove();
+                var h = document.querySelector('.ai-notif-host');
+                if (h && !h.children.length) h.remove();
             }, 3000);
         },
 
@@ -2541,7 +2576,8 @@
                 '@keyframes aiShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}',
 
                 /* Notification toast */
-                '.ai-notif{position:fixed;top:20px;right:20px;padding:10px 14px;border-radius:3px;color:#e6e8ec;font-size:12px;font-weight:500;z-index:100001;animation:aiNotifIn .22s ease-out;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:340px;background:#0b0d12;border:1px solid #2a3040}',
+                '.ai-notif-host{position:fixed;top:20px;right:20px;z-index:100001;display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none;max-height:80vh}',
+                '.ai-notif{position:static;padding:10px 14px;border-radius:3px;color:#e6e8ec;font-size:12px;font-weight:500;z-index:100001;animation:aiNotifIn .22s ease-out;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:340px;background:#0b0d12;border:1px solid #2a3040}',
                 '.ai-notif--info{border-color:#3b82f6;color:#93c5fd}',
                 '.ai-notif--success{border-color:#34d399;color:#6ee7b7}',
                 '.ai-notif--warning{border-color:#fbbf24;color:#fcd34d}',

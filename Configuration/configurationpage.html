@@ -205,10 +205,19 @@
     #UpscalerConfigurationPage .file-path { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* ===== Toast ===== */
+    /* v1.8.3.30, issue #77 - every toast used to be position:fixed at the same corner, so
+       two of them occupied the exact same coordinates and rendered ON TOP of each other.
+       They are flow children of a fixed host now, and the host does the stacking.
+       column-reverse keeps the newest nearest the corner, where the eye already is. */
+    .upscaler-toast-host {
+        position: fixed; bottom: 2rem; right: 2rem; z-index: 9999;
+        display: flex; flex-direction: column-reverse; align-items: flex-end;
+        gap: 0.5rem; pointer-events: none; max-height: 80vh;
+    }
     #UpscalerConfigurationPage ~ .upscaler-toast, .upscaler-toast {
-        position: fixed; bottom: 2rem; right: 2rem; background: var(--surface); color: var(--text-primary);
+        position: static; background: var(--surface); color: var(--text-primary);
         border: 1px solid var(--border-strong); padding: 0.75rem 1.25rem; border-radius: 6px; font-size: 12px;
-        z-index: 9999; animation: upscaler-toast-in 0.3s;
+        animation: upscaler-toast-in 0.3s; pointer-events: auto; max-width: 22rem;
     }
     @keyframes upscaler-toast-in { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 
@@ -230,7 +239,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.8.3.29 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.8.3.30 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -1068,13 +1077,59 @@
 
         function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
 
+        // v1.8.3.30, issue #77: "if you hit a toggle in quick succession, the notifications
+        // will simply pile on top of each other". They did - literally. Each toast was its
+        // own position:fixed element anchored to the same corner, so the second one covered
+        // the first. Three things changed:
+        //   1. they live in a flex host that stacks them,
+        //   2. an identical message that is still on screen has its timer restarted instead
+        //      of being duplicated - which is what rapid toggling actually produces,
+        //   3. the stack is capped, so holding a key down cannot fill the viewport.
+        var UPSCALER_MAX_TOASTS = 4;
+
+        function upscalerToastHost() {
+            var host = document.querySelector('.upscaler-toast-host');
+            if (!host) {
+                host = document.createElement('div');
+                host.className = 'upscaler-toast-host';
+                document.body.appendChild(host);
+            }
+            return host;
+        }
+
         function showToast(msg, color) {
+            var host = upscalerToastHost();
+
+            // Same text still showing? Restart its life instead of stacking a copy.
+            var existing = host.querySelectorAll('.upscaler-toast');
+            for (var i = 0; i < existing.length; i++) {
+                if (existing[i].textContent === msg) {
+                    clearTimeout(existing[i]._upscalerTimer);
+                    existing[i]._upscalerTimer = setTimeout(function (el) {
+                        return function () { if (el.parentNode) el.remove(); };
+                    }(existing[i]), 3000);
+                    return;
+                }
+            }
+
             var t = document.createElement('div');
             t.className = 'upscaler-toast';
             t.textContent = msg;
             t.style.color = color || '#4ade80';
-            document.body.appendChild(t);
-            setTimeout(function() { if (t.parentNode) t.remove(); }, 3000);
+            host.appendChild(t);
+
+            // Oldest first: the host is column-reverse, so children[0] is the top-most one.
+            while (host.children.length > UPSCALER_MAX_TOASTS) {
+                var oldest = host.children[0];
+                clearTimeout(oldest._upscalerTimer);
+                oldest.remove();
+            }
+
+            t._upscalerTimer = setTimeout(function () {
+                if (t.parentNode) t.remove();
+                var h = document.querySelector('.upscaler-toast-host');
+                if (h && !h.children.length) h.remove();
+            }, 3000);
         }
 
         // ===== TAB NAVIGATION =====
@@ -2344,7 +2399,7 @@
 
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.8.3.29';
+                config.PluginVersion = '1.8.3.30';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');

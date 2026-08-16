@@ -6,7 +6,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.8.3.29';
+    const PLUGIN_VERSION = '1.8.3.30';
 
     // Quick menu actions
     const QuickMenuActions = {
@@ -414,7 +414,8 @@
                 var styles = document.createElement('style');
                 styles.id = 'aiupscaler-notification-styles';
                 styles.textContent =
-                    '.notification { position: fixed; top: 20px; right: 20px; padding: 15px 20px; border-radius: 8px; color: white; font-weight: 500; z-index: 10000; animation: slideIn 0.3s ease-out; max-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }' +
+                    '.notification-host { position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; pointer-events: none; max-height: 80vh; }' +
+                    '.notification { position: static; pointer-events: auto; padding: 15px 20px; border-radius: 8px; color: white; font-weight: 500; z-index: 10000; animation: slideIn 0.3s ease-out; max-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }' +
                     '.notification-success { background: #059669; }' +
                     '.notification-error { background: #dc2626; }' +
                     '.notification-warning { background: #d97706; }' +
@@ -425,13 +426,43 @@
                 document.head.appendChild(styles);
             }
 
-            document.body.appendChild(notification);
+            // v1.8.3.30, issue #77 - was appended straight to body while position:fixed at a
+            // fixed corner, so two notifications landed on the same coordinates and covered
+            // each other. A host stacks them; an identical message still on screen restarts
+            // its timer instead of being duplicated; the stack is capped.
+            var host = document.querySelector('.notification-host');
+            if (!host) {
+                host = document.createElement('div');
+                host.className = 'notification-host';
+                document.body.appendChild(host);
+            }
+
+            var existing = host.querySelectorAll('.notification');
+            for (var i = 0; i < existing.length; i++) {
+                var span = existing[i].querySelector('.notification-message');
+                if (span && span.textContent === message) {
+                    clearTimeout(existing[i]._qmTimer);
+                    existing[i]._qmTimer = setTimeout(function (el) {
+                        return function () { if (el.parentElement) el.remove(); };
+                    }(existing[i]), 5000);
+                    return;
+                }
+            }
+
+            host.appendChild(notification);
+
+            while (host.children.length > 4) {
+                clearTimeout(host.children[0]._qmTimer);
+                host.children[0].remove();
+            }
 
             // Auto-remove after 5 seconds
-            setTimeout(function() {
+            notification._qmTimer = setTimeout(function() {
                 if (notification.parentElement) {
                     notification.remove();
                 }
+                var h = document.querySelector('.notification-host');
+                if (h && !h.children.length) h.remove();
             }, 5000);
         }
     };
