@@ -101,4 +101,11 @@ truenas-catalog/
 # local agent state. A git add -A once committed 6 MB of build artifacts from these.
 publish-*/
 zip-stage-*/
-.claude/
+
+# Claude Code: keep local agent state out (the original intent of ".claude/"), but track
+# the shared project config. A cloud session starts from a fresh clone, so settings.json
+# and hooks/ only reach it if they are committed. Everything else under .claude/ stays out.
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
+.claude/settings.local.json
