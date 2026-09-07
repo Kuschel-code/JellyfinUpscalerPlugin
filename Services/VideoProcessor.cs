@@ -223,6 +223,8 @@ namespace JellyfinUpscalerPlugin.Services
                 // 1. Analyze input video
                 var inputInfo = await _videoAnalyzer.AnalyzeVideoAsync(inputPath);
                 job.InputInfo = inputInfo;
+                HdrFrameContract.ValidateInput(inputInfo);
+                if (HdrFrameContract.IsHdr(inputInfo)) inputInfo.IsHDR = true;
 
                 // 2. Detect hardware capabilities
                 var hardwareProfile = await _upscalerCore.DetectHardwareAsync();

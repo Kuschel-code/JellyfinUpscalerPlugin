@@ -239,7 +239,7 @@ namespace JellyfinUpscalerPlugin.Services
                         chain.Add(fb);
                 }
             }
-            return chain;
+            return chain.FindAll(ModelAvailability.IsUsableUpscaler);
         }
 
         /// <summary>
@@ -514,7 +514,7 @@ namespace JellyfinUpscalerPlugin.Services
 
                     bool Affordable(string? c) =>
                         !string.IsNullOrWhiteSpace(c) &&
-                        !ModelAvailability.IsKnownUnavailable(c) &&
+                        ModelAvailability.IsUsableUpscaler(c) &&
                         HardwareBudget.FitsTier(c, tier);
 
                     // An id that does not encode a scale (0) is not rejected: unknown is

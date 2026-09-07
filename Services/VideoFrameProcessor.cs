@@ -100,6 +100,13 @@ namespace JellyfinUpscalerPlugin.Services
                 vfFilters.Add(videoFilterChain);
             }
 
+            if (isHDR)
+            {
+                // The color matrix must drive pixel conversion, not only output tags.
+                if (denoisePrefilter != null || videoFilterChain != null)
+                    throw new NotSupportedException("HDR denoise and creative filters have not been validated for RGB16. Disable them before processing PQ.");
+                vfFilters.Add("scale=in_color_matrix=bt2020:out_range=pc,format=rgb48be");
+            }
             var vfArg = string.Join(",", vfFilters);
 
             if (isHDR)
@@ -273,6 +280,7 @@ namespace JellyfinUpscalerPlugin.Services
                 return true;
             }
 
+            if (isHDR) throw new InvalidDataException("HDR upscaling returned no frame. Original-frame fallback is forbidden.");
             _logger.LogWarning("AI service returned null for frame {Frame}, using original", Path.GetFileName(frameFile));
             await using (var src = new FileStream(frameFile, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 81920, useAsync: true))
             await using (var dst = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920, useAsync: true))
@@ -357,7 +365,7 @@ namespace JellyfinUpscalerPlugin.Services
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) when (!isHDR && ex is not OperationCanceledException)
                     {
                         Interlocked.Increment(ref failedFrames);
                         _logger.LogWarning(ex, "Failed to upscale frame {Frame}, using original", frameFile);
@@ -403,6 +411,7 @@ namespace JellyfinUpscalerPlugin.Services
             // re-encoded unchanged and reported success. HttpUpscalerService.GetServiceUrl
             // has trimmed for releases; this copy never did.
             var baseUrl = (config?.AiServiceUrl ?? "http://localhost:5000").TrimEnd('/');
+            HdrFrameContract.ValidateRgb16Png(frameData);
             var client = _httpClientFactory.CreateClient("UpscalerHDR");
 
             using var content = new MultipartFormDataContent();
@@ -410,6 +419,7 @@ namespace JellyfinUpscalerPlugin.Services
             imageContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
             content.Add(imageContent, "file", "frame.png");
             content.Add(new StringContent(scale.ToString()), "scale");
+            content.Add(new StringContent("smpte2084"), "transfer");
 
             _logger.LogDebug("Sending HDR frame ({Size} bytes) to AI service for {Scale}x upscaling", frameData.Length, scale);
 
@@ -417,11 +427,14 @@ namespace JellyfinUpscalerPlugin.Services
 
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadAsByteArrayAsync(cancellationToken);
+                var output = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+                var nativeScale = HdrFrameContract.ValidateOutput(frameData, output);
+                _logger.LogDebug("HDR frame native output scale: {Scale}x", nativeScale);
+                return output;
             }
 
             _logger.LogWarning("HDR upscale failed with status {Status}", response.StatusCode);
-            return null;
+            throw new InvalidDataException($"HDR service rejected frame ({(int)response.StatusCode}): {await response.Content.ReadAsStringAsync(cancellationToken)}");
         }
 
         /// <summary>
@@ -440,6 +453,7 @@ namespace JellyfinUpscalerPlugin.Services
             var hasAudio = false;
             var effectiveFps = frameRate > 0 ? frameRate : 30.0;
             var isHDR = inputInfo?.IsHDR ?? false;
+            HdrFrameContract.Validate(inputInfo, ProcessingMethod.FrameByFrame, Config.OutputCodec);
 
             try
             {
@@ -496,6 +510,12 @@ namespace JellyfinUpscalerPlugin.Services
                         args.Add("-i").Add(tempAudioPath);
                     foreach (var part in codecArgs.Split(' ', StringSplitOptions.RemoveEmptyEntries))
                         args.Add(part);
+                    if (isHDR)
+                    {
+                        args.Add("-vf").Add("scale=out_color_matrix=bt2020:in_range=pc:out_range=tv");
+                        args.Add("-color_range").Add("tv");
+                        args.Add("-x265-params").Add(HdrFrameContract.X265Parameters(inputInfo!));
+                    }
                     args.Add("-r").Add(effectiveFps.ToString(System.Globalization.CultureInfo.InvariantCulture));
                     if (hasAudio && File.Exists(tempAudioPath))
                         args.Add("-c:a").Add("copy");

@@ -33,6 +33,7 @@ import httpx
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request, Body
 from fastapi.responses import Response, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from app.hdr_contract import require_pq, require_rgb16_png, reject_realtime_hdr
 
 # Try to import ONNX Runtime (optional)
 try:
@@ -2818,6 +2819,9 @@ def inverse_tonemap_sdr_to_hdr(sdr_upscaled: np.ndarray, luminance_map: np.ndarr
 def upscale_image_hdr(image_bytes: bytes) -> bytes:
     """Upscale a 16-bit HDR image: tone-map to SDR, upscale, inverse tone-map back to HDR.
     Accepts 16-bit PNG bytes, returns 16-bit PNG bytes."""
+    require_rgb16_png(image_bytes)
+    if state.current_model_input_frames > 1:
+        raise ValueError('HDR multi-frame processing is not supported; load a single-frame upscaler.')
     # Decode 16-bit image
     nparr = np.frombuffer(image_bytes, np.uint8)
     img_16bit = cv2.imdecode(nparr, cv2.IMREAD_UNCHANGED)
@@ -2851,12 +2855,25 @@ def upscale_image_hdr(image_bytes: bytes) -> bytes:
     # Step 2: Upscale the SDR frame using the standard pipeline
     sdr_upscaled = upscale_image_array(sdr_8bit)
 
+    # Inference uses the currently loaded model. Derive its actual output factor,
+    # since the requested factor and a snapshot taken before inference can differ.
+    out_h, out_w = sdr_upscaled.shape[:2]
+    model_scale = out_w // w
+    if not 1 <= model_scale <= 8 or out_w != w * model_scale or out_h != h * model_scale:
+        raise ValueError("HDR model output dimensions do not match a supported native scale")
+
     # Step 3: Inverse tone-map back to HDR
     hdr_result = inverse_tonemap_sdr_to_hdr(sdr_upscaled, luminance_map, img_16bit, model_scale)
 
     # Encode as 16-bit PNG
-    _, buffer = cv2.imencode('.png', hdr_result)
-    return buffer.tobytes()
+    if hdr_result.dtype != np.uint16 or hdr_result.shape != (h * model_scale, w * model_scale, 3):
+        raise ValueError('HDR output must remain a 16-bit RGB frame at native model scale')
+    ok, buffer = cv2.imencode('.png', hdr_result)
+    if not ok:
+        raise ValueError('Could not encode HDR PNG')
+    result = buffer.tobytes()
+    require_rgb16_png(result)
+    return result
 
 
 def _onnx_infer_tile(img_rgb_float: np.ndarray, session, input_name: str, output_name: str) -> np.ndarray:
@@ -4572,7 +4589,7 @@ async def upscale_endpoint(
     # Fix: check _value directly (safe in asyncio; no await between check and
     # acquire, so no other coroutine can interleave).
     if sem is None or sem._value <= 0:
-        raise HTTPException(status_code=429, detail="Too many concurrent requests")
+        raise HTTPException(status_code=429, detail="Too many concurrent requests", headers={"Retry-After": "1"})
     await sem.acquire()
     acquired = True
     with _processing_count_lock:
@@ -4617,11 +4634,16 @@ async def upscale_endpoint(
 async def upscale_frame_hdr(
     request: Request,
     file: UploadFile = File(...),
-    scale: int = Form(2)
+    scale: int = Form(2),
+    transfer: str = Form("smpte2084")
 ):
     """Upscale a 16-bit HDR frame. Accepts 16-bit PNG, returns 16-bit PNG.
     The pipeline: receive 16-bit -> tone-map to 8-bit SDR -> upscale -> inverse tone-map back to 16-bit."""
     _require_api_token(request)
+    try:
+        require_pq(transfer)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error))
     _check_circuit_breaker()
 
     if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
@@ -4642,7 +4664,7 @@ async def upscale_frame_hdr(
     acquired = False
     # See /upscale for explanation of why we avoid asyncio.wait_for(timeout=0)
     if sem is None or sem._value <= 0:
-        raise HTTPException(status_code=429, detail="Too many concurrent requests")
+        raise HTTPException(status_code=429, detail="Too many concurrent requests", headers={"Retry-After": "1"})
     await sem.acquire()
     acquired = True
     with _processing_count_lock:
@@ -4665,6 +4687,8 @@ async def upscale_frame_hdr(
         logger.info(f"HDR frame upscaled in {duration_ms:.0f}ms ({len(image_bytes)} -> {len(result)} bytes)")
         return Response(content=result, media_type="image/png")
 
+    except HTTPException:
+        raise
     except ModelNotReadyError as e:
         _record_failure(model_name)
         logger.warning(f"HDR upscale input error: {e}")
@@ -4672,7 +4696,7 @@ async def upscale_frame_hdr(
     except ValueError as e:
         _record_failure(model_name)
         logger.warning(f"HDR upscale validation error: {e}")
-        raise HTTPException(status_code=413, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         _record_failure(model_name)
         logger.error(f"HDR upscale failed: {e}")
@@ -4717,7 +4741,7 @@ async def upscale_frame_endpoint(request: Request):
     acquired = False
     # See /upscale for explanation of why we avoid asyncio.wait_for(timeout=0)
     if sem is None or sem._value <= 0:
-        raise HTTPException(status_code=503, detail="Busy")
+        raise HTTPException(status_code=503, detail="Busy", headers={"Retry-After": "1"})
     await sem.acquire()
     acquired = True
     with _processing_count_lock:
@@ -4731,6 +4755,11 @@ async def upscale_frame_endpoint(request: Request):
             raise HTTPException(status_code=400, detail="Empty body")
         if len(body) > MAX_UPLOAD_BYTES:
             raise HTTPException(status_code=413, detail=f"Image too large ({len(body)} bytes, max {MAX_UPLOAD_BYTES})")
+
+        try:
+            reject_realtime_hdr(body, request.query_params.get("transfer", request.headers.get("X-Color-Transfer", "")))
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error))
 
         # Decode JPEG to numpy array
         nparr = np.frombuffer(body, np.uint8)
@@ -4786,7 +4815,7 @@ async def upscale_video_chunk(request: Request):
     acquired = False
     # See /upscale for explanation of why we avoid asyncio.wait_for(timeout=0)
     if sem is None or sem._value <= 0:
-        raise HTTPException(status_code=503, detail="Busy")
+        raise HTTPException(status_code=503, detail="Busy", headers={"Retry-After": "1"})
     await sem.acquire()
     acquired = True
     with _processing_count_lock:
@@ -4798,6 +4827,10 @@ async def upscale_video_chunk(request: Request):
     try:
         # Parse multipart form
         form = await request.form()
+        try:
+            reject_realtime_hdr(transfer=str(form.get("transfer", request.headers.get("X-Color-Transfer", ""))))
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error))
         frame_files = []
         for i in range(expected_frames):
             key = f"frame_{i}"
@@ -4809,6 +4842,10 @@ async def upscale_video_chunk(request: Request):
         frames = []
         for ff in frame_files:
             data = await ff.read()
+            try:
+                reject_realtime_hdr(data)
+            except ValueError as error:
+                raise HTTPException(status_code=422, detail=str(error))
             img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
             if img is None:
                 raise HTTPException(status_code=400, detail="Invalid image data")
@@ -4965,7 +5002,7 @@ async def upscale_stream(request: Request):
     # Acquire concurrency semaphore AFTER validation (prevents leak on bad headers)
     sem = _upscale_semaphore
     if sem is None or sem._value <= 0:
-        raise HTTPException(status_code=429, detail="Too many concurrent requests")
+        raise HTTPException(status_code=429, detail="Too many concurrent requests", headers={"Retry-After": "1"})
     await sem.acquire()
     with _processing_count_lock:
         state.processing_count += 1

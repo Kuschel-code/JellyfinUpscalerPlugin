@@ -347,6 +347,13 @@ namespace JellyfinUpscalerPlugin.ScheduledTasks
                     }
                 }
 
+                if (!ModelAvailability.IsUsableUpscaler(model))
+                {
+                    _logger.LogWarning("Skipping {Name}: model {Model} is unavailable or is not an upscaler", video.Name, model);
+                    failCount++;
+                    continue;
+                }
+
                 // Progress: 30% scan + 70% processing
                 var processingProgress = 30 + ((double)(i + 1) / lowResVideos.Count * 70);
                 progress.Report(processingProgress);

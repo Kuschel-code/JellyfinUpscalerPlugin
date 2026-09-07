@@ -61,6 +61,7 @@ namespace JellyfinUpscalerPlugin.Services
             int inputFrames,
             CancellationToken cancellationToken)
         {
+            HdrFrameContract.Validate(job.InputInfo, job.ProcessingMethod, Config.OutputCodec, inputFrames);
             return job.ProcessingMethod switch
             {
                 ProcessingMethod.RealTime => await ProcessRealTimeAsync(inputPath, outputPath, job, cancellationToken),
@@ -319,7 +320,7 @@ namespace JellyfinUpscalerPlugin.Services
                                 await _frameProcessor.UpscaleSingleFrameAsync(frameFile, processedDir, job.OptimizedOptions, isHDR, ct);
                             }
                             catch (OperationCanceledException) { throw; }
-                            catch (Exception ex)
+                            catch (Exception ex) when (!isHDR)
                             {
                                 failed++;
                                 _logger.LogWarning(ex, "Pipeline: frame {Frame} upscale failed, using original", Path.GetFileName(frameFile));
@@ -973,7 +974,7 @@ namespace JellyfinUpscalerPlugin.Services
                 {
                     if (useAdvancedUpscaling && hardwareProfile.GpuName?.Contains("RTX") == true)
                     {
-                        _logger.LogInformation("Using NVIDIA VSR (Video Super Resolution)");
+                        _logger.LogInformation("Using CUDA-Lanczos scaling and sharpening");
                         filters.Add($"hwupload_cuda");
                         filters.Add($"scale_cuda={options.ScaleFactor}*iw:{options.ScaleFactor}*ih:interp_algo=lanczos");
                         filters.Add($"unsharp_cuda=luma_amount=1.5:chroma_amount=0.5");
@@ -989,7 +990,7 @@ namespace JellyfinUpscalerPlugin.Services
                 {
                     if (useAdvancedUpscaling)
                     {
-                        _logger.LogInformation("Using AMD FSR-style upscaling");
+                        _logger.LogInformation("Using VAAPI scaling and sharpening");
                         filters.Add($"hwupload");
                         filters.Add($"scale_vaapi=w={options.ScaleFactor}*iw:h={options.ScaleFactor}*ih");
                         filters.Add($"sharpen_vaapi");
@@ -1014,7 +1015,7 @@ namespace JellyfinUpscalerPlugin.Services
                     }
                     else if (useAdvancedUpscaling)
                     {
-                        _logger.LogInformation("Using FSR (FidelityFX Super Resolution)");
+                        _logger.LogInformation("Using libplacebo EWA Lanczos scaling");
                         filters.Add($"libplacebo=w={options.ScaleFactor}*iw:h={options.ScaleFactor}*ih:upscaler=ewa_lanczos");
                     }
                     else
