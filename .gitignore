@@ -1,4 +1,8 @@
 # Build artifacts
+TestResults*/
+:memory:.ses
+.pytest_cache/
+.venv*/
 bin/
 obj/
 publish/

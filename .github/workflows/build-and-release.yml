@@ -17,7 +17,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     
     steps:
       - name: Checkout code
@@ -29,31 +29,39 @@ jobs:
           dotnet-version: '9.0.x'
           
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore JellyfinUpscalerPlugin.Tests/JellyfinUpscalerPlugin.Tests.csproj
         
       - name: Build plugin
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build JellyfinUpscalerPlugin.csproj --configuration Release --no-restore
 
-      - name: Run tests
-        run: |
-          if dotnet test --list-tests --configuration Release --no-build 2>/dev/null | grep -q "Test run"; then
-            dotnet test --configuration Release --no-build --verbosity normal
-          else
-            echo "No test projects found, skipping tests"
-          fi
+      - name: Run C# tests
+        run: dotnet test JellyfinUpscalerPlugin.Tests/JellyfinUpscalerPlugin.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=csharp.trx" --results-directory TestResults
+
+      - name: Upload C# test results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: csharp-trx
+          path: TestResults/csharp.trx
+          if-no-files-found: error
+
+      - name: Validate C# test results
+        if: always()
+        run: python3 Scripts/assert-test-results.py TestResults/csharp.trx
+
+      - name: Validate the TRX validator
+        run: python3 -m unittest discover -s tests -p test_ci_test_results.py -v
+
+      - name: Run player behavior tests
+        run: node --test tests/*.test.cjs
 
       - name: Publish plugin
-        run: dotnet publish --configuration Release --no-build --output ./publish
+        run: dotnet publish JellyfinUpscalerPlugin.csproj --configuration Release --no-build --output ./publish
         
       - name: Create plugin archive
         run: |
-          cd publish
-          VERSION="${GITHUB_REF#refs/tags/v}"
-          if [ -z "$VERSION" ]; then
-            VERSION=$(grep -oP '<AssemblyVersion>\K[^<]+' ../JellyfinUpscalerPlugin.csproj | head -1)
-          fi
-          zip -r "../JellyfinUpscalerPlugin-v${VERSION}.zip" ./*
-          cd ..
+          VERSION=$(grep -oP '<AssemblyVersion>\K[^<]+' JellyfinUpscalerPlugin.csproj | head -1)
+          python3 Scripts/package-plugin.py publish "JellyfinUpscalerPlugin-v${VERSION}.zip"
           echo "PLUGIN_VERSION=${VERSION}" >> $GITHUB_ENV
           echo "ARCHIVE_NAME=JellyfinUpscalerPlugin-v${VERSION}.zip" >> $GITHUB_ENV
           
