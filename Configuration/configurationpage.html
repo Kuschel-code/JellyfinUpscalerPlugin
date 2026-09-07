@@ -239,7 +239,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.8.3.30 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.8.3.31 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -700,6 +700,7 @@
                         <summary>Real-Time Upscaling</summary>
                         <div class="details-body">
                             <div class="checkboxContainer"><label><input type="checkbox" id="EnableRealtimeUpscaling" /> Enable Real-Time Upscaling</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="ClientDriverUpscalingActive" /> Client driver upscaling is active (disable plugin upscaling)</label></div>
                             <div class="form-row" style="margin-top:0.5rem;">
                                 <div class="form-col selectContainer">
                                     <label class="selectLabel" for="RealtimeMode">Mode</label>
@@ -1971,9 +1972,9 @@
                 // v1.6.1.21 - Categories that DON'T belong in the upscale-model dropdown:
                 //   interpolation = RIFE (frame interp, takes 2 frames as input -> /upscale call returns 500)
                 //   face_restore  = GFPGAN/CodeFormer (operate on 512x512 face crops, not full frames)
-                var UPSCALE_EXCLUDED = ['interpolation', 'face_restore'];
+                var UPSCALE_EXCLUDED = ['interpolation', 'face_restore', 'face-restore', 'object-detection'];
                 var upscaleModels = modelsData.filter(function(m) {
-                    return UPSCALE_EXCLUDED.indexOf(m.category) === -1;
+                    return m.available !== false && UPSCALE_EXCLUDED.indexOf((m.category || '').toLowerCase()) === -1;
                 });
 
                 var select = page.querySelector('#Model');
@@ -2254,7 +2255,7 @@
                     'WebhookOnComplete','WebhookOnFailure',
                     'RestrictToUnwatchedContent','SkipUpscaledOnRescan',
                     'EnableRealtimeUpscaling','EnableVideoFilters','EnableDenoisePrefilter','EnablePipelineParallelism',
-                    'EnableFaceRestore','EnableObjectMasking'];
+                    'EnableFaceRestore','EnableObjectMasking','ClientDriverUpscalingActive'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) {
@@ -2355,7 +2356,7 @@
                     'WebhookOnComplete','WebhookOnFailure',
                     'RestrictToUnwatchedContent','SkipUpscaledOnRescan',
                     'EnableRealtimeUpscaling','EnableVideoFilters','EnableDenoisePrefilter','EnablePipelineParallelism',
-                    'EnableFaceRestore','EnableObjectMasking'];
+                    'EnableFaceRestore','EnableObjectMasking','ClientDriverUpscalingActive'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) config[f] = !!el.checked;
@@ -2399,7 +2400,7 @@
 
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.8.3.30';
+                config.PluginVersion = '1.8.3.31';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
