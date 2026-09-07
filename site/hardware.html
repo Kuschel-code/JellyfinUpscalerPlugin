@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.30</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.31</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Hardware guide</h1>
@@ -31,13 +31,13 @@
   <h3>Anime4K (built in)</h3>
   <p>The plugin ships an embedded Anime4K tier - a WebGL shader that runs in the browser/player on the client GPU, zero server cost. Ideal for anime libraries served from a low-power box. Enable it in <a href="configuration.html">Config → Real-time</a>; it has no effect on clients without a capable GPU and silently falls back to the original stream.</p>
   <h3>Vendor VSR (RTX VSR / Intel / AMD) - client-only by design</h3>
-  <p>NVIDIA RTX Video Super Resolution, DLSS, AMD FSR and Intel's equivalents are <em>driver/GPU features of the viewing device</em>. The server cannot invoke them - there is no API to drive another machine's display pipeline. If your client supports RTX VSR, turn it on in the GeForce/driver settings; it composes fine with a server that just streams the source untouched.</p>
+  <p>NVIDIA RTX Video Super Resolution and Intel Video Super Resolution are <em>driver/GPU features of the viewing device</em>. The server cannot invoke them - there is no API to drive another machine's display pipeline. If your client supports RTX VSR, turn it on in the GeForce/driver settings; it composes fine with a server that just streams the source untouched.</p>
 
   <h2>The four providers, ranked</h2>
   <table>
     <thead><tr><th>Tier</th><th>Provider</th><th>What it looks like</th></tr></thead>
     <tbody>
-      <tr><td><span class="tag success">1</span></td><td>NVIDIA CUDA + TensorRT</td><td>RTX 2060 and up, ≥6 GB VRAM. Best latency, widest model support, TensorRT FP16 paths on Ampere+.</td></tr>
+      <tr><td><span class="tag success">1</span></td><td>NVIDIA CUDA (TensorRT opt-in)</td><td>RTX 2060 and up, ≥6 GB VRAM. CUDA is the default provider. TensorRT requires an image with compatible libraries and explicit opt-in.</td></tr>
       <tr><td><span class="tag accent">2</span></td><td>Intel OpenVINO</td><td>Arc A-series discrete, Iris Xe iGPU, N100/N305 mini-PCs. Great power/perf for home-lab, needs <code>/dev/dri</code> in container.</td></tr>
       <tr><td><span class="tag warn">3</span></td><td>AMD ROCm</td><td>RDNA2+ (6600/6700/7000 series) on Linux hosts with <code>/dev/kfd</code>. Works, but fewer models have official ROCm kernels.</td></tr>
       <tr><td><span class="tag">4</span></td><td>CPU (ONNX)</td><td>AVX2-capable modern x86. Works for FSRCNN/ESPCN real-time, anything ESRGAN+ will be minutes-per-frame.</td></tr>
@@ -80,7 +80,7 @@
 
   <h3>High-end (RTX 4090 / A100)</h3>
   <ul>
-    <li><strong>Provider:</strong> CUDA + TensorRT conversion</li>
+    <li><strong>Provider:</strong> CUDA; optional TensorRT with matching image libraries</li>
     <li><strong>Good for:</strong> SwinIR-L, HAT-L, EDVR-M temporal, GFPGAN pipeline</li>
     <li><strong>Config:</strong> Max Concurrent Streams = 2, pre-processing cache on NVMe</li>
     <li><strong>Expect:</strong> Near real-time 4× on any model</li>
@@ -103,7 +103,7 @@
   </ul>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.30</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.31</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

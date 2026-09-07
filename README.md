@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.30
+# Jellyfin AI Upscaler Plugin v1.8.3.31
 
 [![Built with Claude Opus 5](https://img.shields.io/badge/Built%20with-Claude%20Opus%205-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
 
@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.30):**
+**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.31):**
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -39,7 +39,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.30   │  │
+│  │  AI Upscaler Plugin v1.8.3.31   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -406,7 +406,7 @@ docker run --rm --gpus all nvidia/cuda:12.2.2-base-ubuntu22.04 nvidia-smi
 
 ### GPU not detected
 - **NVIDIA RTX 5000 (Blackwell)**: Requires CUDA 12.8+ — use latest `:docker7` image. Compute capability sm_120 auto-detected.
-- **NVIDIA RTX 4000/3000/2000**: Install `nvidia-container-toolkit`, use `--gpus all`. TensorRT is skipped by default — set `SKIP_TENSORRT=false` if your GPU supports it.
+- **NVIDIA RTX 4000/3000/2000**: Install `nvidia-container-toolkit`, use `--gpus all`. TensorRT is skipped by default — set `SKIP_TENSORRT=false` only when the image includes compatible TensorRT libraries. CUDA remains the default.
 - **Intel**: Use `:docker7-intel` tag with `--device=/dev/dri --group-add=render`. Check diagnostics: `curl http://YOUR_SERVER_IP:5000/gpu-verify`
 - **AMD**: Use `:docker7-amd` tag with `--device=/dev/kfd --device=/dev/dri`
 - **Apple M1–M5**: Docker on macOS runs CPU-only. For GPU acceleration via CoreML/Neural Engine, use the native install:
