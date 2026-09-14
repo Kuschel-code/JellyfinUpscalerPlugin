@@ -568,27 +568,15 @@ namespace JellyfinUpscalerPlugin.Services
                         }
                         else
                         {
-                            _logger.LogWarning("Multi-frame upscale failed for frame {Frame} (HTTP {Code}), using original",
-                                i, (int)response.StatusCode);
-                            var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFiles[i]));
-                            // v1.6.1.21 - async streaming (P1a). Symmetric to VideoFrameProcessor + CacheManager.
-                            await using (var src = new FileStream(frameFiles[i], FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 81920, useAsync: true))
-                            await using (var dst = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920, useAsync: true))
-                            {
-                                await src.CopyToAsync(dst, cancellationToken);
-                            }
+                            var detail = await response.Content.ReadAsStringAsync(cancellationToken);
+                            throw new AiUpscalingUnavailableException(
+                                $"Docker AI service rejected multi-frame frame {i} (HTTP {(int)response.StatusCode}): {detail}");
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) when (ex is not OperationCanceledException)
                     {
-                        _logger.LogWarning(ex, "Multi-frame upscale error for frame {Frame}, using original", i);
-                        var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFiles[i]));
-                        // v1.6.1.21 - async streaming (P1a, catch-block twin of the else-branch above).
-                        await using (var src = new FileStream(frameFiles[i], FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 81920, useAsync: true))
-                        await using (var dst = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920, useAsync: true))
-                        {
-                            await src.CopyToAsync(dst, cancellationToken);
-                        }
+                        throw new AiUpscalingUnavailableException(
+                            $"Docker AI service failed for multi-frame frame {i}: {ex.Message}");
                     }
 
                     processedCount++;

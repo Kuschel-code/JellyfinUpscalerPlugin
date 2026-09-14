@@ -16,6 +16,14 @@ using Image = SixLabors.ImageSharp.Image;
 namespace JellyfinUpscalerPlugin.Services
 {
     /// <summary>
+    /// Signals that the Docker AI service returned a local resize/original fallback.
+    /// Video jobs must not turn this into a successful-looking library result.
+    /// </summary>
+    public sealed class AiUpscalingUnavailableException(string message) : InvalidOperationException(message)
+    {
+    }
+
+    /// <summary>
     /// Handles frame-level operations: extraction, AI upscaling, HDR frame processing, and video reconstruction.
     /// </summary>
     public class VideoFrameProcessor
@@ -255,11 +263,10 @@ namespace JellyfinUpscalerPlugin.Services
         /// Process frames with AI upscaling
         /// </summary>
         /// <summary>
-        /// v1.8.3 — upscale ONE frame: read -> AI upscale -> write to processedDir; on a null/empty
-        /// AI result, copy the original through (the same fallback the batch loop always used).
-        /// Extracted so the sequential loop below AND the opt-in overlapped pipeline call the
-        /// identical per-frame path. Returns true if the AI result was used, false if the original
-        /// was copied. Throws on I/O or service errors so the caller decides how to count the failure.
+        /// v1.8.3 — upscale ONE frame: read -> AI upscale -> write to processedDir.
+        /// Library/batch processing must fail closed when the Docker service falls back to a local
+        /// resize; silently copying or storing that CPU result makes the host look busy while the
+        /// container remains idle (Discussion #80).
         /// </summary>
         public async Task<bool> UpscaleSingleFrameAsync(
             string frameFile,
@@ -269,9 +276,22 @@ namespace JellyfinUpscalerPlugin.Services
             CancellationToken cancellationToken)
         {
             var frameData = await File.ReadAllBytesAsync(frameFile, cancellationToken);
-            byte[]? upscaledData = isHDR
-                ? await UpscaleHDRFrameAsync(frameData, options.ScaleFactor, cancellationToken)
-                : await _upscalerCore.UpscaleImageAsync(frameData, options.Model, options.ScaleFactor, cancellationToken);
+            byte[]? upscaledData;
+            if (isHDR)
+            {
+                upscaledData = await UpscaleHDRFrameAsync(frameData, options.ScaleFactor, cancellationToken);
+            }
+            else
+            {
+                var upscale = await _upscalerCore.UpscaleImageDetailedAsync(
+                    frameData, options.Model, options.ScaleFactor, cancellationToken);
+                if (!upscale.UsedAi)
+                {
+                    throw new AiUpscalingUnavailableException(
+                        $"Docker AI service did not produce an upscaled frame: {upscale.FallbackReason ?? "unknown reason"}");
+                }
+                upscaledData = upscale.Data;
+            }
 
             var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFile));
             if (upscaledData != null && upscaledData.Length > 0)
@@ -280,14 +300,7 @@ namespace JellyfinUpscalerPlugin.Services
                 return true;
             }
 
-            if (isHDR) throw new InvalidDataException("HDR upscaling returned no frame. Original-frame fallback is forbidden.");
-            _logger.LogWarning("AI service returned null for frame {Frame}, using original", Path.GetFileName(frameFile));
-            await using (var src = new FileStream(frameFile, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 81920, useAsync: true))
-            await using (var dst = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920, useAsync: true))
-            {
-                await src.CopyToAsync(dst, cancellationToken);
-            }
-            return false;
+            throw new InvalidDataException("Upscaling returned no frame; original-frame fallback is forbidden.");
         }
 
         public async Task ProcessFramesAsync(
@@ -337,8 +350,8 @@ namespace JellyfinUpscalerPlugin.Services
                         }
 
                         // v1.8.3 - per-frame upscale extracted to UpscaleSingleFrameAsync so the
-                        // opt-in overlapped pipeline reuses the identical path (read -> upscale ->
-                        // write, copy the original through on a null AI result). Behaviour unchanged here.
+                        // opt-in overlapped pipeline reuses the identical path. Docker fallback
+                        // results fail closed; transient I/O failures retain the legacy copy path.
                         await UpscaleSingleFrameAsync(frameFile, processedDir, options, isHDR, cancellationToken);
 
                         Interlocked.Increment(ref processedFrames);
@@ -365,7 +378,7 @@ namespace JellyfinUpscalerPlugin.Services
                             }
                         }
                     }
-                    catch (Exception ex) when (!isHDR && ex is not OperationCanceledException)
+                    catch (Exception ex) when (!isHDR && ex is not OperationCanceledException && ex is not AiUpscalingUnavailableException)
                     {
                         Interlocked.Increment(ref failedFrames);
                         _logger.LogWarning(ex, "Failed to upscale frame {Frame}, using original", frameFile);

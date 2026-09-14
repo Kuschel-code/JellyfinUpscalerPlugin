@@ -144,4 +144,30 @@ public class HdrFrameContractTests
         }
         finally { Directory.Delete(root, true); }
     }
+
+    [Fact]
+    public async Task BatchFrameFailsClosedWhenCoreReturnsLocalFallback()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ai-fallback-" + Guid.NewGuid());
+        Directory.CreateDirectory(root);
+        try
+        {
+            var frames = Path.Combine(root, "out"); Directory.CreateDirectory(frames);
+            var input = Path.Combine(root, "frame.png"); await File.WriteAllBytesAsync(input, Ramp());
+            var core = new Mock<IUpscalerCore>();
+            core.Setup(c => c.UpscaleImageDetailedAsync(
+                    It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ImageUpscaleResult(Ramp(), false, "service unavailable"));
+            var processor = new VideoFrameProcessor(
+                NullLogger.Instance, "not-used", core.Object, null!, new Mock<IHttpClientFactory>().Object,
+                new ConcurrentDictionary<string, bool>());
+
+            var error = await Assert.ThrowsAsync<AiUpscalingUnavailableException>(() =>
+                processor.UpscaleSingleFrameAsync(input, frames, new VideoProcessingOptions { ScaleFactor = 2 }, false, CancellationToken.None));
+
+            Assert.Contains("service unavailable", error.Message);
+            Assert.False(File.Exists(Path.Combine(frames, "frame.png")));
+        }
+        finally { Directory.Delete(root, true); }
+    }
 }

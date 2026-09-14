@@ -11,6 +11,12 @@ namespace JellyfinUpscalerPlugin.Services
     /// </summary>
     public interface IUpscalerCore
     {
+        Task<ImageUpscaleResult> UpscaleImageDetailedAsync(
+            byte[] imageData,
+            string model = "auto",
+            int scale = 2,
+            CancellationToken cancellationToken = default);
+
         Task<byte[]> UpscaleImageAsync(
             byte[] imageData,
             string model = "auto",
