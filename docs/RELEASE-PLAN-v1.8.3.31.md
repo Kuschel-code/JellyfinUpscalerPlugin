@@ -35,7 +35,7 @@ Der Nutzer hat das Committen und Pushen des geprüften RC-Branches vor der Serve
 ## Nachprüfung nach aktuellem GitHub-Scan — 15.09.2026
 
 - Der öffentliche Scan enthält weiterhin genau ein offenes Issue: [#79](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/79). Die neue [Discussion #80](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions/80) wurde als Integrationsfehler behandelt: Docker-Fallbacks in Bibliotheks-/Multi-Frame-Jobs werden nicht mehr als lokale Verarbeitung oder Erfolg verborgen, sondern mit Status und Fehlerdetail abgebrochen. [Discussion #11](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions/11) beschreibt bereits vorhandene Objektmaskierungs-/Detektor-Funktionen.
-- Der zusätzliche C#-Regressionstest läuft mit **403 bestanden, 0 fehlgeschlagen, 0 übersprungen**; TRX-Validator: 403 ausgeführt und bestanden. `dotnet publish` und Paketprüfung liefen erneut erfolgreich. Das aktuelle lokale ZIP ist **1.857.984 Bytes**, MD5 **`40a20facdd98b950ae8ca6a689a1125e`**.
+- Der zusätzliche C#-Regressionstest läuft mit **403 bestanden, 0 fehlgeschlagen, 0 übersprungen**; TRX-Validator: 403 ausgeführt und bestanden. `dotnet publish` und Paketprüfung liefen erneut erfolgreich. Das aktuelle lokale ZIP ist **1.857.981 Bytes**, MD5 **`2de2e430c77d127e84538b215f3c0fec`**.
 - Node-Verhaltenstests: **2 Testdateien bestanden**. Der erneute Python-Lauf mit der projektbezogenen Umgebung hing bereits beim ersten FastAPI-Testfixture; nach 120 Sekunden wurde er abgebrochen. Der frühere vollständige Lauf vom 07.09.2026 bleibt mit 177 bestandenen Tests dokumentiert; ein neuer grüner Python-Lauf ist vor Veröffentlichung erneut erforderlich.
 
 ## Bewusst außerhalb dieses Patch-Releases

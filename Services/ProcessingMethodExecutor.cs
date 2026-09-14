@@ -320,7 +320,7 @@ namespace JellyfinUpscalerPlugin.Services
                                 await _frameProcessor.UpscaleSingleFrameAsync(frameFile, processedDir, job.OptimizedOptions, isHDR, ct);
                             }
                             catch (OperationCanceledException) { throw; }
-                            catch (Exception ex) when (!isHDR)
+                            catch (Exception ex) when (!isHDR && ex is not AiUpscalingUnavailableException)
                             {
                                 failed++;
                                 _logger.LogWarning(ex, "Pipeline: frame {Frame} upscale failed, using original", Path.GetFileName(frameFile));
