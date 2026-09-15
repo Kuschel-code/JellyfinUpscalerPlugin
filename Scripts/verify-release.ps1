@@ -47,31 +47,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# Files a correct plugin ZIP MUST contain. Order-insensitive.
-$ExpectedFiles = @(
-    "CliWrap.dll",
-    "FFMpegCore.dll",
-    "Instances.dll",
-    "JellyfinUpscalerPlugin.dll",
-    "meta.json",
-    "SixLabors.ImageSharp.dll"
-)
-
-# Anything matching these patterns means a test-binary output leaked into the
-# plugin ZIP. Triggered the v1.6.1.11 SHA-mismatch bug.
-$ForbiddenPatterns = @(
-    "Moq\.",
-    "Mono\.Cecil",
-    "InstrumentationEngine",
-    "CodeCoverage",
-    "^Scripts/",
-    "^runtimes/",
-    "\.pdb$",
-    "\.deps\.json$"
-)
+. (Join-Path $PSScriptRoot "release-validation.ps1")
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$localMeta = Get-Content -LiteralPath (Join-Path $repoRoot "meta.json") -Raw | ConvertFrom-Json
+$expectedAbi = $localMeta.targetAbi
+$expectedFeedAbi = if ($expectedAbi -match '^\d+\.\d+\.\d+$') { "$expectedAbi.0" } else { $expectedAbi }
 
 $fail = $false
-$tmp = Join-Path $env:TEMP ("verify-release-" + [guid]::NewGuid().ToString("N"))
+$tmp = Join-Path ([IO.Path]::GetTempPath()) ("verify-release-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 # $env:TEMP on Windows returns the 8.3 short path (e.g. C:\Users\KUSCHE~1\...),
 # but Get-ChildItem.FullName returns the resolved long-path form. That length
@@ -94,6 +77,7 @@ try {
         "$rawBase/repository-simple.json"
     )
     $feedChecksums = @{}
+    $feedEntries = @{}
     foreach ($feedUrl in $feedUrls) {
         $feedName = Split-Path -Leaf $feedUrl
         try {
@@ -103,27 +87,24 @@ try {
             $fail = $true
             continue
         }
-        $entry = $feed[0].versions | Where-Object { $_.version -eq $tagVersionFeed } | Select-Object -First 1
-        if (-not $entry) {
-            Write-Host ("  [FAIL] " + $feedName + ": no entry with version " + $tagVersionFeed) -ForegroundColor Red
+        try {
+            $entry = Assert-ReleaseFeedEntry $feed $Tag $Repo $expectedFeedAbi
+        } catch {
+            Write-Host ("  [FAIL] " + $feedName + ": " + $_.Exception.Message) -ForegroundColor Red
             $fail = $true
             continue
         }
-        if ($entry.sourceUrl -notlike "*/download/$Tag/*") {
-            Write-Host ("  [FAIL] " + $feedName + ": sourceUrl does not point at the $Tag asset (" + $entry.sourceUrl + ")") -ForegroundColor Red
-            $fail = $true
+        # Compare every entry field independent of JSON property ordering.
+        $canonical = [ordered]@{}
+        foreach ($property in $entry.PSObject.Properties | Sort-Object Name) {
+            $canonical[$property.Name] = $property.Value
         }
-        if (-not ($entry.checksum -match '^[0-9a-fA-F]{32}$')) {
-            Write-Host ("  [FAIL] " + $feedName + ": checksum is not a 32-char hex MD5 ('" + $entry.checksum + "')") -ForegroundColor Red
-            $fail = $true
-            continue
-        }
+        $feedEntries[$feedName] = ConvertTo-Json $canonical -Depth 20 -Compress
         $feedChecksums[$feedName] = $entry.checksum.ToLower()
         Write-Host ("  [OK] " + $feedName + " -> checksum " + $entry.checksum.ToLower() + ", targetAbi " + $entry.targetAbi)
     }
-    if (($feedChecksums.Values | Select-Object -Unique).Count -gt 1) {
-        Write-Host "  [FAIL] feeds disagree on the checksum:" -ForegroundColor Red
-        $feedChecksums.GetEnumerator() | ForEach-Object { Write-Host ("      " + $_.Key + " = " + $_.Value) -ForegroundColor Red }
+    if (@($feedEntries.Values | Select-Object -Unique).Count -gt 1) {
+        Write-Host "  [FAIL] feeds disagree on the release entry" -ForegroundColor Red
         $fail = $true
     }
     if ($feedChecksums.Count -eq 0) {
@@ -152,9 +133,9 @@ try {
         @{ File = "meta.json";                            Pattern = '"version"\s*:\s*"([\d.]+)"';                  Expect = $tagVersion  },
         # ALL THREE local feed files must lead with the new release (first "version" in
         # each file = newest entry). Local counterpart of the live triple-feed assert.
-        @{ File = "manifest.json";                        Pattern = '"version"\s*:\s*"([\d.]+)"';                  Expect = $tagVersion  },
-        @{ File = "repository-jellyfin.json";             Pattern = '"version"\s*:\s*"([\d.]+)"';                  Expect = $tagVersion  },
-        @{ File = "repository-simple.json";               Pattern = '"version"\s*:\s*"([\d.]+)"';                  Expect = $tagVersion  },
+        @{ File = "manifest.json";                        Pattern = '"version"\s*:\s*"([\d.]+)"';                  Expect = $tagVersion4 },
+        @{ File = "repository-jellyfin.json";             Pattern = '"version"\s*:\s*"([\d.]+)"';                  Expect = $tagVersion4 },
+        @{ File = "repository-simple.json";               Pattern = '"version"\s*:\s*"([\d.]+)"';                  Expect = $tagVersion4 },
         # v1.8.3.5 follow-up: README + config default drifted for TWO releases
         # (README body said v1.8.3.3, PluginConfiguration default said 1.7.7)
         # because none of them were guarded. Now they are.
@@ -259,45 +240,19 @@ try {
             Write-Host "  [OK] MD5 matches manifest"
         }
 
-        # Inspect contents
-        $unzipDir = Join-Path $tmp ($zip.BaseName + "-unzipped")
-        New-Item -ItemType Directory -Force -Path $unzipDir | Out-Null
-        Expand-Archive -Path $zip.FullName -DestinationPath $unzipDir -Force
-        $unzipDir = (Get-Item -LiteralPath $unzipDir).FullName
-
-        $entries = @(Get-ChildItem -Path $unzipDir -Recurse -File | ForEach-Object {
-            $_.FullName.Substring($unzipDir.Length + 1).Replace("\", "/")
-        })
-
-        # Forbidden artifact check
-        foreach ($pat in $ForbiddenPatterns) {
-            $hits = $entries | Where-Object { $_ -match $pat }
-            if ($hits) {
-                Write-Host ("  [FAIL] forbidden pattern '" + $pat + "' matched:") -ForegroundColor Red
-                $hits | ForEach-Object { Write-Host ("      " + $_) -ForegroundColor Red }
+        $assetUrl = "https://github.com/$Repo/releases/download/$Tag/" + $zip.Name
+        foreach ($entryJson in $feedEntries.Values) {
+            if (($entryJson | ConvertFrom-Json).sourceUrl -cne $assetUrl) {
+                Write-Host "  [FAIL] downloaded ZIP name differs from the feed asset" -ForegroundColor Red
                 $fail = $true
             }
         }
-
-        # Required files check
-        foreach ($req in $ExpectedFiles) {
-            if ($entries -notcontains $req) {
-                Write-Host ("  [FAIL] missing required file: " + $req) -ForegroundColor Red
-                $fail = $true
-            }
-        }
-
-        # meta.json version inside the ZIP must match tag
-        $metaPath = Join-Path $unzipDir "meta.json"
-        if (Test-Path $metaPath) {
-            $meta = Get-Content $metaPath -Raw | ConvertFrom-Json
-            $tagVersion = $Tag.TrimStart("v")
-            if ($meta.version -ne $tagVersion) {
-                Write-Host ("  [FAIL] meta.json version '" + $meta.version + "' does not match tag '" + $tagVersion + "'") -ForegroundColor Red
-                $fail = $true
-            } else {
-                Write-Host ("  [OK] meta.json version = " + $meta.version)
-            }
+        try {
+            Assert-PluginArchive $zip.FullName $Tag $expectedAbi (Join-Path $tmp ($zip.BaseName + '-unzipped'))
+            Write-Host '  [OK] exact runtime payload, assembly identities, versions and metadata'
+        } catch {
+            Write-Host ("  [FAIL] " + $_.Exception.Message) -ForegroundColor Red
+            $fail = $true
         }
     }
 

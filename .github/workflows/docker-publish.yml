@@ -1,6 +1,6 @@
 name: Docker Publish (docker7)
 
-# Publishes all 6 AI-upscaler backend images to Docker Hub with semver
+# Publishes all 7 AI-upscaler backend images to Docker Hub with semver
 # triple-tagging, multi-arch support for the slim-python variants,
 # and a Trivy vulnerability scan that uploads SARIF to the Security tab.
 #
@@ -18,9 +18,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Plugin semver (e.g. 1.6.1.13)'
-        required: true
-        default: '1.6.1.13'
+        description: 'Plugin version (empty = version from the selected checkout)'
+        required: false
+        default: ''
       push:
         description: 'Push to Docker Hub? (false = build-only dry run)'
         required: true
@@ -34,6 +34,11 @@ permissions:
   contents: read
   packages: write
   security-events: write   # required for upload-sarif
+
+# All backends in a run finish before another run can move the rolling tags.
+concurrency:
+  group: docker7-publish
+  cancel-in-progress: false
 
 env:
   REGISTRY: docker.io
@@ -83,11 +88,17 @@ jobs:
 
       - name: Resolve version
         id: version
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
         run: |
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            VERSION=$(grep -oP '<AssemblyVersion>\K[^<]+' JellyfinUpscalerPlugin.csproj)
+          VERSION=$(grep -oP '<AssemblyVersion>\K[^<]+' JellyfinUpscalerPlugin.csproj)
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo 'Invalid assembly version in checkout' >&2
+            exit 1
+          fi
+          if [ -n "$REQUESTED_VERSION" ] && [ "$REQUESTED_VERSION" != "$VERSION" ]; then
+            echo 'Requested version must match the selected checkout' >&2
+            exit 1
           fi
           SHORT_SHA=$(git rev-parse --short HEAD)
           echo "version=$VERSION"       >> "$GITHUB_OUTPUT"
@@ -144,7 +155,7 @@ jobs:
             APP_COMMIT=${{ steps.version.outputs.short_sha }}
           # Inline registry cache — rebuilds of the same backend reuse layers
           cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache-${{ matrix.backend }}
-          cache-to: type=registry,ref=${{ env.IMAGE }}:buildcache-${{ matrix.backend }},mode=max
+          cache-to: ${{ github.event.inputs.push != 'false' && format('type=registry,ref={0}:buildcache-{1},mode=max', env.IMAGE, matrix.backend) || '' }}
           provenance: false
 
       # ---------------------------------------------------------------
