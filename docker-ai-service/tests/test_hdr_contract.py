@@ -51,6 +51,58 @@ def test_actual_hdr_pipeline_keeps_rgb16_and_native_scale(client, monkeypatch):
     assert len(np.unique(decoded % 257)) > 10
 
 
+def test_hdr_identity_inference_preserves_neutral_pq_luminance(client, monkeypatch):
+    """PQ luminance must not be divided by linear luminance during reconstruction."""
+    from app import main
+    monkeypatch.setattr(main, 'cv2', cv2)
+    levels = np.array([0, 1000, 10000, 32768, 50000, 65535], dtype=np.uint16)
+    original = np.repeat(levels[np.newaxis, :, np.newaxis], 3, axis=2)
+    sdr, luminance = main.tonemap_hdr_to_sdr(original)
+    reconstructed = main.inverse_tonemap_sdr_to_hdr(sdr, luminance, original, 1)
+    np.testing.assert_allclose(reconstructed.astype(np.int32), original.astype(np.int32), atol=2, rtol=0)
+
+
+def test_hdr_black_model_output_never_becomes_bright_source_pixels(client, monkeypatch):
+    from app import main
+    monkeypatch.setattr(main, 'cv2', cv2)
+    original = np.full((16, 16, 3), 50000, dtype=np.uint16)
+    sdr, luminance = main.tonemap_hdr_to_sdr(original)
+    assert np.all(sdr > 0)
+    reconstructed = main.inverse_tonemap_sdr_to_hdr(np.zeros_like(sdr), luminance, original, 1)
+    assert np.all(reconstructed == 0)
+
+
+def test_hdr_endpoint_requires_explicit_transfer(client):
+    response = client.post('/upscale-hdr', headers={'X-Api-Token': 'hdr-contract-test'},
+                           files={'file': ('frame.png', ramp()[1], 'image/png')})
+    assert response.status_code == 422
+    assert 'Only PQ' in response.json()['detail']
+
+
+@pytest.mark.parametrize('primaries', ['', 'bt709', 'unknown'])
+def test_hdr_endpoint_requires_bt2020_primaries(client, primaries):
+    response = client.post('/upscale-hdr', headers={'X-Api-Token': 'hdr-contract-test'},
+                           files={'file': ('frame.png', ramp()[1], 'image/png')},
+                           data={'transfer': 'smpte2084', 'primaries': primaries})
+    assert response.status_code == 422
+    assert 'BT.2020' in response.json()['detail']
+
+
+def test_hdr_endpoint_accepts_explicit_pq_bt2020_rgb16(client, monkeypatch):
+    from app import main
+    monkeypatch.setattr(main, 'cv2', cv2)
+    main.state.current_model = 'synthetic-x4'
+    main.state.current_model_type = 'onnx'
+    main.state.onnx_model_scale = 4
+    main.state.onnx_session = object()
+    monkeypatch.setattr(main, 'upscale_image_array', lambda x: cv2.resize(x, (64, 64)))
+    response = client.post('/upscale-hdr', headers={'X-Api-Token': 'hdr-contract-test'},
+                           files={'file': ('frame.png', ramp()[1], 'image/png')},
+                           data={'transfer': 'smpte2084', 'primaries': 'bt2020'})
+    assert response.status_code == 200, response.text
+    require_rgb16_png(response.content)
+
+
 @pytest.mark.parametrize('transfer', ['arib-std-b67', 'unknown', 'hdr10+'])
 def test_hdr_endpoint_rejects_transfer_before_model_work(client, transfer):
     response = client.post('/upscale-hdr', headers={'X-Api-Token': 'hdr-contract-test'}, files={'file': ('frame.png', ramp()[1], 'image/png')}, data={'transfer': transfer})

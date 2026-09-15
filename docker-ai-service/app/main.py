@@ -8,6 +8,7 @@ Multi-GPU selection, robust TensorRT/CUDA/OpenVINO fallback
 import os
 import re
 import time
+import math
 import json
 import logging
 import asyncio
@@ -192,6 +193,7 @@ class AppState:
 
         # Health monitoring
         self.consecutive_failures: int = 0
+        self.circuit_probe_id: Optional[str] = None
         self.circuit_open: bool = False
         self.circuit_half_open: bool = False
         self.circuit_open_at: float = 0
@@ -2020,7 +2022,36 @@ async def limit_body_size(request: Request, call_next):
                 return JSONResponse(status_code=413, content={"detail": f"Request too large ({content_length} bytes, max {limit})"})
         except ValueError:
             return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header"})
-    return await call_next(request)
+    def release_unused_probe():
+        # A half-open probe rejected by validation or concurrency has not tested
+        # the model. Release only this request's claim, so a later valid request
+        # can recover the circuit and a competing request cannot steal its probe.
+        probe_id = getattr(request.state, "circuit_probe_id", None)
+        if probe_id is not None:
+            with _circuit_lock:
+                if state.circuit_probe_id == probe_id:
+                    state.circuit_half_open = False
+                    state.circuit_probe_id = None
+
+    try:
+        response = await call_next(request)
+    except BaseException:
+        release_unused_probe()
+        raise
+
+    # call_next returns at the response headers. A streaming inference probe is
+    # still running then, so retain its ownership until its body finishes.
+    body = response.body_iterator
+
+    async def body_with_probe_cleanup():
+        try:
+            async for chunk in body:
+                yield chunk
+        finally:
+            release_unused_probe()
+
+    response.body_iterator = body_with_probe_cleanup()
+    return response
 
 # Mount static files
 if STATIC_DIR.exists():
@@ -2089,6 +2120,16 @@ async def load_opencv_model(model_name: str, model_info: dict, model_path: Path)
         return False
 
 
+def _is_upscaler_model(model_info: dict) -> bool:
+    category = str(model_info.get("category", "")).lower().replace("_", "-")
+    return category not in {"interpolation", "face-restore", "object-detection"}
+
+
+def _skip_tensorrt() -> bool:
+    # TensorRT is opt-in: a GPU alone does not provide its runtime libraries.
+    return os.getenv("SKIP_TENSORRT", "true").strip().lower() != "false"
+
+
 async def load_model(model_name: str) -> bool:
     """Load a model into memory."""
     if model_name not in AVAILABLE_MODELS:
@@ -2099,6 +2140,9 @@ async def load_model(model_name: str) -> bool:
     
     if not model_info.get("available", True):
         logger.error(f"Model {model_name} is not yet available")
+        return False
+    if not _is_upscaler_model(model_info):
+        logger.error(f"Model {model_name} is not an upscaler; use its dedicated feature")
         return False
     
     model_path = get_model_path(model_name)
@@ -2320,7 +2364,7 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
 
     try:
         scale = model_info.get("scale", 4)
-        skip_tensorrt = os.getenv("SKIP_TENSORRT", "false").lower() == "true"
+        skip_tensorrt = _skip_tensorrt()
         device_id = state.gpu_device_id
 
         # Check for provider override via environment variable
@@ -2733,19 +2777,9 @@ def upscale_image(image_bytes: bytes) -> bytes:
     return buffer.tobytes()
 
 
-def tonemap_hdr_to_sdr(frame_16bit: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """PQ (ST.2084) tone-map 16-bit HDR frame to 8-bit SDR for AI processing.
-    Returns (sdr_frame_8bit, luminance_map) where luminance_map preserves HDR info."""
-    # Normalize 16-bit to [0, 1] float
+def _pq_to_linear(frame_16bit: np.ndarray) -> np.ndarray:
+    """Decode ST.2084 values into linear light normalized to 10000 nits."""
     frame_float = frame_16bit.astype(np.float64) / 65535.0
-
-    # Compute per-pixel luminance (Rec.2020 weights) for restoration later
-    luminance_map = (0.2627 * frame_float[:, :, 2]
-                     + 0.6780 * frame_float[:, :, 1]
-                     + 0.0593 * frame_float[:, :, 0])  # BGR order
-
-    # PQ EOTF inverse: linearize from PQ domain
-    # ST.2084 constants
     m1 = 0.1593017578125
     m2 = 78.84375
     c1 = 0.8359375
@@ -2753,11 +2787,21 @@ def tonemap_hdr_to_sdr(frame_16bit: np.ndarray) -> tuple[np.ndarray, np.ndarray]
     c3 = 18.6875
 
     # Apply PQ inverse EOTF to get linear light
-    Ym1 = np.power(np.clip(frame_float, 1e-10, 1.0), 1.0 / m2)
+    Ym1 = np.power(np.clip(frame_float, 0.0, 1.0), 1.0 / m2)
     numerator = np.maximum(Ym1 - c1, 0.0)
     denominator = c2 - c3 * Ym1
     denominator = np.maximum(denominator, 1e-10)
-    linear = np.power(numerator / denominator, 1.0 / m1)
+    return np.power(numerator / denominator, 1.0 / m1)
+
+
+def tonemap_hdr_to_sdr(frame_16bit: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Tone-map PQ RGB16 for SDR inference, retaining linear BT.2020 luminance."""
+    linear = _pq_to_linear(frame_16bit)
+    # The reconstruction operates in linear light too. Applying these weights
+    # to PQ code values instead made neutral midtones almost peak white.
+    luminance_map = (0.2627 * linear[:, :, 2]
+                     + 0.6780 * linear[:, :, 1]
+                     + 0.0593 * linear[:, :, 0])  # BGR order
 
     # Simple Reinhard tone-map to SDR range
     linear_tonemapped = linear / (1.0 + linear)
@@ -2778,27 +2822,39 @@ def inverse_tonemap_sdr_to_hdr(sdr_upscaled: np.ndarray, luminance_map: np.ndarr
     # Upscale luminance map to match output resolution using bicubic interpolation
     out_h, out_w = sdr_upscaled.shape[:2]
     luminance_upscaled = cv2.resize(luminance_map, (out_w, out_h), interpolation=cv2.INTER_CUBIC)
-    luminance_upscaled = np.clip(luminance_upscaled, 1e-6, None)
+    luminance_upscaled = np.clip(luminance_upscaled, 0.0, 1.0)
 
     # Convert SDR upscaled back to float [0, 1]
     sdr_float = sdr_upscaled.astype(np.float64) / 255.0
 
     # Remove sRGB gamma to get linear SDR
-    sdr_linear = np.power(np.clip(sdr_float, 1e-10, 1.0), 2.2)
+    sdr_linear = np.power(np.clip(sdr_float, 0.0, 1.0), 2.2)
 
     # Inverse Reinhard: L_hdr = L_sdr / (1 - L_sdr)
     sdr_linear_clamped = np.clip(sdr_linear, 0.0, 0.999)
     hdr_linear = sdr_linear_clamped / (1.0 - sdr_linear_clamped)
 
     # Modulate by luminance ratio to restore HDR brightness structure
-    sdr_lum = (0.2627 * sdr_linear[:, :, 2]
-               + 0.6780 * sdr_linear[:, :, 1]
-               + 0.0593 * sdr_linear[:, :, 0])
-    sdr_lum = np.maximum(sdr_lum, 1e-6)
-    lum_ratio = luminance_upscaled / sdr_lum
-    lum_ratio = np.clip(lum_ratio, 0.01, 100.0)  # Clamp to prevent extreme values while preserving HDR peaks
-
+    hdr_lum = (0.2627 * hdr_linear[:, :, 2]
+               + 0.6780 * hdr_linear[:, :, 1]
+               + 0.0593 * hdr_linear[:, :, 0])
+    has_chroma = hdr_lum > 1e-12
+    lum_ratio = np.divide(luminance_upscaled, hdr_lum,
+                          out=np.zeros_like(hdr_lum), where=has_chroma)
     hdr_linear = hdr_linear * lum_ratio[:, :, np.newaxis]
+    # SDR quantization can erase very dark input pixels completely. Recover
+    # only that measured input quantization loss; an AI-produced black pixel
+    # from a nonblack SDR input must not be replaced with the source pixel.
+    if np.any(~has_chroma):
+        original_sdr, _ = tonemap_hdr_to_sdr(original_16bit)
+        input_was_quantized_black = cv2.resize(
+            np.all(original_sdr == 0, axis=2).astype(np.uint8), (out_w, out_h),
+            interpolation=cv2.INTER_NEAREST).astype(bool)
+        recover_dark = ~has_chroma & input_was_quantized_black
+        if np.any(recover_dark):
+            original_linear = cv2.resize(_pq_to_linear(original_16bit), (out_w, out_h),
+                                         interpolation=cv2.INTER_CUBIC)
+            hdr_linear[recover_dark] = original_linear[recover_dark]
 
     # Apply PQ OETF (forward) to encode back to PQ domain
     m1 = 0.1593017578125
@@ -2807,7 +2863,7 @@ def inverse_tonemap_sdr_to_hdr(sdr_upscaled: np.ndarray, luminance_map: np.ndarr
     c2 = 18.8515625
     c3 = 18.6875
 
-    Lm1 = np.power(np.clip(hdr_linear, 1e-10, 1.0), m1)
+    Lm1 = np.power(np.clip(hdr_linear, 0.0, 1.0), m1)
     pq = np.power((c1 + c2 * Lm1) / (1.0 + c3 * Lm1), m2)
 
     # Convert to 16-bit
@@ -4047,7 +4103,7 @@ async def gpu_verify():
     }
 
     # SKIP_TENSORRT setting
-    diagnostics["skip_tensorrt"] = os.getenv("SKIP_TENSORRT", "false").lower() == "true"
+    diagnostics["skip_tensorrt"] = _skip_tensorrt()
 
     # ONNX inference test — build test tensor from actual model input shape
     if ONNX_AVAILABLE and state.onnx_session is not None:
@@ -4075,7 +4131,7 @@ async def gpu_verify():
     if "nvidia_smi" in diagnostics and "not available" in diagnostics["nvidia_smi"]:
         tips.append("NVIDIA GPU not detected. Ensure Docker has --gpus all or --runtime=nvidia.")
     if diagnostics.get("skip_tensorrt"):
-        tips.append("TensorRT is skipped (SKIP_TENSORRT=true). Set to false if your GPU supports TensorRT.")
+        tips.append("TensorRT is skipped. Set SKIP_TENSORRT=false only when the image includes the compatible TensorRT runtime libraries.")
     diagnostics["troubleshooting_tips"] = tips
 
     return diagnostics
@@ -4516,6 +4572,8 @@ async def load_model_endpoint(
     model_info = AVAILABLE_MODELS[model_name]
     if not model_info.get("available", True):
         raise HTTPException(status_code=400, detail=f"Model {model_name} is not yet available")
+    if not _is_upscaler_model(model_info):
+        raise HTTPException(status_code=422, detail=f"Model {model_name} is not an upscaler; use its dedicated feature.")
 
     model_path = get_model_path(model_name)
 
@@ -4564,7 +4622,7 @@ async def upscale_endpoint(
 ):
     """Upscale an image. Scale is determined by the loaded model; the scale parameter is validated for consistency."""
     _require_api_token(request)
-    _check_circuit_breaker()
+    _check_circuit_breaker(request)
 
     if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
         raise HTTPException(status_code=400, detail="No model loaded. Please load a model first.")
@@ -4611,6 +4669,8 @@ async def upscale_endpoint(
         _record_success(model_name, duration_ms)
         return Response(content=result, media_type="image/png")
 
+    except HTTPException:
+        raise
     except ModelNotReadyError as e:
         _record_failure(model_name)
         logger.warning(f"Upscale input error: {e}")
@@ -4635,16 +4695,17 @@ async def upscale_frame_hdr(
     request: Request,
     file: UploadFile = File(...),
     scale: int = Form(2),
-    transfer: str = Form("smpte2084")
+    transfer: str = Form(""),
+    primaries: str = Form("")
 ):
     """Upscale a 16-bit HDR frame. Accepts 16-bit PNG, returns 16-bit PNG.
     The pipeline: receive 16-bit -> tone-map to 8-bit SDR -> upscale -> inverse tone-map back to 16-bit."""
     _require_api_token(request)
     try:
-        require_pq(transfer)
+        require_pq(transfer, primaries)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error))
-    _check_circuit_breaker()
+    _check_circuit_breaker(request)
 
     if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
         raise HTTPException(status_code=400, detail="No model loaded. Please load a model first.")
@@ -4731,7 +4792,7 @@ async def benchmark_endpoint(request: Request = None):
 async def upscale_frame_endpoint(request: Request):
     """Fast frame upscaling for real-time playback. Raw JPEG in, JPEG out. Returns 503 when busy."""
     _require_api_token(request)
-    _check_circuit_breaker()
+    _check_circuit_breaker(request)
 
     if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
         raise HTTPException(status_code=400, detail="No model loaded")
@@ -4801,7 +4862,7 @@ async def upscale_frame_endpoint(request: Request):
 async def upscale_video_chunk(request: Request):
     """Multi-frame upscaling: receives N PNG frames, returns upscaled center frame."""
     _require_api_token(request)
-    _check_circuit_breaker()
+    _check_circuit_breaker(request)
 
     if state.current_model is None:
         raise HTTPException(status_code=400, detail="No model loaded")
@@ -4971,7 +5032,7 @@ async def upscale_stream(request: Request):
     Output: streaming response with upscaled raw frames
     """
     _require_api_token(request)
-    _check_circuit_breaker()
+    _check_circuit_breaker(request)
 
     if state.cv_model is None and state.onnx_session is None and state.ncnn_upscaler is None:
         raise HTTPException(status_code=400, detail="No model loaded")
@@ -5291,6 +5352,7 @@ def _record_success(model_name: str, duration_ms: float):
         # Close circuit breaker on success (handles both half-open probe and normal)
         was_half_open = state.circuit_half_open
         state.circuit_half_open = False
+        state.circuit_probe_id = None
         if state.circuit_open or was_half_open:
             state.circuit_open = False
             logger.info("Circuit breaker CLOSED after successful job")
@@ -5307,6 +5369,7 @@ def _record_failure(model_name: str):
         # If this was a half-open probe that failed, re-open the circuit
         if state.circuit_half_open:
             state.circuit_half_open = False
+            state.circuit_probe_id = None
             state.circuit_open = True
             state.circuit_open_at = time.time()
             logger.warning("Circuit breaker RE-OPENED after half-open probe failed")
@@ -5319,7 +5382,7 @@ def _record_failure(model_name: str):
             logger.warning(f"Circuit breaker OPEN after {state.consecutive_failures} consecutive failures")
 
 
-def _check_circuit_breaker():
+def _check_circuit_breaker(request: Request):
     """Check if circuit breaker allows processing. Raises 503 if open."""
     exc = None
     with _circuit_lock:
@@ -5332,7 +5395,8 @@ def _check_circuit_breaker():
         if not state.circuit_open and state.circuit_half_open:
             exc = HTTPException(
                 status_code=503,
-                detail="Circuit breaker half-open — probe in progress, retry shortly"
+                detail="Circuit breaker half-open — probe in progress, retry shortly",
+                headers={"Retry-After": "1"},
             )
         elif state.circuit_open:
             elapsed = time.time() - state.circuit_open_at
@@ -5341,18 +5405,23 @@ def _check_circuit_breaker():
                     # Another request is already probing — block this one
                     exc = HTTPException(
                         status_code=503,
-                        detail="Circuit breaker half-open — probe in progress, retry shortly"
+                        detail="Circuit breaker half-open — probe in progress, retry shortly",
+                        headers={"Retry-After": "1"},
                     )
                 else:
                     # Half-open: allow exactly one request through as probe
                     state.circuit_half_open = True
+                    state.circuit_probe_id = uuid.uuid4().hex
+                    request.state.circuit_probe_id = state.circuit_probe_id
                     logger.info("Circuit breaker HALF-OPEN, allowing one probe request")
                     return
             else:
+                retry_seconds = max(1, math.ceil(state.circuit_breaker_reset_seconds - elapsed))
                 exc = HTTPException(
                     status_code=503,
                     detail=f"Circuit breaker open — {state.consecutive_failures} consecutive failures. "
-                           f"Retry in {int(state.circuit_breaker_reset_seconds - elapsed)}s"
+                           f"Retry in {retry_seconds}s",
+                    headers={"Retry-After": str(retry_seconds)},
                 )
     # Raise outside the lock to prevent deadlock if exception handlers acquire _circuit_lock
     if exc:
@@ -5538,7 +5607,7 @@ async def interpolate_frames(request: Request):
     Returns the interpolated frame as PNG.
     """
     _require_api_token(request)
-    _check_circuit_breaker()
+    _check_circuit_breaker(request)
 
     if not ONNX_AVAILABLE:
         raise HTTPException(status_code=500, detail="ONNX Runtime not available — frame interpolation requires ONNX")
@@ -5855,7 +5924,7 @@ async def detect_mask_endpoint(
     mode:    "box" fills the region, "blur" obscures it while keeping motion.
     """
     _require_api_token(request)
-    _check_circuit_breaker()
+    _check_circuit_breaker(request)
 
     if state.detector_session is None:
         raise HTTPException(status_code=400, detail="No detector loaded. POST /models/load-detector first.")
@@ -6656,7 +6725,7 @@ async def convert_model_from_catalog(request: Request, body: dict = Body(...)):
 
     pth_data = await _download_pinned(entry["download_url"], entry.get("sha256") or "")
     loop = asyncio.get_running_loop()
-    onnx_bytes, scale, _in_ch = await loop.run_in_executor(None, _convert_pth_bytes_to_onnx, pth_data)
+    onnx_bytes, scale, _in_ch = await loop.run_in_executor(None, _convert_pth_bytes_to_onnx, pth_data, entry['download_url'])
 
     model_name = _to_import_model_name(entry.get("id") or "")
     desc = f"{entry.get('name')} (OpenModelDB, converted pth->onnx, license: {entry.get('license') or 'unclear'})"
@@ -6695,7 +6764,7 @@ async def _run_import_job(job_id: str, kind: str, entry: dict):
                 raise HTTPException(status_code=502, detail="sha256 mismatch - the upstream file changed since the catalog was generated. Import refused.")
             _import_job_set(job_id, status="converting")
             loop = asyncio.get_running_loop()
-            onnx_bytes, scale, _in_ch = await loop.run_in_executor(None, _convert_pth_bytes_to_onnx, data)
+            onnx_bytes, scale, _in_ch = await loop.run_in_executor(None, _convert_pth_bytes_to_onnx, data, entry['download_url'])
             desc = f"{entry.get('name')} (OpenModelDB, converted pth->onnx, license: {entry.get('license') or 'unclear'})"
             _import_job_set(job_id, status="validating")
             result = _ingest_onnx_bytes(onnx_bytes, model_name, scale or _catalog_scale(entry), desc)
@@ -6792,7 +6861,7 @@ async def convert_uploaded_model(
     if len(pth_data) > MAX_MODEL_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail=f"Model too large (max {MAX_MODEL_UPLOAD_BYTES // (1024*1024)} MB)")
     loop = asyncio.get_running_loop()
-    onnx_bytes, scale, _in_ch = await loop.run_in_executor(None, _convert_pth_bytes_to_onnx, pth_data)
+    onnx_bytes, scale, _in_ch = await loop.run_in_executor(None, _convert_pth_bytes_to_onnx, pth_data, file.filename or '')
     result = _ingest_onnx_bytes(onnx_bytes, model_name, scale, description or f"Converted upload ({scale}x)")
     return {**result, "converted": True}
 

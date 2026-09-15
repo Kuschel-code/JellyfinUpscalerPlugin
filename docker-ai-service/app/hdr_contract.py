@@ -2,9 +2,11 @@
 PNG_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 
 
-def require_pq(transfer: str):
+def require_pq(transfer: str, primaries: str = 'bt2020'):
     if transfer.lower() != 'smpte2084':
         raise ValueError('Only PQ/ST.2084 (smpte2084) is supported; HLG, unknown transfers and dynamic HDR are not supported.')
+    if primaries.lower() != 'bt2020':
+        raise ValueError('HDR requires explicitly declared BT.2020 primaries (bt2020).')
 
 
 def require_rgb16_png(data: bytes):

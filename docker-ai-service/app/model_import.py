@@ -162,13 +162,29 @@ async def _download_capped(url: str) -> bytes:
     (GitHub releases redirect to objects.githubusercontent.com); safe because the
     payload is verified against the catalog pin afterwards and no secret is sent."""
     async with httpx.AsyncClient(follow_redirects=True, timeout=httpx.Timeout(570.0, connect=30.0)) as client:
-        resp = await client.get(url)
-        if resp.status_code != 200:
-            raise HTTPException(status_code=502, detail=f"Download failed (HTTP {resp.status_code} from source)")
-        data = resp.content
-    if len(data) > MAX_MODEL_UPLOAD_BYTES:
-        raise HTTPException(status_code=502, detail=f"Downloaded file exceeds the {MAX_MODEL_UPLOAD_BYTES // (1024*1024)} MB import limit")
-    return data
+        async with client.stream("GET", url) as resp:
+            if resp.status_code != 200:
+                raise HTTPException(status_code=502, detail=f"Download failed (HTTP {resp.status_code} from source)")
+            data = bytearray()
+            # Read a bounded chunk and stop before retaining a body larger than
+            # the cap. Checking resp.content after get() already consumed all RAM.
+            async for chunk in resp.aiter_bytes(chunk_size=64 * 1024):
+                if len(data) + len(chunk) > MAX_MODEL_UPLOAD_BYTES:
+                    raise HTTPException(status_code=502, detail=f"Downloaded file exceeds the {MAX_MODEL_UPLOAD_BYTES // (1024*1024)} MB import limit")
+                data.extend(chunk)
+    return bytes(data)
+
+
+def _validate_conversion_output(torch_out, ort_out) -> None:
+    """An export must reproduce a finite tensor of the exact same dimensions."""
+    import numpy as np
+    if torch_out.shape != ort_out.shape:
+        raise HTTPException(status_code=502, detail="Conversion verification failed (output shape mismatch)")
+    if not np.isfinite(torch_out).all() or not np.isfinite(ort_out).all():
+        raise HTTPException(status_code=502, detail="Conversion verification failed (non-finite output)")
+    max_diff = float(np.abs(ort_out - torch_out).max())
+    if max_diff > 1e-2:
+        raise HTTPException(status_code=502, detail=f"Conversion verification failed (max output diff {max_diff:.4f}) - this architecture does not export cleanly")
 
 
 async def _download_pinned(url: str, sha256_pin: str) -> bytes:
@@ -188,7 +204,7 @@ def _converter_available() -> bool:
     return importlib.util.find_spec("spandrel") is not None and importlib.util.find_spec("torch") is not None
 
 
-def _convert_pth_bytes_to_onnx(pth_data: bytes) -> tuple:
+def _convert_pth_bytes_to_onnx(pth_data: bytes, source_name: str = 'model.pth') -> tuple:
     """Load a .pth/.safetensors via spandrel, export ONNX (opset 17, dynamic H/W)
     and verify the export against the torch output. Returns (onnx_bytes, scale,
     input_channels).
@@ -202,9 +218,12 @@ def _convert_pth_bytes_to_onnx(pth_data: bytes) -> tuple:
         raise HTTPException(status_code=501, detail="Converter not available - this image ships without torch/spandrel. Use the kuscheltier/jellyfin-ai-upscaler:docker7-converter image to convert .pth models.")
     import torch
     import spandrel
-    import numpy as _np
-
-    with tempfile.NamedTemporaryFile(suffix=".pth", delete=False) as tmp:
+    # Spandrel selects its parser by extension. Renaming safetensors or a
+    # TorchScript .pt upload to .pth sends it to the wrong loader.
+    suffix = os.path.splitext(urllib.parse.urlparse(source_name).path)[1].lower()
+    if suffix not in ('.pth', '.pt', '.safetensors'):
+        raise HTTPException(status_code=400, detail='Converter requires a .pth, .pt or .safetensors source file')
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(pth_data)
         tmp_path = tmp.name
     onnx_path = None
@@ -233,9 +252,7 @@ def _convert_pth_bytes_to_onnx(pth_data: bytes) -> tuple:
         ort_out = sess.run(None, {sess.get_inputs()[0].name: dummy.numpy()})[0]
         with torch.no_grad():
             torch_out = model(dummy).numpy()
-        max_diff = float(_np.abs(ort_out - torch_out).max())
-        if max_diff > 1e-2:
-            raise HTTPException(status_code=502, detail=f"Conversion verification failed (max output diff {max_diff:.4f}) - this architecture does not export cleanly")
+        _validate_conversion_output(torch_out, ort_out)
         with open(onnx_path, "rb") as fh:
             onnx_bytes = fh.read()
         return onnx_bytes, scale, in_ch
@@ -249,5 +266,3 @@ def _convert_pth_bytes_to_onnx(pth_data: bytes) -> tuple:
             os.unlink(tmp_path)
         if onnx_path and os.path.exists(onnx_path):
             os.unlink(onnx_path)
-
-

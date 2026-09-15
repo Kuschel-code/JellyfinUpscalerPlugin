@@ -2,8 +2,11 @@
 import io
 import os
 import numpy as np
+import pytest
 from PIL import Image
-from unittest.mock import patch
+from fastapi import HTTPException, Request
+from starlette.datastructures import UploadFile
+from unittest.mock import patch, AsyncMock, MagicMock
 
 
 def _make_png(w=64, h=64) -> bytes:
@@ -13,21 +16,69 @@ def _make_png(w=64, h=64) -> bytes:
     return buf.getvalue()
 
 
-def test_upscale_rejects_oversized_file(client):
+@pytest.mark.asyncio
+async def test_upscale_rejects_oversized_file(client, monkeypatch):
     """/upscale must return 413 when file exceeds MAX_UPLOAD_BYTES."""
     from app import main as app_module
-    original = app_module.MAX_UPLOAD_BYTES
-    app_module.MAX_UPLOAD_BYTES = 5  # 5 bytes — any real PNG will be larger
-    try:
-        resp = client.post(
-            "/upscale",
-            files={"file": ("test.png", io.BytesIO(_make_png()), "image/png")},
-            data={"scale": "2"},
-        )
-        # Either 400 (no model checked first) or 413 (size checked first)
-        assert resp.status_code in (400, 413), f"unexpected {resp.status_code}"
-    finally:
-        app_module.MAX_UPLOAD_BYTES = original
+    monkeypatch.setattr(app_module, "MAX_UPLOAD_BYTES", 1024)
+    monkeypatch.setattr(app_module.state, "cv_model", MagicMock())
+    monkeypatch.setenv("API_TOKEN", "disable")
+    failures_before = app_module.state.consecutive_failures
+    slots_before = app_module._upscale_semaphore._value
+    with patch.object(app_module, "upscale_image") as inference:
+        # Call the actual endpoint with a streamed file: no Content-Length
+        # middleware check can hide the endpoint's HTTPException handling.
+        upload = UploadFile(filename="test.png", file=io.BytesIO(b"x" * 1025))
+        try:
+            with pytest.raises(HTTPException) as error:
+                await app_module.upscale_endpoint(Request({"type": "http", "headers": []}), upload, 2)
+        finally:
+            await upload.close()
+        assert error.value.status_code == 413
+        assert "max 1024" in error.value.detail
+        inference.assert_not_called()
+    assert app_module.state.consecutive_failures == failures_before
+    assert app_module._upscale_semaphore._value == slots_before
+    assert app_module.state.processing_count == 0
+
+
+@pytest.mark.parametrize("model_name", ["rife-v4.7", "gfpgan-v1.4", "tiny-yolov3"])
+def test_non_upscaler_categories_cannot_load_as_upscalers(client, monkeypatch, model_name):
+    from app import main
+    monkeypatch.setenv("API_TOKEN", "disable")
+    download = AsyncMock(return_value=True)
+    load = AsyncMock(return_value=True)
+    monkeypatch.setattr(main, "download_model", download)
+    monkeypatch.setattr(main, "load_model", load)
+    response = client.post("/models/load", data={"model_name": model_name})
+    assert response.status_code == 422, response.text
+    assert "not an upscaler" in response.json()["detail"]
+    download.assert_not_awaited()
+    load.assert_not_awaited()
+
+
+def test_unknown_imported_upscaler_category_remains_loadable(client, monkeypatch):
+    from app import main
+    monkeypatch.setenv("API_TOKEN", "disable")
+    monkeypatch.setitem(main.AVAILABLE_MODELS, "custom-sr", {
+        "type": "onnx", "category": "custom-restoration", "available": True, "scale": 2,
+    })
+    monkeypatch.setattr(main, "download_model", AsyncMock(return_value=True))
+    load = AsyncMock(return_value=True)
+    monkeypatch.setattr(main, "load_model", load)
+    response = client.post("/models/load", data={"model_name": "custom-sr"})
+    assert response.status_code == 200, response.text
+    load.assert_awaited_once_with("custom-sr")
+
+
+@pytest.mark.parametrize("setting, skipped", [(None, True), ("true", True), ("", True), ("false", False)])
+def test_tensorrt_requires_explicit_opt_in(client, monkeypatch, setting, skipped):
+    from app import main
+    if setting is None:
+        monkeypatch.delenv("SKIP_TENSORRT", raising=False)
+    else:
+        monkeypatch.setenv("SKIP_TENSORRT", setting)
+    assert main._skip_tensorrt() is skipped
 
 
 def test_model_name_path_traversal_rejected(client):
