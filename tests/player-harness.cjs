@@ -6,7 +6,12 @@ exports.loadPlayer = function () {
     const requests = [], draws = [], images = [], intervals = new Map(), notices = [];
     const context = {drawImage: (...args) => draws.push(args)};
     const parent = {style: {}, appendChild(c) { c.parentElement = this; }, removeChild(c) { c.parentElement = null; }};
-    const video = {paused: false, playbackRate: 1, videoWidth: 640, videoHeight: 360, currentTime: 0, parentElement: parent};
+    const videoListeners = new Map();
+    const video = {paused: false, playbackRate: 1, videoWidth: 640, videoHeight: 360, currentTime: 0, parentElement: parent,
+        addEventListener(type, fn) { if (!videoListeners.has(type)) videoListeners.set(type, new Set()); videoListeners.get(type).add(fn); },
+        removeEventListener(type, fn) { videoListeners.get(type)?.delete(fn); },
+        dispatch(type) { for (const fn of videoListeners.get(type) || []) fn(); }
+    };
     const sandbox = {console: {log() {}, warn() {}, error() {}}, AbortController, Date, Math: Object.create(Math),
         performance: {now: () => now},
         document: {readyState: 'loading', addEventListener() {}, getElementById() { return null; },
@@ -28,11 +33,11 @@ exports.loadPlayer = function () {
     const rt = sandbox.RealtimeUpscaler;
     rt._createFpsOverlay = () => {};
     return {rt, video, requests, draws, images, notices, sandbox,
-        advance(ms) { now += ms; for (const fn of intervals.values()) fn(); },
+        advance(ms, runIntervals = true) { now += ms; if (runIntervals) for (const fn of intervals.values()) fn(); },
         tick() { rt._serverRenderLoop(); },
         respond(index, status = 200, retry = null, detail = 'Busy') {
             requests[index].resolve({ok: status === 200, status, headers: {get: key => key === 'Retry-After' ? retry : null},
-                text: async () => JSON.stringify({detail}), blob: async () => ({result: index})});
+                text: async () => JSON.stringify({detail}), json: async () => ({detail}), blob: async () => ({result: index})});
         }
     };
 };

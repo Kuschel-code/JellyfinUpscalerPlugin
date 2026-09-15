@@ -104,3 +104,93 @@ test('a delayed Apply Auto reply cannot restart stopped playback', async () => {
     h.rt.stop(); pickReady({model: 'fsrcnn-x2'}); await applying;
     assert.equal(h.requests.length, 0); assert.equal(h.rt._active, false);
 });
+
+test('leaving playback aborts startup while the model is still loading', async () => {
+    const {flush} = require('./player-harness.cjs');
+    const h = loadPlayer(), player = h.sandbox.PlayerIntegration;
+    h.sandbox.location = {hash: '#/home'};
+    await player._startRtWithConfig(h.video, {RealtimeMode: 'server'});
+    assert.equal(h.rt._active, false);
+    player.onViewShow({detail: {type: 'home'}});
+    assert.equal(h.requests[0].options.signal.aborted, true);
+    h.respond(0); await flush();
+    assert.equal(h.requests.length, 1); assert.equal(h.rt._active, false);
+});
+
+test('scheduled auto-start cannot restart playback after Stop or navigation', () => {
+    for (const navigate of [false, true]) {
+        const h = loadPlayer(), player = h.sandbox.PlayerIntegration;
+        h.video.readyState = 2;
+        h.sandbox.location = {hash: '#/video'};
+        player.findVideoElement = () => h.video;
+        let delayed;
+        h.sandbox.setTimeout = fn => { delayed = fn; };
+        player.startRealtimeUpscaling = () => assert.fail('stale auto-start');
+        player._waitForVideoAndAutoStart();
+        if (navigate) h.sandbox.location.hash = '#/home';
+        else h.rt.stop();
+        delayed();
+    }
+    const h = loadPlayer(), player = h.sandbox.PlayerIntegration;
+    h.video.readyState = 1; h.video.paused = true;
+    h.sandbox.location = {hash: '#/video'};
+    player.findVideoElement = () => h.video;
+    h.sandbox.setTimeout = () => assert.fail('stopped playing listener scheduled auto-start');
+    player._waitForVideoAndAutoStart();
+    h.rt.stop(); h.video.paused = false; h.video.dispatch('playing');
+
+    const pending = loadPlayer(), pendingPlayer = pending.sandbox.PlayerIntegration;
+    pending.sandbox.location = {hash: '#/video'};
+    pendingPlayer.findVideoElement = () => null;
+    let retry;
+    pending.sandbox.setTimeout = fn => { retry = fn; };
+    pendingPlayer._waitForVideoAndAutoStart();
+    pending.rt.stop(); pending.video.readyState = 2;
+    pendingPlayer.findVideoElement = () => assert.fail('stopped video lookup continued');
+    retry();
+    assert.equal(pendingPlayer._autoStartPending, false);
+});
+
+test('quick model changes cancel frames and do not restart after a delayed load or config response', async () => {
+    const {flush} = require('./player-harness.cjs');
+    for (const stopAt of ['config-save', 'model-load', 'config-refresh']) {
+        const h = loadPlayer(), player = h.sandbox.PlayerIntegration;
+        h.rt.start(h.video, {RealtimeMode: 'server'}, {});
+        let saveReady, configReady;
+        player.updatePluginConfig = () => new Promise(resolve => { saveReady = resolve; });
+        player.findVideoElement = () => h.video;
+        player.getPluginConfig = () => new Promise(resolve => { configReady = resolve; });
+        const changing = player.quickSetModel('span-x2');
+        assert.equal(h.requests[0].options.signal.aborted, true);
+        if (stopAt === 'config-save') {
+            h.rt.stop(); saveReady(); await changing;
+            assert.equal(h.requests.length, 1);
+            continue;
+        }
+        saveReady(); await flush();
+        assert.match(h.requests[1].url, /models\/load/);
+        if (stopAt === 'model-load') {
+            h.rt.stop();
+            assert.equal(h.requests[1].options.signal.aborted, true);
+            h.respond(1); await changing;
+        } else {
+            h.respond(1); await flush(); h.rt.stop();
+            configReady({RealtimeMode: 'server', Model: 'span-x2'}); await changing;
+        }
+        assert.equal(h.requests.length, 2); assert.equal(h.rt._active, false);
+    }
+});
+
+test('quick model selection revalidates HDR before restarting realtime', async () => {
+    const {flush} = require('./player-harness.cjs');
+    const h = loadPlayer(), player = h.sandbox.PlayerIntegration;
+    h.rt.start(h.video, {RealtimeMode: 'server'}, {fps: 30, videoFps: 30});
+    player.updatePluginConfig = async () => {};
+    player.findVideoElement = () => h.video;
+    player.getPluginConfig = async () => ({RealtimeMode: 'server', Model: 'span-x2'});
+    player._readPlayingVideoStream = async () => ({ColorTransfer: 'smpte2084', VideoRangeType: 'HDR10'});
+    const changing = player.quickSetModel('span-x2'); await flush();
+    h.respond(1); await changing;
+    assert.equal(h.requests.length, 2);
+    assert.equal(h.rt._mode, 'off'); assert.match(h.rt._reason, /HDR/);
+});

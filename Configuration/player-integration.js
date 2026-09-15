@@ -536,8 +536,16 @@
             this._fpsFrameCount = 0;
             this._fpsLastTime = performance.now();
             this._lastSuccessfulFrame = performance.now();
-            this._serverRenderLoop();
+            // Background tabs may suspend the watchdog throughout a pause. Reset
+            // its clock on resume as well, before the first resumed interval runs.
             var self = this;
+            this._serverPlaybackListener = function() {
+                self._lastSuccessfulFrame = performance.now();
+                self._lowFpsStart = 0;
+            };
+            this._videoElement.addEventListener('pause', this._serverPlaybackListener);
+            this._videoElement.addEventListener('playing', this._serverPlaybackListener);
+            this._serverRenderLoop();
             this._fallbackCheckInterval = setInterval(function() {
                 if (!self._active || self._mode !== 'server') return;
                 var now = performance.now();
@@ -557,6 +565,11 @@
 
         _stopServer: function() {
             this._generation++;
+            if (this._videoElement && this._serverPlaybackListener) {
+                this._videoElement.removeEventListener('pause', this._serverPlaybackListener);
+                this._videoElement.removeEventListener('playing', this._serverPlaybackListener);
+            }
+            this._serverPlaybackListener = null;
             if (this._requestController) this._requestController.abort();
             this._requestController = null;
             this._pendingFrame = false;
@@ -803,7 +816,7 @@
                 this._waitForVideoAndAutoStart();
             } else {
                 // Leaving video page — stop upscaling
-                if (window.RealtimeUpscaler && window.RealtimeUpscaler._active) {
+                if (window.RealtimeUpscaler) {
                     window.RealtimeUpscaler.stop();
                 }
             }
@@ -813,15 +826,25 @@
             if (this._autoStartPending) return;
             this._autoStartPending = true;
             var self = this;
+            var generation = RealtimeUpscaler._generation;
             var retries = 0;
             var maxRetries = 60; // 30s @ 500ms
             var check = function() {
+                if (generation !== RealtimeUpscaler._generation) {
+                    self._autoStartPending = false;
+                    return;
+                }
                 var v = self.findVideoElement();
                 if (v) {
                     self._autoStartPending = false;
                     var trigger = function() {
+                        if (generation !== RealtimeUpscaler._generation) return;
                         if (window.location.hash.indexOf('#/video') !== 0) return;
-                        setTimeout(function() { self.startRealtimeUpscaling(); }, 600);
+                        setTimeout(function() {
+                            if (generation !== RealtimeUpscaler._generation ||
+                                window.location.hash.indexOf('#/video') !== 0) return;
+                            self.startRealtimeUpscaling();
+                        }, 600);
                     };
                     if (v.readyState >= 2 && !v.paused) {
                         trigger();
@@ -1433,12 +1456,11 @@
                     } else if (action === 'rt-switch') {
                         if (RealtimeUpscaler._active) {
                             var newMode = RealtimeUpscaler._mode === 'server' ? 'webgl' : 'server';
-                            var bench = RealtimeUpscaler._benchmarkResult;
                             RealtimeUpscaler.stop();
                             var video = PlayerIntegration.findVideoElement();
                             if (video) {
                                 var overrideConfig = Object.assign({}, PlayerIntegration._cachedConfig || {}, { RealtimeMode: newMode });
-                                RealtimeUpscaler.start(video, overrideConfig, bench);
+                                PlayerIntegration._startRtWithConfig(video, overrideConfig);
                             }
                             PlayerIntegration.showPlayerNotification('Switched to ' + newMode.toUpperCase(), 'info');
                         }
@@ -2021,6 +2043,14 @@
                 return;
             }
 
+            // Model loading changes the service used by the frame loop. Stop that
+            // loop now and bind this entire startup to the same cancellation token.
+            RealtimeUpscaler.stop();
+            var generation = RealtimeUpscaler._generation;
+            var loading = new AbortController();
+            RealtimeUpscaler._startupController = loading;
+            function current() { return generation === RealtimeUpscaler._generation && !loading.signal.aborted; }
+
             // Show inline spinner on the clicked model; keep menu open
             if (modelBtn) modelBtn.classList.add('ai-menu__model--loading');
             if (slot) {
@@ -2033,12 +2063,14 @@
                 'info'
             );
 
-            this.updatePluginConfig({ Model: model }).then(function() {
+            return this.updatePluginConfig({ Model: model }).then(function() {
+                if (!current()) return;
                 var loadUrl = ApiClient.getUrl('Upscaler/models/load') + '?model_name=' + encodeURIComponent(model);
                 return fetch(loadUrl, {
                     method: 'POST',
                     headers: { 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' },
-                    credentials: 'include'
+                    credentials: 'include',
+                    signal: loading.signal
                 }).then(function(r) {
                     if (!r.ok) {
                         return r.text().then(function(t) {
@@ -2050,6 +2082,7 @@
                     return r.json().catch(function() { return {}; });
                 });
             }).then(function() {
+                if (!current()) return;
                 // Update active styling + refresh states
                 if (menu) {
                     menu.querySelectorAll('.ai-menu__model').forEach(function(b) { b.classList.remove('ai-menu__model--active'); });
@@ -2067,20 +2100,18 @@
                     self._modelStates[model].downloaded = true;
                     self._modelStates[model].loaded = true;
                 }
-                // Restart real-time upscaling if it was running
-                if (RealtimeUpscaler._active) {
-                    var bench = RealtimeUpscaler._benchmarkResult;
-                    RealtimeUpscaler.stop();
-                    var video = self.findVideoElement();
-                    if (video) {
-                        self.getPluginConfig().then(function(cfg) { RealtimeUpscaler.start(video, cfg, bench); });
-                    }
-                } else {
-                    var video = self.findVideoElement();
-                    if (video) self.startRealtimeUpscaling();
-                }
                 self.showPlayerNotification('Model ready: ' + model, 'success');
+                var video = self.findVideoElement();
+                if (video) {
+                    return self.getPluginConfig().then(function(cfg) {
+                        if (!current()) return;
+                        // Recheck HDR/driver/masking rules and benchmark this model;
+                        // a result measured for the previous model is not reusable.
+                        return self._startRtWithConfig(video, cfg);
+                    });
+                }
             }).catch(function(err) {
+                if (!current()) return;
                 console.error('AI Upscaler: quickSetModel failed', err);
                 if (modelBtn) modelBtn.classList.remove('ai-menu__model--loading');
                 if (slot) {
@@ -2094,6 +2125,8 @@
                     msg = 'AI service auth not configured. Open Full Configuration → AI Service → set API Token.';
                 }
                 self.showPlayerNotification('Failed: ' + msg, 'error');
+            }).finally(function() {
+                if (RealtimeUpscaler._startupController === loading) RealtimeUpscaler._startupController = null;
             });
         },
 

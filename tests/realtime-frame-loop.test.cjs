@@ -47,6 +47,20 @@ test('pause does not trigger a server timeout', () => {
     h.advance(60000); h.tick(); assert.equal(h.rt._mode, 'server'); assert.equal(h.requests.length, 1);
     h.video.paused = false; h.advance(1000); assert.equal(h.rt._mode, 'server');
 });
+test('resuming after suspended pause timers gives the server a fresh timeout window', () => {
+    const h = start();
+    h.video.paused = true; h.video.dispatch('pause');
+    h.advance(60000, false);
+    h.video.paused = false; h.video.dispatch('playing');
+    h.advance(1000);
+    assert.equal(h.rt._mode, 'server');
+    assert.equal(h.requests[0].options.signal.aborted, false);
+    // Stop removes listeners from this video; late resume events must not mutate
+    // the clock belonging to later playback.
+    h.rt.stop(); const stoppedAt = h.rt._lastSuccessfulFrame;
+    h.advance(1000, false); h.video.dispatch('playing');
+    assert.equal(h.rt._lastSuccessfulFrame, stoppedAt);
+});
 test('a delayed toBlob from the old playback never sends a request', () => {
     const h = loadPlayer(); let complete;
     const create = h.sandbox.document.createElement;
