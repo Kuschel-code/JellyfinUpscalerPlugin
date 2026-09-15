@@ -141,6 +141,8 @@ public class HdrFrameContractTests
             }
             Assert.Contains("smpte2084", handler.Body);
             Assert.Contains("transfer", handler.Body);
+            Assert.Contains("bt2020", handler.Body);
+            Assert.Contains("primaries", handler.Body);
         }
         finally { Directory.Delete(root, true); }
     }
@@ -156,7 +158,7 @@ public class HdrFrameContractTests
             var input = Path.Combine(root, "frame.png"); await File.WriteAllBytesAsync(input, Ramp());
             var core = new Mock<IUpscalerCore>();
             core.Setup(c => c.UpscaleImageDetailedAsync(
-                    It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                    It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>(), false))
                 .ReturnsAsync(new ImageUpscaleResult(Ramp(), false, "service unavailable"));
             var processor = new VideoFrameProcessor(
                 NullLogger.Instance, "not-used", core.Object, null!, new Mock<IHttpClientFactory>().Object,

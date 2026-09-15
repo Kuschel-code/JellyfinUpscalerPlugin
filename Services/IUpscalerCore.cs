@@ -15,7 +15,8 @@ namespace JellyfinUpscalerPlugin.Services
             byte[] imageData,
             string model = "auto",
             int scale = 2,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default,
+            bool allowLocalFallback = true);
 
         Task<byte[]> UpscaleImageAsync(
             byte[] imageData,

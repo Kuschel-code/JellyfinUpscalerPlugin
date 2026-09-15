@@ -161,18 +161,22 @@ namespace JellyfinUpscalerPlugin.Services
         /// the flag with the bytes - no shared state, correct under any concurrency.
         /// </summary>
         public Task<ImageUpscaleResult> UpscaleImageDetailedAsync(
-            byte[] imageData, string model = "auto", int scale = 2, CancellationToken cancellationToken = default)
-            => UpscaleImageCoreAsync(imageData, model, scale, cancellationToken);
+            byte[] imageData, string model = "auto", int scale = 2, CancellationToken cancellationToken = default,
+            bool allowLocalFallback = true)
+            => UpscaleImageCoreAsync(imageData, model, scale, cancellationToken, allowLocalFallback);
 
         public async Task<byte[]> UpscaleImageAsync(byte[] imageData, string model = "auto", int scale = 2, CancellationToken cancellationToken = default)
             => (await UpscaleImageCoreAsync(imageData, model, scale, cancellationToken)).Data;
 
-        private async Task<ImageUpscaleResult> UpscaleImageCoreAsync(byte[] imageData, string model = "auto", int scale = 2, CancellationToken cancellationToken = default)
+        private async Task<ImageUpscaleResult> UpscaleImageCoreAsync(byte[] imageData, string model = "auto", int scale = 2,
+            CancellationToken cancellationToken = default, bool allowLocalFallback = true)
         {
             var stopwatch = Stopwatch.StartNew();
+            string failureReason = "no usable upscaler in the model chain";
 
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 // Resolve "auto" to the best model for the content
                 var effectiveModel = model == "auto" ? ResolveAutoModel() : model;
 
@@ -181,6 +185,7 @@ namespace JellyfinUpscalerPlugin.Services
 
                 foreach (var candidateModel in modelChain)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     try
                     {
                         _logger.LogDebug("Trying model {Model} for image upscale ({Size} bytes, scale={Scale})",
@@ -189,11 +194,13 @@ namespace JellyfinUpscalerPlugin.Services
                         var modelLoaded = await _httpUpscaler.EnsureModelLoadedAsync(candidateModel, cancellationToken);
                         if (!modelLoaded)
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            failureReason = $"could not load model {candidateModel}";
                             _logger.LogWarning("Could not load model {Model}, trying next in chain", candidateModel);
                             continue;
                         }
 
-                        var result = await _httpUpscaler.UpscaleImageAsync(imageData, scale, cancellationToken);
+                        var result = await _httpUpscaler.UpscaleImageAsync(imageData, scale, cancellationToken, requireSuccess: true);
 
                         if (result != null && result.Length > 0)
                         {
@@ -203,24 +210,28 @@ namespace JellyfinUpscalerPlugin.Services
                             return new ImageUpscaleResult(result, true, null);
                         }
 
+                        failureReason = $"model {candidateModel} returned no image";
                         _logger.LogWarning("Model {Model} returned empty result, trying next", candidateModel);
                     }
-                    catch (Exception ex) when (modelChain.IndexOf(candidateModel) < modelChain.Count - 1)
+                    catch (Exception ex) when (ex is not OperationCanceledException && modelChain.IndexOf(candidateModel) < modelChain.Count - 1)
                     {
+                        failureReason = ex.Message;
                         _logger.LogWarning(ex, "Model {Model} failed, trying next in fallback chain", candidateModel);
                     }
                 }
 
-                _logger.LogError("All models in chain failed, using fallback resize");
-                return new ImageUpscaleResult(
-                    await FallbackResizeAsync(imageData, scale), false, "every model in the fallback chain failed");
+                _logger.LogError("AI model chain failed: {Reason}", failureReason);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogError(ex, "AI upscaling failed, using fallback resize");
-                return new ImageUpscaleResult(
-                    await FallbackResizeAsync(imageData, scale), false, ex.Message);
+                failureReason = ex.Message;
+                _logger.LogError(ex, "AI upscaling failed");
             }
+
+            // Video/library jobs must not pay for a CPU resize that they will reject anyway.
+            cancellationToken.ThrowIfCancellationRequested();
+            var fallback = allowLocalFallback ? await FallbackResizeAsync(imageData, scale) : Array.Empty<byte>();
+            return new ImageUpscaleResult(fallback, false, failureReason);
         }
 
         /// <summary>
@@ -437,8 +448,12 @@ namespace JellyfinUpscalerPlugin.Services
             var configured = Config.Model;
             if (!forceAuto && !string.IsNullOrEmpty(configured) && configured != "auto")
             {
-                return new AutoPick(configured, "Custom mode: your configured model is used as-is.",
-                    new[] { "Mode: Custom" }, null, null, ModelScale.NativeScaleOf(configured));
+                var picked = ModelAvailability.PickAvailable(configured);
+                return new AutoPick(picked,
+                    picked == configured ? "Custom mode: your configured model is used as-is." : "Configured model cannot be used for image upscaling; using an available upscaler.",
+                    new[] { "Mode: Custom" }, picked == configured ? null : configured,
+                    picked == configured ? null : "The configured model is unavailable or belongs to another processing pipeline.",
+                    ModelScale.NativeScaleOf(picked));
             }
 
             var genreList = genres?.Select(g => g.ToLowerInvariant()).ToList() ?? new List<string>();

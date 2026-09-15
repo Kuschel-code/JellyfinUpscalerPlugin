@@ -47,6 +47,7 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 optimized.ScaleFactor = inputInfo.Width <= 720 ? 3 : 2;
             }
+            ModelScale.ApplyNativeScale(optimized);
 
             // Normalize "low" quality to "fast" (UI offers "low" but backend uses "fast")
             if (string.Equals(optimized.QualityLevel, "low", StringComparison.OrdinalIgnoreCase))
