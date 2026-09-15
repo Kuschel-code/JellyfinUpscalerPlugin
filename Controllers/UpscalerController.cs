@@ -664,17 +664,8 @@ namespace JellyfinUpscalerPlugin.Controllers
                 //    only the START url is allowlist-checked - acceptable because the bytes must
                 //    still match the catalog's sha256 pin below, and this client carries no secret.
                 var external = _httpClientFactory.CreateClient("ExternalModelDownload");
-                byte[] data;
-                using (var dl = await external.GetAsync(entry.DownloadUrl, HttpContext.RequestAborted))
-                {
-                    if (!dl.IsSuccessStatusCode)
-                        return StatusCode(502, new { error = $"Download failed (HTTP {(int)dl.StatusCode} from source)" });
-                    if (dl.Content.Headers.ContentLength is > Services.ImportCatalogService.MaxImportBytes)
-                        return StatusCode(502, new { error = "Source reports a file above the 500 MB import limit" });
-                    data = await dl.Content.ReadAsByteArrayAsync(HttpContext.RequestAborted);
-                }
-                if (data.LongLength > Services.ImportCatalogService.MaxImportBytes)
-                    return StatusCode(502, new { error = "Downloaded file exceeds the 500 MB import limit" });
+                var data = await ModelDownload.FetchAsync(external, entry.DownloadUrl!,
+                    Services.ImportCatalogService.MaxImportBytes, HttpContext.RequestAborted);
 
                 // 2) supply-chain gate: the bytes must match the catalog pin exactly
                 var sha = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(data)).ToLowerInvariant();
@@ -2321,6 +2312,8 @@ namespace JellyfinUpscalerPlugin.Controllers
                     return BadRequest(new { error = "model_name is required" });
                 if (!ValidModelNameRegex.IsMatch(modelId))
                     return BadRequest(new { error = "Invalid model name — only alphanumeric, hyphens, and underscores allowed" });
+                if (!Services.ModelAvailability.IsUsableUpscaler(modelId))
+                    return BadRequest(new { error = "This model is not an available image upscaler. Interpolation, face restoration and detection use separate pipelines." });
 
                 var config = Plugin.Instance?.Configuration;
                 var serviceUrl = GetValidatedServiceUrl();
