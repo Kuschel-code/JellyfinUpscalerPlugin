@@ -25,6 +25,14 @@ on:
         description: 'Push to Docker Hub? (false = build-only dry run)'
         required: true
         default: 'true'
+      channel:
+        description: 'candidate = RC tags only; release = final pins and rolling tags after server acceptance'
+        required: true
+        type: choice
+        default: candidate
+        options:
+          - candidate
+          - release
   push:
     tags:
       - 'docker7*'
@@ -120,27 +128,16 @@ jobs:
 
       - name: Compose tag list
         id: tags
+        env:
+          PUBLICATION_CHANNEL: ${{ inputs.channel || 'release' }}
+          PLUGIN_VERSION: ${{ steps.version.outputs.version }}
+          COMMIT_REVISION: ${{ steps.version.outputs.short_sha }}
+          BACKEND_SUFFIX: ${{ matrix.suffix }}
         run: |
-          V=${{ steps.version.outputs.version }}
-          S="${{ matrix.suffix }}"
-          FAMILY="${{ env.FAMILY }}"
-          IMG="${{ env.IMAGE }}"
-          # Three stable tag families:
-          #   1. Rolling:   docker7[-suffix]               → Watchtower target
-          #   2. Pinned:    docker7-v<ver>[-suffix]        → reproducible pulls
-          #   3. Semver:    v<ver>[-suffix]                → full version pin
-          TAGS="${IMG}:${FAMILY}${S}"
-          TAGS="${TAGS},${IMG}:${FAMILY}-v${V}${S}"
-          TAGS="${TAGS},${IMG}:v${V}${S}"
-          # :latest follows the NVIDIA variant (empty suffix). Without this the
-          # latest tag went stale (stuck on a v1.7.8-era image while v1.8.x shipped).
-          if [ -z "$S" ]; then
-            TAGS="${TAGS},${IMG}:latest"
-          fi
-          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
-          echo "primary=${IMG}:${FAMILY}${S}" >> "$GITHUB_OUTPUT"
-          echo "Will publish tags:"
-          printf '  %s\n' $(echo "$TAGS" | tr ',' '\n')
+          python3 Scripts/test-docker-tags.py
+          python3 Scripts/docker-tags.py --version "$PLUGIN_VERSION" \
+            --revision "$COMMIT_REVISION" --suffix="$BACKEND_SUFFIX" \
+            --channel "$PUBLICATION_CHANNEL"
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -159,7 +156,7 @@ jobs:
           provenance: false
 
       # ---------------------------------------------------------------
-      # Trivy: scan the primary tag (docker7[-suffix]) for HIGH/CRITICAL CVEs
+      # Trivy: scan the published candidate pin or release tag for HIGH/CRITICAL CVEs
       # ---------------------------------------------------------------
       - name: Trivy scan
         if: github.event.inputs.push != 'false'
