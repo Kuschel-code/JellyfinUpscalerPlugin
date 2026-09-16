@@ -65,7 +65,7 @@
   <p>Single-process Python wrapping <code>onnxruntime-{gpu,openvino,rocm,cpu}</code>. Hardware-detection at startup picks the execution provider. Each loaded model holds a session + preallocated input/output tensors.</p>
 
   <h3>TensorRT path (CUDA only)</h3>
-  <p>On first load of a given (model, resolution) combo on an Ampere+ GPU, the service emits a <code>.plan</code> file for TensorRT FP16. Subsequent sessions pick this up for ~2× speedup.</p>
+  <p>CUDA is the default. TensorRT is skipped unless <code>SKIP_TENSORRT=false</code> is explicitly set and the image contains compatible TensorRT libraries. Engine caching and performance depend on the model, runtime and GPU; verify active inference with <code>/gpu-verify</code> and a real benchmark.</p>
 
   <h3>Model catalog</h3>
   <p>Declarative manifest at <code>/app/models/catalog.json</code> with each model's download URL, SHA256, scale factor, provider compatibility, and hot-reloadable at runtime.</p>

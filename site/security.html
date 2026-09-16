@@ -82,7 +82,7 @@
     <li>Do not port-forward <code>:5000</code>. Put it behind a reverse proxy and enforce the token at the proxy as well.</li>
     <li>Disable FFmpeg Remote Transcoding if you don't use it; the SSH path is a potential sharp edge.</li>
     <li>Run the AI service container with <code>read_only: true</code> except for <code>/app/models</code>.</li>
-    <li>Pin an explicit image tag (<code>kuscheltier/jellyfin-ai-upscaler:v1.6.1.21-cuda</code>), not <code>latest-cuda</code>.</li>
+    <li>Pin an explicit image tag (<code>kuscheltier/jellyfin-ai-upscaler:v1.8.3.30</code>), not <code>docker7</code>.</li>
     <li>Keep Jellyfin on 10.11.x - older LTS lines don't receive the auth-policy fixes the plugin depends on.</li>
     <li>Review the weekly container digest against the published SHA before updating.</li>
   </ol>

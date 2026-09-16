@@ -16,7 +16,7 @@
   <h2>Upscaling engine</h2>
   <div class="grid grid-2">
     <div class="card"><h3>70+ ONNX models</h3><p>Real-ESRGAN family, SwinIR, DAT2 / DAT-light, DRCT-L, HAT / HAT-L, OmniSR, MAN, CRAFT, RGT-S, RealPLKSR, EDVR-M, RealBasicVSR, AnimeSR v2, Real-CUGAN, APISR, RIFE frame-interp (v4.7-v4.25), FSRCNN / ESPCN / LapSRN / EDSR, ncnn-Vulkan.</p></div>
-    <div class="card"><h3>6 hardware backends</h3><p>NVIDIA CUDA + TensorRT, Intel OpenVINO, AMD ROCm, Apple Silicon, Vulkan (ncnn), CPU-only. Auto-detected on service startup, routed per-model based on benchmark history.</p></div>
+    <div class="card"><h3>6 hardware backends</h3><p>NVIDIA CUDA (TensorRT opt-in with compatible libraries), Intel OpenVINO, AMD ROCm, Apple Docker (CPU), Vulkan (ncnn), CPU-only. Auto-detected on service startup, routed per-model based on benchmark history.</p></div>
     <div class="card"><h3>5 processing strategies</h3><p>Real-time (per-frame passthrough), Frame-by-Frame (batch of N frames), Batch (multi-segment), Multi-Frame (temporal), Real-Time AI (throttled queue).</p></div>
     <div class="card"><h3>Pre-processing cache</h3><p>Upscaled frames persist to disk keyed by (file hash, model, scale). Replaying a processed video costs zero GPU cycles.</p></div>
     <div class="card"><h3>Stream-copy codec path</h3><p>When you only want filters applied without re-encoding, stream-copy mode keeps the original video bitstream and copies audio 1:1.</p></div>

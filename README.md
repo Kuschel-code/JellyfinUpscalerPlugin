@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.31
+# Jellyfin AI Upscaler Plugin v1.8.3.31 — release candidate
 
 [![Built with Claude Opus 5](https://img.shields.io/badge/Built%20with-Claude%20Opus%205-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
 
@@ -14,11 +14,13 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.31):**
+**Release status (2026-09-16):** v1.8.3.31 is a release candidate. The latest published plugin is [v1.8.3.30](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.30). The RC fixes issue #79, player cancellation/retry behavior, model-category filtering and batch failure handling. Target-server GPU, playback and HDR acceptance remain open; see the [release plan](docs/RELEASE-PLAN-v1.8.3.31.md).
+
+**Docker images (seven variants):** The plugin and AI service both need this update. Candidate builds use `rc-v1.8.3.31[-backend]` and commit-specific RC tags. The following rolling tags change only when the release is approved:
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
-*   `kuscheltier/jellyfin-ai-upscaler:docker7-apple` (macOS Apple Silicon — multi-arch amd64/arm64)
+*   `kuscheltier/jellyfin-ai-upscaler:docker7-apple` (Apple Silicon Docker — CPU inference, multi-arch amd64/arm64)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-vulkan` (Vulkan/ncnn — AMD pre-RDNA2, Intel iGPU)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-cpu` (CPU Only — multi-threaded ONNXRuntime, multi-arch)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-converter` (CPU + pth→ONNX converter for OpenModelDB community models — opt-in)
@@ -282,7 +284,7 @@ To batch-upscale your low-resolution content:
 - **Webhook Notifications**: HTTP POST on job complete/failure
 - **Model Management**: Disk usage tracking, LRU cleanup of unused models
 - **Docker Microservice**: AI runs isolated in a container (no DLL conflicts, ~1.6 MB plugin)
-- **7 Image Variants**: NVIDIA CUDA/TensorRT, AMD ROCm, Intel OpenVINO, Vulkan/ncnn, Apple Silicon, CPU, CPU+Converter
+- **7 Image Variants**: NVIDIA CUDA (TensorRT opt-in), AMD ROCm, Intel OpenVINO, Vulkan/ncnn, Apple Silicon, CPU, CPU+Converter
 - **Player Integration**: In-player button with quick settings menu, FPS overlay, keyboard shortcuts (Alt+U, Alt+M)
 - **Web UI**: Model management at `http://YOUR_SERVER_IP:5000`
 
@@ -349,17 +351,21 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 | Tag | GPU | Use Case |
 |-----|-----|----------|
-| `:docker7` | NVIDIA CUDA 12.8 + TensorRT | RTX 50/40/30/20, GTX 16/10 |
+| `:docker7` | NVIDIA CUDA 12.8 (TensorRT opt-in) | RTX 50/40/30/20, GTX 16/10 |
 | `:docker7-amd` | AMD ROCm 6.2 | RX 7000, RX 6000 |
 | `:docker7-intel` | Intel OpenVINO 2025.4 | Arc A-Series, Iris Xe, iGPU |
 | `:docker7-apple` | ARM64 Optimized (multi-arch) | Apple M1–M5 (Docker=CPU, native=CoreML) |
 | `:docker7-vulkan` | Vulkan (ncnn) | AMD pre-RDNA2, Intel iGPU, any Vulkan GPU |
 | `:docker7-cpu` | Multi-threaded CPU (multi-arch) | Any platform (amd64/arm64) |
+| `:docker7-converter` | CPU + Torch/Spandrel | Supported community-model conversion to ONNX |
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.8.2` — pinned to a specific plugin release
-- `:v1.8.2-<backend>` — full semver (e.g. `:v1.8.2-cpu`)
+- `:docker7-v1.8.3.30` — NVIDIA pin for the currently published release
+- `:v1.8.3.30-<backend>` — published backend pin (e.g. `:v1.8.3.30-cpu`)
+- `:rc-v1.8.3.31[-backend]` — candidate only; `:rc-v1.8.3.31-<commit>[-backend]` identifies a particular candidate build. Check the [Docker workflow](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/actions/workflows/docker-publish.yml) before pulling.
+
+CUDA is the default: keep `SKIP_TENSORRT=true`. Enable TensorRT only with compatible libraries in the image. See [Docker setup and controlled updates](docker-ai-service/README.md).
 
 ---
 
@@ -370,7 +376,7 @@ The full version history lives on the website and the release pages — this REA
 - **[Changelog (website)](https://kuschel-code.github.io/JellyfinUpscalerPlugin/changelog.html)** — every release in detail
 - **[GitHub Releases](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases)** — release notes and downloadable ZIPs
 
-Latest: **v1.8.3.13** — Auto mode explains itself (reason, signals, substitution warning), activity strip, reproducible builds · **v1.8.3.12** — dashboard Auto/Custom mode, face-model re-pins · **v1.8.3.11** — Models tab, settings redesign, async imports, player favorites
+Published: **v1.8.3.30** — notification stacking. In review: **v1.8.3.31 RC** — frame-limit fix, player recovery, guarded model selection and fail-closed batch processing. Local tests do not replace target-server acceptance.
 
 ---
 

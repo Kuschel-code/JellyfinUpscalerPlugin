@@ -64,7 +64,7 @@
 
   <h3>Budget home lab (Intel N100 / Arc A380)</h3>
   <ul>
-    <li><strong>Provider:</strong> OpenVINO (<code>:latest-openvino</code> image)</li>
+    <li><strong>Provider:</strong> OpenVINO (<code>:docker7-intel</code> image)</li>
     <li><strong>Good for:</strong> FSRCNN real-time, Waifu2x 2×, Real-ESRGAN-anime-x4 batch</li>
     <li><strong>Config:</strong> Max Concurrent Streams = 1, cache enabled</li>
     <li><strong>Expect:</strong> ~15 fps at 720p → 1440p with anime-compact-x4</li>
@@ -72,7 +72,7 @@
 
   <h3>Mid-range (RTX 3060 12GB / RTX 4060)</h3>
   <ul>
-    <li><strong>Provider:</strong> CUDA (<code>:latest-cuda</code> image)</li>
+    <li><strong>Provider:</strong> CUDA (<code>:docker7</code> image)</li>
     <li><strong>Good for:</strong> Everything in the catalogue except EDVR-M and HAT-L comfortably</li>
     <li><strong>Config:</strong> Max Concurrent Streams = 1, Auto-Mode on</li>
     <li><strong>Expect:</strong> 4×-realesrgan at ~20 fps on 720p source, 3× on 1080p source</li>
@@ -88,7 +88,7 @@
 
   <h3>CPU-only NAS (e.g. Synology DS920+)</h3>
   <ul>
-    <li><strong>Provider:</strong> CPU (<code>:latest-cpu</code> image)</li>
+    <li><strong>Provider:</strong> CPU (<code>:docker7-cpu</code> image)</li>
     <li><strong>Good for:</strong> Overnight batch upscales of an anime library with <code>fsrcnn-x2</code>/<code>espcn-x4</code></li>
     <li><strong>Config:</strong> <code>Scan &amp; Upscale Library</code> scheduled at 3 AM, pre-processing cache on the biggest pool you have</li>
     <li><strong>Expect:</strong> Hours per feature-length file. This is batch, not live.</li>

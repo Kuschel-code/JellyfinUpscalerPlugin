@@ -50,7 +50,7 @@
     </li>
     <li>Click <em>Save</em>, then go to <em>Plugins → Catalog</em>. The <strong>AI Upscaler Plugin</strong> entry appears under <em>Video Enhancement</em>.</li>
     <li>Click <em>Install</em>, then restart Jellyfin when prompted.</li>
-    <li>Confirm under <em>Plugins → My Plugins</em> the version reads <code>1.6.1.21</code>.</li>
+    <li>Confirm under <em>Plugins → My Plugins</em> the version reads the version of the release you installed.</li>
   </ol>
   <div class="callout">
     <strong>Note:</strong> the plugin uses MD5 checksums (required by Jellyfin's legacy manifest spec) - don't be alarmed that SHA isn't used for the manifest entry.
@@ -59,8 +59,8 @@
   <h2>3 · Install the plugin (manual ZIP)</h2>
   <p>Use this if your Jellyfin host can't reach GitHub, or you want to pin a specific version.</p>
   <ol>
-    <li>Download <code>JellyfinUpscalerPlugin-v1.6.1.21.zip</code> from <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases" target="_blank">GitHub Releases</a>.</li>
-    <li>Extract into Jellyfin's plugin folder: <code>&lt;config&gt;/plugins/AI Upscaler Plugin_1.6.1.4/</code>. The folder name is historical - don't rename it.</li>
+    <li>Download <code>JellyfinUpscalerPlugin-v&lt;version&gt;.zip</code> from <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases" target="_blank">GitHub Releases</a>.</li>
+    <li>Extract into Jellyfin's plugin folder: <code>&lt;config&gt;/plugins/AI Upscaler Plugin_&lt;version&gt;/</code>. Use a directory for the downloaded version and keep a recoverable backup of the previous installation.</li>
     <li><code>chown</code> the extracted files to Jellyfin's UID/GID (typically <code>568:568</code> on TrueNAS SCALE, <code>105:108</code> on LinuxServer.io images).</li>
     <li>Restart Jellyfin. The plugin will load the DLL + shipped transitive NuGet dependencies (<code>CliWrap.dll</code>, <code>FFMpegCore.dll</code>, <code>Instances.dll</code>, <code>SixLabors.ImageSharp.dll</code>).</li>
   </ol>
@@ -69,20 +69,20 @@
   </div>
 
   <h2>4 · Install the Docker AI service</h2>
-  <p>Four image variants are published on Docker Hub - pick the one that matches your GPU.</p>
+  <p>Seven image variants are built: NVIDIA, AMD, Intel, Vulkan, Apple Docker (CPU), CPU and converter. Pick the matching backend and preserve the models, cache and config volumes.</p>
   <pre><code># NVIDIA CUDA (Turing+, 6GB+ VRAM recommended)
 docker run -d --name jellyfin-ai-upscaler \
   --gpus all -p 5000:5000 \
   -v upscaler-models:/app/models \
   -e API_TOKEN=change-me-please \
-  kuscheltier/jellyfin-ai-upscaler:latest-cuda
+  kuscheltier/jellyfin-ai-upscaler:docker7
 
 # Intel OpenVINO (Arc, iGPU, N100)
 docker run -d --name jellyfin-ai-upscaler \
   --device /dev/dri -p 5000:5000 \
   -v upscaler-models:/app/models \
   -e API_TOKEN=change-me-please \
-  kuscheltier/jellyfin-ai-upscaler:latest-openvino
+  kuscheltier/jellyfin-ai-upscaler:docker7-intel
 
 # AMD ROCm (RDNA2+)
 docker run -d --name jellyfin-ai-upscaler \
@@ -90,14 +90,14 @@ docker run -d --name jellyfin-ai-upscaler \
   --group-add video -p 5000:5000 \
   -v upscaler-models:/app/models \
   -e API_TOKEN=change-me-please \
-  kuscheltier/jellyfin-ai-upscaler:latest-rocm
+  kuscheltier/jellyfin-ai-upscaler:docker7-amd
 
 # CPU-only fallback (works everywhere, slow)
 docker run -d --name jellyfin-ai-upscaler \
   -p 5000:5000 \
   -v upscaler-models:/app/models \
   -e API_TOKEN=change-me-please \
-  kuscheltier/jellyfin-ai-upscaler:latest-cpu</code></pre>
+  kuscheltier/jellyfin-ai-upscaler:docker7-cpu</code></pre>
 
   <h2>5 · Wire plugin → AI service</h2>
   <ol>

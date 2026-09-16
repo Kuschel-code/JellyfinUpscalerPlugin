@@ -4,7 +4,7 @@ Arbeitsstand: Release Candidate 1.8.3.31 auf `update/v1.8.3.31`. Dieser Bericht 
 
 ## Öffentliche Meldungen
 
-Die GitHub-API liefert 56 Issues (ohne Pull Requests); nur [#79](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/79) ist offen. Die zehn Discussions wurden einschließlich ihrer verfügbaren Kommentare erfasst. Geschlossene Meldungen wurden als Regressionsthemen berücksichtigt, nicht pauschal als auf dieser Maschine reproduziert bezeichnet.
+Die GitHub-API liefert 56 Issues (ohne Pull Requests); nur [#79](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/79) ist offen. Die zehn Discussions wurden einschließlich ihrer verfügbaren Kommentare erfasst und am 16.09.2026 erneut vollständig über GraphQL abgeglichen (keine weiteren Seiten, keine neue Discussion; letzte Änderung #80 am 14.09.2026). Geschlossene Meldungen wurden als Regressionsthemen berücksichtigt, nicht pauschal als auf dieser Maschine reproduziert bezeichnet.
 
 - #79: Frame-/Chunk-Aufrufe außerhalb des Bildaktionslimits; Player-Single-Flight, Backoff, Retry-After, Abbruch und Wiederanlauf werden lokal getestet.
 - [Discussion #80](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/discussions/80): bestätigte Codefehler bei verstecktem CPU-/Originalframe-Fallback und fortlaufender Batch-Verarbeitung nach einem AI-Fehler korrigiert. FFmpeg-Decoding und Encoding laufen weiterhin auf dem Jellyfin-Host; CPU-Last allein beweist deshalb keinen Fehler. Die Umgebung des Melders wurde nicht reproduziert.

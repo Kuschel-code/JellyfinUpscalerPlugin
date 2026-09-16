@@ -31,6 +31,18 @@ Abschließender Lauf nach allen Mutationen: **442 C#-Tests, 209 Python-Tests und
 - Vorgeschriebene Mutationen erkannt: Frame-Limiter exakt ab Frame 11, Treiber-/Maskierungs-Guard, Benchmarkregel, Kategorien, HLG in C# und Python, absichtlich fehlgeschlagener echter C#-Test. Validator lehnt dessen TRX und einen tatsächlichen Null-Test-Lauf ab.
 - Zusätzliche Mutationen: elf Player-Races/Guards und fünf neue Kategorie-/Download-/Konvertierungsprüfungen erkannt. Alle Mutationen jeweils einzeln, bytegleich entfernt; vollständige Suiten danach erneut grün ausgeführt.
 
+## Docker Desktop: lokaler CPU-Test am 16.09.2026
+
+Docker Desktop 4.91.0 / Engine 29.8.0, Linux amd64, vier VM-CPUs und knapp 2 GB VM-RAM. CPU-Image aus dem geprüften Service-Stand `97c0181` mit `APP_VERSION=1.8.3.31` erfolgreich gebaut. Image-Index-Digest: `sha256:7831bf2970c23e9bc1ac27a6f1a2fe81a7d652aec0382ff7fc906228547579f5`.
+
+- Separater Testcontainer, nur localhost, eigener API-Token; Health healthy. `/health/detailed`, `/gpu-verify`, `/status` und Modellladen erfolgreich. Die Diagnostik meldet CPU, keine verifizierte GPU.
+- Echtes FSRCNN-x2-Modell aus dem bestehenden hashgeprüften Katalog geladen; **286 Frame-Anfragen über 301,77 Sekunden**, alle HTTP 200. Jedes JPEG wurde dekodiert und auf 256×144 Pixel bei 128×72 Eingabe geprüft. Frame 11 ebenfalls erfolgreich.
+- Anschließend 48 konkurrierende Anfragen: **43× HTTP 503** mit Fehlerdetail `Busy` und `Retry-After: 1`, fünf erfolgreiche Antworten. Nach einer Sekunde Wartezeit wieder HTTP 200.
+- Ein als HLG deklarierter Realtime-Aufruf wird verständlich mit HTTP 422 abgelehnt. Dies war kein echter HLG-Referenzclip.
+- Kein Jellyfin-Player, kein C#-Proxy und keine Zielhardware in diesem Test: damit insbesondere kein Beleg für die reale 429-Weitergabe oder die vollständige Abnahme von #79. Diese bleibt in den unten genannten Server-Gates.
+
+Logs und Antworten liegen außerhalb des Repositories in `../local-validation/docker-2026-09-16/`. Die sieben RC-Varianten werden zusätzlich im manuellen [Docker-Workflow](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/actions/runs/35127642208) gebaut; gestartete Jobs sind keine abgeschlossenen Veröffentlichungen.
+
 ## Paket
 
 Ausschließlich aus `dotnet publish JellyfinUpscalerPlugin.csproj -c Release`. Das ZIP enthält genau `JellyfinUpscalerPlugin.dll`, `FFMpegCore.dll`, `CliWrap.dll`, `Instances.dll`, `SixLabors.ImageSharp.dll` und `meta.json`. Keine PDBs, Test-DLLs, deps.json, Scripts oder Testartefakte. Inhalt, CRC, Publish-Bytegleichheit, Assembly/File-Version und Metadaten werden vor Upload geprüft.
@@ -47,11 +59,13 @@ Ein früherer lokaler synthetischer FFmpeg-Transporttest erhielt zehn RGB16-Fram
 
 ## GitHub-Auslieferung: nach den Server-Gates
 
-Der Nutzer hat Commits und Push des RC-Branches vorab ausdrücklich freigegeben. Lokal fehlt weiterhin eine angemeldete GitHub-CLI; der frühere Schreibversuch der GitHub-App wurde mit HTTP 403 abgelehnt. Keine Secrets ausgegeben. Ein Push darf nur mit einem tatsächlich nutzbaren vorhandenen Schreibzugang als erfolgt bezeichnet werden.
+Der Nutzer hat Commits und Push des RC-Branches vorab ausdrücklich freigegeben. Die GitHub-CLI ist inzwischen erfolgreich angemeldet; der RC-Branch wurde am 16.09.2026 bis `5c299d2` gepusht. Der frühere HTTP-403-Blocker der GitHub-App besteht damit für den CLI-Push nicht mehr. Keine Secrets ausgegeben.
 
 Am 16.09.2026: Issue #79 weiterhin offen; Tag und Release `v1.8.3.31` nicht vorhanden. Die Feeds enthalten noch die veröffentlichte Vorgängerversion. Der neueste Main-Commit `9602d5d17110d4fc9bc53c0ba21149daadc0f684` ändert ausschließlich das Generierungsdatum des Importkatalogs.
 
-Nach erfolgreicher Zielserver-Abnahme: Branch pushen/reviewen; Tag-/Release-Existenz erneut prüfen; Docker-Workflow für 1.8.3.31 ohne konkurrierende latest-Runs ausführen; geprüftes Plugin-ZIP manuell veröffentlichen. Veröffentlichtes ZIP herunterladen, echte MD5 identisch in alle drei Feeds übernehmen, Feeds committen/pushen und `pwsh Scripts/verify-release.ps1 -Tag v1.8.3.31` vollständig gegen GitHub bestehen lassen. Erst dann #79 mit Version, Umgebung, Testdauer und Ergebnissen kommentieren und schließen.
+Der Docker-Workflow kann vor der Hardware-Abnahme mit `channel=candidate` alle sieben Varianten unter getrennten `rc-v1.8.3.31[-backend]`-Tags und commitgebundenen RC-Tags veröffentlichen. Vier Verhaltenstests, 14 Kombinationen des tatsächlichen Workflow-Tag-Schritts und zwei erkannte Mutationen prüfen, dass Kandidaten keine finalen Pins oder Rolling-Tags ändern. Dies ist keine Freigabe als reguläres Release.
+
+Nach erfolgreicher Zielserver-Abnahme: Branch/Review abschließen; Tag-/Release-Existenz erneut prüfen; Docker-Workflow für 1.8.3.31 mit `channel=release` ohne konkurrierende latest-Runs ausführen; geprüftes Plugin-ZIP manuell veröffentlichen. Veröffentlichtes ZIP herunterladen, echte MD5 identisch in alle drei Feeds übernehmen, Feeds committen/pushen und `pwsh Scripts/verify-release.ps1 -Tag v1.8.3.31` vollständig gegen GitHub bestehen lassen. Erst dann #79 mit Version, Umgebung, Testdauer und Ergebnissen kommentieren und schließen.
 
 ## Bewusst offen
 

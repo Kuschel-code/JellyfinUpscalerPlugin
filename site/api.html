@@ -51,7 +51,7 @@
   <h3>docker-compose</h3>
   <pre><code>services:
   ai-upscaler:
-    image: kuscheltier/jellyfin-ai-upscaler:latest-cuda   # or :docker7-intel / :docker7-amd / :latest (CPU)
+    image: kuscheltier/jellyfin-ai-upscaler:docker7   # or :docker7-intel / :docker7-amd / :docker7-cpu (CPU)
     environment:
       - API_TOKEN=change-me-to-a-long-random-string        # or: disable
     ports:
@@ -65,7 +65,7 @@
   <pre><code>docker run -d --name jellyfin-ai-upscaler \
   -e API_TOKEN=change-me-to-a-long-random-string \
   -p 5000:5000 \
-  kuscheltier/jellyfin-ai-upscaler:latest-cuda</code></pre>
+  kuscheltier/jellyfin-ai-upscaler:docker7</code></pre>
 
   <h3>Confirm it's active</h3>
   <p>Call <code>GET /status</code> on the service - <code>"api_token_configured": true</code> and <code>"auth_enabled": true</code> mean the token is enforced. The Operator Console at <code>:5000</code> shows the same on its <em>API</em> tab. Then click <strong>Test Connection</strong> in the plugin: a green result means the plugin's token matches the container's.</p>

@@ -8,13 +8,29 @@
 
 ---
 
+## v1.8.3.31 candidate and Docker updates
+
+This branch is a release candidate. The latest published plugin is [v1.8.3.30](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.30). Build results and target-hardware acceptance are separate gates; see the [release plan](../docs/RELEASE-PLAN-v1.8.3.31.md).
+
+| Backend | Rolling release tag | Candidate tag | Architectures |
+|---|---|---|---|
+| NVIDIA CUDA | `docker7` | `rc-v1.8.3.31` | amd64 |
+| AMD ROCm | `docker7-amd` | `rc-v1.8.3.31-amd` | amd64 |
+| Intel OpenVINO | `docker7-intel` | `rc-v1.8.3.31-intel` | amd64 |
+| Apple Docker (CPU) | `docker7-apple` | `rc-v1.8.3.31-apple` | amd64, arm64 |
+| Vulkan/ncnn | `docker7-vulkan` | `rc-v1.8.3.31-vulkan` | amd64, arm64 |
+| CPU | `docker7-cpu` | `rc-v1.8.3.31-cpu` | amd64, arm64 |
+| Converter (CPU + Torch/Spandrel) | `docker7-converter` | `rc-v1.8.3.31-converter` | amd64 |
+
+All tags belong to `kuscheltier/jellyfin-ai-upscaler`. Candidate jobs also publish `rc-v1.8.3.31-<commit>[-backend]` for reproducible tests. A candidate does not update `docker7`, `latest` or final version pins. Check the [workflow result](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/actions/workflows/docker-publish.yml) for each backend before pulling.
+
 ## 🌟 Features
 
 - **40+ AI Models** - Real-ESRGAN, SPAN, SwinIR, FSRCNN, ESPCN, LapSRN, EDSR, and more
-- **NVIDIA GPU Support** - CUDA 12.8 + TensorRT acceleration
-- **AMD GPU Support** - ROCm 6.4 acceleration (RX 6000/7000, MI series)
+- **NVIDIA GPU Support** - CUDA 12.8 by default; `SKIP_TENSORRT=true`. TensorRT needs explicit opt-in and compatible image libraries.
+- **AMD GPU Support** - ROCm 6.2 base; actual acceleration depends on host drivers, device access and the loaded model.
 - **Intel GPU Support** - OpenVINO 2025.4 acceleration (Arc, iGPU)
-- **Apple Silicon Support** - Native ARM64 + CoreML (M1/M2/M3/M4/M5)
+- **Apple Silicon** - Docker runs CPU inference. CoreML requires a native macOS installation.
 - **Vulkan GPU Support** - ncnn for AMD pre-RDNA2, Intel iGPU, any Vulkan GPU
 - **Web UI Dashboard** - Model management at port 5000
 - **REST API** - Easy integration with `/upscale`, `/models`, `/benchmark`
@@ -24,15 +40,20 @@
 
 ## ⚡ Quick Start
 
+Create a private `.env` file containing `API_TOKEN=<your generated secret>` and use the same token in the Jellyfin plugin. Keep the file out of Git. These examples bind to localhost; for a remote Jellyfin host configure the intended private interface explicitly. Preserve `/app/config` along with models and cache during updates.
+
 ### 🟢 NVIDIA GPU
 
 ```bash
 docker run -d \
   --name jellyfin-ai-upscaler \
   --gpus all \
-  -p 5000:5000 \
+  -p 127.0.0.1:5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:docker5
+  -v ai-cache:/app/cache \
+  -v ai-config:/app/config \
+  --env-file .env \
+  kuscheltier/jellyfin-ai-upscaler:docker7
 ```
 
 ### 🔴 AMD GPU (ROCm)
@@ -42,9 +63,12 @@ docker run -d \
   --name jellyfin-ai-upscaler \
   --device=/dev/kfd --device=/dev/dri \
   --group-add video \
-  -p 5000:5000 \
+  -p 127.0.0.1:5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:docker5-amd
+  -v ai-cache:/app/cache \
+  -v ai-config:/app/config \
+  --env-file .env \
+  kuscheltier/jellyfin-ai-upscaler:docker7-amd
 ```
 
 ### 🔵 Intel GPU (OpenVINO)
@@ -53,9 +77,12 @@ docker run -d \
 docker run -d \
   --name jellyfin-ai-upscaler \
   --device=/dev/dri \
-  -p 5000:5000 \
+  -p 127.0.0.1:5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:docker5-intel
+  -v ai-cache:/app/cache \
+  -v ai-config:/app/config \
+  --env-file .env \
+  kuscheltier/jellyfin-ai-upscaler:docker7-intel
 ```
 
 ### 🍎 Apple Silicon (macOS)
@@ -64,9 +91,12 @@ docker run -d \
 # Docker (ARM64 optimized, CPU-mode)
 docker run -d \
   --name jellyfin-ai-upscaler \
-  -p 5000:5000 \
+  -p 127.0.0.1:5000:5000 \
   -v ai-models:/app/models \
-  kuscheltier/jellyfin-ai-upscaler:docker5-apple
+  -v ai-cache:/app/cache \
+  -v ai-config:/app/config \
+  --env-file .env \
+  kuscheltier/jellyfin-ai-upscaler:docker7-apple
 
 # Native (recommended for best performance with CoreML)
 pip install -r requirements-apple.txt
@@ -78,10 +108,13 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port 5000
 ```bash
 docker run -d \
   --name jellyfin-ai-upscaler \
-  -p 5000:5000 \
+  -p 127.0.0.1:5000:5000 \
   -v ai-models:/app/models \
+  -v ai-cache:/app/cache \
+  -v ai-config:/app/config \
+  --env-file .env \
   -e USE_GPU=false \
-  kuscheltier/jellyfin-ai-upscaler:docker5-cpu
+  kuscheltier/jellyfin-ai-upscaler:docker7-cpu
 ```
 
 **📱 Open:** http://localhost:5000
@@ -109,6 +142,8 @@ docker run -d \
 | `DEFAULT_MODEL` | - | Auto-load model on startup |
 | `MAX_CONCURRENT_REQUESTS` | `4` | Max parallel jobs |
 | `LOG_LEVEL` | `INFO` | Logging verbosity |
+| `SKIP_TENSORRT` | `true` | CUDA default; set false only with compatible TensorRT libraries |
+| `API_TOKEN` | unset | Requests require configured authentication; use the same secret in the plugin |
 
 ---
 
@@ -133,12 +168,17 @@ docker run -d \
 ```yaml
 services:
   ai-upscaler:
-    image: kuscheltier/jellyfin-ai-upscaler:docker5
+    image: kuscheltier/jellyfin-ai-upscaler:docker7
     container_name: jellyfin-ai-upscaler
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"
     volumes:
       - ai-models:/app/models
+      - ai-cache:/app/cache
+      - ai-config:/app/config
+    env_file: .env
+    environment:
+      - SKIP_TENSORRT=true
     restart: unless-stopped
     mem_limit: 8g
     memswap_limit: 12g
@@ -153,6 +193,8 @@ services:
 
 volumes:
   ai-models:
+  ai-cache:
+  ai-config:
 ```
 
 ---
@@ -176,15 +218,18 @@ Support for Intel iGPU and Arc discrete GPUs via OpenVINO 2025.4.
 
 ```bash
 # Build Intel version
-docker build -f Dockerfile.intel -t jellyfin-ai-upscaler:intel .
+docker build -f Dockerfile.intel --build-arg APP_VERSION=1.8.3.31 --build-arg APP_COMMIT="$(git rev-parse --short HEAD)" -t jellyfin-ai-upscaler:rc-intel .
 
 # Run with Intel GPU access
 docker run -d \
   --name jellyfin-ai-upscaler-intel \
   --device=/dev/dri \
-  -p 5000:5000 \
+  -p 127.0.0.1:5000:5000 \
   -v ai-models:/app/models \
-  jellyfin-ai-upscaler:intel
+  -v ai-cache:/app/cache \
+  -v ai-config:/app/config \
+  --env-file .env \
+  jellyfin-ai-upscaler:rc-intel
 ```
 
 **Requirements:**
@@ -193,6 +238,20 @@ docker run -d \
 - Intel GPU drivers installed on host
 
 ---
+
+## Controlled update and rollback
+
+Before replacing an existing service, stop new jobs and save its Compose configuration, current image digest and recoverable copies of the model, cache and config volumes. Keep the previous image available. Select the same backend; use a published commit-specific candidate tag only on the test instance.
+
+```bash
+docker compose pull ai-upscaler
+docker compose up -d --no-deps ai-upscaler
+docker compose ps
+```
+
+Use the existing dashboard credentials to check `/health/detailed`, `/gpu-verify`, model loading and actual inference. Confirm the expected version and active provider. Then test the Jellyfin player for at least five minutes, retry/recovery, driver-upscaling guard and masking. A healthy container alone does not verify these player paths or GPU/HDR quality. Restore the saved image/configuration if acceptance fails.
+
+For maintainers: dispatch `docker-publish.yml` on `update/v1.8.3.31` with version `1.8.3.31`, `push=true`, `channel=candidate`. It builds all seven variants. Use `channel=release` only after server acceptance. Plugin ZIP publication remains manual.
 
 ## 🔄 Automatic Updates (Watchtower)
 
