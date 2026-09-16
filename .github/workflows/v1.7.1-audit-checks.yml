@@ -73,25 +73,29 @@ jobs:
           ' Controllers/UpscalerController.cs
 
   zip-version-check:
-    name: meta.json in built ZIP must match manifest.json
+    name: Published payload matches build version; release feeds remain consistent
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
-      - name: Build + extract meta.json + compare with manifest
+      - name: Publish and package the exact runtime payload
         run: |
           set -euo pipefail
           dotnet publish JellyfinUpscalerPlugin.csproj -c Release -o publish/ --nologo
-          PUB_VERSION=$(jq -r .version publish/meta.json)
-          MAN_VERSION=$(jq -r '.[0].versions[0].version' manifest.json)
-          if [ "$PUB_VERSION" != "$MAN_VERSION" ]; then
-              echo "FAIL: meta.json version ($PUB_VERSION) does not match manifest.json version ($MAN_VERSION)"
-              echo "Fix: update meta.json + JellyfinUpscalerPlugin.csproj + PluginConfiguration.cs in lockstep."
-              exit 1
-          fi
-          echo "PASS: meta.json $PUB_VERSION matches manifest $MAN_VERSION"
+          python3 Scripts/package-plugin.py publish candidate.zip
+      - name: Validate actual ZIP assemblies and metadata
+        shell: pwsh
+        run: |
+          . ./Scripts/release-validation.ps1
+          $meta = Get-Content meta.json -Raw | ConvertFrom-Json
+          Assert-PluginArchive ./candidate.zip ('v' + $meta.version) $meta.targetAbi ./candidate-check
+          ./Scripts/test-release-validation.ps1 -PublishDir ./publish
+      - name: Verify feed consistency without publishing the candidate
+        run: |
+          python3 -m unittest discover -s tests -p test_build_feeds.py -v
+          python3 Scripts/check-build-feeds.py
 
   ui-field-consistency:
     name: JS element-id references must exist in the HTML
