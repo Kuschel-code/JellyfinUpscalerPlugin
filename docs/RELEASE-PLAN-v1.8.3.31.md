@@ -41,7 +41,7 @@ Docker Desktop 4.91.0 / Engine 29.8.0, Linux amd64, vier VM-CPUs und knapp 2 GB 
 - Ein als HLG deklarierter Realtime-Aufruf wird verständlich mit HTTP 422 abgelehnt. Dies war kein echter HLG-Referenzclip.
 - Kein Jellyfin-Player, kein C#-Proxy und keine Zielhardware in diesem Test: damit insbesondere kein Beleg für die reale 429-Weitergabe oder die vollständige Abnahme von #79. Diese bleibt in den unten genannten Server-Gates.
 
-Logs und Antworten liegen außerhalb des Repositories in `../local-validation/docker-2026-09-16/`. Die sieben RC-Varianten werden zusätzlich im manuellen [Docker-Workflow](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/actions/runs/35127642208) gebaut; gestartete Jobs sind keine abgeschlossenen Veröffentlichungen.
+Logs und Antworten liegen außerhalb des Repositories in `../local-validation/docker-2026-09-16/`. Alle sieben RC-Varianten sind inzwischen auf Docker Hub veröffentlicht; Tags, Plattformen und Commit-Pins wurden über die öffentliche Registry-API bestätigt. [Digests und Docker-Prüfnachweise](DOCKER-RC-v1.8.3.31.md). Der AMD-Trivy-Nachlauf war beim Registry-Abgleich noch aktiv.
 
 ## Paket
 
@@ -66,6 +66,8 @@ Am 16.09.2026: Issue #79 weiterhin offen; Tag und Release `v1.8.3.31` nicht vorh
 Der Docker-Workflow kann vor der Hardware-Abnahme mit `channel=candidate` alle sieben Varianten unter getrennten `rc-v1.8.3.31[-backend]`-Tags und commitgebundenen RC-Tags veröffentlichen. Vier Verhaltenstests, 14 Kombinationen des tatsächlichen Workflow-Tag-Schritts und zwei erkannte Mutationen prüfen, dass Kandidaten keine finalen Pins oder Rolling-Tags ändern. Dies ist keine Freigabe als reguläres Release.
 
 Nach erfolgreicher Zielserver-Abnahme: Branch/Review abschließen; Tag-/Release-Existenz erneut prüfen; Docker-Workflow für 1.8.3.31 mit `channel=release` ohne konkurrierende latest-Runs ausführen; geprüftes Plugin-ZIP manuell veröffentlichen. Veröffentlichtes ZIP herunterladen, echte MD5 identisch in alle drei Feeds übernehmen, Feeds committen/pushen und `pwsh Scripts/verify-release.ps1 -Tag v1.8.3.31` vollständig gegen GitHub bestehen lassen. Erst dann #79 mit Version, Umgebung, Testdauer und Ergebnissen kommentieren und schließen.
+
+Der bisherige CI-Audit erzwang fälschlich einen vorgezogenen Feed-Eintrag. Er prüft jetzt die tatsächlichen Publish-Assemblies/ZIP-Metadaten und identische veröffentlichte Feed-Einträge, lässt aber einen noch unveröffentlichten Kandidaten korrekt außerhalb der Feeds. Acht Verhaltenstests und drei erkannte Mutationen sichern dies ab. Die strenge Online-Prüfung nach dem Release bleibt unverändert.
 
 ## Bewusst offen
 
