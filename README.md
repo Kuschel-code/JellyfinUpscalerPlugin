@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.30
+# Jellyfin AI Upscaler Plugin v1.8.3.31
 
 [![Built with Claude Opus 5](https://img.shields.io/badge/Built%20with-Claude%20Opus%205-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
 
@@ -14,9 +14,9 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Release status (2026-09-16):** v1.8.3.31 is a release candidate. The latest published plugin is [v1.8.3.30](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.30). The RC fixes issue #79, player cancellation/retry behavior, model-category filtering and batch failure handling. Target-server GPU, playback and HDR acceptance remain open; see the [release plan](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/update/v1.8.3.31/docs/RELEASE-PLAN-v1.8.3.31.md).
+**Release status (2026-09-17):** v1.8.3.31 fixes issue #79, player cancellation/retry behavior, model-category filtering and batch failure handling. The owner explicitly waived target-server acceptance for this release. GPU, real Jellyfin playback and HDR target-hardware behavior remain unverified; see the [release plan](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/RELEASE-PLAN-v1.8.3.31.md).
 
-**Docker images (seven variants):** The plugin and AI service both need this update. Candidate builds use `rc-v1.8.3.31[-backend]` and commit-specific RC tags. The following rolling tags change only when the release is approved:
+**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.31):** Update both the plugin and AI service. Seven backend variants use the following rolling tags; version pins are also available:
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -41,7 +41,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.30   │  │
+│  │  AI Upscaler Plugin v1.8.3.31   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -361,8 +361,8 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.8.3.30` — NVIDIA pin for the currently published release
-- `:v1.8.3.30-<backend>` — published backend pin (e.g. `:v1.8.3.30-cpu`)
+- `:docker7-v1.8.3.31` — NVIDIA pin for the currently published release
+- `:v1.8.3.31-<backend>` — published backend pin (e.g. `:v1.8.3.31-cpu`)
 - `:rc-v1.8.3.31[-backend]` — candidate only; `:rc-v1.8.3.31-<commit>[-backend]` identifies a particular candidate build. Check the [Docker workflow](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/actions/workflows/docker-publish.yml) before pulling.
 
 CUDA is the default: keep `SKIP_TENSORRT=true`. Enable TensorRT only with compatible libraries in the image. See [Docker setup and controlled updates](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/update/v1.8.3.31/docker-ai-service/README.md).
@@ -376,7 +376,7 @@ The full version history lives on the website and the release pages — this REA
 - **[Changelog (website)](https://kuschel-code.github.io/JellyfinUpscalerPlugin/changelog.html)** — every release in detail
 - **[GitHub Releases](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases)** — release notes and downloadable ZIPs
 
-Published: **v1.8.3.30** — notification stacking. In review: **v1.8.3.31 RC** — frame-limit fix, player recovery, guarded model selection and fail-closed batch processing. Local tests do not replace target-server acceptance.
+Release: **v1.8.3.31** — frame-limit fix, player recovery, guarded model selection and fail-closed batch processing. Target-server acceptance was explicitly waived by the owner; local tests do not verify target hardware.
 
 ---
 

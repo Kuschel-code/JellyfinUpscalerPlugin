@@ -199,7 +199,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         private HttpClient GetMultiFrameClient() => _httpClientFactory.CreateClient("AiUpscalerLongTimeout");
 
         /// <summary>
-        /// Per-user sliding-window rate limiter for upscale endpoints.
+        /// Per-user fixed-window rate limiter for explicit image actions only.
         /// Returns true if the request should be rejected (rate exceeded).
         /// </summary>
         private bool IsRateLimited()
@@ -664,17 +664,8 @@ namespace JellyfinUpscalerPlugin.Controllers
                 //    only the START url is allowlist-checked - acceptable because the bytes must
                 //    still match the catalog's sha256 pin below, and this client carries no secret.
                 var external = _httpClientFactory.CreateClient("ExternalModelDownload");
-                byte[] data;
-                using (var dl = await external.GetAsync(entry.DownloadUrl, HttpContext.RequestAborted))
-                {
-                    if (!dl.IsSuccessStatusCode)
-                        return StatusCode(502, new { error = $"Download failed (HTTP {(int)dl.StatusCode} from source)" });
-                    if (dl.Content.Headers.ContentLength is > Services.ImportCatalogService.MaxImportBytes)
-                        return StatusCode(502, new { error = "Source reports a file above the 500 MB import limit" });
-                    data = await dl.Content.ReadAsByteArrayAsync(HttpContext.RequestAborted);
-                }
-                if (data.LongLength > Services.ImportCatalogService.MaxImportBytes)
-                    return StatusCode(502, new { error = "Downloaded file exceeds the 500 MB import limit" });
+                var data = await ModelDownload.FetchAsync(external, entry.DownloadUrl!,
+                    Services.ImportCatalogService.MaxImportBytes, HttpContext.RequestAborted);
 
                 // 2) supply-chain gate: the bytes must match the catalog pin exactly
                 var sha = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(data)).ToLowerInvariant();
@@ -2321,6 +2312,8 @@ namespace JellyfinUpscalerPlugin.Controllers
                     return BadRequest(new { error = "model_name is required" });
                 if (!ValidModelNameRegex.IsMatch(modelId))
                     return BadRequest(new { error = "Invalid model name — only alphanumeric, hyphens, and underscores allowed" });
+                if (!Services.ModelAvailability.IsUsableUpscaler(modelId))
+                    return BadRequest(new { error = "This model is not an available image upscaler. Interpolation, face restoration and detection use separate pipelines." });
 
                 var config = Plugin.Instance?.Configuration;
                 var serviceUrl = GetValidatedServiceUrl();
@@ -2426,6 +2419,7 @@ namespace JellyfinUpscalerPlugin.Controllers
 
                 using var response = await GetBenchmarkClient()
                     .PostAsync($"{serviceUrl}/detect-mask{query}", content, HttpContext.RequestAborted);
+                CopyRetryAfter(response);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -2783,16 +2777,13 @@ namespace JellyfinUpscalerPlugin.Controllers
         [RequestSizeLimit(52_428_800)]
         public async Task<ActionResult> UpscaleFrame()
         {
-            if (IsRateLimited())
-                return StatusCode(429, new { error = "Rate limit exceeded. Max 10 upscale requests per minute." });
-
             try
             {
                 var serviceUrl = GetValidatedServiceUrl();
 
                 // Read raw body
                 using var ms = new MemoryStream();
-                await Request.Body.CopyToAsync(ms);
+                await Request.Body.CopyToAsync(ms, HttpContext.RequestAborted);
                 var body = ms.ToArray();
 
                 if (body.Length == 0)
@@ -2801,10 +2792,12 @@ namespace JellyfinUpscalerPlugin.Controllers
                 using var content = new ByteArrayContent(body);
                 content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
 
-                using var response = await GetAiServiceClient().PostAsync($"{serviceUrl}/upscale-frame", content, HttpContext.RequestAborted);
+                using var request = new HttpRequestMessage(HttpMethod.Post, $"{serviceUrl}/upscale-frame") { Content = content };
+                if (Request.Headers.TryGetValue("X-Color-Transfer", out var transfer))
+                    request.Headers.TryAddWithoutValidation("X-Color-Transfer", transfer.ToString());
+                using var response = await GetAiServiceClient().SendAsync(request, HttpContext.RequestAborted);
 
-                if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
-                    return StatusCode(503, "AI service busy");
+                CopyRetryAfter(response);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -2838,24 +2831,18 @@ namespace JellyfinUpscalerPlugin.Controllers
         [RequestSizeLimit(52_428_800)]
         public async Task<ActionResult> UpscaleVideoChunk()
         {
-            if (IsRateLimited())
-                return StatusCode(429, new { error = "Rate limit exceeded. Max 10 upscale requests per minute." });
-
-            var config = Plugin.Instance?.Configuration;
-            if (config == null) return StatusCode(500, "Plugin not configured");
-
             var serviceUrl = GetValidatedServiceUrl();
 
             try
             {
                 // Forward the entire multipart form to the AI service
-                var form = await Request.ReadFormAsync();
+                var form = await Request.ReadFormAsync(HttpContext.RequestAborted);
                 using var content = new MultipartFormDataContent();
 
                 foreach (var file in form.Files)
                 {
                     using var ms = new MemoryStream();
-                    await file.CopyToAsync(ms);
+                    await file.CopyToAsync(ms, HttpContext.RequestAborted);
                     var byteContent = new ByteArrayContent(ms.ToArray());
                     // Hardcode Content-Type to prevent header injection from user-controlled values
                     byteContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
@@ -2867,7 +2854,11 @@ namespace JellyfinUpscalerPlugin.Controllers
                     content.Add(byteContent, safeName, safeFileName);
                 }
 
+                var transfer = form["transfer"].ToString();
+                if (string.IsNullOrEmpty(transfer)) transfer = Request.Headers["X-Color-Transfer"].ToString();
+                if (!string.IsNullOrEmpty(transfer)) content.Add(new StringContent(transfer), "transfer");
                 using var response = await GetMultiFrameClient().PostAsync($"{serviceUrl}/upscale-video-chunk", content, HttpContext.RequestAborted);
+                CopyRetryAfter(response);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -2875,7 +2866,8 @@ namespace JellyfinUpscalerPlugin.Controllers
                     return File(resultBytes, "image/png");
                 }
 
-                return StatusCode((int)response.StatusCode, await response.Content.ReadAsStringAsync());
+                return StatusCode((int)response.StatusCode,
+                    new { error = "Video chunk upscaling failed", detail = await ReadServiceDetailAsync(response) });
             }
             catch (TaskCanceledException)
             {
@@ -2886,6 +2878,12 @@ namespace JellyfinUpscalerPlugin.Controllers
                 _logger.LogError(ex, "Multi-frame inference proxy error");
                 return StatusCode(502, "AI service error");
             }
+        }
+
+        private void CopyRetryAfter(HttpResponseMessage response)
+        {
+            if (response.Headers.RetryAfter is { } retryAfter)
+                Response.Headers.RetryAfter = retryAfter.ToString();
         }
 
         /// <summary>

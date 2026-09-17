@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.8.3.30';
+    const PLUGIN_VERSION = '1.8.3.31';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -183,6 +183,12 @@
     //                  'server' (Docker AI), 'auto' (smart-pick).
     // 'webgl' is kept as alias for 'lanczos' for backwards-compat with v1.6.x configs.
     const RealtimeUpscaler = {
+        _generation: 0,
+        _retryCount: 0,
+        _nextFrameAt: 0,
+        _requestController: null,
+        _startupController: null,
+        _reason: null,
         _mode: null,       // 'lanczos' | 'anime4k' | 'server' | null
         _active: false,
         _videoElement: null,
@@ -207,6 +213,7 @@
         _anime4kCanvas: null,
 
         start: function(video, config, benchmarkResult) {
+            this.stop();
             this._videoElement = video;
             this._config = config;
             this._benchmarkResult = benchmarkResult;
@@ -216,8 +223,21 @@
             var mode = (config.RealtimeMode || 'auto').toLowerCase();
             // v1.7.0 - 'webgl' rebrand: it was always Lanczos+Sharpen (no AI), so call it that.
             if (mode === 'webgl') mode = 'lanczos';
-            if (mode === 'auto') {
+            this._reason = null;
+            if (this._objectMaskEnabled) {
+                // Masking replaces upscaling but still uses the shared server capture loop.
+                mode = 'server';
+                this._reason = 'Object masking replaces plugin upscaling';
+            } else if (config.ClientDriverUpscalingActive === true) {
+                mode = 'off';
+                this._reason = 'Client driver upscaling is active';
+            } else if (mode === 'auto') {
                 mode = this._decideTier(benchmarkResult, video);
+            }
+            if (mode === 'off') {
+                this._mode = 'off';
+                if (window.PlayerIntegration) window.PlayerIntegration.showPlayerNotification(this._reason, 'info');
+                return;
             }
 
             this._mode = mode;
@@ -241,6 +261,8 @@
         },
 
         stop: function() {
+            if (this._startupController) this._startupController.abort();
+            this._startupController = null;
             this._active = false;
             this._mode = null;
             this._stopServer();
@@ -253,13 +275,14 @@
         },
 
         _decideTier: function(benchmark, video) {
+            if (this._config && this._config.ClientDriverUpscalingActive === true) return 'off';
+            if (this._config && this._config.EnableObjectMasking === true) return 'off';
             if (!benchmark || benchmark.error) return 'webgl';
-            var videoFps = 24; // reasonable default
-            try {
-                var rate = video.playbackRate || 1;
-                videoFps = (video.getVideoPlaybackQuality && video.getVideoPlaybackQuality().totalVideoFrames > 0) ? 30 : 24;
-                videoFps *= rate;
-            } catch(e) {}
+            // Use the playing item's frame rate. Without one, Auto cannot prove
+            // the server keeps up; prefer the client shader until it is known.
+            var videoFps = Number(benchmark.videoFps);
+            if (!Number.isFinite(videoFps) || videoFps <= 0) return 'webgl';
+            videoFps *= video.playbackRate || 1;
             if (benchmark.fps >= videoFps * 0.8) return 'server';
             return 'webgl';
         },
@@ -293,7 +316,8 @@
         },
 
         _initWebGL: function() {
-            if (!window.AIUpscalerWebGL || !this._videoElement || !this._active) return;
+            if (!window.AIUpscalerWebGL || !this._videoElement || !this._active ||
+                (this._mode !== 'lanczos' && this._mode !== 'webgl')) return;
             var wgl = window.AIUpscalerWebGL;
             if (wgl.init(this._videoElement)) {
                 wgl.onFpsUpdate = function(fps) {
@@ -321,7 +345,9 @@
         // not a neural net. Auto-falls back to Lanczos if WebGL2 float textures are absent.
         _startAnime4K: function() {
             var self = this;
+            var generation = this._generation;
             this._loadAnime4KLibrary(function(ok) {
+                if (!self._active || self._generation !== generation || self._mode !== 'anime4k') return;
                 if (!ok) {
                     console.warn('AI Upscaler RT: Anime4K bundle load failed, falling back to Lanczos');
                     self._fallbackToLanczos();
@@ -356,7 +382,7 @@
         },
 
         _initAnime4K: function() {
-            if (!this._videoElement || !this._active) return;
+            if (!this._videoElement || !this._active || this._mode !== 'anime4k') return;
             var ns = window.Anime4KJS;
             if (!ns || typeof ns.VideoUpscaler !== 'function') {
                 console.warn('AI Upscaler RT: Anime4KJS.VideoUpscaler missing');
@@ -394,7 +420,8 @@
 
         _fallbackToLanczos: function() {
             this._stopAnime4K();
-            if (!this._active) return;
+            if (!this._active || this._objectMaskEnabled ||
+                (this._config && this._config.ClientDriverUpscalingActive)) return;
             this._mode = 'lanczos';
             this._updateButtonIndicator('lanczos');
             this._startWebGL();
@@ -420,7 +447,10 @@
         // Three-stage fallback: WebGPU missing -> ORT load fail -> model fetch fail = Lanczos.
         _startWebGPUAI: function() {
             var self = this;
+            var generation = this._generation;
+            function current() { return self._active && self._generation === generation && self._mode === 'ai-webgpu'; }
             this._loadWebGPUAIScript(function(loaded) {
+                if (!current()) return;
                 if (!loaded || !window.WebGPUAIUpscaler) {
                     console.warn('AI Upscaler RT: WebGPU AI script load failed, falling back to Lanczos');
                     self._mode = 'lanczos';
@@ -434,12 +464,14 @@
                         RealtimeUpscaler._updateFpsDisplay();
                     },
                     onFatal: function(reason) {
+                        if (!current()) return;
                         console.warn('AI Upscaler RT: WebGPU AI fatal:', reason, '- falling back to Lanczos');
                         self._mode = 'lanczos';
                         self._updateButtonIndicator('lanczos');
                         self._startWebGL();
                     }
                 }).then(function(ok) {
+                    if (!current()) return;
                     if (!ok) {
                         // Returned false (e.g. no WebGPU adapter) - fall back to Lanczos.
                         self._mode = 'lanczos';
@@ -499,47 +531,55 @@
             }
 
             this._pendingFrame = false;
+            this._retryCount = 0;
+            this._nextFrameAt = 0;
             this._fpsFrameCount = 0;
             this._fpsLastTime = performance.now();
             this._lastSuccessfulFrame = performance.now();
-            this._serverStartTime = performance.now();
+            // Background tabs may suspend the watchdog throughout a pause. Reset
+            // its clock on resume as well, before the first resumed interval runs.
+            var self = this;
+            this._serverPlaybackListener = function() {
+                self._lastSuccessfulFrame = performance.now();
+                self._lowFpsStart = 0;
+            };
+            this._videoElement.addEventListener('pause', this._serverPlaybackListener);
+            this._videoElement.addEventListener('playing', this._serverPlaybackListener);
             this._serverRenderLoop();
-            // Timer-based fallback check: if no successful frame for 10 seconds, switch to WebGL.
-            // The grace window accounts for slow first-frame warmup on CPU backends (fsrcnn-x2
-            // on 4-core CPU takes ~250ms/frame cold, plus model-load race on fresh sessions).
             this._fallbackCheckInterval = setInterval(function() {
-                if (!RealtimeUpscaler._active || RealtimeUpscaler._mode !== 'server') {
-                    clearInterval(RealtimeUpscaler._fallbackCheckInterval);
+                if (!self._active || self._mode !== 'server') return;
+                var now = performance.now();
+                // Pauses and a service-requested wait are not processing timeouts.
+                if (!self._videoElement || self._videoElement.paused || now < self._nextFrameAt) {
+                    self._lastSuccessfulFrame = now;
+                    self._lowFpsStart = 0;
                     return;
                 }
-                if (performance.now() - RealtimeUpscaler._lastSuccessfulFrame > 10000) {
-                    console.log('AI Upscaler RT: No frames for 5s, switching to WebGL');
-                    clearInterval(RealtimeUpscaler._fallbackCheckInterval);
-                    RealtimeUpscaler._stopServer();
-                    RealtimeUpscaler._mode = 'webgl';
-                    RealtimeUpscaler._startWebGL();
-                    RealtimeUpscaler._updateButtonIndicator('webgl');
-                    if (window.PlayerIntegration) {
-                        window.PlayerIntegration.showPlayerNotification('Switched to WebGL (server unresponsive)', 'warning');
-                    }
+                if (!self._objectMaskEnabled && now - self._lastSuccessfulFrame > 10000) {
+                    self._stopServer();
+                    self._fallbackToLanczos();
+                    if (window.PlayerIntegration) window.PlayerIntegration.showPlayerNotification('Switched to Lanczos (server unresponsive)', 'warning');
                 }
-            }, 2000);
+            }, 1000);
         },
 
         _stopServer: function() {
-            if (this._serverRafId) {
-                cancelAnimationFrame(this._serverRafId);
-                this._serverRafId = null;
+            this._generation++;
+            if (this._videoElement && this._serverPlaybackListener) {
+                this._videoElement.removeEventListener('pause', this._serverPlaybackListener);
+                this._videoElement.removeEventListener('playing', this._serverPlaybackListener);
             }
-            if (this._fallbackCheckInterval) {
-                clearInterval(this._fallbackCheckInterval);
-                this._fallbackCheckInterval = null;
-            }
-            // Revoke any pending object URL to prevent memory leak
-            if (this._currentObjectUrl) {
-                URL.revokeObjectURL(this._currentObjectUrl);
-                this._currentObjectUrl = null;
-            }
+            this._serverPlaybackListener = null;
+            if (this._requestController) this._requestController.abort();
+            this._requestController = null;
+            this._pendingFrame = false;
+            this._nextFrameAt = 0;
+            if (this._serverRafId != null) cancelAnimationFrame(this._serverRafId);
+            this._serverRafId = null;
+            if (this._fallbackCheckInterval) clearInterval(this._fallbackCheckInterval);
+            this._fallbackCheckInterval = null;
+            if (this._currentObjectUrl) URL.revokeObjectURL(this._currentObjectUrl);
+            this._currentObjectUrl = null;
             if (this._overlayCanvas && this._overlayCanvas.parentElement) {
                 this._overlayCanvas.parentElement.removeChild(this._overlayCanvas);
             }
@@ -553,117 +593,102 @@
 
         _serverRenderLoop: function() {
             if (!this._active || this._mode !== 'server') return;
-
-            if (!this._pendingFrame && this._videoElement && !this._videoElement.paused) {
-                this._captureAndSend();
-            }
-
+            if (!this._pendingFrame && this._videoElement && !this._videoElement.paused &&
+                performance.now() >= this._nextFrameAt) this._captureAndSend();
             this._serverRafId = requestAnimationFrame(function() { RealtimeUpscaler._serverRenderLoop(); });
         },
 
+        _retryAfterMs: function(value) {
+            if (!value) return 0;
+            if (/^\d+(\.\d+)?$/.test(value.trim())) return Number(value) * 1000;
+            var date = Date.parse(value);
+            return Number.isFinite(date) ? Math.max(0, date - Date.now()) : 0;
+        },
+
+        _waitForFrame: function(retryAfter, detail) {
+            var delay = Math.min(2000, 250 * Math.pow(2, Math.min(this._retryCount++, 4)) * (1 + Math.random() * 0.25));
+            this._nextFrameAt = performance.now() + Math.max(delay, this._retryAfterMs(retryAfter));
+            this._reason = detail;
+            if (window.PlayerIntegration && detail) window.PlayerIntegration.showPlayerNotification(detail, 'warning');
+        },
+
         _captureAndSend: function() {
-            var video = this._videoElement;
-            var ctx = this._captureCtx;
-            var canvas = this._captureCanvas;
-            if (!video || !ctx || !canvas) return;
-
-            // Draw video frame to capture canvas
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            this._pendingFrame = true;
             var self = this;
-
-            canvas.toBlob(function(blob) {
-                if (!blob || !self._active) { self._pendingFrame = false; return; }
-
-                // v1.8.3.24 - discussion #11. The capture loop already existed; masking
-                // just had nowhere to send its frames. One endpoint per frame on purpose:
-                // upscaling AND masking would mean two full inference passes per frame,
-                // which no realistic server keeps up with at playback rate.
-                var endpoint = self._objectMaskEnabled ? 'Upscaler/detect-mask' : 'Upscaler/upscale-frame';
-
-                fetch(ApiClient.getUrl(endpoint), {
-                    method: 'POST',
-                    headers: { 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' },
-                    body: blob
-                }).then(function(resp) {
-                    if (self._objectMaskEnabled && resp.headers) {
-                        var found = resp.headers.get('X-Detections');
-                        if (found !== null) self._lastDetectionCount = parseInt(found, 10) || 0;
-                    }
-                    if (resp.status === 503) {
-                        // Server busy, skip frame
-                        self._pendingFrame = false;
-                        return null;
-                    }
-                    if (!resp.ok) {
-                        self._pendingFrame = false;
-                        return null;
-                    }
-                    return resp.blob();
-                }).then(function(resultBlob) {
-                    if (!resultBlob || !self._active) { self._pendingFrame = false; return; }
-
-                    var img = new Image();
-                    img.onload = function() {
-                        // Revoke object URL immediately after decode to prevent memory leak
-                        URL.revokeObjectURL(img.src);
-                        self._currentObjectUrl = null;
-
-                        if (self._overlayCanvas && self._active) {
-                            // Resize overlay to match result
-                            if (self._overlayCanvas.width !== img.width || self._overlayCanvas.height !== img.height) {
+            var video = this._videoElement;
+            var canvas = this._captureCanvas;
+            if (this._pendingFrame || !this._active || this._mode !== 'server' || !video || video.paused ||
+                !this._captureCtx || !canvas || performance.now() < this._nextFrameAt) return;
+            var generation = this._generation;
+            var controller = new AbortController();
+            this._requestController = controller;
+            this._pendingFrame = true;
+            function current() { return self._active && self._mode === 'server' && self._generation === generation; }
+            function finish() {
+                if (current()) { self._pendingFrame = false; self._requestController = null; }
+            }
+            function failed(error) {
+                if (current() && error.name !== 'AbortError') self._waitForFrame(null, error.message || 'Frame request failed');
+                finish();
+            }
+            try {
+                // Capture after the backoff, never retry the previously captured frame.
+                this._captureCtx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob(function(blob) {
+                    if (!current()) return;
+                    if (!blob) { failed(new Error('Could not capture video frame')); return; }
+                    var endpoint = self._objectMaskEnabled ? 'Upscaler/detect-mask' : 'Upscaler/upscale-frame';
+                    fetch(ApiClient.getUrl(endpoint), {
+                        method: 'POST',
+                        headers: { 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' },
+                        body: blob,
+                        signal: controller.signal
+                    }).then(async function(resp) {
+                        if (!current()) return null;
+                        if (!resp.ok) {
+                            var detail = await resp.text();
+                            try { var data = JSON.parse(detail); detail = data.detail || data.error || detail; } catch (e) { /* plain text */ }
+                            if (current()) self._waitForFrame(resp.headers.get('Retry-After'), 'HTTP ' + resp.status + ': ' + String(detail).slice(0, 500));
+                            return null;
+                        }
+                        if (self._objectMaskEnabled) self._lastDetectionCount = parseInt(resp.headers.get('X-Detections'), 10) || 0;
+                        return resp.blob();
+                    }).then(function(resultBlob) {
+                        if (!current()) return;
+                        if (!resultBlob) { finish(); return; }
+                        var img = new Image();
+                        var url = URL.createObjectURL(resultBlob);
+                        self._currentObjectUrl = url;
+                        function release() {
+                            URL.revokeObjectURL(url);
+                            if (self._currentObjectUrl === url) self._currentObjectUrl = null;
+                        }
+                        img.onload = function() {
+                            release();
+                            if (!current()) return;
+                            try {
                                 self._overlayCanvas.width = img.width;
                                 self._overlayCanvas.height = img.height;
-                            }
-                            if (!self._overlayCtx) self._overlayCtx = self._overlayCanvas.getContext('2d');
-                            self._overlayCtx.drawImage(img, 0, 0);
-                            self._lastSuccessfulFrame = performance.now();
-
-                            // FPS tracking
-                            self._fpsFrameCount++;
-                            var now = performance.now();
-                            if (now - self._fpsLastTime >= 1000) {
-                                self._currentFps = Math.round(self._fpsFrameCount * 1000 / (now - self._fpsLastTime));
-                                self._fpsFrameCount = 0;
-                                self._fpsLastTime = now;
-                                self._updateFpsDisplay();
-
-                                // Auto-fallback: if FPS < 10 for 3 seconds → switch to WebGL
-                                if (self._currentFps < 10) {
-                                    if (!self._lowFpsStart) self._lowFpsStart = now;
-                                    else if (now - self._lowFpsStart > 3000) {
-                                        console.log('AI Upscaler RT: Server FPS too low, switching to WebGL');
-                                        self._stopServer();
-                                        self._mode = 'webgl';
-                                        self._startWebGL();
-                                        self._updateButtonIndicator('webgl');
-                                        if (window.PlayerIntegration) {
-                                            window.PlayerIntegration.showPlayerNotification('Switched to WebGL (server too slow)', 'warning');
-                                        }
-                                    }
-                                } else {
-                                    self._lowFpsStart = 0;
+                                self._overlayCtx = self._overlayCanvas.getContext('2d');
+                                self._overlayCtx.drawImage(img, 0, 0);
+                                self._lastSuccessfulFrame = performance.now();
+                                self._retryCount = 0;
+                                self._reason = null;
+                                self._fpsFrameCount++;
+                                var now = performance.now();
+                                if (now - self._fpsLastTime >= 1000) {
+                                    self._currentFps = Math.round(self._fpsFrameCount * 1000 / (now - self._fpsLastTime));
+                                    self._fpsFrameCount = 0;
+                                    self._fpsLastTime = now;
+                                    self._updateFpsDisplay();
                                 }
-                            }
-                        }
-                        self._pendingFrame = false;
-                    };
-                    img.onerror = function() {
-                        URL.revokeObjectURL(img.src);
-                        self._currentObjectUrl = null;
-                        self._pendingFrame = false;
-                    };
-                    // Revoke previous URL if still pending (safety net)
-                    if (self._currentObjectUrl) {
-                        URL.revokeObjectURL(self._currentObjectUrl);
-                    }
-                    self._currentObjectUrl = URL.createObjectURL(resultBlob);
-                    img.src = self._currentObjectUrl;
-                }).catch(function() {
-                    self._pendingFrame = false;
-                });
-            }, 'image/jpeg', 0.85);
+                                finish();
+                            } catch (error) { failed(error); }
+                        };
+                        img.onerror = function() { release(); failed(new Error('Could not decode processed frame')); };
+                        img.src = url;
+                    }).catch(failed);
+                }, 'image/jpeg', 0.85);
+            } catch (error) { failed(error); }
         },
 
         // --- UI ---
@@ -729,7 +754,8 @@
                 active: this._active,
                 mode: this._mode,
                 fps: this._currentFps,
-                benchmark: this._benchmarkResult
+                benchmark: this._benchmarkResult,
+                reason: this._reason
             };
         }
     };
@@ -790,7 +816,7 @@
                 this._waitForVideoAndAutoStart();
             } else {
                 // Leaving video page — stop upscaling
-                if (window.RealtimeUpscaler && window.RealtimeUpscaler._active) {
+                if (window.RealtimeUpscaler) {
                     window.RealtimeUpscaler.stop();
                 }
             }
@@ -800,15 +826,25 @@
             if (this._autoStartPending) return;
             this._autoStartPending = true;
             var self = this;
+            var generation = RealtimeUpscaler._generation;
             var retries = 0;
             var maxRetries = 60; // 30s @ 500ms
             var check = function() {
+                if (generation !== RealtimeUpscaler._generation) {
+                    self._autoStartPending = false;
+                    return;
+                }
                 var v = self.findVideoElement();
                 if (v) {
                     self._autoStartPending = false;
                     var trigger = function() {
+                        if (generation !== RealtimeUpscaler._generation) return;
                         if (window.location.hash.indexOf('#/video') !== 0) return;
-                        setTimeout(function() { self.startRealtimeUpscaling(); }, 600);
+                        setTimeout(function() {
+                            if (generation !== RealtimeUpscaler._generation ||
+                                window.location.hash.indexOf('#/video') !== 0) return;
+                            self.startRealtimeUpscaling();
+                        }, 600);
                     };
                     if (v.readyState >= 2 && !v.paused) {
                         trigger();
@@ -1050,7 +1086,7 @@
             }).then(function(data) {
                 var map = {};
                 (data.models || []).forEach(function(m) {
-                    map[m.id] = { downloaded: !!m.downloaded, available: m.available !== false, loaded: !!m.loaded };
+                    map[m.id] = { downloaded: !!m.downloaded, available: m.available !== false, loaded: !!m.loaded, category: m.category };
                 });
                 return map;
             }).catch(function(err) {
@@ -1059,7 +1095,13 @@
             });
         },
 
+        _isUpscalerState: function(state) {
+            return !state || (state.available !== false &&
+                ['interpolation', 'face_restore', 'face-restore', 'object-detection'].indexOf((state.category || '').toLowerCase()) === -1);
+        },
+
         _renderModelCard: function(m, isActive, state) {
+            if (!this._isUpscalerState(state)) return '';
             var stateIcon, stateClass, title;
             if (state && !state.available) {
                 stateIcon = '&#9888;'; stateClass = 'err'; title = 'Not yet available';
@@ -1100,6 +1142,7 @@
                 var slot = menu.querySelector('[data-state-slot="' + id + '"]');
                 if (!slot) return;
                 var s = states[id];
+                if (!PlayerIntegration._isUpscalerState(s)) { slot.closest('button').remove(); return; }
                 slot.classList.remove('ai-menu__state--ready','ai-menu__state--need-dl','ai-menu__state--busy','ai-menu__state--err');
                 if (!s.available) { slot.classList.add('ai-menu__state--err'); slot.innerHTML = '&#9888;'; }
                 else if (s.downloaded) { slot.classList.add('ai-menu__state--ready'); slot.innerHTML = '&#10003;'; }
@@ -1413,12 +1456,11 @@
                     } else if (action === 'rt-switch') {
                         if (RealtimeUpscaler._active) {
                             var newMode = RealtimeUpscaler._mode === 'server' ? 'webgl' : 'server';
-                            var bench = RealtimeUpscaler._benchmarkResult;
                             RealtimeUpscaler.stop();
                             var video = PlayerIntegration.findVideoElement();
                             if (video) {
                                 var overrideConfig = Object.assign({}, PlayerIntegration._cachedConfig || {}, { RealtimeMode: newMode });
-                                RealtimeUpscaler.start(video, overrideConfig, bench);
+                                PlayerIntegration._startRtWithConfig(video, overrideConfig);
                             }
                             PlayerIntegration.showPlayerNotification('Switched to ' + newMode.toUpperCase(), 'info');
                         }
@@ -1737,8 +1779,6 @@
                 filters: 'EnableVideoFilters',
                 face: 'EnableFaceRestore',
                 realtime: 'EnableRealtimeUpscaling',
-                // Takes effect on the next playback start, not mid-stream - see
-                // _objectMaskEnabled.
                 mask: 'EnableObjectMasking'
             };
             var field = map[key];
@@ -1754,14 +1794,13 @@
                     PlayerIntegration.showPlayerNotification(
                         (key === 'master' ? 'Auto mode' :
                          key === 'filters' ? 'Video filters' :
-                         key === 'face' ? 'Face restoration' : 'Real-time upscaling') +
+                         key === 'face' ? 'Face restoration' : key === 'mask' ? 'Object masking' : 'Real-time upscaling') +
                         (next ? ' on' : ' off'), 'info');
 
                     // Real-time upscaling reads its config when the loop starts, so a
                     // toggle only takes hold if the loop is restarted.
-                    if (key === 'realtime') {
-                        if (next) PlayerIntegration.startRealtimeUpscaling();
-                        else if (window.RealtimeUpscaler && RealtimeUpscaler.stop) RealtimeUpscaler.stop();
+                    if (key === 'realtime' || key === 'mask') {
+                        PlayerIntegration.startRealtimeUpscaling();
                     }
                     PlayerIntegration._renderAutoPane(menu);
                 });
@@ -1773,13 +1812,16 @@
 
         // Re-run the decision and hand it to the running upscaler, without a reload.
         _applyAutoNow: function(menu) {
-            this.getPluginConfig().then(function(cfg) {
+            var generation = RealtimeUpscaler._generation;
+            return this.getPluginConfig().then(function(cfg) {
+                if (generation !== RealtimeUpscaler._generation) return;
                 var video = PlayerIntegration.findVideoElement();
                 if (!video) {
                     PlayerIntegration.showPlayerNotification('No video is playing', 'warning');
                     return;
                 }
                 return PlayerIntegration._autoSelectForVideo(video, cfg).then(function(pick) {
+                    if (generation !== RealtimeUpscaler._generation) return;
                     if (!pick || !pick.model) {
                         PlayerIntegration.showPlayerNotification('Auto had nothing to apply', 'warning');
                         return;
@@ -2001,6 +2043,14 @@
                 return;
             }
 
+            // Model loading changes the service used by the frame loop. Stop that
+            // loop now and bind this entire startup to the same cancellation token.
+            RealtimeUpscaler.stop();
+            var generation = RealtimeUpscaler._generation;
+            var loading = new AbortController();
+            RealtimeUpscaler._startupController = loading;
+            function current() { return generation === RealtimeUpscaler._generation && !loading.signal.aborted; }
+
             // Show inline spinner on the clicked model; keep menu open
             if (modelBtn) modelBtn.classList.add('ai-menu__model--loading');
             if (slot) {
@@ -2013,12 +2063,14 @@
                 'info'
             );
 
-            this.updatePluginConfig({ Model: model }).then(function() {
+            return this.updatePluginConfig({ Model: model }).then(function() {
+                if (!current()) return;
                 var loadUrl = ApiClient.getUrl('Upscaler/models/load') + '?model_name=' + encodeURIComponent(model);
                 return fetch(loadUrl, {
                     method: 'POST',
                     headers: { 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' },
-                    credentials: 'include'
+                    credentials: 'include',
+                    signal: loading.signal
                 }).then(function(r) {
                     if (!r.ok) {
                         return r.text().then(function(t) {
@@ -2030,6 +2082,7 @@
                     return r.json().catch(function() { return {}; });
                 });
             }).then(function() {
+                if (!current()) return;
                 // Update active styling + refresh states
                 if (menu) {
                     menu.querySelectorAll('.ai-menu__model').forEach(function(b) { b.classList.remove('ai-menu__model--active'); });
@@ -2047,20 +2100,18 @@
                     self._modelStates[model].downloaded = true;
                     self._modelStates[model].loaded = true;
                 }
-                // Restart real-time upscaling if it was running
-                if (RealtimeUpscaler._active) {
-                    var bench = RealtimeUpscaler._benchmarkResult;
-                    RealtimeUpscaler.stop();
-                    var video = self.findVideoElement();
-                    if (video) {
-                        self.getPluginConfig().then(function(cfg) { RealtimeUpscaler.start(video, cfg, bench); });
-                    }
-                } else {
-                    var video = self.findVideoElement();
-                    if (video) self.startRealtimeUpscaling();
-                }
                 self.showPlayerNotification('Model ready: ' + model, 'success');
+                var video = self.findVideoElement();
+                if (video) {
+                    return self.getPluginConfig().then(function(cfg) {
+                        if (!current()) return;
+                        // Recheck HDR/driver/masking rules and benchmark this model;
+                        // a result measured for the previous model is not reusable.
+                        return self._startRtWithConfig(video, cfg);
+                    });
+                }
             }).catch(function(err) {
+                if (!current()) return;
                 console.error('AI Upscaler: quickSetModel failed', err);
                 if (modelBtn) modelBtn.classList.remove('ai-menu__model--loading');
                 if (slot) {
@@ -2074,6 +2125,8 @@
                     msg = 'AI service auth not configured. Open Full Configuration → AI Service → set API Token.';
                 }
                 self.showPlayerNotification('Failed: ' + msg, 'error');
+            }).finally(function() {
+                if (RealtimeUpscaler._startupController === loading) RealtimeUpscaler._startupController = null;
             });
         },
 
@@ -2257,8 +2310,11 @@
         },
 
         startRealtimeUpscaling: function() {
-            this.getPluginConfig().then(function(config) {
-                if (config.EnableRealtimeUpscaling === false) return;
+            RealtimeUpscaler.stop();
+            var generation = RealtimeUpscaler._generation;
+            return this.getPluginConfig().then(function(config) {
+                if (generation !== RealtimeUpscaler._generation) return;
+                if (config.EnableRealtimeUpscaling === false && config.EnableObjectMasking !== true) return;
 
                 var video = PlayerIntegration.findVideoElement();
                 if (!video) {
@@ -2266,10 +2322,15 @@
                     return;
                 }
 
+                if (config.ClientDriverUpscalingActive === true || config.EnableObjectMasking === true) {
+                    return PlayerIntegration._startRtWithConfig(video, config);
+                }
+
                 // Auto-Mode hook: if the user opted in, let the plugin pick model+filter
                 // for *this* video based on genres + resolution. Overrides config.Model
                 // for this session only — does not persist back to config.
                 return PlayerIntegration._autoSelectForVideo(video, config).then(function(pick) {
+                    if (generation !== RealtimeUpscaler._generation) return;
                     if (pick && pick.model) {
                         config = Object.assign({}, config, { Model: pick.model });
                         // v1.8.3.13 - say WHY, and never swap the model silently: a
@@ -2285,7 +2346,7 @@
                         if (pick.filter && pick.filter !== 'none') notice += ' · look suggested in the Auto tab';
                         PlayerIntegration.showPlayerNotification(notice, pick.substitutedFrom ? 'warning' : 'info');
                     }
-                    PlayerIntegration._startRtWithConfig(video, config);
+                    return PlayerIntegration._startRtWithConfig(video, config);
                 });
             }).catch(function(err) {
                 console.error('AI Upscaler: config fetch failed for RT upscaling', err);
@@ -2293,11 +2354,41 @@
         },
 
         // Extracted from startRealtimeUpscaling so auto-select can supply an overridden config.
+        _readPlayingVideoStream: function() {
+            var itemId = this._getPlayingItemId();
+            if (!itemId) return Promise.resolve(null);
+            return ApiClient.getItem(ApiClient.getCurrentUserId(), itemId).then(function(item) {
+                var streams = item && (item.MediaStreams || (item.MediaSources && item.MediaSources[0] && item.MediaSources[0].MediaStreams)) || [];
+                return streams.find(function(s) { return s.Type === 'Video'; }) || null;
+            }).catch(function() { return null; });
+        },
+
         _startRtWithConfig: function(video, config) {
+                RealtimeUpscaler.stop();
+                var generation = RealtimeUpscaler._generation;
+                if (config.ClientDriverUpscalingActive === true && config.EnableObjectMasking !== true) {
+                    RealtimeUpscaler.start(video, config, null);
+                    return Promise.resolve();
+                }
+                return this._readPlayingVideoStream().then(function(stream) {
+                if (generation !== RealtimeUpscaler._generation) return;
+                var transfer = ((stream && stream.ColorTransfer) || '').toLowerCase();
+                var range = ((stream && (stream.VideoRangeType || stream.VideoRange)) || '').toLowerCase();
+                if (!stream || (range && range !== 'sdr') ||
+                    (transfer && ['bt709', 'srgb', 'iec61966-2-1'].indexOf(transfer) === -1) ||
+                    (!transfer && Number(stream.BitDepth) > 8) ||
+                    ((stream.ColorPrimaries || '').toLowerCase() === 'bt2020')) {
+                    RealtimeUpscaler._mode = 'off';
+                    RealtimeUpscaler._reason = !stream ? 'Video color metadata unavailable; realtime processing cannot be validated' :
+                        'HDR realtime and masking are not supported. Use the PQ RGB16 batch pipeline; HLG is not supported.';
+                    PlayerIntegration.showPlayerNotification(RealtimeUpscaler._reason, 'warning');
+                    return;
+                }
                 var mode = (config.RealtimeMode || 'auto').toLowerCase();
 
-                // WebGL-only mode skips any AI-service interaction.
-                if (mode === 'webgl') {
+                // Guards apply before model warmup, recommendation or benchmark work.
+                if (config.ClientDriverUpscalingActive === true || config.EnableObjectMasking === true ||
+                    ['auto', 'server'].indexOf(mode) === -1) {
                     RealtimeUpscaler.start(video, config, null);
                     return;
                 }
@@ -2305,21 +2396,27 @@
                 // Auto + Server modes require an active server-side model before the
                 // benchmark (otherwise /benchmark-frame returns 400 "No model loaded",
                 // the auto-tier picks WebGL, and server-mode never engages).
+                var startup = new AbortController();
+                RealtimeUpscaler._startupController = startup;
+                function current() { return generation === RealtimeUpscaler._generation && !startup.signal.aborted; }
                 var captureW = config.RealtimeCaptureWidth || 480;
                 var captureH = Math.round(captureW * (video.videoHeight / video.videoWidth));
                 var modelName = config.Model || 'fsrcnn-x2';
                 var authHeaders = { 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' };
 
                 var runBenchmarkAndStart = function() {
+                    if (!current()) return;
                     fetch(ApiClient.getUrl('Upscaler/benchmark-frame') + '?width=' + captureW + '&height=' + captureH, {
-                        headers: authHeaders
-                    })
-                        .then(function(r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
+                        headers: authHeaders, signal: startup.signal
+                    }).then(function(r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
                         .then(function(bench) {
+                            if (!current()) return;
+                            bench.videoFps = stream && (stream.AverageFrameRate || stream.RealFrameRate);
                             console.log('AI Upscaler RT: Benchmark result', bench);
                             RealtimeUpscaler.start(video, config, bench);
                         })
                         .catch(function(err) {
+                            if (!current()) return;
                             console.warn('AI Upscaler RT: Benchmark failed, using WebGL', err);
                             RealtimeUpscaler.start(video, config, { error: 'benchmark failed' });
                         });
@@ -2327,7 +2424,7 @@
 
                 fetch(ApiClient.getUrl('Upscaler/models/load') + '?model_name=' + encodeURIComponent(modelName), {
                     method: 'POST',
-                    headers: authHeaders
+                    headers: authHeaders, signal: startup.signal
                 })
                     .then(function(r) {
                         if (!r.ok) {
@@ -2339,6 +2436,7 @@
                         console.warn('AI Upscaler RT: Model preload network error, running benchmark anyway', err);
                         runBenchmarkAndStart();
                     });
+                });
         },
 
         addKeyboardShortcuts: function() {

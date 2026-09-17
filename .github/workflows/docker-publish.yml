@@ -1,6 +1,6 @@
 name: Docker Publish (docker7)
 
-# Publishes all 6 AI-upscaler backend images to Docker Hub with semver
+# Publishes all 7 AI-upscaler backend images to Docker Hub with semver
 # triple-tagging, multi-arch support for the slim-python variants,
 # and a Trivy vulnerability scan that uploads SARIF to the Security tab.
 #
@@ -18,13 +18,21 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Plugin semver (e.g. 1.6.1.13)'
-        required: true
-        default: '1.6.1.13'
+        description: 'Plugin version (empty = version from the selected checkout)'
+        required: false
+        default: ''
       push:
         description: 'Push to Docker Hub? (false = build-only dry run)'
         required: true
         default: 'true'
+      channel:
+        description: 'candidate = RC tags only; release = final pins and rolling tags after acceptance or documented owner waiver'
+        required: true
+        type: choice
+        default: candidate
+        options:
+          - candidate
+          - release
   push:
     tags:
       - 'docker7*'
@@ -34,6 +42,11 @@ permissions:
   contents: read
   packages: write
   security-events: write   # required for upload-sarif
+
+# All backends in a run finish before another run can move the rolling tags.
+concurrency:
+  group: docker7-publish
+  cancel-in-progress: false
 
 env:
   REGISTRY: docker.io
@@ -83,11 +96,17 @@ jobs:
 
       - name: Resolve version
         id: version
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
         run: |
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            VERSION=$(grep -oP '<AssemblyVersion>\K[^<]+' JellyfinUpscalerPlugin.csproj)
+          VERSION=$(grep -oP '<AssemblyVersion>\K[^<]+' JellyfinUpscalerPlugin.csproj)
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo 'Invalid assembly version in checkout' >&2
+            exit 1
+          fi
+          if [ -n "$REQUESTED_VERSION" ] && [ "$REQUESTED_VERSION" != "$VERSION" ]; then
+            echo 'Requested version must match the selected checkout' >&2
+            exit 1
           fi
           SHORT_SHA=$(git rev-parse --short HEAD)
           echo "version=$VERSION"       >> "$GITHUB_OUTPUT"
@@ -109,27 +128,16 @@ jobs:
 
       - name: Compose tag list
         id: tags
+        env:
+          PUBLICATION_CHANNEL: ${{ inputs.channel || 'release' }}
+          PLUGIN_VERSION: ${{ steps.version.outputs.version }}
+          COMMIT_REVISION: ${{ steps.version.outputs.short_sha }}
+          BACKEND_SUFFIX: ${{ matrix.suffix }}
         run: |
-          V=${{ steps.version.outputs.version }}
-          S="${{ matrix.suffix }}"
-          FAMILY="${{ env.FAMILY }}"
-          IMG="${{ env.IMAGE }}"
-          # Three stable tag families:
-          #   1. Rolling:   docker7[-suffix]               → Watchtower target
-          #   2. Pinned:    docker7-v<ver>[-suffix]        → reproducible pulls
-          #   3. Semver:    v<ver>[-suffix]                → full version pin
-          TAGS="${IMG}:${FAMILY}${S}"
-          TAGS="${TAGS},${IMG}:${FAMILY}-v${V}${S}"
-          TAGS="${TAGS},${IMG}:v${V}${S}"
-          # :latest follows the NVIDIA variant (empty suffix). Without this the
-          # latest tag went stale (stuck on a v1.7.8-era image while v1.8.x shipped).
-          if [ -z "$S" ]; then
-            TAGS="${TAGS},${IMG}:latest"
-          fi
-          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
-          echo "primary=${IMG}:${FAMILY}${S}" >> "$GITHUB_OUTPUT"
-          echo "Will publish tags:"
-          printf '  %s\n' $(echo "$TAGS" | tr ',' '\n')
+          python3 Scripts/test-docker-tags.py
+          python3 Scripts/docker-tags.py --version "$PLUGIN_VERSION" \
+            --revision "$COMMIT_REVISION" --suffix="$BACKEND_SUFFIX" \
+            --channel "$PUBLICATION_CHANNEL"
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -144,11 +152,11 @@ jobs:
             APP_COMMIT=${{ steps.version.outputs.short_sha }}
           # Inline registry cache — rebuilds of the same backend reuse layers
           cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache-${{ matrix.backend }}
-          cache-to: type=registry,ref=${{ env.IMAGE }}:buildcache-${{ matrix.backend }},mode=max
+          cache-to: ${{ github.event.inputs.push != 'false' && format('type=registry,ref={0}:buildcache-{1},mode=max', env.IMAGE, matrix.backend) || '' }}
           provenance: false
 
       # ---------------------------------------------------------------
-      # Trivy: scan the primary tag (docker7[-suffix]) for HIGH/CRITICAL CVEs
+      # Trivy: scan the published candidate pin or release tag for HIGH/CRITICAL CVEs
       # ---------------------------------------------------------------
       - name: Trivy scan
         if: github.event.inputs.push != 'false'

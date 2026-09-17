@@ -239,7 +239,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.8.3.30 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.8.3.31 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar -->
@@ -700,6 +700,7 @@
                         <summary>Real-Time Upscaling</summary>
                         <div class="details-body">
                             <div class="checkboxContainer"><label><input type="checkbox" id="EnableRealtimeUpscaling" /> Enable Real-Time Upscaling</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="ClientDriverUpscalingActive" /> Client driver upscaling is active (disable plugin upscaling)</label></div>
                             <div class="form-row" style="margin-top:0.5rem;">
                                 <div class="form-col selectContainer">
                                     <label class="selectLabel" for="RealtimeMode">Mode</label>
@@ -1957,6 +1958,11 @@
             });
         }
 
+        function isUpscalerModel(model) {
+            var excluded = ['interpolation', 'face_restore', 'face-restore', 'object-detection'];
+            return !!model && model.available !== false && excluded.indexOf((model.category || '').toLowerCase()) === -1;
+        }
+
         function loadModels(page) {
             // v1.8.3.7 - favorites live in the plugin config; fetch it first so the
             // "★ Favorites" group renders correctly on the initial page load too.
@@ -1971,10 +1977,7 @@
                 // v1.6.1.21 - Categories that DON'T belong in the upscale-model dropdown:
                 //   interpolation = RIFE (frame interp, takes 2 frames as input -> /upscale call returns 500)
                 //   face_restore  = GFPGAN/CodeFormer (operate on 512x512 face crops, not full frames)
-                var UPSCALE_EXCLUDED = ['interpolation', 'face_restore'];
-                var upscaleModels = modelsData.filter(function(m) {
-                    return UPSCALE_EXCLUDED.indexOf(m.category) === -1;
-                });
+                var upscaleModels = modelsData.filter(isUpscalerModel);
 
                 var select = page.querySelector('#Model');
                 var prevValue = select.value;
@@ -2099,11 +2102,11 @@
             sel.value = hasSaved ? savedValue : sel.options[0].value;
         }
 
-        function updateScaleOptions(page) {
+        function updateScaleOptions(page, requestedScale) {
             var modelId = page.querySelector('#Model').value;
             var model = modelsData.find(function(m) { return m.id === modelId; });
             var select = page.querySelector('#ScaleFactor');
-            var currentVal = select.value;
+            var currentVal = requestedScale === undefined ? select.value : String(requestedScale);
             select.innerHTML = '';
             if (model && model.scale) {
                 var scaleArr = Array.isArray(model.scale) ? model.scale : [model.scale];
@@ -2121,7 +2124,8 @@
                     select.appendChild(opt);
                 });
             }
-            if (currentVal) select.value = currentVal;
+            var supported = Array.from(select.options).some(function(option) { return option.value === currentVal; });
+            select.value = supported ? currentVal : (select.options[0] ? select.options[0].value : '');
         }
 
         // ===== MEDIA ITEMS =====
@@ -2254,7 +2258,7 @@
                     'WebhookOnComplete','WebhookOnFailure',
                     'RestrictToUnwatchedContent','SkipUpscaledOnRescan',
                     'EnableRealtimeUpscaling','EnableVideoFilters','EnableDenoisePrefilter','EnablePipelineParallelism',
-                    'EnableFaceRestore','EnableObjectMasking'];
+                    'EnableFaceRestore','EnableObjectMasking','ClientDriverUpscalingActive'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) {
@@ -2288,8 +2292,7 @@
                 if (modeCb) { modeCb.checked = !!config.EnableAutoModelSelection; _updateModeTexts(page, modeCb.checked); }
 
                 if (config.ScaleFactor) {
-                    updateScaleOptions(page);
-                    page.querySelector('#ScaleFactor').value = config.ScaleFactor;
+                    updateScaleOptions(page, config.ScaleFactor);
                 }
 
                 if (config.GpuDeviceIndex !== undefined) {
@@ -2355,7 +2358,7 @@
                     'WebhookOnComplete','WebhookOnFailure',
                     'RestrictToUnwatchedContent','SkipUpscaledOnRescan',
                     'EnableRealtimeUpscaling','EnableVideoFilters','EnableDenoisePrefilter','EnablePipelineParallelism',
-                    'EnableFaceRestore','EnableObjectMasking'];
+                    'EnableFaceRestore','EnableObjectMasking','ClientDriverUpscalingActive'];
                 checks.forEach(function(f) {
                     var el = page.querySelector('#' + f);
                     if (el) config[f] = !!el.checked;
@@ -2399,7 +2402,7 @@
 
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.8.3.30';
+                config.PluginVersion = '1.8.3.31';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');
@@ -2445,7 +2448,10 @@
                     if (canGet) {
                         html += '<button type="button" class="raised" style="font-size:0.72rem;padding:2px 8px;margin-right:4px;" data-get-model="' + esc(m.id) + '" title="Download this model to the AI service">Get</button>';
                     }
-                    html += '<button type="button" class="raised" style="font-size:0.72rem;padding:2px 8px;" data-bench-model="' + esc(m.id) + '">Bench</button></td>';
+                    if (isUpscalerModel(m)) {
+                        html += '<button type="button" class="raised" style="font-size:0.72rem;padding:2px 8px;" data-bench-model="' + esc(m.id) + '">Bench</button>';
+                    }
+                    html += '</td>';
                     html += '</tr>';
                 });
                 tbody.innerHTML = html;
@@ -2550,6 +2556,10 @@
             // Check if model needs downloading first
             var configPage = document.querySelector('#UpscalerConfigurationPage');
             var modelInfo = (configPage && configPage._allModels || []).find(function(m) { return m.id === modelId; });
+            if (!isUpscalerModel(modelInfo)) {
+                showToast('This model is not an available image upscaler.', '#94a3b8');
+                return;
+            }
             var needsDownload = modelInfo && !modelInfo.downloaded;
             if (cell) cell.innerHTML = '<span style="color:var(--warning);font-size:0.75rem;">' + (needsDownload ? 'Downloading...' : 'Loading...') + '</span>';
 
@@ -2688,9 +2698,12 @@
                 showToast('No models available \u2014 is Docker AI service running?', '#f87171'); return;
             }
 
-            // Filter to available models only
-            var models = allModels.filter(function(m) { return m.available !== false; });
-            if (models.length === 0) models = allModels;
+            // Benchmark only models accepted by the ordinary image-upscaling pipeline.
+            var models = allModels.filter(isUpscalerModel);
+            if (models.length === 0) {
+                showToast('No available image upscalers to benchmark.', '#94a3b8');
+                return;
+            }
 
             _liveBenchStop = false;
             page.querySelector('#btn-live-bench').style.display = 'none';

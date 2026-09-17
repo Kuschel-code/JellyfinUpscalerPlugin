@@ -39,18 +39,23 @@ namespace JellyfinUpscalerPlugin.Tests.Services
 
         // ── GetServiceUrl (tested indirectly) ─────────────────────────────────────
 
-        [Fact]
-        public async Task IsServiceAvailableAsync_UsesDefaultUrl_WhenPluginInstanceIsNull()
+        [Theory]
+        [InlineData(HttpStatusCode.OK, true)]
+        [InlineData(HttpStatusCode.ServiceUnavailable, false)]
+        public async Task IsServiceAvailableAsync_UsesDefaultUrl_WhenPluginInstanceIsNull(
+            HttpStatusCode status, bool expected)
         {
-            // Plugin.Instance is null in unit test context, so GetServiceUrl() falls back to
-            // "http://localhost:5000". We verify the method runs without throwing and
-            // returns false when there is no real service listening.
-            using var service = CreateService();
-            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+            // Verify the default URL without depending on services running on the test host.
+            using var mockHttp = new MockHttpMessageHandler();
+            var matcher = mockHttp.When(HttpMethod.Get, "http://localhost:5000/health")
+                .Respond(status);
+            using var client = mockHttp.ToHttpClient();
+            using var service = CreateService(client);
 
-            var result = await service.IsServiceAvailableAsync(cts.Token);
+            var result = await service.IsServiceAvailableAsync();
 
-            result.Should().BeFalse();
+            result.Should().Be(expected);
+            mockHttp.GetMatchCount(matcher).Should().Be(1);
         }
 
         // ── UpscaleImageAsync ──────────────────────────────────────────────────────
@@ -118,6 +123,54 @@ namespace JellyfinUpscalerPlugin.Tests.Services
         }
 
         // ── DownloadModelAsync ─────────────────────────────────────────────────────
+
+        [Fact]
+        public async Task UpscaleImageAsync_StrictModePreservesHttpStatusAndErrorDetail()
+        {
+            using var mockHttp = new MockHttpMessageHandler();
+            var matcher = mockHttp.When("http://localhost:5000/upscale")
+                .Respond(HttpStatusCode.TooManyRequests, "application/json", "{\"detail\":\"GPU queue is full\"}");
+            using var client = mockHttp.ToHttpClient();
+            using var service = CreateService(client);
+
+            var error = await Assert.ThrowsAsync<HttpRequestException>(() =>
+                service.UpscaleImageAsync(new byte[] { 1 }, requireSuccess: true));
+
+            Assert.Equal(HttpStatusCode.TooManyRequests, error.StatusCode);
+            Assert.Contains("GPU queue is full", error.Message);
+            Assert.Equal(1, mockHttp.GetMatchCount(matcher));
+        }
+
+        [Fact]
+        public async Task UpscaleImageAsync_StrictModeRejectsEmptySuccessResponse()
+        {
+            using var mockHttp = new MockHttpMessageHandler();
+            mockHttp.When("http://localhost:5000/upscale").Respond(HttpStatusCode.OK);
+            using var client = mockHttp.ToHttpClient();
+            using var service = CreateService(client);
+
+            await Assert.ThrowsAsync<System.IO.InvalidDataException>(() =>
+                service.UpscaleImageAsync(new byte[] { 1 }, requireSuccess: true));
+        }
+
+        [Fact]
+        public async Task UpscaleImageAsync_UserCancellationPropagatesWithoutRetryOrFallback()
+        {
+            using var cancelled = new CancellationTokenSource();
+            using var mockHttp = new MockHttpMessageHandler();
+            var matcher = mockHttp.When("http://localhost:5000/upscale").Respond(_ =>
+            {
+                cancelled.Cancel();
+                throw new TaskCanceledException("user stopped job");
+            });
+            using var client = mockHttp.ToHttpClient();
+            using var service = CreateService(client);
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                service.UpscaleImageAsync(new byte[] { 1 }, cancellationToken: cancelled.Token));
+
+            Assert.Equal(1, mockHttp.GetMatchCount(matcher));
+        }
 
         [Fact]
         public async Task DownloadModelAsync_ReturnsFalse_AfterAllRetriesExhausted()

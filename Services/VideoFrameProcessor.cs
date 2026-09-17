@@ -9,12 +9,19 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using CliWrap;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
 using JellyfinUpscalerPlugin.Models;
 using Image = SixLabors.ImageSharp.Image;
 
 namespace JellyfinUpscalerPlugin.Services
 {
+    /// <summary>
+    /// Signals that the Docker AI service returned a local resize/original fallback.
+    /// Video jobs must not turn this into a successful-looking library result.
+    /// </summary>
+    public sealed class AiUpscalingUnavailableException(string message) : InvalidOperationException(message)
+    {
+    }
+
     /// <summary>
     /// Handles frame-level operations: extraction, AI upscaling, HDR frame processing, and video reconstruction.
     /// </summary>
@@ -100,6 +107,13 @@ namespace JellyfinUpscalerPlugin.Services
                 vfFilters.Add(videoFilterChain);
             }
 
+            if (isHDR)
+            {
+                // The color matrix must drive pixel conversion, not only output tags.
+                if (denoisePrefilter != null || videoFilterChain != null)
+                    throw new NotSupportedException("HDR denoise and creative filters have not been validated for RGB16. Disable them before processing PQ.");
+                vfFilters.Add("scale=in_color_matrix=bt2020:out_range=pc,format=rgb48be");
+            }
             var vfArg = string.Join(",", vfFilters);
 
             if (isHDR)
@@ -248,11 +262,10 @@ namespace JellyfinUpscalerPlugin.Services
         /// Process frames with AI upscaling
         /// </summary>
         /// <summary>
-        /// v1.8.3 — upscale ONE frame: read -> AI upscale -> write to processedDir; on a null/empty
-        /// AI result, copy the original through (the same fallback the batch loop always used).
-        /// Extracted so the sequential loop below AND the opt-in overlapped pipeline call the
-        /// identical per-frame path. Returns true if the AI result was used, false if the original
-        /// was copied. Throws on I/O or service errors so the caller decides how to count the failure.
+        /// v1.8.3 — upscale ONE frame: read -> AI upscale -> write to processedDir.
+        /// Library/batch processing must fail closed when the Docker service falls back to a local
+        /// resize; silently copying or storing that CPU result makes the host look busy while the
+        /// container remains idle (Discussion #80).
         /// </summary>
         public async Task<bool> UpscaleSingleFrameAsync(
             string frameFile,
@@ -262,24 +275,36 @@ namespace JellyfinUpscalerPlugin.Services
             CancellationToken cancellationToken)
         {
             var frameData = await File.ReadAllBytesAsync(frameFile, cancellationToken);
-            byte[]? upscaledData = isHDR
-                ? await UpscaleHDRFrameAsync(frameData, options.ScaleFactor, cancellationToken)
-                : await _upscalerCore.UpscaleImageAsync(frameData, options.Model, options.ScaleFactor, cancellationToken);
+            byte[]? upscaledData;
+            if (isHDR)
+            {
+                upscaledData = await UpscaleHDRFrameAsync(frameData, options.ScaleFactor, cancellationToken);
+            }
+            else
+            {
+                var upscale = await _upscalerCore.UpscaleImageDetailedAsync(
+                    frameData, options.Model, options.ScaleFactor, cancellationToken, allowLocalFallback: false);
+                if (!upscale.UsedAi)
+                {
+                    throw new AiUpscalingUnavailableException(
+                        $"Docker AI service did not produce an upscaled frame: {upscale.FallbackReason ?? "unknown reason"}");
+                }
+                upscaledData = upscale.Data;
+            }
 
             var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFile));
             if (upscaledData != null && upscaledData.Length > 0)
             {
+                if (!isHDR)
+                {
+                    var source = Image.Identify(frameData);
+                    ValidateNativeAiOutput(upscaledData, source.Width, source.Height);
+                }
                 await File.WriteAllBytesAsync(outputFile, upscaledData, cancellationToken);
                 return true;
             }
 
-            _logger.LogWarning("AI service returned null for frame {Frame}, using original", Path.GetFileName(frameFile));
-            await using (var src = new FileStream(frameFile, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 81920, useAsync: true))
-            await using (var dst = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920, useAsync: true))
-            {
-                await src.CopyToAsync(dst, cancellationToken);
-            }
-            return false;
+            throw new InvalidDataException("Upscaling returned no frame; original-frame fallback is forbidden.");
         }
 
         public async Task ProcessFramesAsync(
@@ -292,7 +317,9 @@ namespace JellyfinUpscalerPlugin.Services
         {
             var frameFiles = Directory.GetFiles(framesDir, "*.png").OrderBy(f => f).ToArray();
             int totalFrames = frameFiles.Length;
-            int failedFrames = 0;
+            if (totalFrames == 0)
+                throw new InvalidDataException("No frames were extracted for AI processing.");
+            cancellationToken.ThrowIfCancellationRequested();
 
             int maxConcurrency = 1;
             try
@@ -300,10 +327,7 @@ namespace JellyfinUpscalerPlugin.Services
                 var profile = await _upscalerCore.DetectHardwareAsync();
                 maxConcurrency = Math.Max(1, profile.MaxConcurrentStreams);
             }
-            catch (Exception ex) { _logger.LogDebug(ex, "Hardware detection failed, using default concurrency"); }
-
-            using var semaphore = new SemaphoreSlim(maxConcurrency);
-            var tasks = new List<Task>();
+            catch (Exception ex) when (ex is not OperationCanceledException) { _logger.LogDebug(ex, "Hardware detection failed, using default concurrency"); }
 
             _logger.LogInformation("Processing {TotalFrames} frames with max concurrency: {MaxConcurrency}", totalFrames, maxConcurrency);
 
@@ -311,78 +335,39 @@ namespace JellyfinUpscalerPlugin.Services
             var startTime = DateTime.UtcNow;
             long lastProgressTicks = DateTime.UtcNow.Ticks;
 
-            for (int i = 0; i < totalFrames; i++)
+            // Parallel.ForEachAsync stops scheduling on the first failure, cancels its
+            // in-flight workers and joins them before returning. A task list behind a
+            // semaphore continued the whole movie after Docker had already failed.
+            await Parallel.ForEachAsync(frameFiles, new ParallelOptions
             {
-                int index = i;
-                string frameFile = frameFiles[i];
-
-                await semaphore.WaitAsync(cancellationToken);
-
-                tasks.Add(Task.Run(async () =>
+                MaxDegreeOfParallelism = maxConcurrency,
+                CancellationToken = cancellationToken
+            }, async (frameFile, frameToken) =>
+            {
+                // Check for pause before processing.
+                while (_pausedJobs.GetValueOrDefault(processingJobId, false))
                 {
-                    try
+                    await Task.Delay(500, frameToken);
+                }
+
+                // Any failed/empty frame aborts the video. Copying the original would
+                // create a partly upscaled output and report an incomplete job as success.
+                await UpscaleSingleFrameAsync(frameFile, processedDir, options, isHDR, frameToken);
+                var completed = Interlocked.Increment(ref processedFrames);
+                var nowTicks = DateTime.UtcNow.Ticks;
+                var prevTicks = Interlocked.Read(ref lastProgressTicks);
+                if ((nowTicks - prevTicks) >= TimeSpan.TicksPerSecond * 2 || completed == totalFrames)
+                {
+                    if (Interlocked.CompareExchange(ref lastProgressTicks, nowTicks, prevTicks) == prevTicks)
                     {
-                        // Check for pause before processing
-                        while (_pausedJobs.GetValueOrDefault(processingJobId, false))
-                        {
-                            await Task.Delay(500, cancellationToken);
-                        }
-
-                        // v1.8.3 - per-frame upscale extracted to UpscaleSingleFrameAsync so the
-                        // opt-in overlapped pipeline reuses the identical path (read -> upscale ->
-                        // write, copy the original through on a null AI result). Behaviour unchanged here.
-                        await UpscaleSingleFrameAsync(frameFile, processedDir, options, isHDR, cancellationToken);
-
-                        Interlocked.Increment(ref processedFrames);
-
-                        var nowTicks = DateTime.UtcNow.Ticks;
-                        var prevTicks = Interlocked.Read(ref lastProgressTicks);
-                        if ((nowTicks - prevTicks) >= TimeSpan.TicksPerSecond * 2 || index == totalFrames - 1)
-                        {
-                            if (Interlocked.CompareExchange(ref lastProgressTicks, nowTicks, prevTicks) == prevTicks)
-                            {
-                                var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
-                                var fps = elapsed > 0 ? processedFrames / elapsed : 0;
-
-                                await _progressHub.SendFrameProgress(
-                                    processingJobId,
-                                    Path.GetFileName(frameFile),
-                                    processedFrames,
-                                    totalFrames,
-                                    fps
-                                );
-
-                                _logger.LogInformation("Processed {ProcessedFrames}/{TotalFrames} frames ({Fps} FPS)",
-                                    processedFrames, totalFrames, fps.ToString("F1"));
-                            }
-                        }
+                        var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
+                        var fps = elapsed > 0 ? completed / elapsed : 0;
+                        await _progressHub.SendFrameProgress(processingJobId, Path.GetFileName(frameFile), completed, totalFrames, fps);
+                        _logger.LogInformation("Processed {ProcessedFrames}/{TotalFrames} frames ({Fps} FPS)",
+                            completed, totalFrames, fps.ToString("F1"));
                     }
-                    catch (Exception ex)
-                    {
-                        Interlocked.Increment(ref failedFrames);
-                        _logger.LogWarning(ex, "Failed to upscale frame {Frame}, using original", frameFile);
-                        var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFile));
-                        // v1.6.1.21 - async streaming (P1a, catch-block twin of the else-branch above).
-                        await using (var src = new FileStream(frameFile, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 81920, useAsync: true))
-                        await using (var dst = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920, useAsync: true))
-                        {
-                            await src.CopyToAsync(dst, cancellationToken);
-                        }
-                        // Fail the entire job if >50% of frames fail (service likely down)
-                        if (failedFrames > totalFrames / 2)
-                        {
-                            _logger.LogError("More than 50% of frames failed ({Failed}/{Total}), aborting job", failedFrames, totalFrames);
-                            throw new InvalidOperationException($"Too many frame failures: {failedFrames}/{totalFrames}");
-                        }
-                    }
-                    finally
-                    {
-                        semaphore.Release();
-                    }
-                }, cancellationToken));
-            }
-
-            await Task.WhenAll(tasks);
+                }
+            });
         }
 
         /// <summary>
@@ -403,6 +388,7 @@ namespace JellyfinUpscalerPlugin.Services
             // re-encoded unchanged and reported success. HttpUpscalerService.GetServiceUrl
             // has trimmed for releases; this copy never did.
             var baseUrl = (config?.AiServiceUrl ?? "http://localhost:5000").TrimEnd('/');
+            HdrFrameContract.ValidateRgb16Png(frameData);
             var client = _httpClientFactory.CreateClient("UpscalerHDR");
 
             using var content = new MultipartFormDataContent();
@@ -410,6 +396,8 @@ namespace JellyfinUpscalerPlugin.Services
             imageContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
             content.Add(imageContent, "file", "frame.png");
             content.Add(new StringContent(scale.ToString()), "scale");
+            content.Add(new StringContent("smpte2084"), "transfer");
+            content.Add(new StringContent("bt2020"), "primaries");
 
             _logger.LogDebug("Sending HDR frame ({Size} bytes) to AI service for {Scale}x upscaling", frameData.Length, scale);
 
@@ -417,11 +405,14 @@ namespace JellyfinUpscalerPlugin.Services
 
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadAsByteArrayAsync(cancellationToken);
+                var output = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+                var nativeScale = HdrFrameContract.ValidateOutput(frameData, output);
+                _logger.LogDebug("HDR frame native output scale: {Scale}x", nativeScale);
+                return output;
             }
 
             _logger.LogWarning("HDR upscale failed with status {Status}", response.StatusCode);
-            return null;
+            throw new InvalidDataException($"HDR service rejected frame ({(int)response.StatusCode}): {await response.Content.ReadAsStringAsync(cancellationToken)}");
         }
 
         /// <summary>
@@ -440,6 +431,8 @@ namespace JellyfinUpscalerPlugin.Services
             var hasAudio = false;
             var effectiveFps = frameRate > 0 ? frameRate : 30.0;
             var isHDR = inputInfo?.IsHDR ?? false;
+            HdrFrameContract.Validate(inputInfo, ProcessingMethod.FrameByFrame, Config.OutputCodec);
+            ValidateFrameSequence(processedDir);
 
             try
             {
@@ -458,7 +451,7 @@ namespace JellyfinUpscalerPlugin.Services
                     _logger.LogInformation("No audio track found in source video");
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogWarning(ex, "Failed to extract audio, continuing without audio");
                 hasAudio = false;
@@ -490,12 +483,19 @@ namespace JellyfinUpscalerPlugin.Services
 
             var result = await Cli.Wrap(_ffmpegPath)
                 .WithArguments(args => {
-                    args.Add("-framerate").Add(effectiveFps.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                    args.Add("-xerror")
+                        .Add("-framerate").Add(effectiveFps.ToString(System.Globalization.CultureInfo.InvariantCulture))
                         .Add("-i").Add(Path.Combine(processedDir, "frame_%06d.png"));
                     if (hasAudio && File.Exists(tempAudioPath))
                         args.Add("-i").Add(tempAudioPath);
                     foreach (var part in codecArgs.Split(' ', StringSplitOptions.RemoveEmptyEntries))
                         args.Add(part);
+                    if (isHDR)
+                    {
+                        args.Add("-vf").Add("scale=out_color_matrix=bt2020:in_range=pc:out_range=tv");
+                        args.Add("-color_range").Add("tv");
+                        args.Add("-x265-params").Add(HdrFrameContract.X265Parameters(inputInfo!));
+                    }
                     args.Add("-r").Add(effectiveFps.ToString(System.Globalization.CultureInfo.InvariantCulture));
                     if (hasAudio && File.Exists(tempAudioPath))
                         args.Add("-c:a").Add("copy");
@@ -534,6 +534,53 @@ namespace JellyfinUpscalerPlugin.Services
         }
 
         /// <summary>
+        /// Decode a service response and derive its native scale from real pixels.
+        /// Never resize an unexpected image to make it fit the configured scale.
+        /// </summary>
+        private static int ValidateNativeScale(int width, int height, int frameCount, int sourceWidth, int sourceHeight)
+        {
+            if (sourceWidth <= 0 || sourceHeight <= 0 || frameCount != 1)
+                throw new InvalidDataException("AI output requires a single image and known source dimensions.");
+            var scale = width / sourceWidth;
+            if (scale < 1 || scale > 8 || width != sourceWidth * scale || height != sourceHeight * scale)
+                throw new InvalidDataException("AI output dimensions do not match a supported native model scale.");
+            return scale;
+        }
+
+        internal static (int Width, int Height, int Scale) ValidateNativeAiOutput(
+            byte[] imageBytes, int sourceWidth, int sourceHeight)
+        {
+            using var image = Image.Load(imageBytes);
+            var scale = ValidateNativeScale(image.Width, image.Height, image.Frames.Count, sourceWidth, sourceHeight);
+            return (image.Width, image.Height, scale);
+        }
+
+        internal static void ValidateFrameSequence(string processedDir)
+        {
+            var frames = Directory.GetFiles(processedDir, "frame_*.png").OrderBy(f => f, StringComparer.Ordinal).ToArray();
+            if (frames.Length == 0) throw new InvalidDataException("No processed frames are available for encoding.");
+            var first = Image.Identify(frames[0]);
+            for (var index = 0; index < frames.Length; index++)
+            {
+                if (Path.GetFileName(frames[index]) != $"frame_{index + 1:D6}.png")
+                    throw new InvalidDataException("Processed frame sequence has a missing or out-of-order frame.");
+                var info = Image.Identify(frames[index]);
+                if (info.Width != first.Width || info.Height != first.Height)
+                    throw new InvalidDataException("AI output dimensions changed within the video; mixed model scales are not supported.");
+            }
+        }
+
+        internal static (byte[] Data, int Width, int Height, int Scale) DecodeNativeAiFrame(
+            byte[] imageBytes, int sourceWidth, int sourceHeight)
+        {
+            using var image = Image.Load<SixLabors.ImageSharp.PixelFormats.Rgb24>(imageBytes);
+            var scale = ValidateNativeScale(image.Width, image.Height, image.Frames.Count, sourceWidth, sourceHeight);
+            var rawBytes = new byte[checked(image.Width * image.Height * 3)];
+            image.CopyPixelDataTo(rawBytes);
+            return (rawBytes, image.Width, image.Height, scale);
+        }
+
+        /// <summary>
         /// Decode JPEG bytes from AI service back to raw RGB24 frame buffer.
         /// Returns null if decoding fails or dimensions do not match.
         /// </summary>
@@ -544,7 +591,7 @@ namespace JellyfinUpscalerPlugin.Services
                 using var image = Image.Load<SixLabors.ImageSharp.PixelFormats.Rgb24>(jpegBytes);
                 if (image.Width != expectedWidth || image.Height != expectedHeight)
                 {
-                    image.Mutate(x => x.Resize(expectedWidth, expectedHeight));
+                    return null;
                 }
 
                 var rawBytes = new byte[expectedWidth * expectedHeight * 3];

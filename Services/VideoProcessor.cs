@@ -223,6 +223,8 @@ namespace JellyfinUpscalerPlugin.Services
                 // 1. Analyze input video
                 var inputInfo = await _videoAnalyzer.AnalyzeVideoAsync(inputPath);
                 job.InputInfo = inputInfo;
+                HdrFrameContract.ValidateInput(inputInfo);
+                if (HdrFrameContract.IsHdr(inputInfo)) inputInfo.IsHDR = true;
 
                 // 2. Detect hardware capabilities
                 var hardwareProfile = await _upscalerCore.DetectHardwareAsync();
@@ -252,7 +254,7 @@ namespace JellyfinUpscalerPlugin.Services
                         }
                         _logger.LogWarning("Failed to load model {Model}, trying next in fallback chain", candidateModel);
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) when (ex is not OperationCanceledException)
                     {
                         _logger.LogWarning(ex, "Model {Model} failed to load, trying next", candidateModel);
                     }
@@ -270,6 +272,9 @@ namespace JellyfinUpscalerPlugin.Services
                         "No AI model could be loaded - load a model first (Dashboard -> Models), then re-run.");
                     return new VideoProcessingResult { Success = false, Error = "No AI model could be loaded - load a model first (Dashboard -> Models)." };
                 }
+
+                // A loaded fallback may have a different scale from the original choice.
+                ModelScale.ApplyNativeScale(optimizedOptions);
 
                 // 4. Check multi-frame model support
                 var serviceStatus = await _upscalerCore.GetServiceStatusAsync();

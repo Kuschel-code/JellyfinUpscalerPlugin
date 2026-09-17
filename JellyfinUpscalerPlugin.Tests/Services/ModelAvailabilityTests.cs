@@ -23,6 +23,9 @@ namespace JellyfinUpscalerPlugin.Tests.Services
         [InlineData("nomos8k-hat-x4")]
         [InlineData("apisr-x3")]
         [InlineData("edvr-m-x4")]
+        [InlineData("bhi-realplksr-x4")]
+        [InlineData("drct-l-x4")]
+        [InlineData("real-cugan-x4")]
         [InlineData("realbasicvsr-x4")]
         [InlineData("animesr-v2-x4")]
         public void IsKnownUnavailable_ReturnsTrue_ForAllSelfHostModels(string modelId)
@@ -38,9 +41,6 @@ namespace JellyfinUpscalerPlugin.Tests.Services
         [InlineData("ultrasharp-v2-x4")]
         [InlineData("nomos2-realplksr-x4")]
         [InlineData("realesrgan-animevideo-x4")]
-        [InlineData("real-cugan-x4")]
-        [InlineData("drct-l-x4")]
-        [InlineData("bhi-realplksr-x4")]
         [InlineData("rife-v4.25")]
         public void IsKnownUnavailable_ReturnsFalse_ForAvailableModels(string modelId)
         {
@@ -128,14 +128,34 @@ namespace JellyfinUpscalerPlugin.Tests.Services
         // ──────────────────────────────────────────────────────────────────────
 
         [Fact]
-        public void KnownUnavailable_ContainsExactlyFiveEntries()
+        public void KnownUnavailable_MatchesEveryEmbeddedUnavailableEntry()
         {
-            // If you add or remove an entry from KnownUnavailable, also update:
-            //   - docker-ai-service/app/main.py AVAILABLE_MODELS available:False entries
-            //   - Resources/models-fallback.json (regen via Scripts/sync-fallback-models.ps1)
-            //   - This count assertion (intentional friction so the list is reviewed)
-            ModelAvailability.KnownUnavailable.Should().HaveCount(5,
-                "the count is locked down so an accidental .Add() in a refactor doesn't slip through");
+            using var stream = typeof(ModelAvailability).Assembly.GetManifestResourceStream(
+                "JellyfinUpscalerPlugin.Resources.models-fallback.json")!;
+            using var doc = System.Text.Json.JsonDocument.Parse(stream);
+            var expected = new System.Collections.Generic.List<string>();
+            foreach (var model in doc.RootElement.GetProperty("models").EnumerateArray())
+                if (model.GetProperty("available").ValueKind == System.Text.Json.JsonValueKind.False)
+                    expected.Add(model.GetProperty("id").GetString()!);
+            ModelAvailability.KnownUnavailable.Should().BeEquivalentTo(expected);
+        }
+
+        [Theory]
+        [InlineData("rife-v4.9")]
+        [InlineData("tiny-yolov3")]
+        [InlineData("gfpgan-v1.4")]
+        public void NonUpscalersCannotBePickedOrEnterVideoChains(string model)
+        {
+            ModelAvailability.IsUsableUpscaler(model).Should().BeFalse();
+            ModelAvailability.PickAvailable(model, "fsrcnn-x2").Should().Be("fsrcnn-x2");
+            var selector = new ProcessingStrategySelector(Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance);
+            selector.BuildVideoModelChain(model).Should().NotContain(model);
+        }
+
+        [Fact]
+        public void UnknownImportedUpscalersRemainAllowed()
+        {
+            ModelAvailability.PickAvailable("my-custom-upscaler", "fsrcnn-x2").Should().Be("my-custom-upscaler");
         }
 
         [Fact]

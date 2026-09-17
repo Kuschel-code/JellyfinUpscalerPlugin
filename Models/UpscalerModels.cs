@@ -111,6 +111,9 @@ namespace JellyfinUpscalerPlugin.Models
         public bool HasSubtitles { get; set; }
         public VideoQuality EstimatedQuality { get; set; }
         public bool IsHDR { get; set; }
+        public bool HasDynamicHDR { get; set; }
+        public string? MasteringDisplayMetadata { get; set; }
+        public string? ContentLightMetadata { get; set; }
         public bool IsInterlaced { get; set; }
         public double AspectRatio { get; set; }
         public int BitDepth { get; set; } = 8;
