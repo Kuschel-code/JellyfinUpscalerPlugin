@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Release status (2026-09-16):** v1.8.3.31 is a release candidate. The latest published plugin is [v1.8.3.30](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.30). The RC fixes issue #79, player cancellation/retry behavior, model-category filtering and batch failure handling. Target-server GPU, playback and HDR acceptance remain open; see the [release plan](docs/RELEASE-PLAN-v1.8.3.31.md).
+**Release status (2026-09-16):** v1.8.3.31 is a release candidate. The latest published plugin is [v1.8.3.30](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.30). The RC fixes issue #79, player cancellation/retry behavior, model-category filtering and batch failure handling. Target-server GPU, playback and HDR acceptance remain open; see the [release plan](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/update/v1.8.3.31/docs/RELEASE-PLAN-v1.8.3.31.md).
 
 **Docker images (seven variants):** The plugin and AI service both need this update. Candidate builds use `rc-v1.8.3.31[-backend]` and commit-specific RC tags. The following rolling tags change only when the release is approved:
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
@@ -365,7 +365,7 @@ Each tag is published three ways so you can pin precisely:
 - `:v1.8.3.30-<backend>` — published backend pin (e.g. `:v1.8.3.30-cpu`)
 - `:rc-v1.8.3.31[-backend]` — candidate only; `:rc-v1.8.3.31-<commit>[-backend]` identifies a particular candidate build. Check the [Docker workflow](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/actions/workflows/docker-publish.yml) before pulling.
 
-CUDA is the default: keep `SKIP_TENSORRT=true`. Enable TensorRT only with compatible libraries in the image. See [Docker setup and controlled updates](docker-ai-service/README.md).
+CUDA is the default: keep `SKIP_TENSORRT=true`. Enable TensorRT only with compatible libraries in the image. See [Docker setup and controlled updates](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/update/v1.8.3.31/docker-ai-service/README.md).
 
 ---
 

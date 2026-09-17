@@ -16,7 +16,7 @@ Image-Repository: `kuscheltier/jellyfin-ai-upscaler`. Docker-Quellcommit: `5c299
 
 Commit-Pins: `rc-v1.8.3.31-5c299d2` für NVIDIA; derselbe Präfix plus `-amd`, `-intel`, `-apple`, `-vulkan`, `-cpu` oder `-converter` für die übrigen Backends.
 
-Die regulären Tags `latest`, `docker7` und `docker7-cpu` wurden zusätzlich abgefragt: Sie zeigen weiterhin die Veröffentlichung vom 16.08.2026. Der RC hat keine regulären Update-Tags verschoben. Der AMD-Trivy-Nachlauf war beim Registry-Abgleich noch aktiv; die sieben Image-Pushes waren bereits abgeschlossen. Der verlinkte Workflow enthält den endgültigen Jobstatus.
+Die regulären Tags `latest`, `docker7` und `docker7-cpu` wurden zusätzlich abgefragt: Sie zeigen weiterhin die Veröffentlichung vom 16.08.2026. Der RC hat keine regulären Update-Tags verschoben. Am 17.09.2026 abschließend geprüft: Der gesamte Workflow einschließlich aller sieben Backend-Jobs ist erfolgreich abgeschlossen. Dies ist keine Aussage, dass die Images frei von Sicherheitsmeldungen sind.
 
 ## Lokal geprüft
 
@@ -26,6 +26,8 @@ Die regulären Tags `latest`, `docker7` und `docker7-cpu` wurden zusätzlich abg
 - 48 gleichzeitige Testaufrufe: 43×503 mit `Busy` und `Retry-After: 1`; nach Wartezeit wieder 200. Als HLG deklarierte Realtime-Anfrage: 422.
 - Docker-Tag-Logik: vier Tests, 14 Workflow-Kombinationen und zwei erkannte Mutationen. Feed-Audit: acht Tests und drei erkannte Mutationen; echte ZIP-/Assembly-Prüfung mit 17 Fällen.
 - Website: zehn geänderte Seiten im Browser geladen, keine JavaScript-Seitenfehler; Desktop-/Mobilansicht kontrolliert.
+
+Zusätzlicher Registry-Rücktest: Alle zehn Plattform-Konfigurationen bestätigen Version `1.8.3.31` und Revision `5c299d2`; NVIDIA enthält `SKIP_TENSORRT=true`. Das veröffentlichte CPU-Image wurde per Digest zurückgeladen, alle sechs Python-Quelldateien bytegleich mit dem geprüften Checkout verglichen und anschließend ohne Netzwerk oder Secrets gestartet. 20 weitere echte FSRCNN-Inferenzen lieferten jeweils 256×144 Pixel. Der Testcontainer ist gestoppt.
 
 ## Offen vor regulärer Freigabe
 

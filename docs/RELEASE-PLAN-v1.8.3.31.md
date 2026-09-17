@@ -41,7 +41,7 @@ Docker Desktop 4.91.0 / Engine 29.8.0, Linux amd64, vier VM-CPUs und knapp 2 GB 
 - Ein als HLG deklarierter Realtime-Aufruf wird verständlich mit HTTP 422 abgelehnt. Dies war kein echter HLG-Referenzclip.
 - Kein Jellyfin-Player, kein C#-Proxy und keine Zielhardware in diesem Test: damit insbesondere kein Beleg für die reale 429-Weitergabe oder die vollständige Abnahme von #79. Diese bleibt in den unten genannten Server-Gates.
 
-Logs und Antworten liegen außerhalb des Repositories in `../local-validation/docker-2026-09-16/`. Alle sieben RC-Varianten sind inzwischen auf Docker Hub veröffentlicht; Tags, Plattformen und Commit-Pins wurden über die öffentliche Registry-API bestätigt. [Digests und Docker-Prüfnachweise](DOCKER-RC-v1.8.3.31.md). Der AMD-Trivy-Nachlauf war beim Registry-Abgleich noch aktiv.
+Logs und Antworten liegen außerhalb des Repositories in `../local-validation/docker-2026-09-16/`. Alle sieben RC-Varianten sind inzwischen auf Docker Hub veröffentlicht; Tags, Plattformen und Commit-Pins wurden über die öffentliche Registry-API bestätigt. [Digests und Docker-Prüfnachweise](DOCKER-RC-v1.8.3.31.md). Der Docker-Workflow ist inzwischen mit allen sieben Jobs erfolgreich abgeschlossen (am 17.09.2026 bestätigt).
 
 ## Paket
 
