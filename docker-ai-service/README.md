@@ -8,19 +8,19 @@
 
 ---
 
-## v1.8.3.31 candidate and Docker updates
+## v1.8.3.31 and Docker updates
 
-This branch is a release candidate. The latest published plugin is [v1.8.3.30](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.30). Build results and target-hardware acceptance are separate gates; see the [release plan](../docs/RELEASE-PLAN-v1.8.3.31.md).
+Release v1.8.3.31 updates both the plugin and AI service. The owner explicitly waived target-server acceptance on 2026-09-17. GPU, real Jellyfin playback and HDR target-hardware behavior remain unverified; see the [release plan](../docs/RELEASE-PLAN-v1.8.3.31.md).
 
-| Backend | Rolling release tag | Candidate tag | Architectures |
+| Backend | Rolling release tag | Version pin | Architectures |
 |---|---|---|---|
-| NVIDIA CUDA | `docker7` | `rc-v1.8.3.31` | amd64 |
-| AMD ROCm | `docker7-amd` | `rc-v1.8.3.31-amd` | amd64 |
-| Intel OpenVINO | `docker7-intel` | `rc-v1.8.3.31-intel` | amd64 |
-| Apple Docker (CPU) | `docker7-apple` | `rc-v1.8.3.31-apple` | amd64, arm64 |
-| Vulkan/ncnn | `docker7-vulkan` | `rc-v1.8.3.31-vulkan` | amd64, arm64 |
-| CPU | `docker7-cpu` | `rc-v1.8.3.31-cpu` | amd64, arm64 |
-| Converter (CPU + Torch/Spandrel) | `docker7-converter` | `rc-v1.8.3.31-converter` | amd64 |
+| NVIDIA CUDA | `docker7` | `v1.8.3.31` | amd64 |
+| AMD ROCm | `docker7-amd` | `v1.8.3.31-amd` | amd64 |
+| Intel OpenVINO | `docker7-intel` | `v1.8.3.31-intel` | amd64 |
+| Apple Docker (CPU) | `docker7-apple` | `v1.8.3.31-apple` | amd64, arm64 |
+| Vulkan/ncnn | `docker7-vulkan` | `v1.8.3.31-vulkan` | amd64, arm64 |
+| CPU | `docker7-cpu` | `v1.8.3.31-cpu` | amd64, arm64 |
+| Converter (CPU + Torch/Spandrel) | `docker7-converter` | `v1.8.3.31-converter` | amd64 |
 
 All tags belong to `kuscheltier/jellyfin-ai-upscaler`. Candidate jobs also publish `rc-v1.8.3.31-<commit>[-backend]` for reproducible tests. A candidate does not update `docker7`, `latest` or final version pins. Check the [workflow result](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/actions/workflows/docker-publish.yml) for each backend before pulling.
 
@@ -251,7 +251,7 @@ docker compose ps
 
 Use the existing dashboard credentials to check `/health/detailed`, `/gpu-verify`, model loading and actual inference. Confirm the expected version and active provider. Then test the Jellyfin player for at least five minutes, retry/recovery, driver-upscaling guard and masking. A healthy container alone does not verify these player paths or GPU/HDR quality. Restore the saved image/configuration if acceptance fails.
 
-For maintainers: dispatch `docker-publish.yml` on `update/v1.8.3.31` with version `1.8.3.31`, `push=true`, `channel=candidate`. It builds all seven variants. Use `channel=release` only after server acceptance. Plugin ZIP publication remains manual.
+For maintainers: dispatch `docker-publish.yml` on `update/v1.8.3.31` with version `1.8.3.31`, `push=true`, `channel=candidate`. It builds all seven variants. Use `channel=release` after server acceptance or an explicitly documented owner waiver (recorded for v1.8.3.31). Plugin ZIP publication remains manual.
 
 ## 🔄 Automatic Updates (Watchtower)
 

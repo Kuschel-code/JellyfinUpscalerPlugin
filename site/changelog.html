@@ -13,20 +13,20 @@
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Every release carries its full notes on the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.31 — Release candidate</h2>
-  <p class="date">2026-09-16 · not yet released or accepted on the target server</p>
+  <h2>v1.8.3.31 — Playback recovery and model guards</h2>
+  <p class="date">2026-09-17 · target-server acceptance explicitly waived by the owner; GPU, live-player and HDR target-hardware behavior remain unverified</p>
   <ul>
     <li>Issue #79: playback frames and video chunks no longer consume the ten-image-actions-per-minute limit. The player handles 429/503, Retry-After, cancellation and fresh-frame retries with one request at a time.</li>
     <li>Driver upscaling prevents double processing. Object masking keeps its capture loop. Auto selects Server AI only when its measured frame rate reaches 80% of the video frame rate.</li>
     <li>Batch jobs stop on AI errors or invalid frames. FFmpeg decoding and encoding still run on the Jellyfin host; Docker handles the AI inference.</li>
     <li>Interpolation, face restoration and detectors stay out of normal upscaler selection. Import limits and conversion-output checks are enforced.</li>
     <li>PQ/BT.2020 RGB16 transport only; HLG, dynamic HDR and realtime/multi-frame HDR are rejected. HDR image quality still requires target-clip and display acceptance.</li>
-    <li>All seven Docker variants have separate RC publication tags. CUDA remains the default; TensorRT requires compatible libraries and explicit opt-in.</li>
+    <li>All seven Docker variants receive v1.8.3.31 version pins and regular docker7 tags. CUDA remains the default; TensorRT requires compatible libraries and explicit opt-in.</li>
     <li>Local regression run: 442 C#, 209 Python and 36 Node behavior tests passed, including mutation checks. These results are not a GPU or live-player certification.</li>
   </ul>
-  <p><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/update/v1.8.3.31/docs/RELEASE-PLAN-v1.8.3.31.md">Release gates</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/update/v1.8.3.31/docs/AUDIT-v1.8.3.31-2026-09-16.md">Issue and discussion audit</a></p>
+  <p><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/RELEASE-PLAN-v1.8.3.31.md">Release gates</a> · <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/AUDIT-v1.8.3.31-2026-09-16.md">Issue and discussion audit</a></p>
 
-  <h2>v1.8.3.30 - Notifications stack instead of piling up <span class="tag success">latest published</span></h2>
+  <h2>v1.8.3.30 - Notifications stack instead of piling up</h2>
   <p class="date">2026-08-16</p>
   <ul>
     <li><strong><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/77">Issue #77</a>: "if you hit a toggle in quick succession, the notifications will simply pile on top of each other."</strong> They did &mdash; literally. Every notification was its own <code>position: fixed</code> element anchored to the same corner, so two of them resolved to the identical coordinates and the second covered the first. Measured in a browser against the real CSS: three toasts all reported <code>top 1185 / bottom 1226</code>.</li>

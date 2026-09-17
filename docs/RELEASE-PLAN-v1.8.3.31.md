@@ -1,6 +1,6 @@
-# v1.8.3.31 — Release Candidate
+# v1.8.3.31 — Release
 
-Stand: 16.09.2026. Lokale Korrekturen und Gates; Veröffentlichung bleibt bis zur Zielserver-Abnahme gesperrt. Branch: `update/v1.8.3.31`. Vorhandene Änderungen wurden erhalten; kein Reset/Verwerfen des Worktrees.
+Stand: 17.09.2026. Der Nutzer hat die Zielserver-Abnahme ausdrücklich aufgehoben: „Überspring die serverabnahme“. Reguläre Veröffentlichung ist damit freigegeben, sofern die lokalen, CI-, Paket-, Docker- und Feed-Prüfungen bestehen. Es wird keine Zielhardware-Verifikation behauptet. Branch: `update/v1.8.3.31`. Vorhandene Änderungen wurden erhalten; kein Reset/Verwerfen des Worktrees.
 
 ## Umfang
 
@@ -39,7 +39,7 @@ Docker Desktop 4.91.0 / Engine 29.8.0, Linux amd64, vier VM-CPUs und knapp 2 GB 
 - Echtes FSRCNN-x2-Modell aus dem bestehenden hashgeprüften Katalog geladen; **286 Frame-Anfragen über 301,77 Sekunden**, alle HTTP 200. Jedes JPEG wurde dekodiert und auf 256×144 Pixel bei 128×72 Eingabe geprüft. Frame 11 ebenfalls erfolgreich.
 - Anschließend 48 konkurrierende Anfragen: **43× HTTP 503** mit Fehlerdetail `Busy` und `Retry-After: 1`, fünf erfolgreiche Antworten. Nach einer Sekunde Wartezeit wieder HTTP 200.
 - Ein als HLG deklarierter Realtime-Aufruf wird verständlich mit HTTP 422 abgelehnt. Dies war kein echter HLG-Referenzclip.
-- Kein Jellyfin-Player, kein C#-Proxy und keine Zielhardware in diesem Test: damit insbesondere kein Beleg für die reale 429-Weitergabe oder die vollständige Abnahme von #79. Diese bleibt in den unten genannten Server-Gates.
+- Kein Jellyfin-Player, kein C#-Proxy und keine Zielhardware in diesem Test: damit insbesondere kein Beleg für die reale 429-Weitergabe oder die vollständige Abnahme von #79. Die End-to-End-Abnahme auf dem Zielserver wurde später ausdrücklich vom Nutzer übersprungen.
 
 Logs und Antworten liegen außerhalb des Repositories in `../local-validation/docker-2026-09-16/`. Alle sieben RC-Varianten sind inzwischen auf Docker Hub veröffentlicht; Tags, Plattformen und Commit-Pins wurden über die öffentliche Registry-API bestätigt. [Digests und Docker-Prüfnachweise](DOCKER-RC-v1.8.3.31.md). Der Docker-Workflow ist inzwischen mit allen sieben Jobs erfolgreich abgeschlossen (am 17.09.2026 bestätigt).
 
@@ -49,7 +49,7 @@ Ausschließlich aus `dotnet publish JellyfinUpscalerPlugin.csproj -c Release`. D
 
 Die tatsächliche lokale ZIP-MD5 steht im lokalen `../local-validation/package.json` und im Abschlussbericht. Sie ist keine Prüfsumme eines veröffentlichten Assets. Alle drei Feeds bleiben bis zum tatsächlichen Upload unverändert.
 
-## Server-Abnahme: blockiert
+## Server-Abnahme: auf ausdrücklichen Nutzerwunsch übersprungen
 
 Die Brain-Pläne wurden über die vorhandene Netzwerkfreigabe gelesen. Für den Zielserver `192.168.178.113` fehlt weiterhin eine konkrete dokumentierte Jellyfin-/AI-Service-URL und ein verwendbarer administrativer Zugang. Die einmalige Nachfrage wurde bereits gestellt. Keine Portscans, geratenen Ports oder Credentials.
 
@@ -57,7 +57,7 @@ Nicht durchgeführt: Erreichbarkeits-/Health-Prüfung über eine dokumentierte Z
 
 Ein früherer lokaler synthetischer FFmpeg-Transporttest erhielt zehn RGB16-Frames/1,000 s, PQ/BT.2020/yuv420p10le und statische HDR-Metadaten. Er enthielt keine echte AI-Inferenz und ersetzt keine Zielhardware-Abnahme.
 
-## GitHub-Auslieferung: nach den Server-Gates
+## GitHub-Auslieferung: technische Gates und dokumentierter Abnahmeverzicht
 
 Der Nutzer hat Commits und Push des RC-Branches vorab ausdrücklich freigegeben. Die GitHub-CLI ist inzwischen erfolgreich angemeldet; der RC-Branch wurde am 16.09.2026 bis `5c299d2` gepusht. Der frühere HTTP-403-Blocker der GitHub-App besteht damit für den CLI-Push nicht mehr. Keine Secrets ausgegeben.
 
@@ -65,7 +65,7 @@ Am 16.09.2026: Issue #79 weiterhin offen; Tag und Release `v1.8.3.31` nicht vorh
 
 Der Docker-Workflow kann vor der Hardware-Abnahme mit `channel=candidate` alle sieben Varianten unter getrennten `rc-v1.8.3.31[-backend]`-Tags und commitgebundenen RC-Tags veröffentlichen. Vier Verhaltenstests, 14 Kombinationen des tatsächlichen Workflow-Tag-Schritts und zwei erkannte Mutationen prüfen, dass Kandidaten keine finalen Pins oder Rolling-Tags ändern. Dies ist keine Freigabe als reguläres Release.
 
-Nach erfolgreicher Zielserver-Abnahme: Branch/Review abschließen; Tag-/Release-Existenz erneut prüfen; Docker-Workflow für 1.8.3.31 mit `channel=release` ohne konkurrierende latest-Runs ausführen; geprüftes Plugin-ZIP manuell veröffentlichen. Veröffentlichtes ZIP herunterladen, echte MD5 identisch in alle drei Feeds übernehmen, Feeds committen/pushen und `pwsh Scripts/verify-release.ps1 -Tag v1.8.3.31` vollständig gegen GitHub bestehen lassen. Erst dann #79 mit Version, Umgebung, Testdauer und Ergebnissen kommentieren und schließen.
+Nach dem ausdrücklichen Abnahmeverzicht vom 17.09.2026: Branch/Review abschließen; Tag-/Release-Existenz erneut prüfen; Docker-Workflow für 1.8.3.31 mit `channel=release` ohne konkurrierende latest-Runs ausführen; geprüftes Plugin-ZIP manuell veröffentlichen. Veröffentlichtes ZIP herunterladen, echte MD5 identisch in alle drei Feeds übernehmen, Feeds committen/pushen und `pwsh Scripts/verify-release.ps1 -Tag v1.8.3.31` vollständig gegen GitHub bestehen lassen. Erst dann #79 mit Version, Umgebung, Testdauer und Ergebnissen kommentieren und schließen.
 
 Der bisherige CI-Audit erzwang fälschlich einen vorgezogenen Feed-Eintrag. Er prüft jetzt die tatsächlichen Publish-Assemblies/ZIP-Metadaten und identische veröffentlichte Feed-Einträge, lässt aber einen noch unveröffentlichten Kandidaten korrekt außerhalb der Feeds. Acht Verhaltenstests und drei erkannte Mutationen sichern dies ab. Die strenge Online-Prüfung nach dem Release bleibt unverändert.
 

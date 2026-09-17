@@ -8,5 +8,5 @@
     "framework": "net9.0",
     "owner": "Kuschel-code",
     "category": "Video Enhancement",
-    "changelog": "v1.8.3.31: Remove the image-action rate limit from playback frames/chunks; forward busy/error responses and Retry-After; serialize player captures with abortable requests and backoff; guard driver upscaling and object masking; enforce measured Auto-mode performance; reject invalid model categories and unsupported HDR; fail library jobs on AI errors without local resize/original-frame substitution; enforce nonempty passing TRX and publish-only runtime packaging. Release candidate pending target-server acceptance."
+    "changelog": "v1.8.3.31: Remove the image-action rate limit from playback frames/chunks; forward busy/error responses and Retry-After; serialize player captures with abortable requests and backoff; guard driver upscaling and object masking; enforce measured Auto-mode performance; reject invalid model categories and unsupported HDR; fail library jobs on AI errors without local resize/original-frame substitution; enforce nonempty passing TRX and publish-only runtime packaging. Target-server acceptance was explicitly waived by the owner; GPU, live-player and HDR target-hardware behavior remain unverified."
 }

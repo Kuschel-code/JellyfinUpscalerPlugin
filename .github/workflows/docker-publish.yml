@@ -26,7 +26,7 @@ on:
         required: true
         default: 'true'
       channel:
-        description: 'candidate = RC tags only; release = final pins and rolling tags after server acceptance'
+        description: 'candidate = RC tags only; release = final pins and rolling tags after acceptance or documented owner waiver'
         required: true
         type: choice
         default: candidate
