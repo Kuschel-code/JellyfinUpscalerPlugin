@@ -45,7 +45,7 @@
     <li><strong>NVIDIA:</strong> container must have <code>runtime: nvidia</code> (compose) or <code>--gpus all</code> (docker run). Run <code>docker exec ai-upscaler nvidia-smi</code> - if this fails, the NVIDIA Container Toolkit isn't installed on the host.</li>
     <li><strong>Intel (OpenVINO):</strong> container needs <code>--device /dev/dri</code>. On Unraid, the Intel GPU Plugin must be installed.</li>
     <li><strong>AMD (ROCm):</strong> needs <code>--device /dev/kfd</code> <em>and</em> <code>--device /dev/dri</code>, plus <code>--group-add video</code>.</li>
-    <li><strong>Wrong image tag:</strong> make sure you're pulling <code>:latest-cuda</code> / <code>-openvino</code> / <code>-rocm</code>, not <code>:latest-cpu</code>.</li>
+    <li><strong>Wrong image tag:</strong> make sure you're pulling <code>:docker7</code> / <code>:docker7-intel</code> / <code>:docker7-amd</code>, not <code>:docker7-cpu</code>.</li>
   </ul>
 
   <h2>GPU OOM during model load</h2>

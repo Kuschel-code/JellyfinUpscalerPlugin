@@ -31,13 +31,13 @@
   <h3>Anime4K (built in)</h3>
   <p>The plugin ships an embedded Anime4K tier - a WebGL shader that runs in the browser/player on the client GPU, zero server cost. Ideal for anime libraries served from a low-power box. Enable it in <a href="configuration.html">Config → Real-time</a>; it has no effect on clients without a capable GPU and silently falls back to the original stream.</p>
   <h3>Vendor VSR (RTX VSR / Intel / AMD) - client-only by design</h3>
-  <p>NVIDIA RTX Video Super Resolution, DLSS, AMD FSR and Intel's equivalents are <em>driver/GPU features of the viewing device</em>. The server cannot invoke them - there is no API to drive another machine's display pipeline. If your client supports RTX VSR, turn it on in the GeForce/driver settings; it composes fine with a server that just streams the source untouched.</p>
+  <p>NVIDIA RTX Video Super Resolution and Intel Video Super Resolution are <em>driver/GPU features of the viewing device</em>. The server cannot invoke them - there is no API to drive another machine's display pipeline. If your client supports RTX VSR, turn it on in the GeForce/driver settings; it composes fine with a server that just streams the source untouched.</p>
 
   <h2>The four providers, ranked</h2>
   <table>
     <thead><tr><th>Tier</th><th>Provider</th><th>What it looks like</th></tr></thead>
     <tbody>
-      <tr><td><span class="tag success">1</span></td><td>NVIDIA CUDA + TensorRT</td><td>RTX 2060 and up, ≥6 GB VRAM. Best latency, widest model support, TensorRT FP16 paths on Ampere+.</td></tr>
+      <tr><td><span class="tag success">1</span></td><td>NVIDIA CUDA (TensorRT opt-in)</td><td>RTX 2060 and up, ≥6 GB VRAM. CUDA is the default provider. TensorRT requires an image with compatible libraries and explicit opt-in.</td></tr>
       <tr><td><span class="tag accent">2</span></td><td>Intel OpenVINO</td><td>Arc A-series discrete, Iris Xe iGPU, N100/N305 mini-PCs. Great power/perf for home-lab, needs <code>/dev/dri</code> in container.</td></tr>
       <tr><td><span class="tag warn">3</span></td><td>AMD ROCm</td><td>RDNA2+ (6600/6700/7000 series) on Linux hosts with <code>/dev/kfd</code>. Works, but fewer models have official ROCm kernels.</td></tr>
       <tr><td><span class="tag">4</span></td><td>CPU (ONNX)</td><td>AVX2-capable modern x86. Works for FSRCNN/ESPCN real-time, anything ESRGAN+ will be minutes-per-frame.</td></tr>
@@ -64,7 +64,7 @@
 
   <h3>Budget home lab (Intel N100 / Arc A380)</h3>
   <ul>
-    <li><strong>Provider:</strong> OpenVINO (<code>:latest-openvino</code> image)</li>
+    <li><strong>Provider:</strong> OpenVINO (<code>:docker7-intel</code> image)</li>
     <li><strong>Good for:</strong> FSRCNN real-time, Waifu2x 2×, Real-ESRGAN-anime-x4 batch</li>
     <li><strong>Config:</strong> Max Concurrent Streams = 1, cache enabled</li>
     <li><strong>Expect:</strong> ~15 fps at 720p → 1440p with anime-compact-x4</li>
@@ -72,7 +72,7 @@
 
   <h3>Mid-range (RTX 3060 12GB / RTX 4060)</h3>
   <ul>
-    <li><strong>Provider:</strong> CUDA (<code>:latest-cuda</code> image)</li>
+    <li><strong>Provider:</strong> CUDA (<code>:docker7</code> image)</li>
     <li><strong>Good for:</strong> Everything in the catalogue except EDVR-M and HAT-L comfortably</li>
     <li><strong>Config:</strong> Max Concurrent Streams = 1, Auto-Mode on</li>
     <li><strong>Expect:</strong> 4×-realesrgan at ~20 fps on 720p source, 3× on 1080p source</li>
@@ -80,7 +80,7 @@
 
   <h3>High-end (RTX 4090 / A100)</h3>
   <ul>
-    <li><strong>Provider:</strong> CUDA + TensorRT conversion</li>
+    <li><strong>Provider:</strong> CUDA; optional TensorRT with matching image libraries</li>
     <li><strong>Good for:</strong> SwinIR-L, HAT-L, EDVR-M temporal, GFPGAN pipeline</li>
     <li><strong>Config:</strong> Max Concurrent Streams = 2, pre-processing cache on NVMe</li>
     <li><strong>Expect:</strong> Near real-time 4× on any model</li>
@@ -88,7 +88,7 @@
 
   <h3>CPU-only NAS (e.g. Synology DS920+)</h3>
   <ul>
-    <li><strong>Provider:</strong> CPU (<code>:latest-cpu</code> image)</li>
+    <li><strong>Provider:</strong> CPU (<code>:docker7-cpu</code> image)</li>
     <li><strong>Good for:</strong> Overnight batch upscales of an anime library with <code>fsrcnn-x2</code>/<code>espcn-x4</code></li>
     <li><strong>Config:</strong> <code>Scan &amp; Upscale Library</code> scheduled at 3 AM, pre-processing cache on the biggest pool you have</li>
     <li><strong>Expect:</strong> Hours per feature-length file. This is batch, not live.</li>
