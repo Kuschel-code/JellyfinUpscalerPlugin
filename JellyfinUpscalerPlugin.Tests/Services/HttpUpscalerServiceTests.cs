@@ -39,18 +39,23 @@ namespace JellyfinUpscalerPlugin.Tests.Services
 
         // ── GetServiceUrl (tested indirectly) ─────────────────────────────────────
 
-        [Fact]
-        public async Task IsServiceAvailableAsync_UsesDefaultUrl_WhenPluginInstanceIsNull()
+        [Theory]
+        [InlineData(HttpStatusCode.OK, true)]
+        [InlineData(HttpStatusCode.ServiceUnavailable, false)]
+        public async Task IsServiceAvailableAsync_UsesDefaultUrl_WhenPluginInstanceIsNull(
+            HttpStatusCode status, bool expected)
         {
-            // Plugin.Instance is null in unit test context, so GetServiceUrl() falls back to
-            // "http://localhost:5000". We verify the method runs without throwing and
-            // returns false when there is no real service listening.
-            using var service = CreateService();
-            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+            // Verify the default URL without depending on services running on the test host.
+            using var mockHttp = new MockHttpMessageHandler();
+            var matcher = mockHttp.When(HttpMethod.Get, "http://localhost:5000/health")
+                .Respond(status);
+            using var client = mockHttp.ToHttpClient();
+            using var service = CreateService(client);
 
-            var result = await service.IsServiceAvailableAsync(cts.Token);
+            var result = await service.IsServiceAvailableAsync();
 
-            result.Should().BeFalse();
+            result.Should().Be(expected);
+            mockHttp.GetMatchCount(matcher).Should().Be(1);
         }
 
         // ── UpscaleImageAsync ──────────────────────────────────────────────────────

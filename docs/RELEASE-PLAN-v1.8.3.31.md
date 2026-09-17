@@ -22,9 +22,9 @@ Details zu Meldungen und Modellquellen: [Audit vom 16.09.2026](AUDIT-v1.8.3.31-2
 
 ## Lokale Prüfnachweise
 
-Abschließender Lauf nach allen Mutationen: **442 C#-Tests, 209 Python-Tests und 36 Node-Verhaltenstests bestanden**, keine fehlgeschlagenen oder übersprungenen Tests. Python meldet zwei Deprecation-Warnungen aus Starlette/httpx und AnyIO. Logs, TRX, Mutationsergebnisse und ZIP liegen in `../local-validation/` oder ignorierten `TestResults*/`-Verzeichnissen, nicht im Commit.
+Abschließender Lauf nach allen Mutationen: **443 C#-Tests, 209 Python-Tests und 36 Node-Verhaltenstests bestanden**, keine fehlgeschlagenen oder übersprungenen Tests. Python meldet zwei Deprecation-Warnungen aus Starlette/httpx und AnyIO. Logs, TRX, Mutationsergebnisse und ZIP liegen in `../local-validation/` oder ignorierten `TestResults*/`-Verzeichnissen, nicht im Commit.
 
-- C#: .NET SDK 9.0.317, Release-Lauf und TRX-Validator bestätigen 442 tatsächlich ausgeführte, bestandene Ergebnisse.
+- C#: .NET SDK 9.0.317, Release-Lauf und TRX-Validator bestätigen 443 tatsächlich ausgeführte, bestandene Ergebnisse.
 - Python: vollständige Suite in der projektbezogenen Python-3.12-Umgebung. FastAPI-TestClient benötigt hier eine Sandbox-Ausnahme für lokale IPC. Frühere Hänger unter der Sandbox waren kein nachgewiesener Produktfehler.
 - Node: der geforderte `node --test tests/*.test.cjs` besteht. Die lokale Prozessisolation zeigt drei Datei-Aggregate; Node 24 mit `--test-isolation=none` zählt die tatsächlichen Verhaltenstests einzeln.
 - UI-Konsistenz: 138 Konfigurationsreferenzen, sieben Standalone-Skripte. TRX-Validator: zwei Testmethoden einschließlich ungültiger Eingabefälle. Docker-Versionsauflösung: vier Fälle. PowerShell-Paketprüfung: 17 Fälle mit echten Publish-Assemblies.
@@ -72,3 +72,7 @@ Der bisherige CI-Audit erzwang fälschlich einen vorgezogenen Feed-Eintrag. Er p
 ## Bewusst offen
 
 A3/A2, B1/B2, H2/H3, C1–C3 und D1/D2 bleiben Brain-Tracks in ihrer dokumentierten Abhängigkeitsreihenfolge. Keine unvollständige RIFE-, ArtCNN-, HDR-Realtime- oder Temporal-VSR-Funktion im Patch. GPU-/HDR-Qualität, Timeline und Pixelintegrität auf echten Zielclips bleiben eigenständige Gates.
+
+## Abschließende Testkorrektur am 17.09.2026
+
+Der erneute lokale Lauf zeigte einen umgebungsabhängigen Health-Test: Er erwartete einen nicht erreichbaren Dienst auf localhost:5000. Der Test nutzt jetzt den vorhandenen HTTP-Mock, prüft die genaue Standard-URL und beide Antworten (200/503), ohne einen echten lokalen Dienst anzusprechen. Danach: 443/443 C#-Tests und TRX-Validator grün. Python: 209 bestanden, zwei Deprecation-Warnungen; Node: 36 bestanden. Produktcode und Docker-Service wurden dabei nicht verändert.
