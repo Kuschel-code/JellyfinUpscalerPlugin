@@ -1,6 +1,6 @@
 # Jellyfin 12.0 Readiness — Static Analysis & Runtime Test Plan
 
-**Status:** static analysis complete, one API break found and fixed (v1.8.3.4). Runtime verification on a 12.0 RC box is still pending — test plan below.
+**Current status (2026-09-22):** Jellyfin 12.0 is now stable ([official release announcement, 2026-09-07](https://jellyfin.org/posts/jellyfin-release-12.0/)). Plugin v1.8.3.31 still builds against Jellyfin.Controller 10.11.8 on net9.0. There is no completed native Jellyfin 12 build or runtime acceptance on final 12.x. The analysis below is a historical rc2 snapshot, not verification of the final release. The known user-manager API adaptation is included.
 **Analysis date:** 2026-07-03 · against `Jellyfin.Controller 12.0.0-rc2` (nuget.org) · plugin baseline v1.8.3.3/main.
 
 ---

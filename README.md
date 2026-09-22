@@ -157,9 +157,9 @@ The in-player button lets you:
 
 ---
 
-## Jellyfin 12.0 (RC) compatibility
+## Jellyfin 12 compatibility
 
-Jellyfin 12.0 is in release-candidate phase. Static analysis against `Jellyfin.Controller 12.0.0-rc2` found **exactly one** API break (`IUserManager.Users` removed) — fixed in v1.8.3.4 with a version-adaptive lookup, so one DLL targets 10.11.x and is expected to load on 12.0. The plugin's web code already uses only the modern `Authorization: MediaBrowser` scheme, so 12.0's default rejection of legacy auth does not affect it. Runtime verification on an RC box is pending — see [docs/JELLYFIN-12-READINESS.md](docs/JELLYFIN-12-READINESS.md) for the full break list and test plan. Do not upgrade your production server to an RC just for this.
+Jellyfin 12.0 was released on September 7, 2026 ([official announcement](https://jellyfin.org/posts/jellyfin-release-12.0/)). This plugin still targets **Jellyfin.Controller 10.11.8 / .NET 9**. The earlier 12.0-rc2 API analysis led to a version-adaptive user-manager lookup, but does not prove compatibility with the final 12.x server. A native .NET 10 / Jellyfin 12 build and actual 12.x runtime acceptance have not been completed. See [docs/JELLYFIN-12-READINESS.md](docs/JELLYFIN-12-READINESS.md).
 
 ## Installation
 
