@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <!-- Allow roll-forward to the next major runtime when ASP.NET Core 9 is not installed -->
+    <!-- Allow roll-forward to the next major runtime when ASP.NET Core 10 is not installed -->
     <RollForward>Major</RollForward>
   </PropertyGroup>
 

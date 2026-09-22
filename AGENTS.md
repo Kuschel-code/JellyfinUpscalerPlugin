@@ -3,7 +3,7 @@
 Slim C# plugin (~1.6 MB) that talks HTTP to an external Docker AI microservice (Python/FastAPI/ONNX), plus a GitHub Pages site. GitHub: `Kuschel-code/JellyfinUpscalerPlugin`. Plugin GUID `f87f700e-679d-43e6-9c7c-b3a410dc3f22`.
 
 ## Stack
-- Plugin: `net9.0`, Jellyfin.Controller 10.11.8, FFMpegCore, CliWrap, ImageSharp; xUnit tests in `JellyfinUpscalerPlugin.Tests/`.
+- Plugin: `net10.0`, Jellyfin.Controller 12.0.0, FFMpegCore, CliWrap, ImageSharp; xUnit tests in `JellyfinUpscalerPlugin.Tests/`.
 - AI service: `docker-ai-service/` — FastAPI + ONNX Runtime; 7 image variants (`Dockerfile` + `.amd/.apple/.converter/.cpu/.intel/.vulkan`), per-backend `requirements-*.txt`.
 - Site: static HTML in `site/`, deployed by the Pages workflow on pushes touching `site/**`.
 
@@ -23,10 +23,10 @@ pwsh Scripts/sync-fallback-models.ps1  # regenerates Resources/models-fallback.j
 - The repo root is littered with dozens of old release ZIPs and `publish*`/`zip-stage*` dirs — NEVER list the root recursively; navigate directly to what you need.
 
 ## Release process (manual — CI does NOT release!)
-1. Stamp the version: csproj (`Version`/`AssemblyVersion`/`FileVersion`, always 4-part) and `meta.json` (`version` mirrors the git tag: 3-part when the 4th part is 0; its `targetAbi` stays 3-part `10.11.8`). Assembly version ≠ manifest version ⇒ Jellyfin restart-loop. Feeds are stamped in step 4.
+1. Stamp the version: csproj (`Version`/`AssemblyVersion`/`FileVersion`, always 4-part) and `meta.json` (`version` mirrors the git tag: 3-part when the 4th part is 0; its `targetAbi` stays 3-part `12.0.0`). Assembly version ≠ manifest version ⇒ Jellyfin restart-loop. Feeds are stamped in step 4.
 2. Build the ZIP. Forbidden inside: `Scripts/`, `*.pdb`, `*.deps.json`, test DLLs. `dotnet build` outputs only the main DLL — the transitive NuGet deps (FFMpegCore, CliWrap, ImageSharp, Instances) MUST be added or the plugin dies with NotSupported + tombstone (recovery: `/Plugins/{id}/{ver}/Enable`).
 3. `gh release create vX.Y.Z <zip>` (check for an existing tag first — global rule).
-4. Update version (4-part) + checksum + sourceUrl in ALL THREE feeds and keep them identical (`targetAbi` there is 4-part `10.11.8.0`). One missed feed = users see the update but cannot install it (caused issue #74).
+4. Update version (4-part) + checksum + sourceUrl in ALL THREE feeds and keep them identical (`targetAbi` there is 4-part `12.0.0.0`). One missed feed = users see the update but cannot install it (caused issue #74).
 5. Run `pwsh Scripts/verify-release.ps1`. A release is not done until it passes.
 
 ## Things That Will Bite You
