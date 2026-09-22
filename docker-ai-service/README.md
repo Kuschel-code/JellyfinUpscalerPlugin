@@ -8,6 +8,10 @@
 
 ---
 
+## Jellyfin 12 candidate
+
+v1.8.3.32 moves the plugin to Jellyfin 12 / .NET 10. The Python HTTP service has no Jellyfin or .NET runtime dependency. Published images remain at v1.8.3.31 until a separate Docker publication is completed; all seven variants and ten platform configurations were checked on 2026-09-22.
+
 ## v1.8.3.31 and Docker updates
 
 Release v1.8.3.31 updates both the plugin and AI service. The owner explicitly waived target-server acceptance on 2026-09-17. GPU, real Jellyfin playback and HDR target-hardware behavior remain unverified; see the [release plan](../docs/RELEASE-PLAN-v1.8.3.31.md).

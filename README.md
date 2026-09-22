@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.31
+# Jellyfin AI Upscaler Plugin v1.8.3.32 — Jellyfin 12 candidate
 
 [![Built with Claude Opus 5](https://img.shields.io/badge/Built%20with-Claude%20Opus%205-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
 
@@ -7,16 +7,16 @@
 ---
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
+[![Jellyfin Version](https://img.shields.io/badge/Jellyfin-12.0+-00A4DC.svg)](https://jellyfin.org)
 [![Docker Hub](https://img.shields.io/docker/pulls/kuscheltier/jellyfin-ai-upscaler?logo=docker&label=Docker%20Hub)](https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler)
 [![Docker Image](https://img.shields.io/docker/v/kuscheltier/jellyfin-ai-upscaler?logo=docker&label=Latest)](https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler)
 [![Documentation](https://img.shields.io/badge/Docs-kuschel--code.github.io-blueviolet)](https://kuschel-code.github.io/JellyfinUpscalerPlugin/)
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Release status (2026-09-17):** v1.8.3.31 fixes issue #79, player cancellation/retry behavior, model-category filtering and batch failure handling. The owner explicitly waived target-server acceptance for this release. GPU, real Jellyfin playback and HDR target-hardware behavior remain unverified; see the [release plan](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docs/RELEASE-PLAN-v1.8.3.31.md).
+**Release status (2026-09-22):** v1.8.3.32 is a native Jellyfin 12 / .NET 10 candidate. The published v1.8.3.31 plugin and Docker images remain available. The new build requires Jellyfin 12.0 or newer and must not replace the 10.11 build on older servers. Target-hardware acceptance remains unverified.
 
-**Docker Images (docker7 base — released in lockstep with the plugin, both at v1.8.3.31):** Update both the plugin and AI service. Seven backend variants use the following rolling tags; version pins are also available:
+**Docker Images (planned in lockstep with the plugin, both at v1.8.3.32):** Published images currently remain at v1.8.3.31. The HTTP AI service is independent of the Jellyfin/.NET runtime; a new image version is not proof of Jellyfin 12 compatibility.
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -41,7 +41,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.31   │  │
+│  │  AI Upscaler Plugin v1.8.3.32   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -159,7 +159,7 @@ The in-player button lets you:
 
 ## Jellyfin 12 compatibility
 
-Jellyfin 12.0 was released on September 7, 2026 ([official announcement](https://jellyfin.org/posts/jellyfin-release-12.0/)). This plugin still targets **Jellyfin.Controller 10.11.8 / .NET 9**. The earlier 12.0-rc2 API analysis led to a version-adaptive user-manager lookup, but does not prove compatibility with the final 12.x server. A native .NET 10 / Jellyfin 12 build and actual 12.x runtime acceptance have not been completed. See [docs/JELLYFIN-12-READINESS.md](docs/JELLYFIN-12-READINESS.md).
+The v1.8.3.32 candidate targets **Jellyfin.Controller 12.0.0 / .NET 10**. Jellyfin 12.1 is also published; see the [official releases](https://github.com/jellyfin/jellyfin/releases). Build and runtime evidence is tracked in [docs/JELLYFIN-12-READINESS.md](docs/JELLYFIN-12-READINESS.md); GPU, real-player and HDR target-hardware acceptance remain separate.
 
 ## Installation
 

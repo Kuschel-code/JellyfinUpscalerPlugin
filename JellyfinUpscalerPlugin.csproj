@@ -1,15 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
     <TreatWarningsAsErrors Condition="'$(Configuration)'=='Release'">true</TreatWarningsAsErrors>
     <TreatWarningsAsErrors Condition="'$(Configuration)'!='Release'">false</TreatWarningsAsErrors>
     <AssemblyTitle>AI Upscaler Plugin</AssemblyTitle>
-    <Version>1.8.3.31</Version>
-    <AssemblyVersion>1.8.3.31</AssemblyVersion>
-    <FileVersion>1.8.3.31</FileVersion>
+    <Version>1.8.3.32</Version>
+    <AssemblyVersion>1.8.3.32</AssemblyVersion>
+    <FileVersion>1.8.3.32</FileVersion>
     <NoWarn>CS8632</NoWarn>
     <Nullable>enable</Nullable>
     <!-- AI processing now handled by external Docker service - minimal dependencies -->
@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Jellyfin.Controller" Version="10.11.8" PrivateAssets="all" />
+    <PackageReference Include="Jellyfin.Controller" Version="12.0.0" PrivateAssets="all" />
     <!-- Microsoft.Extensions and System.Text.Json provided transitively by Jellyfin.Controller -->
     
     <!-- FFmpeg Integration (for frame extraction/encoding only) -->

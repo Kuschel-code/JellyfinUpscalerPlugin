@@ -1,4 +1,4 @@
-param([string]$PublishDir = (Join-Path $PSScriptRoot '../bin/Release/net9.0/publish'))
+param([string]$PublishDir = (Join-Path $PSScriptRoot '../bin/Release/net10.0/publish'))
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'release-validation.ps1')
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ('release-check-tests-' + [guid]::NewGuid().ToString('N'))

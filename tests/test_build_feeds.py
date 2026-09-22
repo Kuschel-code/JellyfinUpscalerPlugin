@@ -15,6 +15,17 @@ def feeds(version='1.8.3.30'):
 
 
 class BuildFeedTests(unittest.TestCase):
+    def test_jellyfin12_candidate_preserves_published_10_feed(self):
+        self.assertIn('candidate', module.validate(feeds('1.8.3.31'), '1.8.3.32', '12.0.0.0'))
+
+    def test_jellyfin12_release_requires_its_actual_abi(self):
+        data = feeds('1.8.3.32')
+        with self.assertRaisesRegex(ValueError, 'targetAbi'):
+            module.validate(data, '1.8.3.32', '12.0.0.0')
+        for feed in data:
+            feed[0]['versions'][0]['targetAbi'] = '12.0.0.0'
+        self.assertIn('published entry', module.validate(data, '1.8.3.32', '12.0.0.0'))
+
     def test_candidate_does_not_require_premature_feed_publication(self):
         self.assertIn('candidate', module.validate(feeds(), '1.8.3.31'))
 

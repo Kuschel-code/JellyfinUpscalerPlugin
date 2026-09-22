@@ -13,7 +13,7 @@ def version_parts(version):
     return tuple(map(int, version.split('.')))
 
 
-def validate(feeds, build_version):
+def validate(feeds, build_version, build_target_abi='10.11.8.0'):
     build = version_parts(build_version)
     if len(feeds) != 3:
         raise ValueError('All three feeds are required')
@@ -40,7 +40,8 @@ def validate(feeds, build_version):
         raise ValueError('Build is older than the published feed')
     if present[0] and present[0][0] != entry:
         raise ValueError('Build version must be the latest feed entry when present')
-    if entry.get('targetAbi') != '10.11.8.0':
+    allowed_abis = {build_target_abi} if present[0] else {'10.11.8.0', build_target_abi}
+    if entry.get('targetAbi') not in allowed_abis:
         raise ValueError('Unexpected feed targetAbi')
     if not re.fullmatch('[0-9a-fA-F]{32}', entry.get('checksum', '')):
         raise ValueError('Expected a real release MD5 in the published feed')
@@ -57,4 +58,7 @@ if __name__ == '__main__':
     parser.add_argument('--root', type=Path, default=Path('.'))
     args = parser.parse_args()
     meta = json.loads((args.root / 'meta.json').read_text())
-    print(validate([json.loads((args.root / name).read_text()) for name in FEEDS], meta['version']))
+    abi = meta['targetAbi']
+    if len(abi.split('.')) == 3:
+        abi += '.0'
+    print(validate([json.loads((args.root / name).read_text()) for name in FEEDS], meta['version'], abi))

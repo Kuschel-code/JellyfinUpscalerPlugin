@@ -1,6 +1,6 @@
 # Jellyfin 12.0 Readiness — Static Analysis & Runtime Test Plan
 
-**Current status (2026-09-22):** Jellyfin 12.0 is now stable ([official release announcement, 2026-09-07](https://jellyfin.org/posts/jellyfin-release-12.0/)). Plugin v1.8.3.31 still builds against Jellyfin.Controller 10.11.8 on net9.0. There is no completed native Jellyfin 12 build or runtime acceptance on final 12.x. The analysis below is a historical rc2 snapshot, not verification of the final release. The known user-manager API adaptation is included.
+**Migration in progress (2026-09-22):** v1.8.3.32 targets Jellyfin.Controller 12.0.0 and net10.0 in both plugin and tests. All three .NET CI workflows use SDK 10. Published v1.8.3.31 remains unchanged. 443 tests pass against each of 12.0.0 and 12.1.0. The 12.0-targeted publish loads in an isolated official 12.1 container, injects its player script and reaches Healthy startup. Playback/GPU/HDR end-to-end acceptance is still unverified. Full evidence: [v1.8.3.32 plan](RELEASE-PLAN-v1.8.3.32.md). Historical rc2 analysis below is retained as background.
 **Analysis date:** 2026-07-03 · against `Jellyfin.Controller 12.0.0-rc2` (nuget.org) · plugin baseline v1.8.3.3/main.
 
 ---
