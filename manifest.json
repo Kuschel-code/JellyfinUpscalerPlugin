@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.8.3.32",
+        "changelog": "v1.8.3.32: Native Jellyfin 12 build on .NET 10, aligned plugin/test dependencies, updated CI and ABI-aware release validation. Requires Jellyfin 12.0 or newer. Target-hardware playback, GPU and HDR acceptance remain unverified.",
+        "targetAbi": "12.0.0.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.3.32/JellyfinUpscalerPlugin-v1.8.3.32.zip",
+        "checksum": "0cda1c6b1f9806737a686e2f56288a45",
+        "timestamp": "2026-09-23T09:47:02Z"
+      },
+      {
         "version": "1.8.3.31",
         "changelog": "v1.8.3.31: Remove the image-action rate limit from playback frames/chunks; forward busy/error responses and Retry-After; serialize player captures with abortable requests and backoff; guard driver upscaling and object masking; enforce measured Auto-mode performance; reject invalid model categories and unsupported HDR; fail library jobs on AI errors without local resize/original-frame substitution; enforce nonempty passing TRX and publish-only runtime packaging. Target-server acceptance was explicitly waived by the owner; GPU, live-player and HDR target-hardware behavior remain unverified.",
         "targetAbi": "10.11.8.0",

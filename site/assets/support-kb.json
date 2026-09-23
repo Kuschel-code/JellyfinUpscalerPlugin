@@ -1,6 +1,6 @@
 {
   "version": "1.8.3.32",
-  "updated": "2026-09-22",
+  "updated": "2026-09-23",
   "repo": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin",
   "newIssueUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/new",
   "intro": "Hi! I'm the AI Upscaler support assistant. I answer from every support topic we've ever handled (each with a step-by-step guide), and I can search all GitHub issues live. Ask about install errors, GPU not used, Docker/NAS setup, API tokens, models, and more.",
@@ -83,7 +83,7 @@
         "disabled",
         "wrong version"
       ],
-      "answer": "Match the plugin to your Jellyfin server.\n1. v1.8.3.32 is a Jellyfin 12 / .NET 10 candidate with minimum ABI 12.0.0.0. Do not install it on 10.11.\n2. v1.8.3.31 is the published 10.11.8-ABI build.\n3. Install the complete six-file release ZIP and restart Jellyfin.\n4. If the plugin is disabled, inspect the server log for ABI, missing assembly or initialization errors."
+      "answer": "Match the plugin to your Jellyfin server.\n1. v1.8.3.32 is a Jellyfin 12 / .NET 10 release with minimum ABI 12.0.0.0. Do not install it on 10.11.\n2. v1.8.3.31 is the published 10.11.8-ABI build.\n3. Install the complete six-file release ZIP and restart Jellyfin.\n4. If the plugin is disabled, inspect the server log for ABI, missing assembly or initialization errors."
     },
     {
       "id": "docker-unreachable",
@@ -457,7 +457,7 @@
         "could not load",
         "plugin error"
       ],
-      "answer": "A missing runtime DLL or incompatible server ABI can prevent startup.\n1. Install the official ZIP with JellyfinUpscalerPlugin.dll, FFMpegCore.dll, CliWrap.dll, Instances.dll, SixLabors.ImageSharp.dll and meta.json.\n2. From source, run dotnet publish and Scripts/package-plugin.py; do not ship test binaries, PDBs, Scripts or deps.json.\n3. Use ABI 12.0.0.0 for the 1.8.3.32 candidate; 1.8.3.31 uses ABI 10.11.8.0.\n4. Re-enable through the admin dashboard or POST /Plugins/{id}/{version}/Enable using Authorization: MediaBrowser Token=\"<admin token>\". Never share that token.\n5. Restart Jellyfin and inspect the plugin load log."
+      "answer": "A missing runtime DLL or incompatible server ABI can prevent startup.\n1. Install the official ZIP with JellyfinUpscalerPlugin.dll, FFMpegCore.dll, CliWrap.dll, Instances.dll, SixLabors.ImageSharp.dll and meta.json.\n2. From source, run dotnet publish and Scripts/package-plugin.py; do not ship test binaries, PDBs, Scripts or deps.json.\n3. Use ABI 12.0.0.0 for the 1.8.3.32 release; 1.8.3.31 uses ABI 10.11.8.0.\n4. Re-enable through the admin dashboard or POST /Plugins/{id}/{version}/Enable using Authorization: MediaBrowser Token=\"<admin token>\". Never share that token.\n5. Restart Jellyfin and inspect the plugin load log."
     },
     {
       "id": "settings-wont-save",
@@ -614,7 +614,7 @@
         "new jellyfin",
         "compatible 12"
       ],
-      "answer": "v1.8.3.32 is the native Jellyfin 12 / .NET 10 candidate. It passed 443 C# tests against 12.0 and another 443 against 12.1. The 12.0-targeted publish loaded in an isolated official Jellyfin 12.1 container, injected its player script and reached Healthy startup. Actual playback, GPU, HDR and target-server acceptance remain unverified. v1.8.3.32 RC1 and all seven rc-v1.8.3.32 Docker candidates are published. Stable latest/docker7 tags remain at 1.8.3.31. See docs/RELEASE-PLAN-v1.8.3.32.md."
+      "answer": "v1.8.3.32 is the native Jellyfin 12 / .NET 10 release. It passed 443 C# tests against 12.0 and another 443 against 12.1. The 12.0-targeted publish loaded in an isolated official Jellyfin 12.1 container, injected its player script and reached Healthy startup. Actual playback, GPU, HDR and target-server acceptance remain unverified. v1.8.3.32 and all seven regular Docker variants are published. Version pins and latest/docker7 tags point to 1.8.3.32. See docs/RELEASE-PLAN-v1.8.3.32.md."
     },
     {
       "id": "models-self-host",

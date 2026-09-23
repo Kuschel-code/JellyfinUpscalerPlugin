@@ -8,25 +8,25 @@
 
 ---
 
-[Download Jellyfin 12 candidate v1.8.3.32 RC1](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.32-rc.1) (requires Jellyfin 12.0+, five runtime DLLs plus meta.json).
+[Download Jellyfin 12 release v1.8.3.32](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.32) (requires Jellyfin 12.0+, five runtime DLLs plus meta.json).
 
-## Jellyfin 12 candidate
+## Jellyfin 12 release
 
-v1.8.3.32 moves the plugin to Jellyfin 12 / .NET 10. All seven Docker candidates below are published; their tags, ten platform builds and version/revision labels were verified on 2026-09-23. Stable `docker7` and `latest` remain at v1.8.3.31. The Python HTTP service has no Jellyfin or .NET runtime dependency. [Registry digests and evidence](../docs/DOCKER-RC-v1.8.3.32.md).
+v1.8.3.32 supports the native Jellyfin 12 / .NET 10 plugin. All seven regular Docker variants are published and registry-verified. Stable docker7 and latest now point to 1.8.3.32. The Python HTTP service has no Jellyfin or .NET runtime dependency. [Digests and release verification](../docs/RELEASE-v1.8.3.32-PUBLICATION.md).
 
-## v1.8.3.31 and Docker updates
+## Docker tags and backend updates
 
-Release v1.8.3.31 updates both the plugin and AI service. The owner explicitly waived target-server acceptance on 2026-09-17. GPU, real Jellyfin playback and HDR target-hardware behavior remain unverified; see the [release plan](../docs/RELEASE-PLAN-v1.8.3.31.md).
+v1.8.3.32 retains the AI service changes introduced in v1.8.3.31 and updates the image version alongside the native Jellyfin 12 plugin. Target-hardware playback, GPU and HDR acceptance remain unverified; see the [release plan](../docs/RELEASE-PLAN-v1.8.3.32.md).
 
-| Backend | Stable tag (1.8.3.31) | Candidate tag (1.8.3.32) | Architectures |
+| Backend | Stable tag (1.8.3.32) | Version pin | Architectures |
 |---|---|---|---|
-| NVIDIA CUDA | `docker7` | `rc-v1.8.3.32` | amd64 |
-| AMD ROCm | `docker7-amd` | `rc-v1.8.3.32-amd` | amd64 |
-| Intel OpenVINO | `docker7-intel` | `rc-v1.8.3.32-intel` | amd64 |
-| Apple Docker (CPU) | `docker7-apple` | `rc-v1.8.3.32-apple` | amd64, arm64 |
-| Vulkan/ncnn | `docker7-vulkan` | `rc-v1.8.3.32-vulkan` | amd64, arm64 |
-| CPU | `docker7-cpu` | `rc-v1.8.3.32-cpu` | amd64, arm64 |
-| Converter (CPU + Torch/Spandrel) | `docker7-converter` | `rc-v1.8.3.32-converter` | amd64 |
+| NVIDIA CUDA | `docker7` | `v1.8.3.32` | amd64 |
+| AMD ROCm | `docker7-amd` | `v1.8.3.32-amd` | amd64 |
+| Intel OpenVINO | `docker7-intel` | `v1.8.3.32-intel` | amd64 |
+| Apple Docker (CPU) | `docker7-apple` | `v1.8.3.32-apple` | amd64, arm64 |
+| Vulkan/ncnn | `docker7-vulkan` | `v1.8.3.32-vulkan` | amd64, arm64 |
+| CPU | `docker7-cpu` | `v1.8.3.32-cpu` | amd64, arm64 |
+| Converter (CPU + Torch/Spandrel) | `docker7-converter` | `v1.8.3.32-converter` | amd64 |
 
 All tags belong to `kuscheltier/jellyfin-ai-upscaler`. Candidate jobs also publish `rc-v1.8.3.32-2dabc6d[-backend]` for reproducible tests. A candidate does not update `docker7`, `latest` or final version pins. Check the [workflow result](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/actions/workflows/docker-publish.yml) for each backend before pulling.
 

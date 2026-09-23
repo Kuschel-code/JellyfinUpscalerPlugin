@@ -1,6 +1,6 @@
 # v1.8.3.32 — Native Jellyfin 12
 
-Stand: 22.09.2026. Neuer Arbeitsbranch `update/v1.8.3.32`; das veröffentlichte v1.8.3.31-Asset bleibt unverändert. Nutzerauftrag: auf Jellyfin 12 aktualisieren und insbesondere Docker auf konsistenten Update-Stand prüfen.
+Stand: 23.09.2026. Neuer Arbeitsbranch `update/v1.8.3.32`; das veröffentlichte v1.8.3.31-Asset bleibt unverändert. Nutzerauftrag: auf Jellyfin 12 aktualisieren und insbesondere Docker auf konsistenten Update-Stand prüfen.
 
 ## Änderungen
 
@@ -21,4 +21,4 @@ Zusätzlicher Build gegen Jellyfin.Controller 12.1.0 in einer getrennten Quellko
 
 Alle sieben veröffentlichten 1.8.3.31-Varianten und zehn Plattform-Konfigurationen am 22.09.2026 erneut direkt gegen Docker Hub geprüft: Versions-Pins und docker7-Tags stimmen überein, NVIDIA auch latest; Labels 1.8.3.31 / b5f6e31. CUDA bleibt Standard, SKIP_TENSORRT=true. Der Python-HTTP-Dienst enthält keine Jellyfin-/NET-Abhängigkeit; die Migration verlangt keine Änderung von CUDA/ROCm/OpenVINO oder Modellformaten. GPU-Basisimages werden nicht ohne passende Tests auf andere ABI-Generationen umgestellt.
 
-Am 23.09.2026 als [v1.8.3.32 RC1](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.32-rc.1) veröffentlicht. Alle sieben Docker-Kandidaten und zehn Plattform-Konfigurationen sind geprüft; [Digests](DOCKER-RC-v1.8.3.32.md). Reguläre latest/docker7-Tags bleiben 1.8.3.31. Die regulären Feeds erhalten keinen Kandidaten-Eintrag. ZIP-MD5: `ad1548ff1f936cdb2dac5be17b2609bb`. Die v1.8.3.31-Feeds liegen weiterhin in der offenen PR #81; der Main-Merge wurde von der automatischen Freigabeprüfung mangels konkreter Zustimmung blockiert. Keine Umgehung und kein Force-Push.
+Am 23.09.2026 als [v1.8.3.32 RC1](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.32-rc.1) veröffentlicht. Alle sieben Docker-Kandidaten und zehn Plattform-Konfigurationen sind geprüft; [Digests](DOCKER-RC-v1.8.3.32.md). Beim RC blieben die regulären latest/docker7-Tags auf 1.8.3.31; sie wurden erst mit dem regulären v1.8.3.32-Release aktualisiert. Die regulären Feeds erhalten keinen Kandidaten-Eintrag. ZIP-MD5: `ad1548ff1f936cdb2dac5be17b2609bb`. PR #81 und #83 wurden nach ausdrücklicher Zustimmung des Nutzers nach main gemergt. Der vollständige v1.8.3.31-Online-Validator bestand; der reguläre v1.8.3.32-Release und alle sieben Docker-Varianten sind veröffentlicht. Die aktuelle Feed-/ZIP-Verifikation ist im [Publikationsnachweis](RELEASE-v1.8.3.32-PUBLICATION.md) dokumentiert.
