@@ -14,9 +14,9 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Release status (2026-09-22):** v1.8.3.32 is a native Jellyfin 12 / .NET 10 candidate. The published v1.8.3.31 plugin and Docker images remain available. The new build requires Jellyfin 12.0 or newer and must not replace the 10.11 build on older servers. Target-hardware acceptance remains unverified.
+**Release status (2026-09-23):** v1.8.3.32 is the native Jellyfin 12 / .NET 10 candidate. It passed 443 C# tests against each of Jellyfin 12.0 and 12.1; the 12.0-targeted plugin also loaded successfully in an isolated Jellyfin 12.1 container and reached Healthy startup. Requires Jellyfin 12.0 or newer. Playback, GPU and HDR target-hardware acceptance remain unverified. The published v1.8.3.31 build remains available for Jellyfin 10.11.
 
-**Docker Images (planned in lockstep with the plugin, both at v1.8.3.32):** Published images currently remain at v1.8.3.31. The HTTP AI service is independent of the Jellyfin/.NET runtime; a new image version is not proof of Jellyfin 12 compatibility.
+**Docker Images (candidate builds in lockstep with the plugin, both at v1.8.3.32):** All seven `rc-v1.8.3.32[-backend]` images are published and registry-verified, including ten platform builds. Reproducible pins use `rc-v1.8.3.32-2dabc6d[-backend]`. The following stable `docker7` tags and `latest` still point to v1.8.3.31. See [candidate tags and Docker verification](docs/DOCKER-RC-v1.8.3.32.md).
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -363,9 +363,9 @@ Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
 - `:docker7-v1.8.3.31` — NVIDIA pin for the currently published release
 - `:v1.8.3.31-<backend>` — published backend pin (e.g. `:v1.8.3.31-cpu`)
-- `:rc-v1.8.3.31[-backend]` — candidate only; `:rc-v1.8.3.31-<commit>[-backend]` identifies a particular candidate build. Check the [Docker workflow](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/actions/workflows/docker-publish.yml) before pulling.
+- `:rc-v1.8.3.32[-backend]` — published Jellyfin 12 candidate images; `:rc-v1.8.3.32-2dabc6d[-backend]` pins the verified build. The [seven-backend workflow](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/actions/runs/35778659366) completed successfully.
 
-CUDA is the default: keep `SKIP_TENSORRT=true`. Enable TensorRT only with compatible libraries in the image. See [Docker setup and controlled updates](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/update/v1.8.3.31/docker-ai-service/README.md).
+CUDA is the default: keep `SKIP_TENSORRT=true`. Enable TensorRT only with compatible libraries in the image. See [Docker setup and controlled updates](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/update/v1.8.3.32/docker-ai-service/README.md).
 
 ---
 

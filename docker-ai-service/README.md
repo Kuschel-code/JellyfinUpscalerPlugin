@@ -10,23 +10,23 @@
 
 ## Jellyfin 12 candidate
 
-v1.8.3.32 moves the plugin to Jellyfin 12 / .NET 10. The Python HTTP service has no Jellyfin or .NET runtime dependency. Published images remain at v1.8.3.31 until a separate Docker publication is completed; all seven variants and ten platform configurations were checked on 2026-09-22.
+v1.8.3.32 moves the plugin to Jellyfin 12 / .NET 10. All seven Docker candidates below are published; their tags, ten platform builds and version/revision labels were verified on 2026-09-23. Stable `docker7` and `latest` remain at v1.8.3.31. The Python HTTP service has no Jellyfin or .NET runtime dependency. [Registry digests and evidence](../docs/DOCKER-RC-v1.8.3.32.md).
 
 ## v1.8.3.31 and Docker updates
 
 Release v1.8.3.31 updates both the plugin and AI service. The owner explicitly waived target-server acceptance on 2026-09-17. GPU, real Jellyfin playback and HDR target-hardware behavior remain unverified; see the [release plan](../docs/RELEASE-PLAN-v1.8.3.31.md).
 
-| Backend | Rolling release tag | Version pin | Architectures |
+| Backend | Stable tag (1.8.3.31) | Candidate tag (1.8.3.32) | Architectures |
 |---|---|---|---|
-| NVIDIA CUDA | `docker7` | `v1.8.3.31` | amd64 |
-| AMD ROCm | `docker7-amd` | `v1.8.3.31-amd` | amd64 |
-| Intel OpenVINO | `docker7-intel` | `v1.8.3.31-intel` | amd64 |
-| Apple Docker (CPU) | `docker7-apple` | `v1.8.3.31-apple` | amd64, arm64 |
-| Vulkan/ncnn | `docker7-vulkan` | `v1.8.3.31-vulkan` | amd64, arm64 |
-| CPU | `docker7-cpu` | `v1.8.3.31-cpu` | amd64, arm64 |
-| Converter (CPU + Torch/Spandrel) | `docker7-converter` | `v1.8.3.31-converter` | amd64 |
+| NVIDIA CUDA | `docker7` | `rc-v1.8.3.32` | amd64 |
+| AMD ROCm | `docker7-amd` | `rc-v1.8.3.32-amd` | amd64 |
+| Intel OpenVINO | `docker7-intel` | `rc-v1.8.3.32-intel` | amd64 |
+| Apple Docker (CPU) | `docker7-apple` | `rc-v1.8.3.32-apple` | amd64, arm64 |
+| Vulkan/ncnn | `docker7-vulkan` | `rc-v1.8.3.32-vulkan` | amd64, arm64 |
+| CPU | `docker7-cpu` | `rc-v1.8.3.32-cpu` | amd64, arm64 |
+| Converter (CPU + Torch/Spandrel) | `docker7-converter` | `rc-v1.8.3.32-converter` | amd64 |
 
-All tags belong to `kuscheltier/jellyfin-ai-upscaler`. Candidate jobs also publish `rc-v1.8.3.31-<commit>[-backend]` for reproducible tests. A candidate does not update `docker7`, `latest` or final version pins. Check the [workflow result](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/actions/workflows/docker-publish.yml) for each backend before pulling.
+All tags belong to `kuscheltier/jellyfin-ai-upscaler`. Candidate jobs also publish `rc-v1.8.3.32-2dabc6d[-backend]` for reproducible tests. A candidate does not update `docker7`, `latest` or final version pins. Check the [workflow result](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/actions/workflows/docker-publish.yml) for each backend before pulling.
 
 ## 🌟 Features
 
@@ -222,7 +222,7 @@ Support for Intel iGPU and Arc discrete GPUs via OpenVINO 2025.4.
 
 ```bash
 # Build Intel version
-docker build -f Dockerfile.intel --build-arg APP_VERSION=1.8.3.31 --build-arg APP_COMMIT="$(git rev-parse --short HEAD)" -t jellyfin-ai-upscaler:rc-intel .
+docker build -f Dockerfile.intel --build-arg APP_VERSION=1.8.3.32 --build-arg APP_COMMIT="$(git rev-parse --short HEAD)" -t jellyfin-ai-upscaler:rc-intel .
 
 # Run with Intel GPU access
 docker run -d \
@@ -255,7 +255,7 @@ docker compose ps
 
 Use the existing dashboard credentials to check `/health/detailed`, `/gpu-verify`, model loading and actual inference. Confirm the expected version and active provider. Then test the Jellyfin player for at least five minutes, retry/recovery, driver-upscaling guard and masking. A healthy container alone does not verify these player paths or GPU/HDR quality. Restore the saved image/configuration if acceptance fails.
 
-For maintainers: dispatch `docker-publish.yml` on `update/v1.8.3.31` with version `1.8.3.31`, `push=true`, `channel=candidate`. It builds all seven variants. Use `channel=release` after server acceptance or an explicitly documented owner waiver (recorded for v1.8.3.31). Plugin ZIP publication remains manual.
+For maintainers: dispatch `docker-publish.yml` on `update/v1.8.3.32` with version `1.8.3.32`, `push=true`, `channel=candidate`. It builds all seven variants. Use `channel=release` after server acceptance or an explicitly documented owner waiver (recorded for v1.8.3.31). Plugin ZIP publication remains manual.
 
 ## 🔄 Automatic Updates (Watchtower)
 
