@@ -1,6 +1,6 @@
 # Jellyfin AI Upscaler Plugin v1.8.3.32 — Jellyfin 12
 
-[![Built with Claude Opus 5](https://img.shields.io/badge/Built%20with-Claude%20Opus%205-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
+[![Built with Claude Opus 5.5](https://img.shields.io/badge/Built%20with-Claude%20Opus%205-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
 
 > **Built with Claude Opus 5** — this plugin is developed and maintained entirely with [Anthropic's Claude models](https://www.anthropic.com/claude): **Opus 5 since v1.8.3.13**, Fable 5 for v1.8.3.5–v1.8.3.12, Opus 4.8 before that. Code contributions, Dockerfiles, CI workflows and documentation are produced in a pair-programming style with the model; the maintainer ([Kuschel-code](https://github.com/Kuschel-code)) reviews, tests and publishes every change. Release commits carry the `Co-Authored-By: Claude` trailer as disclosure.
 
