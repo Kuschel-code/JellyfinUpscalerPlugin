@@ -50,6 +50,30 @@ namespace JellyfinUpscalerPlugin.Tests.Services
         }
 
         [Theory]
+        [InlineData("realesrgan-x4", true, 4)]
+        [InlineData("dejpg-realplksr-1x", true, 1)]
+        [InlineData("my-import", true, 2)]
+        [InlineData("realesrgan-x4", false, 2)]
+        public void OptimizedOptionsUseKnownNativeAiScaleAndPreserveUnknownOrHardwareScale(string model, bool ai, int expected)
+        {
+            var options = new JellyfinUpscalerPlugin.Models.VideoProcessingOptions { Model = model, ScaleFactor = 2, EnableAIUpscaling = ai };
+            var selector = new ProcessingStrategySelector(Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance);
+            var optimized = selector.OptimizeProcessingOptions(options, new JellyfinUpscalerPlugin.Models.VideoInfo(),
+                new JellyfinUpscalerPlugin.Models.HardwareProfile());
+            optimized.ScaleFactor.Should().Be(expected);
+            options.ScaleFactor.Should().Be(2, "optimizing must not mutate the caller's options");
+        }
+
+        [Fact]
+        public void ChangingToFallbackModelRefreshesItsNativeScale()
+        {
+            var options = new JellyfinUpscalerPlugin.Models.VideoProcessingOptions { Model = "span-x2", ScaleFactor = 2, EnableAIUpscaling = true };
+            options.Model = "realesrgan-x4";
+            ModelScale.ApplyNativeScale(options);
+            options.ScaleFactor.Should().Be(4);
+        }
+
+        [Theory]
         [InlineData(640, 480, 4)]      // SD -> a real restore is worth the compute
         [InlineData(720, 576, 4)]      // PAL
         [InlineData(1280, 720, 2)]     // 720p -> 1440p

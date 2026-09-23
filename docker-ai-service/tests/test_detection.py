@@ -124,7 +124,10 @@ def test_detect_no_gpu_leaves_list_empty(client):
     from app import main
     _reset_hw(main)
     with patch.object(main, "ONNX_AVAILABLE", False):
-        with patch.object(main.subprocess, "run", side_effect=_no_gpu_run()):
+        # A host may have a real Intel GPU even without vendor binaries.
+        # Hide the sysfs/render-node probes as part of this no-GPU fixture.
+        with patch.object(main.subprocess, "run", side_effect=_no_gpu_run()), \
+             patch.object(main.Path, "glob", return_value=iter(())):
             main.detect_hardware()
     assert main.state.gpu_list == []
 

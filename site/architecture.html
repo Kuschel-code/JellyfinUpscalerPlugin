@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.30</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.32</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Architecture</h1>
@@ -15,7 +15,7 @@
 
   <h2>Two processes, one contract</h2>
   <pre><code>┌─────────────────────────────────────┐          ┌───────────────────────────────────┐
-│  Jellyfin (dotnet / net9.0)         │          │  Docker AI Service (python/fastapi)│
+│  Jellyfin (dotnet / net10.0)         │          │  Docker AI Service (python/fastapi)│
 │                                     │          │                                    │
 │  ┌───────────────────────────────┐  │   HTTP   │  ┌──────────────────────────────┐ │
 │  │ JellyfinUpscalerPlugin.dll    │──┼─────────→┼──│ /Upscaler/ controller-like   │ │
@@ -35,7 +35,7 @@
   <h2>Why two processes?</h2>
   <ul>
     <li><strong>Native ABI isolation.</strong> ONNX Runtime + CUDA + cuDNN bring in a stack of native libraries that don't play well with the tightly-pinned native set inside Jellyfin's process. By running inference in a sibling container we never touch Jellyfin's memory space.</li>
-    <li><strong>Independent upgrade cadence.</strong> Bump CUDA / OpenVINO / ONNX independently from Jellyfin's ABI. The plugin targets Jellyfin 10.11.x and speaks HTTP to <em>any</em> service version with a compatible API surface.</li>
+    <li><strong>Independent upgrade cadence.</strong> Bump CUDA / OpenVINO / ONNX independently from Jellyfin's ABI. The plugin targets Jellyfin 12.0+ and speaks HTTP to <em>any</em> service version with a compatible API surface.</li>
     <li><strong>GPU portability.</strong> Same plugin DLL works against CUDA, OpenVINO, ROCm, and CPU service images. Pick the image that matches your host.</li>
     <li><strong>Restart safety.</strong> Hot-reload models or upgrade the AI service without restarting Jellyfin. Jellyfin will see <code>/health</code> as degraded, then recover.</li>
   </ul>
@@ -105,7 +105,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.30</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.32</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.8.3.31",
+        "changelog": "v1.8.3.31: Remove the image-action rate limit from playback frames/chunks; forward busy/error responses and Retry-After; serialize player captures with abortable requests and backoff; guard driver upscaling and object masking; enforce measured Auto-mode performance; reject invalid model categories and unsupported HDR; fail library jobs on AI errors without local resize/original-frame substitution; enforce nonempty passing TRX and publish-only runtime packaging. Target-server acceptance was explicitly waived by the owner; GPU, live-player and HDR target-hardware behavior remain unverified.",
+        "targetAbi": "10.11.8.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.3.31/JellyfinUpscalerPlugin-v1.8.3.31.zip",
+        "checksum": "d9c090dbbb85aba857650156204ec420",
+        "timestamp": "2026-09-17T18:19:46.000Z"
+      },
+      {
         "version": "1.8.3.30",
         "changelog": "v1.8.3.30: notifications stack instead of piling up - issue #77, 'if you hit a toggle in quick succession, the notifications at the lower right side of the screen will simply pile on top of each other'. They did, literally: every notification was its own position:fixed element anchored to the same corner, so two of them resolved to the identical coordinates and the second covered the first. Measured in a browser against the real CSS - three toasts all reported top 1185 / bottom 1226; after the fix 1185, 1136, 1087 with no overlap. They are flow children of one fixed host now and the host does the stacking, column-reverse so the newest sits nearest the corner. Two things beyond the literal report, both aimed at what 'quick succession' actually produces: a repeated toggle emits the SAME text over and over, so an identical message already on screen has its timer restarted instead of being cloned (firing 'Settings saved!' five times leaves one), and the stack is capped at four so holding a control down cannot fill the viewport. THE PLUGIN HAD THREE COPIES of this code, each with the same defect - the config page (reported), the player overlay and the quick menu - and all three are fixed, because patching only the reported surface is how the same bug gets filed twice. sidebar-upscaler.js was already correct (it defers to Jellyfin's own toast module) and a test now keeps it that way. Verified by measurement, not by reading: a browser harness built from the real CSS and the real showToast confirmed stacking, de-duplication and the cap, and re-applying the old position:fixed rule reproduced the exact overlap from the screenshot. Eleven regression tests; five reintroduced defects are each caught. 375 C# + 166 Python tests green.",
         "targetAbi": "10.11.8.0",

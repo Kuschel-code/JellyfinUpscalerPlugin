@@ -61,6 +61,8 @@ namespace JellyfinUpscalerPlugin.Services
             int inputFrames,
             CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            HdrFrameContract.Validate(job.InputInfo, job.ProcessingMethod, Config.OutputCodec, inputFrames);
             return job.ProcessingMethod switch
             {
                 ProcessingMethod.RealTime => await ProcessRealTimeAsync(inputPath, outputPath, job, cancellationToken),
@@ -111,7 +113,7 @@ namespace JellyfinUpscalerPlugin.Services
                     Error = success ? string.Empty : $"FFmpeg exited with code {result.ExitCode}"
                 };
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogError(ex, "Real-time processing failed");
                 return new VideoProcessingResult
@@ -199,7 +201,7 @@ namespace JellyfinUpscalerPlugin.Services
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogError(ex, "Frame-by-frame processing failed");
                 return new VideoProcessingResult
@@ -294,7 +296,7 @@ namespace JellyfinUpscalerPlugin.Services
                     }, ct);
 
                     // CONSUMER - upscale proven frames as they appear (the awaited body).
-                    int processed = 0, failed = 0;
+                    int processed = 0;
                     var startTime = DateTime.UtcNow;
                     try
                     {
@@ -314,24 +316,7 @@ namespace JellyfinUpscalerPlugin.Services
                                 await Task.Delay(500, ct);
 
                             var frameFile = Path.Combine(framesDir, $"frame_{idx + 1:D6}.png");
-                            try
-                            {
-                                await _frameProcessor.UpscaleSingleFrameAsync(frameFile, processedDir, job.OptimizedOptions, isHDR, ct);
-                            }
-                            catch (OperationCanceledException) { throw; }
-                            catch (Exception ex)
-                            {
-                                failed++;
-                                _logger.LogWarning(ex, "Pipeline: frame {Frame} upscale failed, using original", Path.GetFileName(frameFile));
-                                try
-                                {
-                                    var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFile));
-                                    if (File.Exists(frameFile)) File.Copy(frameFile, outputFile, true);
-                                }
-                                catch { /* best-effort original passthrough */ }
-                                if (estTotalFrames > 0 && failed > estTotalFrames / 2)
-                                    throw new InvalidOperationException($"Too many frame failures: {failed}");
-                            }
+                            await _frameProcessor.UpscaleSingleFrameAsync(frameFile, processedDir, job.OptimizedOptions, isHDR, ct);
 
                             try { File.Delete(frameFile); } catch { /* drain so peak disk stays <= the sequential path */ }
 
@@ -365,7 +350,7 @@ namespace JellyfinUpscalerPlugin.Services
                     catch (Exception ex) { _logger.LogWarning(ex, "Failed to cleanup temp directory"); }
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogError(ex, "Pipeline-parallel processing failed");
                 return new VideoProcessingResult
@@ -415,7 +400,7 @@ namespace JellyfinUpscalerPlugin.Services
                     Error = result.Error
                 };
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogError(ex, "Batch processing failed");
                 return new VideoProcessingResult
@@ -562,32 +547,24 @@ namespace JellyfinUpscalerPlugin.Services
                         if (response.IsSuccessStatusCode)
                         {
                             var resultBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+                            if (resultBytes.Length == 0)
+                                throw new InvalidDataException("Docker AI service returned an empty multi-frame image.");
+                            var source = SixLabors.ImageSharp.Image.Identify(frameFiles[i]);
+                            VideoFrameProcessor.ValidateNativeAiOutput(resultBytes, source.Width, source.Height);
                             var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFiles[i]));
                             await File.WriteAllBytesAsync(outputFile, resultBytes, cancellationToken);
                         }
                         else
                         {
-                            _logger.LogWarning("Multi-frame upscale failed for frame {Frame} (HTTP {Code}), using original",
-                                i, (int)response.StatusCode);
-                            var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFiles[i]));
-                            // v1.6.1.21 - async streaming (P1a). Symmetric to VideoFrameProcessor + CacheManager.
-                            await using (var src = new FileStream(frameFiles[i], FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 81920, useAsync: true))
-                            await using (var dst = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920, useAsync: true))
-                            {
-                                await src.CopyToAsync(dst, cancellationToken);
-                            }
+                            var detail = await response.Content.ReadAsStringAsync(cancellationToken);
+                            throw new AiUpscalingUnavailableException(
+                                $"Docker AI service rejected multi-frame frame {i} (HTTP {(int)response.StatusCode}): {detail}");
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) when (ex is not OperationCanceledException)
                     {
-                        _logger.LogWarning(ex, "Multi-frame upscale error for frame {Frame}, using original", i);
-                        var outputFile = Path.Combine(processedDir, Path.GetFileName(frameFiles[i]));
-                        // v1.6.1.21 - async streaming (P1a, catch-block twin of the else-branch above).
-                        await using (var src = new FileStream(frameFiles[i], FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 81920, useAsync: true))
-                        await using (var dst = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920, useAsync: true))
-                        {
-                            await src.CopyToAsync(dst, cancellationToken);
-                        }
+                        throw new AiUpscalingUnavailableException(
+                            $"Docker AI service failed for multi-frame frame {i}: {ex.Message}");
                     }
 
                     processedCount++;
@@ -644,16 +621,16 @@ namespace JellyfinUpscalerPlugin.Services
             var effectiveFps = job.InputInfo?.FrameRate > 0 ? job.InputInfo.FrameRate : 30.0;
             var inputWidth = job.InputInfo?.Width ?? 1920;
             var inputHeight = job.InputInfo?.Height ?? 1080;
-            var scale = job.OptimizedOptions?.ScaleFactor ?? 2;
-            var outputWidth = inputWidth * scale;
-            var outputHeight = inputHeight * scale;
+            // The service uses the loaded model's native scale, including imports
+            // whose id has no scale. The first decoded response sets encoder size.
+            var outputWidth = 0;
+            var outputHeight = 0;
             var frameByteSize = inputWidth * inputHeight * 3;
-            var upscaledFrameByteSize = outputWidth * outputHeight * 3;
             var serviceUrl = Config.AiServiceUrl?.TrimEnd('/') ?? "http://localhost:5000";
 
             _logger.LogInformation(
-                "Starting RealTimeAI processing: {InputW}x{InputH} -> {OutputW}x{OutputH} @ {Fps}fps, model={Model}",
-                inputWidth, inputHeight, outputWidth, outputHeight, effectiveFps, job.OptimizedOptions?.Model);
+                "Starting RealTimeAI processing: {InputW}x{InputH} @ {Fps}fps, model={Model}; waiting for native output size",
+                inputWidth, inputHeight, effectiveFps, job.OptimizedOptions?.Model);
 
             Process? decoderProcess = null;
             Process? encoderProcess = null;
@@ -673,7 +650,7 @@ namespace JellyfinUpscalerPlugin.Services
                         .ExecuteAsync(cancellationToken);
                     hasAudio = audioResult.ExitCode == 0 && File.Exists(tempAudioPath) && new FileInfo(tempAudioPath).Length > 0;
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     _logger.LogWarning(ex, "Failed to extract audio for RealTimeAI, continuing without");
                 }
@@ -727,7 +704,8 @@ namespace JellyfinUpscalerPlugin.Services
                 encoderProcess.StartInfo.ArgumentList.Add("-pix_fmt");
                 encoderProcess.StartInfo.ArgumentList.Add("rgb24");
                 encoderProcess.StartInfo.ArgumentList.Add("-s");
-                encoderProcess.StartInfo.ArgumentList.Add($"{outputWidth}x{outputHeight}");
+                var sizeArgumentIndex = encoderProcess.StartInfo.ArgumentList.Count;
+                encoderProcess.StartInfo.ArgumentList.Add("pending-native-size");
                 encoderProcess.StartInfo.ArgumentList.Add("-r");
                 encoderProcess.StartInfo.ArgumentList.Add(fpsStr);
                 encoderProcess.StartInfo.ArgumentList.Add("-i");
@@ -747,15 +725,13 @@ namespace JellyfinUpscalerPlugin.Services
                 encoderProcess.StartInfo.ArgumentList.Add(outputPath);
 
                 decoderProcess.Start();
-                encoderProcess.Start();
 
                 var decoderStream = decoderProcess.StandardOutput.BaseStream;
-                var encoderStream = encoderProcess.StandardInput.BaseStream;
+                Stream? encoderStream = null;
 
                 var httpClient = _httpClientFactory.CreateClient("AiUpscalerLongTimeout");
 
                 var framesProcessed = 0;
-                var framesDropped = 0;
                 var processingStartTime = DateTime.UtcNow;
                 var frameBuffer = new byte[frameByteSize];
 
@@ -791,6 +767,8 @@ namespace JellyfinUpscalerPlugin.Services
 
                     if (totalRead < frameByteSize)
                     {
+                        if (totalRead != 0)
+                            throw new InvalidDataException("FFmpeg returned an incomplete source frame.");
                         break;
                     }
 
@@ -805,29 +783,37 @@ namespace JellyfinUpscalerPlugin.Services
                         if (response.IsSuccessStatusCode)
                         {
                             var upscaledJpeg = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-                            var upscaledRaw = VideoFrameProcessor.DecodeJpegToRawFrame(upscaledJpeg, outputWidth, outputHeight);
-
-                            if (upscaledRaw != null && upscaledRaw.Length == upscaledFrameByteSize)
+                            var frame = VideoFrameProcessor.DecodeNativeAiFrame(upscaledJpeg, inputWidth, inputHeight);
+                            if (encoderStream == null)
                             {
-                                await encoderStream.WriteAsync(upscaledRaw, 0, upscaledRaw.Length, cancellationToken);
-                                framesProcessed++;
+                                outputWidth = frame.Width;
+                                outputHeight = frame.Height;
+                                if (job.OptimizedOptions != null) job.OptimizedOptions.ScaleFactor = frame.Scale;
+                                encoderProcess.StartInfo.ArgumentList[sizeArgumentIndex] = $"{outputWidth}x{outputHeight}";
+                                encoderProcess.Start();
+                                encoderStream = encoderProcess.StandardInput.BaseStream;
+                                _logger.LogInformation("RealTimeAI native output: {Width}x{Height} ({Scale}x)",
+                                    outputWidth, outputHeight, frame.Scale);
                             }
-                            else
+                            if (frame.Width != outputWidth || frame.Height != outputHeight)
                             {
-                                _logger.LogDebug("Upscaled frame size mismatch, skipping frame {Frame}", framesProcessed);
-                                framesDropped++;
+                                throw new AiUpscalingUnavailableException(
+                                    $"Docker AI service changed output dimensions at frame {framesProcessed}; mixed model scales are not supported.");
                             }
+                            await encoderStream.WriteAsync(frame.Data, cancellationToken);
+                            framesProcessed++;
                         }
                         else
                         {
-                            _logger.LogWarning("AI service returned {StatusCode} for frame {Frame}", (int)response.StatusCode, framesProcessed);
-                            framesDropped++;
+                            var detail = await response.Content.ReadAsStringAsync(cancellationToken);
+                            throw new AiUpscalingUnavailableException(
+                                $"Docker AI service rejected frame {framesProcessed} (HTTP {(int)response.StatusCode}): {detail}");
                         }
                     }
                     catch (HttpRequestException ex)
                     {
-                        _logger.LogWarning(ex, "AI service request failed for frame {Frame}", framesProcessed);
-                        framesDropped++;
+                        throw new AiUpscalingUnavailableException(
+                            $"Docker AI service request failed for frame {framesProcessed}: {ex.Message}");
                     }
 
                     if (framesProcessed % 60 == 0 || framesProcessed == 1)
@@ -845,11 +831,14 @@ namespace JellyfinUpscalerPlugin.Services
                         );
 
                         _logger.LogInformation(
-                            "RealTimeAI: {Processed} frames ({Dropped} dropped), {Fps:F1} FPS, {Ratio:F2}x real-time",
-                            framesProcessed, framesDropped, currentFps, realTimeRatio);
+                            "RealTimeAI: {Processed} frames, {Fps:F1} FPS, {Ratio:F2}x real-time",
+                            framesProcessed, currentFps, realTimeRatio);
                     }
                 }
 
+                cancellationToken.ThrowIfCancellationRequested();
+                if (encoderStream == null)
+                    throw new InvalidDataException("No AI frames were produced; video encoding was not started.");
                 encoderStream.Close();
 
                 // v1.7.0 - WaitForExitAsync(ct) honors cancellation mid-wait. Previously
@@ -891,11 +880,11 @@ namespace JellyfinUpscalerPlugin.Services
                 try { if (File.Exists(tempAudioPath)) File.Delete(tempAudioPath); }
                 catch (Exception ex) { _logger.LogDebug(ex, "Failed to cleanup temp audio"); }
 
-                var success = encoderProcess.ExitCode == 0 && framesProcessed > 0;
+                var success = decoderProcess.ExitCode == 0 && encoderProcess.ExitCode == 0 && framesProcessed > 0;
 
                 _logger.LogInformation(
-                    "RealTimeAI completed: {Frames} frames, {Dropped} dropped, {Fps:F1} avg FPS, encoder exit={ExitCode}",
-                    framesProcessed, framesDropped, avgFps, encoderProcess.ExitCode);
+                    "RealTimeAI completed: {Frames} frames, {Fps:F1} avg FPS, decoder exit={DecoderExit}, encoder exit={EncoderExit}",
+                    framesProcessed, avgFps, decoderProcess.ExitCode, encoderProcess.ExitCode);
 
                 return new VideoProcessingResult
                 {
@@ -903,10 +892,10 @@ namespace JellyfinUpscalerPlugin.Services
                     OutputPath = outputPath,
                     ProcessingTime = totalElapsed,
                     Method = ProcessingMethod.RealTimeAI,
-                    Error = success ? string.Empty : $"Encoder exit code: {encoderProcess.ExitCode}, frames: {framesProcessed}"
+                    Error = success ? string.Empty : $"Decoder exit code: {decoderProcess.ExitCode}, encoder exit code: {encoderProcess.ExitCode}, frames: {framesProcessed}"
                 };
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogError(ex, "RealTimeAI processing failed");
                 return new VideoProcessingResult
@@ -973,7 +962,7 @@ namespace JellyfinUpscalerPlugin.Services
                 {
                     if (useAdvancedUpscaling && hardwareProfile.GpuName?.Contains("RTX") == true)
                     {
-                        _logger.LogInformation("Using NVIDIA VSR (Video Super Resolution)");
+                        _logger.LogInformation("Using CUDA-Lanczos scaling and sharpening");
                         filters.Add($"hwupload_cuda");
                         filters.Add($"scale_cuda={options.ScaleFactor}*iw:{options.ScaleFactor}*ih:interp_algo=lanczos");
                         filters.Add($"unsharp_cuda=luma_amount=1.5:chroma_amount=0.5");
@@ -989,7 +978,7 @@ namespace JellyfinUpscalerPlugin.Services
                 {
                     if (useAdvancedUpscaling)
                     {
-                        _logger.LogInformation("Using AMD FSR-style upscaling");
+                        _logger.LogInformation("Using VAAPI scaling and sharpening");
                         filters.Add($"hwupload");
                         filters.Add($"scale_vaapi=w={options.ScaleFactor}*iw:h={options.ScaleFactor}*ih");
                         filters.Add($"sharpen_vaapi");
@@ -1014,7 +1003,7 @@ namespace JellyfinUpscalerPlugin.Services
                     }
                     else if (useAdvancedUpscaling)
                     {
-                        _logger.LogInformation("Using FSR (FidelityFX Super Resolution)");
+                        _logger.LogInformation("Using libplacebo EWA Lanczos scaling");
                         filters.Add($"libplacebo=w={options.ScaleFactor}*iw:h={options.ScaleFactor}*ih:upscaler=ewa_lanczos");
                     }
                     else

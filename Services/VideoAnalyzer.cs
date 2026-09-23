@@ -127,7 +127,7 @@ namespace JellyfinUpscalerPlugin.Services
 
             bool highBitDepth = info.BitDepth > 8;
 
-            return pixelFormatHDR || transferHDR || (primariesBT2020 && highBitDepth);
+            return pixelFormatHDR || transferHDR || (primariesBT2020 && highBitDepth) || HdrFrameContract.IsHdr(info);
         }
 
         /// <summary>
@@ -152,17 +152,18 @@ namespace JellyfinUpscalerPlugin.Services
                 if (result.ExitCode != 0)
                 {
                     _logger.LogDebug("FFprobe HDR detection returned non-zero exit code for {File}", Path.GetFileName(inputPath));
-                    return;
+                    throw new InvalidDataException("Could not establish the video color/HDR contract with ffprobe.");
                 }
 
                 var json = stdoutBuffer.ToString();
-                if (string.IsNullOrWhiteSpace(json)) return;
+                if (string.IsNullOrWhiteSpace(json)) throw new InvalidDataException("Empty ffprobe color metadata response");
 
                 using var doc = JsonDocument.Parse(json);
-                if (!doc.RootElement.TryGetProperty("streams", out var streams)) return;
-                if (streams.GetArrayLength() == 0) return;
+                if (!doc.RootElement.TryGetProperty("streams", out var streams)) throw new InvalidDataException("Missing ffprobe streams");
+                if (streams.GetArrayLength() == 0) throw new InvalidDataException("Missing video stream");
 
                 var stream = streams[0];
+                HdrFrameContract.ReadMetadata(stream, info);
 
                 if (stream.TryGetProperty("color_transfer", out var ct))
                 {
@@ -191,6 +192,24 @@ namespace JellyfinUpscalerPlugin.Services
                         info.BitDepth = 10;
                     else if (pf.Contains("p012") || pf.Contains("12le") || pf.Contains("12be"))
                         info.BitDepth = 12;
+                    else if (pf.Contains("p016") || pf.Contains("16le") || pf.Contains("16be") || pf.StartsWith("rgb48"))
+                        info.BitDepth = 16;
+                }
+
+                if (HdrFrameContract.IsHdr(info))
+                {
+                    // Dynamic metadata may live on frames rather than the stream. Inspect
+                    // every frame before allowing an HDR job to enter extraction/inference.
+                    var frameMetadata = new StringBuilder();
+                    var probe = await Cli.Wrap(_ffprobePath)
+                        .WithArguments(args => args.Add("-v").Add("error").Add("-select_streams").Add("v:0")
+                            .Add("-show_frames").Add("-show_entries").Add("frame=side_data_list")
+                            .Add("-of").Add("json").Add(inputPath))
+                        .WithStandardOutputPipe(PipeTarget.ToStringBuilder(frameMetadata)).ExecuteAsync();
+                    using var framesDoc = JsonDocument.Parse(frameMetadata.ToString());
+                    HdrFrameContract.ReadMetadata(framesDoc.RootElement, info);
+                    info.IsHDR = true;
+                    HdrFrameContract.ValidateInput(info);
                 }
 
                 _logger.LogDebug("HDR properties: ColorTransfer={Transfer}, ColorPrimaries={Primaries}, BitDepth={BitDepth}",
@@ -198,7 +217,8 @@ namespace JellyfinUpscalerPlugin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Failed to detect HDR properties for {File}", Path.GetFileName(inputPath));
+                _logger.LogError(ex, "Could not establish HDR properties for {File}", Path.GetFileName(inputPath));
+                throw;
             }
         }
 

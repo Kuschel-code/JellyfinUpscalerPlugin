@@ -7,13 +7,13 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.30</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.32</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Deployment scenarios</h1>
   <p class="lead" style="color: var(--text-dim);">Copy-pasteable recipes for the four platforms this plugin is used on most.</p>
 
-  <div class="callout">The v1.8.3.31 candidate updates both plugin and Docker service. Use <code>rc-v1.8.3.31[-backend]</code> only for acceptance testing; normal <code>docker7[-backend]</code> tags follow approved releases. Preserve configuration and the previous image for rollback. <a href="changelog.html">Candidate status</a>.</div>
+  <div class="callout">The server example below targets the v1.8.3.32 Jellyfin 12 candidate. Published Docker images currently remain at v1.8.3.31. Use <code>v1.8.3.31[-backend]</code> pins or <code>docker7[-backend]</code> rolling tags. Preserve configuration and the previous image for rollback. Target-server acceptance was waived by the owner; GPU, live-player and HDR behavior remain unverified. <a href="changelog.html">Release validation</a>.</div>
 
   <h2>TrueNAS SCALE (25.x)</h2>
   <p>Runs Jellyfin as a custom app. The AI service goes in a second app.</p>
@@ -81,7 +81,7 @@
 
 services:
   jellyfin:
-    image: jellyfin/jellyfin:10.11.8
+    image: jellyfin/jellyfin:12.1
     restart: unless-stopped
     network_mode: host
     volumes:
@@ -159,7 +159,7 @@ ai.example.com {
 }</code></pre>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.30</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.32</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

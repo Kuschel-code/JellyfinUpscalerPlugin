@@ -15,7 +15,8 @@ namespace JellyfinUpscalerPlugin.Services
     /// v1.8.3.4 - Jellyfin 12.0 readiness: 12.0 removed the IUserManager.Users property
     /// in favour of a GetUsers() method (the only compile break against 12.0.0-rc2).
     /// The user enumeration and the per-user data lookup are resolved via reflection at
-    /// runtime, so the same DLL works on 10.11.x (Users property) and 12.x (GetUsers()).
+    /// runtime. The legacy net9 build used this for 10.11.x and 12.x API shapes;
+    /// the native net10 build since v1.8.3.32 requires Jellyfin 12 or newer.
     /// A direct interface call would be JIT-bound to the 10.11 member and throw
     /// MissingMethodException on a 12.0 server before the catch below could help.
     /// </summary>

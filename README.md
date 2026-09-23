@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.30
+# Jellyfin AI Upscaler Plugin v1.8.3.32 — Jellyfin 12 candidate
 
 [![Built with Claude Opus 5](https://img.shields.io/badge/Built%20with-Claude%20Opus%205-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
 
@@ -7,16 +7,16 @@
 ---
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Jellyfin Version](https://img.shields.io/badge/Jellyfin-10.11.x+-00A4DC.svg)](https://jellyfin.org)
+[![Jellyfin Version](https://img.shields.io/badge/Jellyfin-12.0+-00A4DC.svg)](https://jellyfin.org)
 [![Docker Hub](https://img.shields.io/docker/pulls/kuscheltier/jellyfin-ai-upscaler?logo=docker&label=Docker%20Hub)](https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler)
 [![Docker Image](https://img.shields.io/docker/v/kuscheltier/jellyfin-ai-upscaler?logo=docker&label=Latest)](https://hub.docker.com/r/kuscheltier/jellyfin-ai-upscaler)
 [![Documentation](https://img.shields.io/badge/Docs-kuschel--code.github.io-blueviolet)](https://kuschel-code.github.io/JellyfinUpscalerPlugin/)
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, running entirely in a Docker container with GPU acceleration.
 
-**Release status (2026-09-16):** v1.8.3.31 is a release candidate. The latest published plugin is [v1.8.3.30](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.30). The RC fixes issue #79, player cancellation/retry behavior, model-category filtering and batch failure handling. Target-server GPU, playback and HDR acceptance remain open; see the [release plan](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/update/v1.8.3.31/docs/RELEASE-PLAN-v1.8.3.31.md).
+**Release status (2026-09-23):** v1.8.3.32 is the native Jellyfin 12 / .NET 10 candidate. It passed 443 C# tests against each of Jellyfin 12.0 and 12.1; the 12.0-targeted plugin also loaded successfully in an isolated Jellyfin 12.1 container and reached Healthy startup. Requires Jellyfin 12.0 or newer. Playback, GPU and HDR target-hardware acceptance remain unverified. The published v1.8.3.31 build remains available for Jellyfin 10.11.
 
-**Docker images (seven variants):** The plugin and AI service both need this update. Candidate builds use `rc-v1.8.3.31[-backend]` and commit-specific RC tags. The following rolling tags change only when the release is approved:
+**Docker Images (candidate builds in lockstep with the plugin, both at v1.8.3.32):** All seven `rc-v1.8.3.32[-backend]` images are published and registry-verified, including ten platform builds. Reproducible pins use `rc-v1.8.3.32-2dabc6d[-backend]`. The following stable `docker7` tags and `latest` still point to v1.8.3.31. See [candidate tags and Docker verification](docs/DOCKER-RC-v1.8.3.32.md).
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -33,6 +33,8 @@ Download sizes range from **0.27 GB** (`docker7-cpu`) to **20 GB** (`docker7-amd
 
 ---
 
+[Download Jellyfin 12 candidate v1.8.3.32 RC1](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.32-rc.1) (requires Jellyfin 12.0+, five runtime DLLs plus meta.json).
+
 ## Architecture
 
 Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Native C++ libraries (ONNX Runtime, CUDA, OpenCV) caused `BadImageFormatException` crashes in older versions. The solution: a Docker microservice architecture where the plugin (only ~1.6 MB) communicates with an external AI container via HTTP.
@@ -41,7 +43,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.30   │  │
+│  │  AI Upscaler Plugin v1.8.3.32   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -157,9 +159,9 @@ The in-player button lets you:
 
 ---
 
-## Jellyfin 12.0 (RC) compatibility
+## Jellyfin 12 compatibility
 
-Jellyfin 12.0 is in release-candidate phase. Static analysis against `Jellyfin.Controller 12.0.0-rc2` found **exactly one** API break (`IUserManager.Users` removed) — fixed in v1.8.3.4 with a version-adaptive lookup, so one DLL targets 10.11.x and is expected to load on 12.0. The plugin's web code already uses only the modern `Authorization: MediaBrowser` scheme, so 12.0's default rejection of legacy auth does not affect it. Runtime verification on an RC box is pending — see [docs/JELLYFIN-12-READINESS.md](docs/JELLYFIN-12-READINESS.md) for the full break list and test plan. Do not upgrade your production server to an RC just for this.
+The v1.8.3.32 candidate targets **Jellyfin.Controller 12.0.0 / .NET 10**. Jellyfin 12.1 is also published; see the [official releases](https://github.com/jellyfin/jellyfin/releases). Build and runtime evidence is tracked in [docs/JELLYFIN-12-READINESS.md](docs/JELLYFIN-12-READINESS.md); GPU, real-player and HDR target-hardware acceptance remain separate.
 
 ## Installation
 
@@ -361,11 +363,11 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.8.3.30` — NVIDIA pin for the currently published release
-- `:v1.8.3.30-<backend>` — published backend pin (e.g. `:v1.8.3.30-cpu`)
-- `:rc-v1.8.3.31[-backend]` — candidate only; `:rc-v1.8.3.31-<commit>[-backend]` identifies a particular candidate build. Check the [Docker workflow](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/actions/workflows/docker-publish.yml) before pulling.
+- `:docker7-v1.8.3.31` — NVIDIA pin for the currently published release
+- `:v1.8.3.31-<backend>` — published backend pin (e.g. `:v1.8.3.31-cpu`)
+- `:rc-v1.8.3.32[-backend]` — published Jellyfin 12 candidate images; `:rc-v1.8.3.32-2dabc6d[-backend]` pins the verified build. The [seven-backend workflow](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/actions/runs/35778659366) completed successfully.
 
-CUDA is the default: keep `SKIP_TENSORRT=true`. Enable TensorRT only with compatible libraries in the image. See [Docker setup and controlled updates](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/update/v1.8.3.31/docker-ai-service/README.md).
+CUDA is the default: keep `SKIP_TENSORRT=true`. Enable TensorRT only with compatible libraries in the image. See [Docker setup and controlled updates](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/update/v1.8.3.32/docker-ai-service/README.md).
 
 ---
 
@@ -376,7 +378,7 @@ The full version history lives on the website and the release pages — this REA
 - **[Changelog (website)](https://kuschel-code.github.io/JellyfinUpscalerPlugin/changelog.html)** — every release in detail
 - **[GitHub Releases](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases)** — release notes and downloadable ZIPs
 
-Published: **v1.8.3.30** — notification stacking. In review: **v1.8.3.31 RC** — frame-limit fix, player recovery, guarded model selection and fail-closed batch processing. Local tests do not replace target-server acceptance.
+Release: **v1.8.3.31** — frame-limit fix, player recovery, guarded model selection and fail-closed batch processing. Target-server acceptance was explicitly waived by the owner; local tests do not verify target hardware.
 
 ---
 

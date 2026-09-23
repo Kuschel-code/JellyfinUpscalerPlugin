@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using JellyfinUpscalerPlugin.Models;
 
 namespace JellyfinUpscalerPlugin.Services
 {
@@ -58,6 +59,14 @@ namespace JellyfinUpscalerPlugin.Services
                 }
             }
             return 0;
+        }
+
+        /// <summary>Use the selected AI model's scale; FFmpeg-only and unknown imports keep their requested scale.</summary>
+        public static void ApplyNativeScale(VideoProcessingOptions options)
+        {
+            var native = NativeScaleOf(options.Model);
+            if (options.EnableAIUpscaling && native > 0)
+                options.ScaleFactor = native;
         }
 
         /// <summary>

@@ -207,6 +207,9 @@ namespace JellyfinUpscalerPlugin
         /// <summary>Real-time mode: "auto", "webgl" (client-side), or "server" (AI service).</summary>
         public string RealtimeMode { get; set; } = "auto";
 
+        /// <summary>Disable plugin upscaling when the playback device already upscales in its driver.</summary>
+        public bool ClientDriverUpscalingActive { get; set; } = false;
+
         /// <summary>Target frames per second for real-time upscaling.</summary>
         public int RealtimeTargetFps
         {
@@ -598,6 +601,6 @@ namespace JellyfinUpscalerPlugin
         // ── Version Tracking ─────────────────────────────────────────────
 
         /// <summary>Current plugin version string for webhook payloads and diagnostics.</summary>
-        public string PluginVersion { get; set; } = "1.8.3.30";
+        public string PluginVersion { get; set; } = "1.8.3.32";
     }
 }

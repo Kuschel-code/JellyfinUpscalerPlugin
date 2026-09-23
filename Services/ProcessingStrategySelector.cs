@@ -47,6 +47,7 @@ namespace JellyfinUpscalerPlugin.Services
             {
                 optimized.ScaleFactor = inputInfo.Width <= 720 ? 3 : 2;
             }
+            ModelScale.ApplyNativeScale(optimized);
 
             // Normalize "low" quality to "fast" (UI offers "low" but backend uses "fast")
             if (string.Equals(optimized.QualityLevel, "low", StringComparison.OrdinalIgnoreCase))
@@ -106,7 +107,7 @@ namespace JellyfinUpscalerPlugin.Services
                         chain.Add(fb);
                 }
             }
-            return chain;
+            return chain.FindAll(ModelAvailability.IsUsableUpscaler);
         }
 
         /// <summary>
@@ -118,6 +119,15 @@ namespace JellyfinUpscalerPlugin.Services
             VideoProcessingOptions options,
             int inputFrames = 1)
         {
+            if (HdrFrameContract.IsHdr(inputInfo))
+            {
+                HdrFrameContract.Validate(inputInfo,
+                    options.EnableRealTimeProcessing ? ProcessingMethod.RealTimeAI : ProcessingMethod.FrameByFrame,
+                    Config.OutputCodec, inputFrames);
+                if (!options.EnableAIUpscaling) throw new NotSupportedException("HDR requires the single-frame AI pipeline.");
+                return ProcessingMethod.FrameByFrame;
+            }
+
             // Multi-frame VSR takes priority when model supports it
             if (options.EnableAIUpscaling && inputFrames > 1)
             {

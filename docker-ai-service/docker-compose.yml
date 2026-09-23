@@ -26,7 +26,8 @@ services:
       - MAX_CONCURRENT_REQUESTS=4
       - DEFAULT_MODEL=realesrgan-x4
       - LOG_LEVEL=INFO
-      - SKIP_TENSORRT=false
+      # CUDA is the default. Set false only with TensorRT libraries installed in the image.
+      - SKIP_TENSORRT=true
       - GPU_DEVICE_ID=0
     restart: unless-stopped
     healthcheck:

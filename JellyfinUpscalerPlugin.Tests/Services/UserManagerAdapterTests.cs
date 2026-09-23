@@ -56,7 +56,7 @@ namespace JellyfinUpscalerPlugin.Tests.Services
             // fail-closed: a Jellyfin DB hiccup would stop the scan from making
             // progress, which was the exact bug RestrictToUnwatchedContent's
             // wiring in v1.6.1.21 was designed to avoid.
-            _userManagerMock.Setup(m => m.Users)
+            _userManagerMock.Setup(m => m.GetUsers())
                 .Throws(new InvalidOperationException("simulated user manager failure"));
 
             var item = MakeItem();
@@ -65,6 +65,7 @@ namespace JellyfinUpscalerPlugin.Tests.Services
             act.Should().NotThrow("the adapter must swallow exceptions and return false");
             _adapter.IsAnyUserPlayed(item).Should().BeFalse(
                 "fail-open: exception during user enumeration must return false");
+            _userManagerMock.Verify(m => m.GetUsers(), Times.Exactly(2));
         }
 
         // BaseItem instances - use Movie which is constructable without DI.

@@ -3,7 +3,7 @@ import io
 import os
 import numpy as np
 from PIL import Image
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 
 
 def _make_png() -> bytes:
@@ -38,15 +38,19 @@ def test_missing_token_returns_403_when_env_set(client):
         assert resp.status_code == 403
 
 
-def test_correct_token_passes_auth(client):
-    """Correct token must not produce 403."""
+def test_correct_token_passes_auth(client, monkeypatch):
+    """Exercise auth and the endpoint without downloading real model weights."""
+    from app import main
+    download = AsyncMock(return_value=True)
+    monkeypatch.setattr(main, 'download_model', download)
     with patch.dict(os.environ, {"API_TOKEN": "secret123"}):
         resp = client.post(
             "/models/download",
             data={"model_name": "realesrgan-x4"},
             headers={"x-api-token": "secret123"},
         )
-        assert resp.status_code != 403, f"correct token should not 403, got {resp.status_code}"
+        assert resp.status_code == 200
+        download.assert_awaited_once_with('realesrgan-x4')
 
 
 def test_no_token_env_rejects_requests(client):
@@ -57,12 +61,15 @@ def test_no_token_env_rejects_requests(client):
         assert resp.status_code == 403
 
 
-def test_disable_token_skips_auth(client):
+def test_disable_token_skips_auth(client, monkeypatch):
     """API_TOKEN=disable explicitly opts out of auth."""
+    from app import main
+    download = AsyncMock(return_value=True)
+    monkeypatch.setattr(main, 'download_model', download)
     with patch.dict(os.environ, {"API_TOKEN": "disable"}):
         resp = client.post("/models/download", data={"model_name": "realesrgan-x4"})
-        # Should not be 403; may be 400/422 for other reasons but not auth
-        assert resp.status_code != 403
+        assert resp.status_code == 200
+        download.assert_awaited_once_with('realesrgan-x4')
 
 
 def test_upscale_without_model_returns_400_not_403(client):

@@ -179,6 +179,7 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         public async Task<bool> EnsureModelLoadedAsync(string modelName, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             // Quick volatile read: skip if already loaded (no lock needed)
             if (string.Equals(_currentlyLoadedModel, modelName, StringComparison.Ordinal))
             {
@@ -205,7 +206,7 @@ namespace JellyfinUpscalerPlugin.Services
                         return true;
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     // v1.7.1 - elevated from LogDebug to LogWarning. Pre-load status check
                     // failures often indicate the AI service is offline, which is the root
@@ -218,6 +219,7 @@ namespace JellyfinUpscalerPlugin.Services
 
                 // Download model if needed (idempotent — skips if already downloaded)
                 var downloaded = await DownloadModelAsync(modelName, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
                 if (!downloaded)
                 {
                     _logger.LogWarning("Failed to download model {Model}, attempting load anyway", modelName);
@@ -229,6 +231,7 @@ namespace JellyfinUpscalerPlugin.Services
                 var gpuDeviceId = config?.GpuDeviceIndex ?? 0;
 
                 var loaded = await LoadModelAsync(modelName, useGpu, gpuDeviceId, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
                 if (loaded)
                 {
                     _currentlyLoadedModel = modelName;
@@ -250,8 +253,10 @@ namespace JellyfinUpscalerPlugin.Services
         /// <summary>
         /// Upscale an image using the AI service.
         /// </summary>
-        public async Task<byte[]?> UpscaleImageAsync(byte[] imageData, int scale = 2, CancellationToken cancellationToken = default)
+        public async Task<byte[]?> UpscaleImageAsync(byte[] imageData, int scale = 2, CancellationToken cancellationToken = default,
+            bool requireSuccess = false)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (imageData == null || imageData.Length == 0)
             {
                 _logger.LogWarning("UpscaleImageAsync called with empty image data");
@@ -260,6 +265,7 @@ namespace JellyfinUpscalerPlugin.Services
 
             var baseUrl = GetServiceUrl();
             const int maxRetries = 2;
+            Exception? lastFailure = null;
 
             for (int attempt = 0; attempt <= maxRetries; attempt++)
             {
@@ -286,28 +292,40 @@ namespace JellyfinUpscalerPlugin.Services
                     if (response.IsSuccessStatusCode)
                     {
                         var result = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+                        if (result.Length == 0)
+                            throw new InvalidDataException("Docker AI service returned an empty image (HTTP 200).");
                         _logger.LogDebug("Received upscaled image ({Size} bytes)", result.Length);
                         return result;
                     }
                     else
                     {
                         var error = await response.Content.ReadAsStringAsync(cancellationToken);
+                        lastFailure = new HttpRequestException(
+                            $"Docker AI service rejected upscaling (HTTP {(int)response.StatusCode}): {error}",
+                            null, response.StatusCode);
                         _logger.LogError("AI service upscaling failed: {StatusCode} - {Error}", response.StatusCode, error);
                         // Don't retry on 4xx client errors
                         if ((int)response.StatusCode < 500) break;
                     }
                 }
-                catch (TaskCanceledException)
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
+                    throw;
+                }
+                catch (OperationCanceledException ex)
+                {
+                    lastFailure = new TimeoutException("Docker AI service upscaling request timed out.", ex);
                     _logger.LogWarning("Upscaling request was cancelled");
                     break; // Don't retry on cancellation
                 }
                 catch (HttpRequestException ex)
                 {
+                    lastFailure = ex;
                     _logger.LogError(ex, "HTTP error communicating with AI service at {Url} (attempt {Attempt})", baseUrl, attempt + 1);
                 }
                 catch (Exception ex)
                 {
+                    lastFailure = ex;
                     _logger.LogError(ex, "Unexpected error during upscaling");
                     break;
                 }
@@ -319,6 +337,8 @@ namespace JellyfinUpscalerPlugin.Services
                 }
             }
 
+            if (requireSuccess)
+                throw lastFailure ?? new InvalidDataException("Docker AI service returned no image.");
             return null;
         }
 
