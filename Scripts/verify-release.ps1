@@ -211,17 +211,38 @@ try {
 
     Write-Host ""
     Write-Host "=== Downloading release assets for $Tag ===" -ForegroundColor Cyan
-    gh release download $Tag --dir $tmp --repo $Repo --clobber
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "FAIL: gh release download returned $LASTEXITCODE" -ForegroundColor Red
+    # GitHub can temporarily return assets=[] in the release detail endpoint even
+    # while its dedicated assets endpoint lists the uploaded, downloadable ZIP.
+    # gh release download uses the former. Resolve the release ID, then inspect
+    # and download every ZIP from the dedicated endpoint instead.
+    $releaseId = & gh api "repos/$Repo/releases/tags/$Tag" --jq '.id'
+    if ($LASTEXITCODE -ne 0 -or -not $releaseId) {
+        Write-Host "FAIL: cannot resolve GitHub release $Tag" -ForegroundColor Red
         exit 1
     }
-
-    $zips = Get-ChildItem -Path $tmp -Filter "*.zip"
-    if ($zips.Count -eq 0) {
+    $assetsJson = & gh api "repos/$Repo/releases/$releaseId/assets"
+    if ($LASTEXITCODE -ne 0 -or -not $assetsJson) {
+        Write-Host "FAIL: cannot list GitHub release assets for $Tag" -ForegroundColor Red
+        exit 1
+    }
+    $zipAssets = @($assetsJson | ConvertFrom-Json | Where-Object { $_.name -like '*.zip' })
+    if ($zipAssets.Count -eq 0) {
         Write-Host "FAIL: no ZIP assets in release" -ForegroundColor Red
         exit 1
     }
+    foreach ($asset in $zipAssets) {
+        if ($asset.state -ne 'uploaded') {
+            Write-Host ("FAIL: release asset " + $asset.name + " is not uploaded") -ForegroundColor Red
+            exit 1
+        }
+        try {
+            Invoke-WebRequest -Uri $asset.browser_download_url -OutFile (Join-Path $tmp $asset.name)
+        } catch {
+            Write-Host ("FAIL: cannot download release asset " + $asset.name + ": " + $_.Exception.Message) -ForegroundColor Red
+            exit 1
+        }
+    }
+    $zips = Get-ChildItem -Path $tmp -Filter "*.zip"
 
     foreach ($zip in $zips) {
         Write-Host ""

@@ -4,7 +4,7 @@ Published for Jellyfin 12.0+ / .NET 10. Source/merge commit: `09162a4c8225110c5e
 
 443 C# tests passed against each of 12.0 and 12.1, 209 Python tests and 36 Node behavior tests passed. The 12.0 build loaded in an isolated official Jellyfin 12.1 container, injected the player script and reached Healthy startup. No target-server playback, GPU or HDR certification.
 
-[Release](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.32). Published ZIP downloaded and byte-compared; real MD5: `0cda1c6b1f9806737a686e2f56288a45`. Exactly five runtime DLLs plus meta.json; published with dotnet publish. All three new feed entries are identical with ABI 12.0.0.0; older 1.8.3.31 / ABI 10.11.8.0 retained. Full v1.8.3.31 online release validation passed. v1.8.3.32 online validation follows feed publication.
+[Release](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.32). Published ZIP downloaded and byte-compared; real MD5: `0cda1c6b1f9806737a686e2f56288a45`. Exactly five runtime DLLs plus meta.json; published with dotnet publish. All three new feed entries are identical with ABI 12.0.0.0; older 1.8.3.31 / ABI 10.11.8.0 retained. Full online release validation passed for both v1.8.3.31 and v1.8.3.32. For v1.8.3.32, the validator downloaded the published ZIP from GitHub, checked its exact runtime payload and matched its MD5 against all three live feeds.
 
 ## Docker
 
