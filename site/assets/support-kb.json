@@ -614,7 +614,7 @@
         "new jellyfin",
         "compatible 12"
       ],
-      "answer": "v1.8.3.32 is the native Jellyfin 12 / .NET 10 candidate. It passed 443 C# tests against 12.0 and another 443 against 12.1. The 12.0-targeted publish loaded in an isolated official Jellyfin 12.1 container, injected its player script and reached Healthy startup. Actual playback, GPU, HDR and target-server acceptance remain unverified. Published plugin and Docker versions are still 1.8.3.31 until the candidate release is completed. See docs/RELEASE-PLAN-v1.8.3.32.md."
+      "answer": "v1.8.3.32 is the native Jellyfin 12 / .NET 10 candidate. It passed 443 C# tests against 12.0 and another 443 against 12.1. The 12.0-targeted publish loaded in an isolated official Jellyfin 12.1 container, injected its player script and reached Healthy startup. Actual playback, GPU, HDR and target-server acceptance remain unverified. v1.8.3.32 RC1 and all seven rc-v1.8.3.32 Docker candidates are published. Stable latest/docker7 tags remain at 1.8.3.31. See docs/RELEASE-PLAN-v1.8.3.32.md."
     },
     {
       "id": "models-self-host",

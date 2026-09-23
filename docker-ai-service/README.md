@@ -8,6 +8,8 @@
 
 ---
 
+[Download Jellyfin 12 candidate v1.8.3.32 RC1](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.32-rc.1) (requires Jellyfin 12.0+, five runtime DLLs plus meta.json).
+
 ## Jellyfin 12 candidate
 
 v1.8.3.32 moves the plugin to Jellyfin 12 / .NET 10. All seven Docker candidates below are published; their tags, ten platform builds and version/revision labels were verified on 2026-09-23. Stable `docker7` and `latest` remain at v1.8.3.31. The Python HTTP service has no Jellyfin or .NET runtime dependency. [Registry digests and evidence](../docs/DOCKER-RC-v1.8.3.32.md).
