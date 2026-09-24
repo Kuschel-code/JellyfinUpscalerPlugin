@@ -114,20 +114,10 @@ namespace JellyfinUpscalerPlugin.Services
         /// </summary>
         public bool IsHDRVideo(FFMpegCore.VideoStream? videoStream, VideoInfo info)
         {
-            if (videoStream == null) return false;
-
-            bool pixelFormatHDR = videoStream.PixelFormat?.Contains("bt2020") == true ||
-                                  videoStream.PixelFormat?.Contains("smpte2084") == true ||
-                                  videoStream.PixelFormat?.Contains("p010") == true;
-
-            bool transferHDR = string.Equals(info.ColorTransfer, "smpte2084", StringComparison.OrdinalIgnoreCase) ||
-                               string.Equals(info.ColorTransfer, "arib-std-b67", StringComparison.OrdinalIgnoreCase);
-
-            bool primariesBT2020 = string.Equals(info.ColorPrimaries, "bt2020", StringComparison.OrdinalIgnoreCase);
-
-            bool highBitDepth = info.BitDepth > 8;
-
-            return pixelFormatHDR || transferHDR || (primariesBT2020 && highBitDepth) || HdrFrameContract.IsHdr(info);
+            // One definition of HDR for analysis and processing. The shortcuts that used to
+            // sit here (a p010 pixel format, BT.2020 primaries at 10 bit) were bit depth or
+            // gamut, not HDR, and pushed SDR files into the HDR-only path.
+            return videoStream != null && HdrFrameContract.IsHdr(info);
         }
 
         /// <summary>
