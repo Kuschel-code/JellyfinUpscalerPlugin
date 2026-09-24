@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.8.3.33",
+        "changelog": "v1.8.3.33: Redesigned in-player menu and settings page. SDR videos (DVD/SD rips, untagged 10-bit) are no longer refused as HDR in real time or in library jobs; HDR batch output keeps the model's detail; Server AI hides stale frames during outages and falls back to Lanczos when the server cannot keep up. Requires Jellyfin 12.0 or newer. Target-hardware playback, GPU and HDR acceptance remain unverified.",
+        "targetAbi": "12.0.0.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.3.33/JellyfinUpscalerPlugin-v1.8.3.33.zip",
+        "checksum": "0d9d50629f7a681e02ce8c3a60662b24",
+        "timestamp": "2026-09-24T13:19:29Z"
+      },
+      {
         "version": "1.8.3.32",
         "changelog": "v1.8.3.32: Native Jellyfin 12 build on .NET 10, aligned plugin/test dependencies, updated CI and ABI-aware release validation. Requires Jellyfin 12.0 or newer. Target-hardware playback, GPU and HDR acceptance remain unverified.",
         "targetAbi": "12.0.0.0",
