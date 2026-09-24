@@ -3,10 +3,10 @@
     "name": "AI Upscaler Plugin",
     "overview": "AI-Powered Video Upscaling Plugin with Docker Microservice Architecture",
     "description": "Video upscaling through an external AI service, with client-side scaling and optional object masking. Backend and model availability depend on the installed image and hardware. HDR processing is limited to single PQ/BT.2020 RGB16 frames; target-hardware validation is required.",
-    "version": "1.8.3.32",
+    "version": "1.8.3.33",
     "targetAbi": "12.0.0",
     "framework": "net10.0",
     "owner": "Kuschel-code",
     "category": "Video Enhancement",
-    "changelog": "v1.8.3.32: Native Jellyfin 12 build on .NET 10, aligned plugin/test dependencies, updated CI and ABI-aware release validation. Requires Jellyfin 12.0 or newer. Target-hardware playback, GPU and HDR acceptance remain unverified."
+    "changelog": "v1.8.3.33: Redesigned in-player menu and settings page. SDR videos (DVD/SD rips, untagged 10-bit) are no longer refused as HDR in real time or in library jobs; HDR batch output keeps the model's detail; Server AI hides stale frames during outages and falls back to Lanczos when the server cannot keep up. Requires Jellyfin 12.0 or newer. Target-hardware playback, GPU and HDR acceptance remain unverified."
 }
