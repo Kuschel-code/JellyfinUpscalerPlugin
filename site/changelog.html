@@ -7,12 +7,22 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.32</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.33</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Every release carries its full notes on the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
+  <h2>v1.8.3.33 - Redesigned menus; SDR videos no longer refused as HDR</h2>
+  <p class="date">2026-09-24 · target-server acceptance not run; GPU, live-player and HDR target-hardware behavior remain unverified</p>
+  <ul>
+    <li>New in-player menu: a live frame-rate readout with a 20-second trend against the video's own rate, filter tiles that preview the playing frame, a bottom sheet on phones, a larger panel on TVs, and keyboard and remote support.</li>
+    <li>The settings page in the same style; its tabs are real buttons that keyboards and TV remotes reach. Fixes an error on every Models-tab visit.</li>
+    <li>HDR needs real evidence now: DVD/SD rips (smpte170m, bt470bg) and untagged 10-bit files are SDR again, in real time and in library jobs.</li>
+    <li>HDR batch output keeps the model's detail (1.8.3.31/32 kept only its colour), and the model gets a fuller-range frame.</li>
+    <li>Server AI: a stale frame no longer freezes over the video during an outage, and a server that cannot keep up hands over to Lanczos after 5 s.</li>
+    <li>Local regression run: 454 C#, 212 Python and 57 Node behavior tests passed. Not a GPU or live-player certification.</li>
+  </ul>
   <h2>v1.8.3.32 - Native Jellyfin 12</h2>
   <p>Native .NET 10 / Jellyfin 12.0 build, aligned test dependencies and CI, ABI-aware release validation, and updated Docker server examples. Requires Jellyfin 12.0 or newer. Regular ZIP and all seven Docker variants are published with matching version pins and rolling tags. Target-hardware acceptance remains unverified.</p>
   <h2>v1.8.3.31 — Playback recovery and model guards</h2>
@@ -598,7 +608,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.32</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.33</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

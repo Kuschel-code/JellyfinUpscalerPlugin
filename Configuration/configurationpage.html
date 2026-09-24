@@ -272,7 +272,7 @@
             <!-- Header -->
             <div class="upscaler-header">
                 <h1><span class="material-icons upscaler-logo" aria-hidden="true">auto_awesome</span>AI Upscaler Plugin <span id="service-badge" class="status-pill status-pill--checking">Checking...</span></h1>
-                <div class="upscaler-header-meta">v1.8.3.32 &middot; AI Upscaling + Filters + Face Restore</div>
+                <div class="upscaler-header-meta">v1.8.3.33 &middot; AI Upscaling + Filters + Face Restore</div>
             </div>
 
             <!-- Tab bar: plain buttons, so keyboards and TV remotes can reach every tab -->
@@ -2442,7 +2442,7 @@
 
                 var libHidden = page.querySelector('#EnabledLibraryIds');
                 if (libHidden) config.EnabledLibraryIds = libHidden.value || '';
-                config.PluginVersion = '1.8.3.32';
+                config.PluginVersion = '1.8.3.33';
 
                 ApiClient.updatePluginConfiguration(pluginId, config).then(function() {
                     showToast('Settings saved!');

@@ -172,4 +172,39 @@ public class HdrFrameContractTests
         }
         finally { Directory.Delete(root, true); }
     }
+
+    // v1.8.3.33 - HDR needs positive evidence. Bit depth is not evidence: untagged
+    // 10-bit encodes (common for anime) are SDR, and 1.8.3.31/32 refused them in
+    // library jobs as "HDR requires PQ/ST.2084". SD rips tagged smpte170m/bt470bg and
+    // BT.2020 SDR (bt2020-10) are SDR too.
+    [Theory]
+    [InlineData("", "", 10)]
+    [InlineData("unknown", "", 10)]
+    [InlineData("bt709", "bt709", 10)]
+    [InlineData("smpte170m", "smpte170m", 8)]
+    [InlineData("bt470bg", "bt470bg", 8)]
+    [InlineData("bt2020-10", "bt2020", 10)]
+    public void SdrSourcesAreNotTreatedAsHdr(string transfer, string primaries, int bitDepth)
+    {
+        var info = new VideoInfo { ColorTransfer = transfer, ColorPrimaries = primaries, BitDepth = bitDepth };
+        Assert.False(HdrFrameContract.IsHdr(info));
+        HdrFrameContract.ValidateInput(info);
+        HdrFrameContract.Validate(info, ProcessingMethod.MultiFrame, "libx264");
+    }
+
+    [Theory]
+    [InlineData("smpte2084", "bt2020")]
+    [InlineData("arib-std-b67", "bt2020")]
+    [InlineData("smpte428", "")]     // tagged, but not a transfer this pipeline knows: refused as unknown
+    [InlineData("", "bt2020")]       // wide gamut without an SDR transfer
+    public void HdrEvidenceIsStillHdr(string transfer, string primaries)
+    {
+        Assert.True(HdrFrameContract.IsHdr(new VideoInfo { ColorTransfer = transfer, ColorPrimaries = primaries, BitDepth = 10 }));
+    }
+
+    [Fact]
+    public void DynamicMetadataIsHdrEvenWithoutTags()
+    {
+        Assert.True(HdrFrameContract.IsHdr(new VideoInfo { HasDynamicHDR = true }));
+    }
 }

@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.8.3.32';
+    const PLUGIN_VERSION = '1.8.3.33';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -545,20 +545,53 @@
             };
             this._videoElement.addEventListener('pause', this._serverPlaybackListener);
             this._videoElement.addEventListener('playing', this._serverPlaybackListener);
+            this._lastFrameShownAt = null;   // no frame drawn yet
+            this._currentFps = 0;
+            this._lowFpsStart = 0;
             this._serverRenderLoop();
             this._fallbackCheckInterval = setInterval(function() {
                 if (!self._active || self._mode !== 'server') return;
                 var now = performance.now();
+                var video = self._videoElement;
+                var playing = !!video && !video.paused;
+                // v1.8.3.33 - the overlay covers the whole video, so a frame that is no
+                // longer current froze the picture for as long as the service asked the
+                // player to wait (a 30 s circuit-breaker Retry-After, say). After 1.5 s
+                // without a new frame the layer is hidden until the next one arrives.
+                // Object masking keeps its last covered frame: revealing what it covers
+                // would defeat it.
+                if (self._overlayCanvas && !self._objectMaskEnabled) {
+                    var stale = playing && self._lastFrameShownAt !== null && now - self._lastFrameShownAt > 1500;
+                    self._overlayCanvas.style.visibility = stale ? 'hidden' : '';
+                }
                 // Pauses and a service-requested wait are not processing timeouts.
-                if (!self._videoElement || self._videoElement.paused || now < self._nextFrameAt) {
+                if (!playing || now < self._nextFrameAt) {
                     self._lastSuccessfulFrame = now;
                     self._lowFpsStart = 0;
                     return;
                 }
-                if (!self._objectMaskEnabled && now - self._lastSuccessfulFrame > 10000) {
+                if (self._objectMaskEnabled) return;   // masking replaces upscaling; there is nothing to fall back to
+                var why = null;
+                if (now - self._lastSuccessfulFrame > 10000) {
+                    why = 'server unresponsive';
+                } else if (self._lastFrameShownAt !== null) {
+                    // v1.8.3.33 - frames arrive, but slower than the video needs: a slideshow
+                    // over a moving picture. 1.8.3.31 dropped this check; it judges against
+                    // the video's own rate now (the 10 fps floor only stands in for it).
+                    var videoFps = Number(self._benchmarkResult && self._benchmarkResult.videoFps) || 0;
+                    var floor = videoFps ? videoFps * (video.playbackRate || 1) * 0.5 : 10;
+                    var fps = now - self._lastFrameShownAt > 2000 ? 0 : self._currentFps;
+                    if (fps < floor) {
+                        if (!self._lowFpsStart) self._lowFpsStart = now;
+                        else if (now - self._lowFpsStart >= 5000) why = 'server too slow: ' + fps + ' fps';
+                    } else {
+                        self._lowFpsStart = 0;
+                    }
+                }
+                if (why) {
                     self._stopServer();
                     self._fallbackToLanczos();
-                    if (window.PlayerIntegration) window.PlayerIntegration.showPlayerNotification('Switched to Lanczos (server unresponsive)', 'warning');
+                    if (window.PlayerIntegration) window.PlayerIntegration.showPlayerNotification('Switched to Lanczos (' + why + ')', 'warning');
                 }
             }, 1000);
         },
@@ -670,7 +703,9 @@
                                 self._overlayCanvas.height = img.height;
                                 self._overlayCtx = self._overlayCanvas.getContext('2d');
                                 self._overlayCtx.drawImage(img, 0, 0);
+                                self._overlayCanvas.style.visibility = '';
                                 self._lastSuccessfulFrame = performance.now();
+                                self._lastFrameShownAt = self._lastSuccessfulFrame;
                                 self._retryCount = 0;
                                 self._reason = null;
                                 self._fpsFrameCount++;
@@ -2526,6 +2561,25 @@
         },
 
         // Extracted from startRealtimeUpscaling so auto-select can supply an overridden config.
+        // SDR transfer characteristics, as Jellyfin and ffprobe name them.
+        _SDR_TRANSFERS: ['bt709', 'smpte170m', 'bt470m', 'bt470bg', 'gamma22', 'gamma28', 'smpte240m',
+                         'iec61966-2-1', 'iec61966-2-4', 'bt1361e', 'bt2020-10', 'bt2020-12', 'srgb'],
+
+        // The server's rule (HdrFrameContract.IsHdr): HDR needs positive evidence - an HDR
+        // range from Jellyfin, a tagged transfer that is not SDR (PQ, HLG, or one this
+        // plugin does not know), or BT.2020 primaries without an SDR transfer. Bit depth is
+        // not evidence: 1.8.3.31/32 refused NTSC/PAL DVD rips and untagged 10-bit encodes
+        // here, in every mode, with an HDR message.
+        _isHdrStream: function(stream) {
+            var range = String(stream.VideoRangeType || stream.VideoRange || '').toLowerCase();
+            var transfer = String(stream.ColorTransfer || '').toLowerCase();
+            var untagged = !transfer || transfer === 'unknown' || transfer === 'unspecified';
+            var sdrTransfer = this._SDR_TRANSFERS.indexOf(transfer) !== -1;
+            if (range && range !== 'sdr' && range !== 'unknown') return true;
+            if (!untagged && !sdrTransfer) return true;
+            return String(stream.ColorPrimaries || '').toLowerCase() === 'bt2020' && !sdrTransfer;
+        },
+
         _readPlayingVideoStream: function() {
             var itemId = this._getPlayingItemId();
             if (!itemId) return Promise.resolve(null);
@@ -2544,12 +2598,7 @@
                 }
                 return this._readPlayingVideoStream().then(function(stream) {
                 if (generation !== RealtimeUpscaler._generation) return;
-                var transfer = ((stream && stream.ColorTransfer) || '').toLowerCase();
-                var range = ((stream && (stream.VideoRangeType || stream.VideoRange)) || '').toLowerCase();
-                if (!stream || (range && range !== 'sdr') ||
-                    (transfer && ['bt709', 'srgb', 'iec61966-2-1'].indexOf(transfer) === -1) ||
-                    (!transfer && Number(stream.BitDepth) > 8) ||
-                    ((stream.ColorPrimaries || '').toLowerCase() === 'bt2020')) {
+                if (!stream || PlayerIntegration._isHdrStream(stream)) {
                     RealtimeUpscaler._mode = 'off';
                     RealtimeUpscaler._reason = !stream ? 'Video color metadata unavailable; realtime processing cannot be validated' :
                         'HDR realtime and masking are not supported. Use the PQ RGB16 batch pipeline; HLG is not supported.';

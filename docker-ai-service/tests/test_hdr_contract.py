@@ -72,6 +72,54 @@ def test_hdr_black_model_output_never_becomes_bright_source_pixels(client, monke
     assert np.all(reconstructed == 0)
 
 
+def _pq_luma(main, img16):
+    lin = main._pq_to_linear(img16)
+    return 0.2627 * lin[:, :, 2] + 0.6780 * lin[:, :, 1] + 0.0593 * lin[:, :, 0]
+
+
+def _textured_pq_frame():
+    rng = np.random.default_rng(7)
+    base = rng.random((32, 32)) * 0.15 + 0.55             # PQ code values, roughly 150-500 nits
+    return rng, (np.repeat(base[:, :, None], 3, axis=2) * 65535).astype(np.uint16)
+
+
+def test_hdr_output_keeps_the_models_detail(client, monkeypatch):
+    """v1.8.3.33: 1.8.3.31/32 rescaled every output pixel to the bicubic source
+    brightness, so the model's added detail vanished and only its colour survived."""
+    from app import main
+    monkeypatch.setattr(main, 'cv2', cv2)
+    rng, original = _textured_pq_frame()
+    sdr, luminance = main.tonemap_hdr_to_sdr(original)
+    bicubic = cv2.resize(sdr, (64, 64), interpolation=cv2.INTER_CUBIC).astype(np.float64)
+    texture = (rng.random((64, 64)) - 0.5) * 16            # what a model adds over bicubic
+    model = np.clip(bicubic + texture[:, :, None], 1, 254).astype(np.uint8)
+    plain = np.clip(bicubic, 1, 254).astype(np.uint8)
+    out_model = _pq_luma(main, main.inverse_tonemap_sdr_to_hdr(model, luminance, original, 2))
+    out_plain = _pq_luma(main, main.inverse_tonemap_sdr_to_hdr(plain, luminance, original, 2))
+    assert np.std(out_model - out_plain) / out_plain.mean() > 0.05
+
+
+def test_hdr_plain_enlargement_keeps_source_brightness(client, monkeypatch):
+    from app import main
+    monkeypatch.setattr(main, 'cv2', cv2)
+    _, original = _textured_pq_frame()
+    sdr, luminance = main.tonemap_hdr_to_sdr(original)
+    plain = cv2.resize(sdr, (64, 64), interpolation=cv2.INTER_CUBIC)
+    out = _pq_luma(main, main.inverse_tonemap_sdr_to_hdr(plain, luminance, original, 2))
+    source = np.clip(cv2.resize(luminance, (64, 64), interpolation=cv2.INTER_CUBIC), 0, 1)
+    assert abs(out.mean() / source.mean() - 1) < 0.01
+
+
+def test_hdr_tone_map_uses_the_8bit_range_for_typical_content(client, monkeypatch):
+    """The model sees this SDR frame; 100-500 nit content used to fill ~40 of 256 codes."""
+    from app import main
+    monkeypatch.setattr(main, 'cv2', cv2)
+    _, original = _textured_pq_frame()
+    sdr, _ = main.tonemap_hdr_to_sdr(original)
+    assert int(sdr.max()) - int(sdr.min()) > 40
+    assert 60 < float(sdr.mean()) < 200
+
+
 def test_hdr_endpoint_requires_explicit_transfer(client):
     response = client.post('/upscale-hdr', headers={'X-Api-Token': 'hdr-contract-test'},
                            files={'file': ('frame.png', ramp()[1], 'image/png')})

@@ -11,11 +11,30 @@ namespace JellyfinUpscalerPlugin.Services;
 /// <summary>The v1.8.3.31 HDR boundary: PQ/BT.2020, RGB16 PNG frames, libx265 10-bit output.</summary>
 internal static class HdrFrameContract
 {
+    // SDR transfer characteristics, named as ffprobe reports them.
+    private static readonly string[] SdrTransfers =
+    {
+        "bt709", "smpte170m", "bt470m", "bt470bg", "gamma22", "gamma28", "smpte240m",
+        "iec61966-2-1", "iec61966-2-4", "bt1361e", "bt2020-10", "bt2020-12"
+    };
+
+    private static bool IsUntagged(string transfer) => string.IsNullOrEmpty(transfer) ||
+        transfer.Equals("unknown", StringComparison.OrdinalIgnoreCase) ||
+        transfer.Equals("unspecified", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsSdrTransfer(string transfer) =>
+        Array.Exists(SdrTransfers, t => t.Equals(transfer, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// HDR needs positive evidence: dynamic metadata, a tagged transfer that is not SDR
+    /// (PQ, HLG, or one this pipeline does not know - refused later as unknown), or
+    /// BT.2020 primaries without an SDR transfer. Bit depth alone is not evidence:
+    /// 1.8.3.31/32 treated every untagged 10-bit file as HDR and refused ordinary SDR
+    /// encodes (common for anime) with "HDR requires PQ/ST.2084".
+    /// </summary>
     public static bool IsHdr(VideoInfo info) => info.IsHDR || info.HasDynamicHDR ||
-        info.ColorTransfer.Equals("smpte2084", StringComparison.OrdinalIgnoreCase) ||
-        info.ColorTransfer.Equals("arib-std-b67", StringComparison.OrdinalIgnoreCase) ||
-        info.ColorPrimaries.Equals("bt2020", StringComparison.OrdinalIgnoreCase) ||
-        (info.BitDepth > 8 && (string.IsNullOrEmpty(info.ColorTransfer) || info.ColorTransfer == "unknown"));
+        (!IsUntagged(info.ColorTransfer) && !IsSdrTransfer(info.ColorTransfer)) ||
+        (info.ColorPrimaries.Equals("bt2020", StringComparison.OrdinalIgnoreCase) && !IsSdrTransfer(info.ColorTransfer));
 
     public static void ValidateInput(VideoInfo info)
     {

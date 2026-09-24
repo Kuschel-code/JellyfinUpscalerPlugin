@@ -1,8 +1,8 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.32 — Jellyfin 12
+# Jellyfin AI Upscaler Plugin v1.8.3.33 — Jellyfin 12
 
 [![Built with Claude Opus 5.5](https://img.shields.io/badge/Built%20with-Claude%20Opus%205.5-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
 
-> **Built with Claude Opus 5.5** — this plugin is developed with [Anthropic's Claude models](https://www.anthropic.com/claude): **Opus 5.5 since September 2026** (the review of v1.8.3.32 and the redesigned player menu, settings page and support assistant on `main`), Opus 5 for v1.8.3.13–v1.8.3.30, Fable 5 for v1.8.3.5–v1.8.3.12 and Opus 4.8 before that. v1.8.3.31 and v1.8.3.32 were prepared with OpenAI Codex. Code, Dockerfiles, CI workflows and documentation are written in a pair-programming style with the model; the maintainer ([Kuschel-code](https://github.com/Kuschel-code)) reviews, tests and publishes every change. Commits made with Claude carry a `Co-Authored-By: Claude` trailer as disclosure.
+> **Built with Claude Opus 5.5** — this plugin is developed with [Anthropic's Claude models](https://www.anthropic.com/claude): **Opus 5.5 since v1.8.3.33** (including the review of v1.8.3.31–v1.8.3.32 before it), Opus 5 for v1.8.3.13–v1.8.3.30, Fable 5 for v1.8.3.5–v1.8.3.12 and Opus 4.8 before that. v1.8.3.31 and v1.8.3.32 were prepared with OpenAI Codex. Code, Dockerfiles, CI workflows and documentation are written in a pair-programming style with the model; the maintainer ([Kuschel-code](https://github.com/Kuschel-code)) reviews, tests and publishes every change. Commits made with Claude carry a `Co-Authored-By: Claude` trailer as disclosure.
 
 ---
 
@@ -14,17 +14,17 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, with AI inference in a Docker service and video decoding/encoding on the Jellyfin host.
 
-**Release status (2026-09-23):** v1.8.3.32 is released for Jellyfin 12.0+ / .NET 10. It passed 443 C# tests against each of 12.0 and 12.1 and a real isolated 12.1 plugin-startup test. Jellyfin 10.11 users retain v1.8.3.31. Target-server acceptance was waived; actual playback, GPU and HDR target-hardware behavior remain unverified.
+**Release status (2026-09-24):** v1.8.3.33 is released for Jellyfin 12.0+ / .NET 10: a redesigned player menu and settings page, and fixes for the four problems a review of v1.8.3.31–v1.8.3.32 found. Jellyfin 10.11 users retain v1.8.3.31. Target-server acceptance was not run; actual playback, GPU and HDR target-hardware behavior remain unverified.
 
-**Known issues in v1.8.3.31–v1.8.3.32** (found in a review on 2026-09-24, not fixed in a release yet):
-- Real-time upscaling refuses some SDR videos with an "HDR" message, in every mode: DVD/SD rips tagged `smpte170m`/`bt470bg` and 10-bit files without colour tags. SD rips still work as a library/batch job.
-- Library jobs refuse 10-bit files without colour tags (common for anime encodes) with `HDR requires PQ/ST.2084`.
-- HDR batch output keeps the model's colour but not its detail: its brightness is a plain bicubic enlargement.
-- In Server AI mode a slow server shows a slideshow, and during a server outage the last upscaled frame stays on screen; the automatic switch to WebGL was removed in v1.8.3.31. Switch the mode from the player menu.
+**Fixed in v1.8.3.33** (found in a review of v1.8.3.31–v1.8.3.32 on 2026-09-24):
+- Real-time upscaling refused some SDR videos with an "HDR" message, in every mode: DVD/SD rips tagged `smpte170m`/`bt470bg` and untagged 10-bit files. HDR now needs real evidence (a PQ/HLG transfer, an HDR range, dynamic metadata, or BT.2020 without an SDR transfer).
+- Library jobs refused untagged 10-bit files (common for anime encodes) with `HDR requires PQ/ST.2084`.
+- HDR batch output kept the model's colour but not its detail. It keeps the detail now, and the model gets a fuller-range frame to work on.
+- Server AI mode showed a slideshow on a slow server and froze the last frame during outages. A stale frame is hidden after 1.5 s now, and a server delivering under half the video's frame rate for 5 s hands over to Lanczos.
 
-**On `main`, not in a release yet:** a redesigned in-player menu (live frame-rate readout, filter previews on the playing frame, phone and TV layouts), a redesigned settings page with keyboard- and remote-friendly tabs, and a website support assistant that understands German and typos.
+**New in v1.8.3.33:** a redesigned in-player menu (live frame-rate readout, filter previews on the playing frame, phone and TV layouts) and settings page (keyboard- and remote-friendly tabs).
 
-**Docker Images (released in lockstep with the plugin, both at v1.8.3.32):** All seven regular version pins and docker7 tags are published and registry-verified, including ten platform configurations. NVIDIA latest also points to v1.8.3.32. [Release verification and Docker digests](docs/RELEASE-v1.8.3.32-PUBLICATION.md).
+**Docker Images (released in lockstep with the plugin, both at v1.8.3.33):** All seven regular version pins and docker7 tags are published and registry-verified, including ten platform configurations. NVIDIA latest also points to v1.8.3.33. [Release notes](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.33).
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -41,7 +41,7 @@ Download sizes range from **0.27 GB** (`docker7-cpu`) to **20 GB** (`docker7-amd
 
 ---
 
-[Download Jellyfin 12 release v1.8.3.32](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.32) (requires Jellyfin 12.0+, five runtime DLLs plus meta.json).
+[Download Jellyfin 12 release v1.8.3.33](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.33) (requires Jellyfin 12.0+, five runtime DLLs plus meta.json).
 
 ## Architecture
 
@@ -51,7 +51,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.32   │  │
+│  │  AI Upscaler Plugin v1.8.3.33   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -122,7 +122,7 @@ When you press play, the plugin enhances the video in real-time. It offers sever
 
 **Pair it with what you already have:** on a desktop browser you can also use your GPU's own VSR (NVIDIA RTX Video Super Resolution / Intel VSR); for mpv there's mpv-shim + Anime4K. This plugin is the *hub* that brings anime/AI upscaling to every web/TV/mobile client **and** batch-upscales your whole library.
 
-**How it decides:** At playback start, a benchmark runs against the Docker service. If the server can process frames fast enough (≥80% of video FPS), it uses Server AI mode. Otherwise, it falls back to WebGL. Since v1.8.3.31 it no longer switches to WebGL by itself when the server slows down during playback (see the known issues above); switch the mode from the player menu.
+**How it decides:** At playback start, a benchmark runs against the Docker service. If the server can process frames fast enough (≥80% of video FPS), it uses Server AI mode. Otherwise, it falls back to WebGL. If the server cannot keep up during playback (under half the video's frame rate for 5 s) it switches to Lanczos (WebGL); while the service asks it to wait, it hides the stale frame and resumes when the server recovers.
 
 **Visual indicators:**
 - FPS overlay (top-left corner): Shows current FPS, mode, and model
@@ -169,7 +169,7 @@ The in-player button lets you:
 
 ## Jellyfin 12 compatibility
 
-The v1.8.3.32 release targets **Jellyfin.Controller 12.0.0 / .NET 10**. Jellyfin 12.1 is also published; see the [official releases](https://github.com/jellyfin/jellyfin/releases). Build and runtime evidence is tracked in [docs/JELLYFIN-12-READINESS.md](docs/JELLYFIN-12-READINESS.md); GPU, real-player and HDR target-hardware acceptance remain separate.
+The v1.8.3.33 release targets **Jellyfin.Controller 12.0.0 / .NET 10**. Jellyfin 12.1 is also published; see the [official releases](https://github.com/jellyfin/jellyfin/releases). Build and runtime evidence is tracked in [docs/JELLYFIN-12-READINESS.md](docs/JELLYFIN-12-READINESS.md); GPU, real-player and HDR target-hardware acceptance remain separate.
 
 ## Installation
 
@@ -371,11 +371,11 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.8.3.32` — NVIDIA pin for the currently published release
-- `:v1.8.3.32-<backend>` — published backend pin (e.g. `:v1.8.3.32-cpu`)
-- `:rc-v1.8.3.32[-backend]` — published Jellyfin 12 candidate images; `:rc-v1.8.3.32-2dabc6d[-backend]` pins the verified build. The [seven-backend workflow](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/actions/runs/35778659366) completed successfully.
+- `:docker7-v1.8.3.33` — NVIDIA pin for the currently published release
+- `:v1.8.3.33-<backend>` — published backend pin (e.g. `:v1.8.3.33-cpu`)
+- `:rc-v<version>[-backend]` — release-candidate images, published ahead of a release when one is wanted; `:rc-v<version>-<commit>[-backend]` pins the exact build. The last candidates were `:rc-v1.8.3.32…`; v1.8.3.33 went straight to release.
 
-CUDA is the default: keep `SKIP_TENSORRT=true`. Enable TensorRT only with compatible libraries in the image. See [Docker setup and controlled updates](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/update/v1.8.3.32/docker-ai-service/README.md).
+CUDA is the default: keep `SKIP_TENSORRT=true`. Enable TensorRT only with compatible libraries in the image. See [Docker setup and controlled updates](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docker-ai-service/README.md).
 
 ---
 
@@ -386,7 +386,7 @@ The full version history lives on the website and the release pages — this REA
 - **[Changelog (website)](https://kuschel-code.github.io/JellyfinUpscalerPlugin/changelog.html)** — every release in detail
 - **[GitHub Releases](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases)** — release notes and downloadable ZIPs
 
-Release: **v1.8.3.32** — native Jellyfin 12 / .NET 10, aligned CI and dependencies, ABI-aware packaging and all seven Docker variants. v1.8.3.31 remains available for Jellyfin 10.11.
+Release: **v1.8.3.33** — redesigned player menu and settings page, SDR videos no longer refused as HDR, HDR output that keeps the model's detail, and Server AI fall-backs; all seven Docker variants. v1.8.3.31 remains available for Jellyfin 10.11.
 
 ---
 
