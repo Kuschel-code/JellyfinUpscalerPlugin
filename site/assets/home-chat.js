@@ -28,6 +28,8 @@
 
   // Maps KB entry id -> deep-link doc page (mirrors support-bot.js DOC_MAP).
   var DOC_MAP = {
+    "hdr-support": "features.html", "service-busy": "troubleshooting.html", "object-masking": "features.html",
+    "face-restore": "features.html", "video-filters": "features.html",
     "install-checksum": "installation.html", "no-newer-version": "installation.html",
     "not-supported-abi": "installation.html", "docker-unreachable": "troubleshooting.html",
     "gpu-on-cpu": "hardware.html", "intel-arc-wsl2": "hardware.html",
@@ -59,10 +61,83 @@
     return out;
   }
 
-  function tokenize(s) { return String(s).toLowerCase().split(/[^a-z0-9.#+]+/).filter(function (w) { return w.length > 1 && !STOP[w]; }); }
+  // --- query understanding (the same block lives in home-chat.js and support-bot.js) ---
+  // The knowledge base is written in English. The old ASCII-only split cut German
+  // words with an umlaut in two ("prüfsumme" -> "pr" + "fsumme") and a typo matched
+  // nothing, so both fell through to the AI - or to "offline" when the Worker was
+  // down. Words now keep their accents, a German word also counts as its English KB
+  // term, and a query word of 5+ letters matches a keyword one typo away.
+  var STOP_DE = { der: 1, die: 1, das: 1, und: 1, oder: 1, ist: 1, sind: 1, ich: 1, mein: 1, meine: 1, meinen: 1, mir: 1, mich: 1, wie: 1, was: 1,
+    warum: 1, wieso: 1, weshalb: 1, wann: 1, nicht: 1, kein: 1, keine: 1, keinen: 1, mit: 1, auf: 1, "für": 1, fuer: 1, bei: 1, von: 1, vom: 1,
+    zu: 1, zum: 1, zur: 1, im: 1, ein: 1, eine: 1, einen: 1, einem: 1, es: 1, er: 1, sie: 1, wir: 1, ihr: 1, kann: 1, "können": 1, koennen: 1,
+    habe: 1, hat: 1, haben: 1, wird: 1, werden: 1, wurde: 1, dem: 1, den: 1, des: 1, bitte: 1, hallo: 1, danke: 1, auch: 1, noch: 1, schon: 1,
+    nur: 1, dann: 1, aber: 1, wenn: 1, als: 1, aus: 1, so: 1, man: 1, mal: 1, ja: 1, da: 1, hier: 1, "über": 1, ueber: 1, um: 1, soll: 1,
+    sollte: 1, muss: 1, gibt: 1, geht: 1 };
+  var DE = {
+    installieren: "install", installiert: "install", installation: "install", installiere: "install",
+    "prüfsumme": "checksum", pruefsumme: "checksum", "prüfsummenfehler": "checksum mismatch",
+    aktualisieren: "update", aktualisierung: "update", aktualisiert: "update", neueste: "latest version", neuste: "latest version", neuere: "newer",
+    "unterstützt": "supported", unterstuetzt: "supported", inkompatibel: "incompatible", kompatibel: "compatible",
+    verbindung: "connect connection", verbinden: "connect", erreichbar: "reachable", unerreichbar: "unreachable",
+    grafikkarte: "gpu", grafikkarten: "gpu", graka: "gpu", prozessor: "cpu",
+    langsam: "slow", ruckelt: "slow stutter", ruckeln: "slow stutter", stockt: "slow stutter", ruckler: "stutter",
+    fehler: "error", fehlermeldung: "error", absturz: "crash", "stürzt": "crash", "abgestürzt": "crash", kaputt: "broken",
+    knopf: "button", "schaltfläche": "button", schaltflaeche: "button", taste: "button",
+    fehlt: "missing", fehlen: "missing", fehlend: "missing", verschwunden: "missing disappears",
+    modell: "model", modelle: "model", welches: "which", welche: "which", welcher: "which", empfehlung: "recommend", empfohlen: "recommended",
+    speichern: "save", gespeichert: "save saved", einstellungen: "settings", einstellung: "settings", konfiguration: "configuration",
+    bibliothek: "library", bibliotheken: "library libraries", mediathek: "library",
+    "hängt": "stuck", haengt: "stuck", "hängen": "stuck", steckt: "stuck",
+    gestreckt: "stretched", verzerrt: "stretched", "seitenverhältnis": "aspect ratio", seitenverhaeltnis: "aspect ratio",
+    gesicht: "face", gesichter: "face faces", tiere: "animals", tier: "animals", hund: "dog animals", hunde: "dog animals", katze: "cat animals", katzen: "cat animals",
+    abdecken: "cover mask", verdecken: "cover mask", verpixeln: "blur mask", ausblenden: "mask",
+    anfragen: "requests", anfrage: "request", ausgelastet: "busy", "beschäftigt": "busy",
+    benutzer: "users", nutzer: "users", berechtigung: "permission", rechte: "permission admin",
+    passwort: "token", "schlüssel": "token key", herunterladen: "download", runterladen: "download", dateien: "files", datei: "file",
+    wo: "where", "auflösung": "resolution", aufloesung: "resolution", echtzeit: "realtime real-time", wiedergabe: "playback", abspielen: "playback",
+    stapelverarbeitung: "batch", auftrag: "job", "aufträge": "jobs", warteschlange: "queue", ordner: "folder",
+    zeichentrick: "anime cartoon", trickfilm: "anime cartoon", bild: "image frame", bilder: "images frames", helligkeit: "brightness", farben: "color",
+    laden: "load", "lädt": "load", funktioniert: "works", startet: "start", einrichten: "setup", einrichtung: "setup", anleitung: "guide"
+  };
+  function tokenize(s) {
+    var out = [];
+    String(s).toLowerCase().split(/[^a-z0-9.#+À-ɏ]+/).forEach(function (w) {
+      if (w.length < 2 || STOP[w] || STOP_DE[w]) return;
+      if (out.indexOf(w) === -1) out.push(w);
+      var en = DE[w] || DE[w.replace(/(en|er|es|e|n|s)$/, "")];
+      if (en) en.split(" ").forEach(function (t) { if (out.indexOf(t) === -1) out.push(t); });
+    });
+    return out;
+  }
+  // true when a and b differ by one insertion, deletion, substitution or adjacent swap
+  function near(a, b) {
+    if (a === b) return true;
+    var la = a.length, lb = b.length, i = 0;
+    if (Math.abs(la - lb) > 1) return false;
+    while (i < la && i < lb && a.charAt(i) === b.charAt(i)) i++;
+    if (la === lb) {
+      if (a.slice(i + 1) === b.slice(i + 1)) return true;
+      return a.charAt(i) === b.charAt(i + 1) && a.charAt(i + 1) === b.charAt(i) && a.slice(i + 2) === b.slice(i + 2);
+    }
+    return la > lb ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1);
+  }
   function scoreEntry(e, tokens, raw) {
-    var hay = (e.keywords || []).join(" ").toLowerCase(), title = (e.title || "").toLowerCase(), s = 0;
-    for (var i = 0; i < tokens.length; i++) { var tk = tokens[i]; if (hay.indexOf(tk) !== -1) s += 3; if (title.indexOf(tk) !== -1) s += 2; }
+    var hay = (e.keywords || []).join(" ").toLowerCase(), title = (e.title || "").toLowerCase(), s = 0, words = null;
+    for (var i = 0; i < tokens.length; i++) {
+      var tk = tokens[i], hit = 0;
+      if (hay.indexOf(tk) !== -1) hit += 3;
+      if (title.indexOf(tk) !== -1) hit += 2;
+      if (!hit && tk.length > 4 && tk.charAt(tk.length - 1) === "s") {   // plural of a keyword
+        var one = tk.slice(0, -1);
+        if (hay.indexOf(one) !== -1) hit += 3;
+        if (title.indexOf(one) !== -1) hit += 2;
+      }
+      if (!hit && tk.length >= 5) {                                       // one typo away
+        words = words || (hay + " " + title).split(/[^a-z0-9.#+À-ɏ]+/);
+        for (var w = 0; w < words.length; w++) { if (words[w].length >= 4 && near(tk, words[w])) { hit = 2; break; } }
+      }
+      s += hit;
+    }
     (e.keywords || []).forEach(function (k) { if (k.indexOf(" ") !== -1 && raw.indexOf(k) !== -1) s += 5; });
     return s;
   }
@@ -233,6 +308,9 @@
   // Pasted logs are detected, matched against known failure signatures first
   // (instant, deterministic), otherwise distilled + sent to the AI.
   var LOG_PATTERNS = [
+    { re: /HDR requires (PQ|BT\.2020)|HDR realtime and (masking|multi-frame processing) are not supported|unknown transfer functions are not supported|Dynamic HDR \(Dolby Vision/i, kb: "hdr-support" },
+    { re: /rate limit exceeded|circuit breaker (open|half-open)|too many concurrent requests|"detail"\s*:\s*"Busy"|HTTP 503|HTTP 429/i, kb: "service-busy" },
+    { re: /no detector loaded/i, kb: "object-masking" },
     { re: /cannot write to .*read-only|could not inject player script|access to the path .*index\.html.*denied/i, kb: "player-button-missing" },
     { re: /sha256 mismatch/i, kb: "model-sha256-mismatch" },
     { re: /checksum (mismatch|failed|did not match)|package .*checksum/i, kb: "install-checksum" },
