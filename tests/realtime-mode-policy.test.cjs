@@ -79,12 +79,14 @@ test('RIFE, detectors, face restoration and unavailable models are not selectabl
     assert.match(player._renderModelCard({id: 'my-import', name: 'my-import', scale: 2}, false, null), /data-model="my-import"/);
 });
 
-test('PQ, HLG, dynamic HDR and unknown high-bit-depth playback fail before canvas capture', async () => {
+// v1.8.3.33 - untagged 10-bit video is SDR (see realtime-sdr-and-fallback.test.cjs);
+// a tagged transfer nobody here knows, or BT.2020 without an SDR transfer, is not.
+test('PQ, HLG, dynamic HDR and unknown transfers fail before canvas capture', async () => {
     for (const stream of [null,
         {ColorTransfer: 'smpte2084', VideoRangeType: 'HDR10'},
         {ColorTransfer: 'arib-std-b67', VideoRangeType: 'HLG'},
         {ColorTransfer: 'smpte2084', VideoRangeType: 'DOVI'},
-        {ColorTransfer: 'unknown', BitDepth: 10}, {BitDepth: 10}]) {
+        {ColorTransfer: 'smpte428', BitDepth: 10}, {ColorPrimaries: 'bt2020', BitDepth: 10}]) {
         const h = loadPlayer(), player = h.sandbox.PlayerIntegration;
         player._readPlayingVideoStream = async () => stream;
         await player._startRtWithConfig(h.video, {RealtimeMode: 'server'});
