@@ -2794,6 +2794,20 @@ def _pq_to_linear(frame_16bit: np.ndarray) -> np.ndarray:
     return np.power(numerator / denominator, 1.0 / m1)
 
 
+# v1.8.3.33 - scales linear light (1.0 = 10,000 nits) before the Reinhard curve so a
+# 1,000-nit highlight lands at its knee. At 1.0 the curve put typical 100-500 nit
+# content into roughly 40 of the 256 SDR codes: a dark, flat frame for the model.
+HDR_TONEMAP_EXPOSURE = 10.0
+
+
+def _sdr_linear_luma(sdr_8bit: np.ndarray) -> np.ndarray:
+    """Exposure-scaled linear luminance the forward tone map implies for an 8-bit frame."""
+    lin = np.power(np.clip(sdr_8bit.astype(np.float64) / 255.0, 0.0, 1.0), 2.2)
+    lin = np.clip(lin, 0.0, 0.999)
+    lin = lin / (1.0 - lin)
+    return 0.2627 * lin[:, :, 2] + 0.6780 * lin[:, :, 1] + 0.0593 * lin[:, :, 0]  # BGR order
+
+
 def tonemap_hdr_to_sdr(frame_16bit: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Tone-map PQ RGB16 for SDR inference, retaining linear BT.2020 luminance."""
     linear = _pq_to_linear(frame_16bit)
@@ -2803,8 +2817,9 @@ def tonemap_hdr_to_sdr(frame_16bit: np.ndarray) -> tuple[np.ndarray, np.ndarray]
                      + 0.6780 * linear[:, :, 1]
                      + 0.0593 * linear[:, :, 0])  # BGR order
 
-    # Simple Reinhard tone-map to SDR range
-    linear_tonemapped = linear / (1.0 + linear)
+    # Reinhard tone-map to SDR range, exposure-scaled (see HDR_TONEMAP_EXPOSURE)
+    exposed = linear * HDR_TONEMAP_EXPOSURE
+    linear_tonemapped = exposed / (1.0 + exposed)
 
     # Apply sRGB gamma (~2.2)
     sdr_float = np.power(np.clip(linear_tonemapped, 0.0, 1.0), 1.0 / 2.2)
@@ -2834,19 +2849,26 @@ def inverse_tonemap_sdr_to_hdr(sdr_upscaled: np.ndarray, luminance_map: np.ndarr
     sdr_linear_clamped = np.clip(sdr_linear, 0.0, 0.999)
     hdr_linear = sdr_linear_clamped / (1.0 - sdr_linear_clamped)
 
-    # Modulate by luminance ratio to restore HDR brightness structure
+    # Restore HDR brightness, keeping the model's detail (v1.8.3.33). The target is the
+    # enlarged source brightness times how much brighter or darker the model made each
+    # pixel than a plain bicubic enlargement of the same SDR frame. 1.8.3.31/32 used the
+    # enlarged source brightness alone: the output was exactly as sharp as bicubic,
+    # whatever the model did, and only its colour survived.
     hdr_lum = (0.2627 * hdr_linear[:, :, 2]
                + 0.6780 * hdr_linear[:, :, 1]
                + 0.0593 * hdr_linear[:, :, 0])
     has_chroma = hdr_lum > 1e-12
-    lum_ratio = np.divide(luminance_upscaled, hdr_lum,
+    original_sdr, _ = tonemap_hdr_to_sdr(original_16bit)
+    plain_lum = _sdr_linear_luma(cv2.resize(original_sdr, (out_w, out_h), interpolation=cv2.INTER_CUBIC))
+    detail = np.divide(hdr_lum, plain_lum, out=np.ones_like(hdr_lum), where=plain_lum > 1e-9)
+    detail = np.clip(detail, 0.25, 4.0)
+    lum_ratio = np.divide(luminance_upscaled * detail, hdr_lum,
                           out=np.zeros_like(hdr_lum), where=has_chroma)
     hdr_linear = hdr_linear * lum_ratio[:, :, np.newaxis]
     # SDR quantization can erase very dark input pixels completely. Recover
     # only that measured input quantization loss; an AI-produced black pixel
     # from a nonblack SDR input must not be replaced with the source pixel.
     if np.any(~has_chroma):
-        original_sdr, _ = tonemap_hdr_to_sdr(original_16bit)
         input_was_quantized_black = cv2.resize(
             np.all(original_sdr == 0, axis=2).astype(np.uint8), (out_w, out_h),
             interpolation=cv2.INTER_NEAREST).astype(bool)

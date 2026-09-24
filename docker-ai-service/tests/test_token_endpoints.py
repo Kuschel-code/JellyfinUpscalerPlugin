@@ -8,7 +8,16 @@ from unittest.mock import patch
 BOOT = {"API_TOKEN": "bootstrap"}
 
 
-def test_create_list_use_revoke_flow(client):
+def test_create_list_use_revoke_flow(client, monkeypatch):
+    # The token check is what is under test, not the download: without this stub the
+    # protected route below fetched realesrgan-x4 over the network and the suite sat
+    # on it for minutes, which looked like a hang.
+    from app import main
+
+    async def no_download(model_name):
+        return False
+
+    monkeypatch.setattr(main, "download_model", no_download)
     with patch.dict(os.environ, BOOT):
         # create
         r = client.post("/auth/tokens", data={"name": "Living room"},
