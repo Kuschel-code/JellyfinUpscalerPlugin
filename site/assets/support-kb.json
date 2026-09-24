@@ -1,9 +1,9 @@
 {
   "version": "1.8.3.32",
-  "updated": "2026-09-23",
+  "updated": "2026-09-24",
   "repo": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin",
   "newIssueUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/new",
-  "intro": "Hi! I'm the AI Upscaler support assistant. I answer from every support topic we've ever handled (each with a step-by-step guide), and I can search all GitHub issues live. Ask about install errors, GPU not used, Docker/NAS setup, API tokens, models, and more.",
+  "intro": "Hi! I'm the AI Upscaler support assistant. I answer from every support topic we've ever handled (each with a step-by-step guide), and I can search all GitHub issues live. Ask about install errors, GPU not used, Docker/NAS setup, API tokens, models, and more. You can ask in English or German.",
   "entries": [
     {
       "id": "install-checksum",
@@ -38,7 +38,10 @@
         "failed to install",
         "package installation failed",
         "catalog",
-        "manifest"
+        "manifest",
+        "prüfsumme",
+        "installation fehlgeschlagen",
+        "lässt sich nicht installieren"
       ],
       "answer": "Jellyfin checks the plugin ZIP's MD5 against the repo manifest and rejects any mismatch. A checksum error on a current version almost always means a **stale cached repo**. Step by step:\n1. Use the official repo URL: `https://raw.githubusercontent.com/Kuschel-code/JellyfinUpscalerPlugin/main/repository-jellyfin.json`\n2. Dashboard → Plugins → **Repositories** → remove the AI Upscaler repo.\n3. Re-add the repository (same URL).\n4. **Restart Jellyfin** (this clears the cached manifest).\n5. Catalog → AI Upscaler → install the **latest version** shown.\n6. Still failing? Paste the exact error + your Jellyfin version."
     },
@@ -59,7 +62,9 @@
         "outdated",
         "latest version",
         "no update",
-        "stuck on old"
+        "stuck on old",
+        "kein update",
+        "keine neue version"
       ],
       "answer": "Jellyfin caches the plugin catalog. Step by step:\n1. Dashboard → Plugins → **Repositories**.\n2. Remove the AI Upscaler repository.\n3. Re-add it (URL: `.../main/repository-jellyfin.json`).\n4. **Restart Jellyfin**.\n5. Hard-refresh the dashboard (Ctrl+F5).\n6. Catalog now shows the latest release.\n\nIf you added the repository long ago with the `.../main/manifest.json` URL: that feed briefly lagged behind in mid-2026 (issue #74) — it is synced again, so a refresh now shows the latest version on any of the repo URLs."
     },
@@ -81,7 +86,9 @@
         "10.11",
         "won't load",
         "disabled",
-        "wrong version"
+        "wrong version",
+        "nicht unterstützt",
+        "inkompatibel"
       ],
       "answer": "Match the plugin to your Jellyfin server.\n1. v1.8.3.32 is a Jellyfin 12 / .NET 10 release with minimum ABI 12.0.0.0. Do not install it on 10.11.\n2. v1.8.3.31 is the published 10.11.8-ABI build.\n3. Install the complete six-file release ZIP and restart Jellyfin.\n4. If the plugin is disabled, inspect the server log for ABI, missing assembly or initialization errors."
     },
@@ -105,7 +112,9 @@
         "not reachable",
         "service unavailable",
         "standalone",
-        "test connection"
+        "test connection",
+        "keine verbindung",
+        "nicht erreichbar"
       ],
       "answer": "The plugin reaches the Docker container over HTTP. Step by step:\n1. Confirm the container is **running**.\n2. Confirm port **5000** is published (`-p 5000:5000`).\n3. In a browser open `http://YOUR-SERVER-IP:5000/health` → expect `{\"status\":\"healthy\"}`.\n4. In the plugin set **AI Service URL** = `http://YOUR-SERVER-IP:5000` (use the LAN IP, not `localhost`, if Jellyfin runs in its own container).\n5. Make sure no firewall / reverse proxy blocks port 5000.\n6. Click **Test Connection** in the plugin config."
     },
@@ -130,7 +139,10 @@
         "azureexecutionprovider",
         "gpu not working",
         "not using gpu",
-        "inference cpu"
+        "inference cpu",
+        "läuft auf cpu",
+        "grafikkarte wird nicht genutzt",
+        "nutzt die cpu"
       ],
       "answer": "If `/gpu-verify` shows `AzureExecutionProvider`, you're on the wrong/old image (plain onnxruntime, no GPU provider). Step by step:\n1. Choose the right image: `docker7-intel` / `docker7-amd` / `docker7` (NVIDIA).\n2. Force a fresh pull:\n```\ndocker compose pull\ndocker compose up -d --force-recreate\n```\n3. Pass the GPU device: `--gpus all` (NVIDIA), `/dev/dri` (Intel/AMD Linux), or `/dev/dxg` (WSL2).\n4. On native Linux also add `group_add: render`.\n5. Re-check `http://IP:5000/gpu-verify` → `active_providers` should list a non-CPU provider.\n(v1.7.8 also fixed a display bug where `using_gpu:false` showed even with OpenVINO active — trust `active_providers`.)"
     },
@@ -309,7 +321,7 @@
         "switches back",
         "server mode"
       ],
-      "answer": "Real-time server upscaling drops to WebGL when the GPU can't sustain the FPS — by design. Step by step for real quality:\n1. Don't rely on live 4x HD (too heavy for most GPUs, even an Arc A380).\n2. Use the **scheduled task** (batch) to pre-process the file once.\n3. Play the resulting `<name>_upscaled` file normally.\n4. For live playback, keep it light: a fast model (`realesr-general-x4v3`) and/or 2x scale."
+      "answer": "Real-time server upscaling needs a GPU that keeps up with the video's frame rate. Step by step:\n1. Let **Auto** decide: it only picks Server AI when the benchmark reaches 80 % of the video's frame rate, otherwise it runs Lanczos in your browser.\n2. Don't expect live 4x on HD video; most GPUs can't sustain it (even an Arc A380).\n3. For the best quality, run a **scheduled task** (batch) once, then play the resulting `<name>_upscaled` file normally.\n4. For live playback keep it light: a fast model (`realesr-general-x4v3`, `span-x2`) and/or 2x.\n\n**Known issue in v1.8.3.31–v1.8.3.32:** in manual Server AI mode a slow server no longer switches to Lanczos by itself; the picture only updates as fast as the server delivers frames. Change the mode in the AI Upscaler menu (**Realtime** tab)."
     },
     {
       "id": "job-stuck-95",
@@ -348,7 +360,9 @@
         "fast model",
         "quality model",
         "anime model",
-        "models"
+        "models",
+        "welches modell",
+        "bestes modell"
       ],
       "answer": "Pick by goal. Step by step:\n1. **Fast / low-VRAM:** `realesr-general-x4v3` (~5MB), `lsdir-compact-v2-x4`, `spanx2-ch48`.\n2. **Best quality:** `nomos2-dat2-x4`, `drct-l-x4`, `nomos8k-hat-l-x4` (heavy — poster/backdrop).\n3. **Compressed / streaming sources:** `realwebphoto-v4-dat2-x4`.\n4. **Anime:** `real-cugan-x4`, `apisr-anime-x2`.\n5. Download it from the `http://IP:5000` dashboard, then select it in the player overlay or set `DEFAULT_MODEL`."
     },
@@ -477,7 +491,9 @@
         "reverts",
         "save button",
         "config not saving",
-        "localhost reverts"
+        "localhost reverts",
+        "einstellungen werden nicht gespeichert",
+        "speichert nicht"
       ],
       "answer": "An old bug where saving dropped fields (Docker URL/IP/port reset to defaults), **fixed in v1.6.1.14**. Step by step:\n1. Update the plugin to the **latest version**.\n2. Restart Jellyfin.\n3. Dashboard → Plugins → AI Upscaler → re-enter your settings.\n4. Click **Save**.\n5. If a field still resets on the latest version, open an issue naming that field."
     },
@@ -580,7 +596,10 @@
         "usr/share/jellyfin/web",
         "player script",
         "web player",
-        "button not showing"
+        "button not showing",
+        "knopf fehlt",
+        "button fehlt",
+        "kein button"
       ],
       "answer": "The plugin adds the player button by writing one `<script>` tag into jellyfin-web's `index.html`. If the log shows `Cannot write to ... (read-only): Access to the path '.../index.html' is denied`, the Jellyfin service user has no write access to the web root (typical for the native Debian/Ubuntu package, where `/usr/share/jellyfin/web` is owned by root).\n\nFix (native package):\n```\nsudo chown jellyfin /usr/share/jellyfin/web/index.html\nsudo systemctl restart jellyfin\n```\nThe log should then say `Player script injected via /usr/share/jellyfin/web` and the button is permanent.\n\nNotes:\n- Visiting the plugin config page only activates the button for your **current browser tab** — after a refresh or on another device it is gone again. Only the index.html injection is permanent.\n- A `jellyfin-web` package update replaces index.html (owner root again) — repeat the chown once if the warning returns; the plugin re-injects on the next restart.\n- Official Docker image: web root is writable, works out of the box. Deliberately read-only containers: overlay a patched `index.html` via bind mount."
     },
@@ -656,6 +675,136 @@
         "models-import"
       ],
       "answer": "Beyond the curated catalog, the **[Importable models](models-import.html)** page lists community models from [OpenModelDB](https://openmodeldb.info) that work with the plugin's ONNX pipeline:\n- **~60 models are ready to use** - published as ONNX with a direct download URL and sha256 checksum (license shown per model, **NC = non-commercial**).\n- **~600 more** exist only as PyTorch/NCNN weights and would need an ONNX export first.\n\n**Easiest way (plugin v1.8.3.6+):** Jellyfin Dashboard → Plugins → AI Upscaler → card **Import Community Model** - pick the model; the plugin downloads it, verifies the pinned sha256 and registers it as `omdb-<id>` automatically (NC models warn before import). Since **v1.8.3.8** this covers the WHOLE catalog: zip-packed releases import one-click, the `:5000` dashboard has its own import section, a file-install form takes `.onnx` (direct) or `.pth` (auto-converted with the optional `docker7-converter` image, ~500 of the 609 convertible models), and imports land in the new **★ Favorites** card.\n\n**Manual alternative** (the AI service has a custom-model upload API):\n1. Download the ONNX file from the page (verify the sha256 shown).\n2. Upload it to your AI service:\n```\ncurl -X POST http://<service>:5000/models/upload \\n  -F file=@model.onnx -F model_name=my-model-x4 -F scale=4\n```\n(add `-H \"X-Api-Token: ...\"` if your service uses a token; requires `ENABLE_MODEL_UPLOAD=true`, the default)\n3. The service validates the model and registers it - it appears in the plugin's model list immediately. Remove it later via `DELETE /models/upload/{model_name}`.\n\nNotes: imported models are **not curated or benchmarked**; check the license before commercial use (the page can filter out NC models); the page refreshes weekly from OpenModelDB."
+    },
+    {
+      "id": "hdr-support",
+      "title": "HDR videos: what's supported, and why an SDR video can be refused as HDR",
+      "issues": [],
+      "keywords": [
+        "hdr",
+        "hdr10",
+        "hdr10+",
+        "pq",
+        "st.2084",
+        "smpte2084",
+        "hlg",
+        "arib-std-b67",
+        "dolby vision",
+        "dovi",
+        "bt.2020",
+        "bt2020",
+        "10-bit",
+        "10bit",
+        "10 bit",
+        "hdr realtime",
+        "hdr realtime and masking are not supported",
+        "requires pq",
+        "unknown transfer",
+        "transfer function",
+        "smpte170m",
+        "bt470bg",
+        "dvd rip",
+        "wird als hdr erkannt",
+        "hdr wird abgelehnt"
+      ],
+      "answer": "HDR works only as a **batch job** (library or scheduled task), and only for **PQ / ST.2084 with BT.2020 colours at 10-bit or more** (HDR10). Frames travel as 16-bit RGB PNGs and the output is 10-bit x265 with the static HDR metadata copied over. Refused on purpose, with an error instead of a silent SDR fallback: **HLG**, **Dolby Vision / HDR10+** (dynamic metadata), **real-time HDR** and **multi-frame models on HDR**.\n\n**Known issue in v1.8.3.31–v1.8.3.32:** some *SDR* videos are refused with an HDR message.\n1. **Real-time playback** refuses DVD/SD rips tagged `smpte170m` (NTSC) or `bt470bg` (PAL), and 10-bit files without colour tags, in every mode, including Lanczos and Anime4K. Workaround: upscale those files with a **library/batch job** instead; SD rips work there.\n2. **Library jobs** refuse 10-bit files without colour tags (common for anime encodes) with `HDR requires PQ/ST.2084`. For HD MKV files you can add the missing SDR tags without re-encoding, then refresh the item's metadata in Jellyfin: `mkvpropedit \"file.mkv\" --edit track:v1 --set colour-transfer-characteristics=1 --set colour-primaries=1 --set colour-matrix-coefficients=1`\n\nHDR output quality has not been verified on real HDR hardware yet."
+    },
+    {
+      "id": "service-busy",
+      "title": "Real-time says \"Busy\", HTTP 503/429 or \"Circuit breaker open\" / stops after 10 frames",
+      "issues": [
+        79
+      ],
+      "keywords": [
+        "503",
+        "429",
+        "busy",
+        "rate limit",
+        "rate limit exceeded",
+        "too many requests",
+        "too many concurrent",
+        "circuit breaker",
+        "retry-after",
+        "stops after 10 frames",
+        "frame 11",
+        "10 requests",
+        "requests per minute",
+        "freezes",
+        "frozen",
+        "slideshow",
+        "stuck frame",
+        "last frame",
+        "bild friert ein",
+        "nach 10 bildern"
+      ],
+      "answer": "**Stops after 10 frames / \"Rate limit exceeded. Max 10 upscale requests per minute\"** was issue #79: live frames counted against the limit meant for image actions. **Fixed in v1.8.3.31**, so update the plugin (Jellyfin 10.11: v1.8.3.31, Jellyfin 12: v1.8.3.32). The 10-per-minute limit still applies to explicit image actions such as Compare and Upscale image.\n\nWhat the other messages mean:\n1. **HTTP 503 \"Busy\"**: the AI service is already processing as many frames as it allows. The player waits (250 ms up to 2 s, or whatever the service's `Retry-After` asks) and then sends a fresh frame. An occasional 503 on a loaded server is normal.\n2. **\"Circuit breaker open\"**: several requests in a row failed, so the service pauses briefly. The container log (`docker logs <container>`) shows the real error; often the GPU ran out of memory or no model is loaded.\n3. **Constant 503s**: the server can't keep up. Use a lighter model (e.g. `span-x2`, `clearreality-x4`), lower the real-time capture width (Settings → Real-Time Upscaling), or let **Auto** decide: it only picks Server AI when the benchmark reaches 80 % of the video's frame rate.\n\n**Known issue in v1.8.3.31–v1.8.3.32:** during a long outage the last upscaled frame can stay on screen while the video plays on. Open the AI Upscaler menu → **Realtime** and stop real-time upscaling or switch the mode."
+    },
+    {
+      "id": "object-masking",
+      "title": "Cover animals or objects during playback (object masking)",
+      "issues": [],
+      "keywords": [
+        "mask",
+        "masking",
+        "object masking",
+        "cover objects",
+        "cover animals",
+        "animals",
+        "dog",
+        "cat",
+        "spider",
+        "blur",
+        "phobia",
+        "detector",
+        "detection",
+        "yolo",
+        "tiny-yolov3",
+        "no detector loaded",
+        "tiere abdecken",
+        "tiere verdecken"
+      ],
+      "answer": "Object masking covers detected objects, for example animals, with a box or a blur during playback. It was built for discussion #11.\n1. **Import a detection model first.** None ships with the plugin; `tiny-yolov3-11.onnx` from the ONNX model zoo works. Use the import on the settings page's **Models** tab.\n2. Settings page → **Models** → **Object Masking**: enter the model id, the classes (COCO names such as `dog,cat`, or `animals` for the whole group), box or blur, and padding. Then **Load Detection Model**.\n3. Switch it on from the player menu: **Auto** tab → **Cover objects**.\n\nWhile it runs it **replaces** real-time upscaling on that stream, because two inference passes per frame don't keep up with playback. It works on SDR video only."
+    },
+    {
+      "id": "face-restore",
+      "title": "Face restoration (GFPGAN / CodeFormer)",
+      "issues": [],
+      "keywords": [
+        "face",
+        "faces",
+        "face restore",
+        "face restoration",
+        "gfpgan",
+        "codeformer",
+        "blurry faces",
+        "restore faces",
+        "gesichter"
+      ],
+      "answer": "Face restoration sharpens heavily degraded faces in old or low-quality video: faces are detected, cropped to 512×512, restored with GFPGAN or CodeFormer and blended back.\n1. Settings page → **Models** → **AI Face Restoration**: pick a model, then **Load Face Model**.\n2. Turn it on with **Enable Face Restoration** there, or from the player menu (**Auto** tab → **Face restoration**).\n3. **Preview on Selected Media** shows the effect before you start a long job.\n\nIt costs extra time on every frame, so it suits batch jobs on old sources better than live playback on a slow server."
+    },
+    {
+      "id": "video-filters",
+      "title": "Video filters and looks (Cinematic, Vivid, Noir …)",
+      "issues": [],
+      "keywords": [
+        "filter",
+        "filters",
+        "look",
+        "looks",
+        "preset",
+        "cinematic",
+        "vivid",
+        "noir",
+        "sepia",
+        "vintage",
+        "teal",
+        "brightness",
+        "contrast",
+        "saturation",
+        "colour grading",
+        "color grading"
+      ],
+      "answer": "Filters change the look of the video without transcoding.\n1. During playback open the AI Upscaler menu → **Filters**: pick a preset (Cinematic, Vivid, Noir, Teal/Orange …) or use the Brightness / Contrast / Saturation sliders. These apply instantly in your browser.\n2. **Advanced** (gamma, sharpness, colour temperature, vignette, grain, denoise) is applied by the server and takes effect on the next seek.\n3. **Save** makes the look the default and needs an admin account. The settings page has the same controls on its **Filters** tab.\n\nIn Auto mode the plugin may *suggest* a look for a video, but it never replaces your chosen preset by itself."
     }
   ]
 }

@@ -1016,36 +1016,70 @@
             var cfg = this._cachedConfig || {};
             var video = document.querySelector('video');
             var playing = video && !video.paused && !video.ended && video.readyState >= 2;
+            var fps = null, target = 0, level = '';
 
             if (st && st.active) {
                 dot.className = 'ai-menu__status-dot ai-menu__status-dot--on';
                 stateEl.textContent = 'ACTIVE';
-                modeEl.textContent = st.mode === 'server' ? 'Server' : 'WebGL';
-                var fps = st.fps | 0;
-                fpsEl.innerHTML = '<b>' + fps + '</b> fps';
-                fpsEl.className = 'ai-menu__status-fps ' +
-                    (fps >= 20 ? '' : fps >= 10 ? 'ai-menu__status-fps--warn' : 'ai-menu__status-fps--err');
-                var mName = (st.benchmark && st.benchmark.model) || cfg.Model || '—';
-                modelEl.textContent = mName;
+                modeEl.textContent = this._modeLabel(st.mode);
+                fps = st.fps | 0;
+                // Judge the rate against the video's own frame rate when the benchmark
+                // knows it (server mode); the fixed 20/10 fps marks only stand in for it.
+                target = Number(st.benchmark && st.benchmark.videoFps) || 0;
+                level = target ? (fps >= target * 0.8 ? '' : fps >= target * 0.5 ? 'warn' : 'err')
+                               : (fps >= 20 ? '' : fps >= 10 ? 'warn' : 'err');
+                modelEl.textContent = (st.benchmark && st.benchmark.model) || cfg.Model || '—';
             } else if (playing && cfg.EnableUpscaling === false) {
                 dot.className = 'ai-menu__status-dot ai-menu__status-dot--off';
                 stateEl.textContent = 'DISABLED';
                 modeEl.textContent = '—';
-                fpsEl.textContent = '-- fps';
                 modelEl.textContent = cfg.Model || '—';
             } else if (playing) {
                 dot.className = 'ai-menu__status-dot ai-menu__status-dot--warn';
                 stateEl.textContent = 'STANDBY';
-                modeEl.textContent = '—';
-                fpsEl.textContent = '-- fps';
-                modelEl.textContent = cfg.Model || '—';
+                modeEl.textContent = st && st.mode === 'off' ? 'Off' : '—';
+                // A guard that switched realtime off says why; show that instead of a model.
+                modelEl.textContent = (st && st.reason) || cfg.Model || '—';
             } else {
                 dot.className = 'ai-menu__status-dot ai-menu__status-dot--off';
                 stateEl.textContent = 'IDLE';
                 modeEl.textContent = '—';
-                fpsEl.textContent = '-- fps';
                 modelEl.textContent = cfg.Model || '—';
             }
+            fpsEl.innerHTML = '<b>' + (fps === null ? '—' : fps) + '</b> fps';
+            fpsEl.className = 'ai-menu__status-fps' + (level ? ' ai-menu__status-fps--' + level : '');
+            this._drawFpsTrend(menu, fps, target, level);
+        },
+
+        _modeLabel: function(mode) {
+            var labels = { server: 'Server AI', lanczos: 'Lanczos', webgl: 'Lanczos', anime4k: 'Anime4K', 'ai-webgpu': 'WebGPU AI', off: 'Off' };
+            return labels[mode] || (mode ? String(mode) : '—');
+        },
+
+        // Last 20 s of the frame rate (one sample per 500 ms poll), drawn against a
+        // dashed line at the video's own rate - "is it keeping up?" at a glance.
+        _drawFpsTrend: function(menu, fps, target, level) {
+            var hist = this._fpsHistory || (this._fpsHistory = []);
+            if (fps === null) hist.length = 0;
+            else { hist.push(fps); if (hist.length > 40) hist.shift(); }
+            var svg = menu.querySelector('[data-status-spark]');
+            if (!svg) return;
+            var line = svg.querySelector('.ai-menu__spark-line');
+            var goal = svg.querySelector('.ai-menu__spark-target');
+            var W = 120, H = 36, top = Math.max(target * 1.25, 10);
+            for (var i = 0; i < hist.length; i++) top = Math.max(top, hist[i] * 1.1);
+            var pts = [];
+            for (var j = 0; j < hist.length; j++) {
+                var x = W * (40 - hist.length + j) / 39;
+                pts.push(x.toFixed(1) + ',' + (H - 2 - hist[j] / top * (H - 4)).toFixed(1));
+            }
+            if (line) line.setAttribute('points', pts.join(' '));
+            if (goal) {
+                var y = target ? (H - 2 - target / top * (H - 4)).toFixed(1) : '-10';
+                goal.setAttribute('y1', y);
+                goal.setAttribute('y2', y);
+            }
+            svg.setAttribute('class', 'ai-menu__spark' + (level ? ' ai-menu__spark--' + level : ''));
         },
 
         _startStatusPoll: function() {
@@ -1100,24 +1134,35 @@
                 ['interpolation', 'face_restore', 'face-restore', 'object-detection'].indexOf((state.category || '').toLowerCase()) === -1);
         },
 
+        // One glyph set for every state change (render, refresh, load, failure).
+        _stateGlyph: function(kind) {
+            var icons = { ready: 'check_circle', 'need-dl': 'download', err: 'error_outline', unknown: 'more_horiz' };
+            return '<span class="material-icons" aria-hidden="true">' + (icons[kind] || icons['need-dl']) + '</span>';
+        },
+
         _renderModelCard: function(m, isActive, state) {
             if (!this._isUpscalerState(state)) return '';
-            var stateIcon, stateClass, title;
+            var esc = this._escapeHtml;
+            var kind, title;
             if (state && !state.available) {
-                stateIcon = '&#9888;'; stateClass = 'err'; title = 'Not yet available';
+                kind = 'err'; title = 'Not yet available';
             } else if (state && state.downloaded) {
-                stateIcon = '&#10003;'; stateClass = 'ready'; title = 'Downloaded & ready';
+                kind = 'ready'; title = 'Downloaded and ready';
             } else if (state) {
-                stateIcon = '&#8595;'; stateClass = 'need-dl'; title = 'Click to download & load';
+                kind = 'need-dl'; title = 'Downloads on first use';
             } else {
-                stateIcon = '&#8226;'; stateClass = 'need-dl'; title = 'Status unknown';
+                kind = 'unknown'; title = 'Status unknown';
             }
+            // Favorites come from a config string, so ids and names are escaped here.
             var html = '<button class="ai-menu__model' + (isActive ? ' ai-menu__model--active' : '') +
-                '" data-model="' + m.id + '" data-scale="' + m.scale + '" title="' + title + '">';
-            html += '<span class="ai-menu__state ai-menu__state--' + stateClass + '" data-state-slot="' + m.id + '">' + stateIcon + '</span>';
-            html += '<span class="ai-menu__model-name">' + m.name + '</span>';
-            if (m.badge) html += '<span class="ai-menu__badge">' + m.badge + '</span>';
-            html += '<span class="ai-menu__model-scale">' + m.scale + 'x</span>';
+                '" data-model="' + esc(m.id) + '" data-scale="' + esc(m.scale) + '" title="' + title +
+                '" aria-pressed="' + (isActive ? 'true' : 'false') + '">';
+            html += '<span class="ai-menu__radio" aria-hidden="true"></span>';
+            html += '<span class="ai-menu__model-name">' + esc(m.name) + '</span>';
+            if (m.badge) html += '<span class="ai-menu__badge">' + esc(m.badge) + '</span>';
+            html += '<span class="ai-menu__model-scale">' + esc(m.scale) + '&times;</span>';
+            html += '<span class="ai-menu__state ai-menu__state--' + (kind === 'unknown' ? 'need-dl' : kind) +
+                '" data-state-slot="' + esc(m.id) + '">' + this._stateGlyph(kind) + '</span>';
             html += '</button>';
             return html;
         },
@@ -1136,17 +1181,22 @@
             });
             var summ = menu.querySelector('[data-summary-ready]');
             if (summ) summ.textContent = ready + ' of ' + total;
+            var summDot = menu.querySelector('.ai-menu__summary-dot');
+            if (summDot) summDot.classList.toggle('ai-menu__summary-dot--off', ready === 0);
 
-            // Update each state icon
+            // Update each state icon. A pinned favorite is listed twice (Favorites and its
+            // own category), so every slot for the id is updated, not just the first.
             Object.keys(states).forEach(function(id) {
-                var slot = menu.querySelector('[data-state-slot="' + id + '"]');
-                if (!slot) return;
+                var slots = menu.querySelectorAll('[data-state-slot="' + id + '"]');
                 var s = states[id];
-                if (!PlayerIntegration._isUpscalerState(s)) { slot.closest('button').remove(); return; }
-                slot.classList.remove('ai-menu__state--ready','ai-menu__state--need-dl','ai-menu__state--busy','ai-menu__state--err');
-                if (!s.available) { slot.classList.add('ai-menu__state--err'); slot.innerHTML = '&#9888;'; }
-                else if (s.downloaded) { slot.classList.add('ai-menu__state--ready'); slot.innerHTML = '&#10003;'; }
-                else { slot.classList.add('ai-menu__state--need-dl'); slot.innerHTML = '&#8595;'; }
+                var kind = !s.available ? 'err' : s.downloaded ? 'ready' : 'need-dl';
+                for (var n = 0; n < slots.length; n++) {
+                    var slot = slots[n];
+                    if (!PlayerIntegration._isUpscalerState(s)) { slot.closest('button').remove(); continue; }
+                    slot.classList.remove('ai-menu__state--ready','ai-menu__state--need-dl','ai-menu__state--busy','ai-menu__state--err');
+                    slot.classList.add('ai-menu__state--' + kind);
+                    slot.innerHTML = PlayerIntegration._stateGlyph(kind);
+                }
             });
         },
 
@@ -1219,7 +1269,8 @@
             for (var si = 0; si < scales.length; si++) {
                 var s = scales[si];
                 var sActive = s === currentScale;
-                scaleHtml += '<button class="ai-menu__scale' + (sActive ? ' ai-menu__scale--active' : '') + '" data-scale-val="' + s + '">' + s + 'x</button>';
+                scaleHtml += '<button class="ai-menu__scale' + (sActive ? ' ai-menu__scale--active' : '') + '" data-scale-val="' + s +
+                    '" aria-pressed="' + (sActive ? 'true' : 'false') + '">' + s + '&times;</button>';
             }
 
             // Count models for summary strip
@@ -1238,107 +1289,134 @@
             var filterState = this._filterState || this._defaultFilterState();
             var filtersHtml = this._buildFiltersPane(filterState);
 
+            // The engines realtime playback can run on, in the order the Realtime tab lists them.
+            var engines = [
+                ['server', 'Server AI', 'Your AI service upscales captured frames. Best quality; needs a GPU to keep up.'],
+                ['lanczos', 'Lanczos', 'Sharpening scaler in this browser. Light, and never touches the server.'],
+                ['anime4k', 'Anime4K', 'Line-art shader for anime, in this browser.'],
+                ['ai-webgpu', 'WebGPU AI', 'Small neural network in this browser. Experimental.']
+            ];
+            var enginesHtml = '';
+            for (var ei = 0; ei < engines.length; ei++) {
+                enginesHtml += '<li class="ai-menu__engine" data-engine="' + engines[ei][0] + '">' +
+                    '<span class="ai-menu__engine-name">' + engines[ei][1] + '</span>' +
+                    '<span class="ai-menu__engine-desc">' + engines[ei][2] + '</span></li>';
+            }
+            this._fpsHistory = [];
+
             menu.innerHTML =
+                '<div class="ai-menu__grip" aria-hidden="true"></div>' +
                 '<div class="ai-menu__header">' +
-                    '<div class="ai-menu__header-left">' +
-                        '<span class="material-icons ai-menu__logo">auto_awesome</span>' +
+                    '<div class="ai-menu__brand">' +
+                        '<span class="material-icons ai-menu__logo" aria-hidden="true">auto_awesome</span>' +
                         '<div>' +
                             '<div class="ai-menu__title">AI Upscaler</div>' +
                             '<div class="ai-menu__version">v' + PLUGIN_VERSION + '</div>' +
                         '</div>' +
                     '</div>' +
                     '<div class="ai-menu__header-right">' +
-                        '<button class="ai-menu__switch' + (isEnabled ? ' ai-menu__switch--on' : '') + '" data-action="toggle" aria-label="Toggle upscaling" title="' + (isEnabled ? 'Disable' : 'Enable') + ' upscaling"></button>' +
-                        '<button class="ai-menu__close" data-action="close" aria-label="Close">&times;</button>' +
+                        '<button class="ai-menu__switch' + (isEnabled ? ' ai-menu__switch--on' : '') + '" data-action="toggle" role="switch" aria-checked="' + (isEnabled ? 'true' : 'false') + '" aria-label="Upscaling" title="' + (isEnabled ? 'Disable' : 'Enable') + ' upscaling"></button>' +
+                        '<button class="ai-menu__close" data-action="close" aria-label="Close"><span class="material-icons" aria-hidden="true">close</span></button>' +
                     '</div>' +
                 '</div>' +
+                // Live readout: frame rate and its 20 s trend, state, engine and model.
                 '<div class="ai-menu__status" data-status-row>' +
-                    '<span class="ai-menu__status-dot ai-menu__status-dot--off" data-status-dot></span>' +
-                    '<span class="ai-menu__status-state" data-status-state>INACTIVE</span>' +
-                    '<span class="ai-menu__status-sep">·</span>' +
-                    '<span class="ai-menu__status-mode" data-status-mode>—</span>' +
-                    '<span class="ai-menu__status-sep">·</span>' +
-                    '<span class="ai-menu__status-fps" data-status-fps>-- fps</span>' +
-                    '<span class="ai-menu__status-sep">·</span>' +
-                    '<span class="ai-menu__status-model" data-status-model>' + currentModel + '</span>' +
-                '</div>' +
-                '<div class="ai-menu__summary">' +
-                    '<span class="ai-menu__summary-dot' + (readyModels > 0 ? '' : ' ai-menu__summary-dot--off') + '"></span>' +
-                    '<span><span class="ai-menu__summary-strong" data-summary-ready>' + (totalModels ? (readyModels + ' of ' + totalModels) : '—') + '</span> models ready</span>' +
+                    '<div class="ai-menu__readout">' +
+                        '<span class="ai-menu__status-fps" data-status-fps><b>—</b> fps</span>' +
+                        '<svg class="ai-menu__spark" data-status-spark viewBox="0 0 120 36" preserveAspectRatio="none" aria-hidden="true">' +
+                            '<line class="ai-menu__spark-target" x1="0" x2="120" y1="-10" y2="-10"></line>' +
+                            '<polyline class="ai-menu__spark-line" points=""></polyline>' +
+                        '</svg>' +
+                        '<span class="ai-menu__pill">' +
+                            '<span class="ai-menu__status-dot ai-menu__status-dot--off" data-status-dot></span>' +
+                            '<span class="ai-menu__status-state" data-status-state>IDLE</span>' +
+                        '</span>' +
+                    '</div>' +
+                    '<div class="ai-menu__status-meta">' +
+                        '<span class="ai-menu__status-mode" data-status-mode>—</span>' +
+                        '<span class="ai-menu__status-sep" aria-hidden="true">·</span>' +
+                        '<span class="ai-menu__status-model" data-status-model>' + this._escapeHtml(currentModel) + '</span>' +
+                    '</div>' +
                 '</div>' +
                 '<div class="ai-menu__tabs" role="tablist">' +
                     // v1.8.3.18 - Auto leads. Auto mode is the default (EnableAutoModelSelection
                     // is true out of the box), so the first thing the panel should answer is
                     // "what is it doing to THIS video, and how do I stop it" - not "pick a model
                     // from a list", which is the Custom-mode question.
-                    '<button class="ai-menu__tab ai-menu__tab--active" data-tab="auto" role="tab"><span class="material-icons">auto_awesome</span><span>Auto</span><span class="ai-menu__tab-live" data-auto-live-dot></span></button>' +
-                    '<button class="ai-menu__tab" data-tab="models" role="tab"><span class="material-icons">view_module</span><span>Models</span></button>' +
-                    '<button class="ai-menu__tab" data-tab="filters" role="tab"><span class="material-icons">tune</span><span>Filters</span><span class="ai-menu__tab-live" data-filter-live-dot></span></button>' +
-                    '<button class="ai-menu__tab" data-tab="realtime" role="tab"><span class="material-icons">bolt</span><span>Realtime</span></button>' +
+                    '<button class="ai-menu__tab ai-menu__tab--active" data-tab="auto" role="tab" aria-selected="true"><span class="material-icons" aria-hidden="true">auto_awesome</span><span>Auto</span><span class="ai-menu__tab-live" data-auto-live-dot></span></button>' +
+                    '<button class="ai-menu__tab" data-tab="models" role="tab" aria-selected="false"><span class="material-icons" aria-hidden="true">grid_view</span><span>Models</span></button>' +
+                    '<button class="ai-menu__tab" data-tab="filters" role="tab" aria-selected="false"><span class="material-icons" aria-hidden="true">tune</span><span>Filters</span><span class="ai-menu__tab-live" data-filter-live-dot></span></button>' +
+                    '<button class="ai-menu__tab" data-tab="realtime" role="tab" aria-selected="false"><span class="material-icons" aria-hidden="true">bolt</span><span>Realtime</span></button>' +
                 '</div>' +
                 '<div class="ai-menu__body">' +
                     // v1.8.3.18 - the auto pane. Everything here writes straight to the
                     // plugin config and takes effect on the running video; nothing needs
                     // the full configuration page. Contents are filled by _renderAutoPane
                     // once the config and the decision for this video have been fetched.
-                    '<div class="ai-menu__pane ai-menu__pane--active" data-pane="auto">' +
+                    '<div class="ai-menu__pane ai-menu__pane--active" data-pane="auto" role="tabpanel">' +
                         '<div data-auto-body><div class="ai-menu__auto-loading">Reading the decision for this video&hellip;</div></div>' +
                     '</div>' +
-                    '<div class="ai-menu__pane" data-pane="models">' +
-                        '<div class="ai-menu__chips">' +
+                    '<div class="ai-menu__pane" data-pane="models" role="tabpanel">' +
+                        '<div class="ai-menu__chips" role="group" aria-label="Show models">' +
                             '<button class="ai-menu__chip ai-menu__chip--active" data-filter="all">All</button>' +
                             '<button class="ai-menu__chip" data-filter="ready">Downloaded</button>' +
                             '<button class="ai-menu__chip" data-filter="recommended">Recommended</button>' +
                         '</div>' +
+                        '<div class="ai-menu__models">' + modelsHtml + '</div>' +
                         '<div class="ai-menu__section">' +
-                            '<div class="ai-menu__section-title"><span>Models</span><span class="ai-menu__section-sub">Click to load</span></div>' +
-                            '<div class="ai-menu__models">' + modelsHtml + '</div>' +
-                        '</div>' +
-                        '<div class="ai-menu__section">' +
-                            '<div class="ai-menu__section-title"><span>Scale Factor</span><span class="ai-menu__section-sub">Output multiplier</span></div>' +
-                            '<div class="ai-menu__scales">' + scaleHtml + '</div>' +
+                            '<div class="ai-menu__section-title"><span>Output scale</span><span class="ai-menu__section-sub">AI models keep their own factor</span></div>' +
+                            '<div class="ai-menu__scales" role="group" aria-label="Output scale">' + scaleHtml + '</div>' +
                         '</div>' +
                     '</div>' +
-                    '<div class="ai-menu__pane" data-pane="filters">' + filtersHtml + '</div>' +
-                    '<div class="ai-menu__pane" data-pane="realtime">' +
-                        '<div class="ai-menu__section">' +
-                            '<div class="ai-menu__section-title"><span>Real-Time Upscaling</span></div>' +
-                            '<div class="ai-menu__rt-card">' +
-                                '<div class="ai-menu__rt-status">' +
-                                    '<span class="ai-menu__rt-indicator" id="aiRtIndicator"></span>' +
-                                    '<span class="ai-menu__rt-label">Status:</span>' +
-                                    '<span class="ai-menu__rt-value" id="aiRtStatusValue">--</span>' +
-                                '</div>' +
-                                '<div class="ai-menu__rt-row">' +
-                                    '<button class="ai-menu__rt-btn" data-action="rt-toggle">Toggle</button>' +
-                                    '<button class="ai-menu__rt-btn" data-action="rt-switch">Switch Mode</button>' +
-                                '</div>' +
+                    '<div class="ai-menu__pane" data-pane="filters" role="tabpanel">' + filtersHtml + '</div>' +
+                    '<div class="ai-menu__pane" data-pane="realtime" role="tabpanel">' +
+                        '<div class="ai-menu__rt-card">' +
+                            '<div class="ai-menu__rt-status">' +
+                                '<span class="ai-menu__rt-indicator" id="aiRtIndicator"></span>' +
+                                '<span class="ai-menu__rt-label">Realtime</span>' +
+                                '<span class="ai-menu__rt-value" id="aiRtStatusValue">--</span>' +
+                            '</div>' +
+                            '<div class="ai-menu__rt-row">' +
+                                '<button class="ai-menu__filter-btn ai-menu__filter-btn--primary" data-action="rt-toggle" data-rt-toggle>Start</button>' +
+                                '<button class="ai-menu__filter-btn ai-menu__filter-btn--secondary" data-action="rt-switch" data-rt-switch disabled>Switch engine</button>' +
                             '</div>' +
                         '</div>' +
+                        '<div class="ai-menu__section">' +
+                            '<div class="ai-menu__section-title"><span>Engines</span><span class="ai-menu__section-sub">default set in All settings</span></div>' +
+                            '<ul class="ai-menu__engines">' + enginesHtml + '</ul>' +
+                        '</div>' +
                     '</div>' +
-                    '<div class="ai-menu__footer">' +
-                        '<button class="ai-menu__action" data-action="config">' +
-                            '<span class="material-icons" style="font-size:16px;margin-right:8px">settings</span>' +
-                            'Full Configuration' +
-                        '</button>' +
-                    '</div>' +
+                '</div>' +
+                '<div class="ai-menu__footer">' +
+                    '<span class="ai-menu__summary">' +
+                        '<span class="ai-menu__summary-dot' + (readyModels > 0 ? '' : ' ai-menu__summary-dot--off') + '"></span>' +
+                        '<span><span class="ai-menu__summary-strong" data-summary-ready>' + (totalModels ? (readyModels + ' of ' + totalModels) : '—') + '</span> models downloaded</span>' +
+                    '</span>' +
+                    '<button class="ai-menu__action" data-action="config">All settings<span class="material-icons" aria-hidden="true">chevron_right</span></button>' +
                 '</div>';
 
-            // After DOM insertion, update RT status
+            // After DOM insertion, show what realtime is doing and label its buttons to match.
             setTimeout(function() {
                 var statusEl = document.getElementById('aiRtStatusValue');
                 var indicator = document.getElementById('aiRtIndicator');
-                if (statusEl) {
-                    var st = RealtimeUpscaler.getStatus();
-                    if (st.active) {
-                        statusEl.textContent = st.mode.toUpperCase() + ' · ' + st.fps + ' fps';
-                        statusEl.style.color = '#34d399';
-                        if (indicator) indicator.classList.add('ai-menu__rt-indicator--on');
-                    } else {
-                        statusEl.textContent = 'Inactive';
-                        statusEl.style.color = 'rgba(255,255,255,0.4)';
-                        if (indicator) indicator.classList.remove('ai-menu__rt-indicator--on');
-                    }
+                if (!statusEl) return;
+                var st = RealtimeUpscaler.getStatus();
+                var rtMenu = statusEl.closest('.ai-menu');
+                var toggleBtn = rtMenu && rtMenu.querySelector('[data-rt-toggle]');
+                var switchBtn = rtMenu && rtMenu.querySelector('[data-rt-switch]');
+                statusEl.textContent = st.active ? PlayerIntegration._modeLabel(st.mode) + ' · ' + st.fps + ' fps' : (st.reason || 'Stopped');
+                statusEl.classList.toggle('ai-menu__rt-value--on', !!st.active);
+                if (indicator) indicator.classList.toggle('ai-menu__rt-indicator--on', !!st.active);
+                if (toggleBtn) toggleBtn.textContent = st.active ? 'Stop' : 'Start';
+                if (switchBtn) {
+                    switchBtn.disabled = !st.active;
+                    switchBtn.textContent = !st.active ? 'Switch engine'
+                        : st.mode === 'server' ? 'Switch to Lanczos' : 'Switch to Server AI';
+                }
+                var engineKey = st.mode === 'webgl' ? 'lanczos' : st.mode;
+                var rows = rtMenu ? rtMenu.querySelectorAll('[data-engine]') : [];
+                for (var r = 0; r < rows.length; r++) {
+                    rows[r].classList.toggle('ai-menu__engine--on', !!st.active && rows[r].getAttribute('data-engine') === engineKey);
                 }
             }, 50);
 
@@ -1357,12 +1435,23 @@
             // where users may drag for several seconds. _touchMenuTimer resets the auto-close.
             var touchTimer = function() { PlayerIntegration._touchMenuTimer(menu); };
             menu.addEventListener('pointerdown', touchTimer);
+            // Remote controls and keyboards navigate with keys, not pointers: keep the
+            // panel open while they do, and let Escape close it.
+            menu.addEventListener('keydown', function(e) {
+                touchTimer();
+                if (e.key === 'Escape') {
+                    menu.remove();
+                    PlayerIntegration._cleanupMenu();
+                }
+            });
             menu.addEventListener('input', function(e) {
                 touchTimer();
                 var slider = e.target.closest('[data-slider]');
                 if (slider) {
                     PlayerIntegration._onSliderInput(menu, slider);
                 }
+                var advInput = e.target.closest('[data-adv-slider]');
+                if (advInput) PlayerIntegration._syncSliderFill(advInput);
             });
             menu.addEventListener('change', function(e) {
                 var adv = e.target.closest('[data-adv-slider]');
@@ -1441,8 +1530,10 @@
                     } else if (action === 'filter-advanced-toggle') {
                         var adv = menu.querySelector('[data-adv-pane]');
                         if (adv) adv.classList.toggle('ai-menu__adv--open');
+                        var advOpen = !!adv && adv.classList.contains('ai-menu__adv--open');
+                        target.setAttribute('aria-expanded', advOpen ? 'true' : 'false');
                         var caret = target.querySelector('.ai-menu__adv-caret');
-                        if (caret) caret.textContent = adv && adv.classList.contains('ai-menu__adv--open') ? 'expand_less' : 'expand_more';
+                        if (caret) caret.textContent = advOpen ? 'expand_less' : 'expand_more';
                     } else if (action === 'rt-toggle') {
                         if (RealtimeUpscaler._active) {
                             RealtimeUpscaler.stop();
@@ -1509,14 +1600,34 @@
             };
         },
 
+        // Filled part of a range track, from the neutral point (0, or the minimum) to the
+        // thumb, so a +/- slider shows which way it has been pushed.
+        _sliderFill: function(min, max, value) {
+            var span = (max - min) || 1;
+            var pos = Math.max(0, Math.min(100, (value - min) / span * 100));
+            var zero = Math.max(0, Math.min(100, (0 - min) / span * 100));
+            return { from: Math.min(pos, zero).toFixed(1) + '%', to: Math.max(pos, zero).toFixed(1) + '%' };
+        },
+
+        _syncSliderFill: function(input) {
+            if (!input || !input.style) return;
+            var f = this._sliderFill(parseFloat(input.min), parseFloat(input.max), parseFloat(input.value));
+            input.style.setProperty('--ai-from', f.from);
+            input.style.setProperty('--ai-to', f.to);
+        },
+
         _buildFiltersPane: function(st) {
-            // Preset chip grid
+            // Preset tiles. Each carries a small canvas that _paintPresetPreviews fills
+            // with the current frame under that preset's filter.
             var chipsHtml = '';
             for (var i = 0; i < PRESET_LABELS.length; i++) {
                 var key = PRESET_LABELS[i][0];
                 var label = PRESET_LABELS[i][1];
-                var active = (st.preset === key) ? ' ai-menu__preset--active' : '';
-                chipsHtml += '<button class="ai-menu__preset' + active + '" data-preset="' + key + '">' + label + '</button>';
+                var isOn = st.preset === key;
+                chipsHtml += '<button class="ai-menu__preset' + (isOn ? ' ai-menu__preset--active' : '') + '" data-preset="' + key +
+                    '" aria-pressed="' + (isOn ? 'true' : 'false') + '">' +
+                    '<canvas class="ai-menu__preset-preview" data-preset-preview="' + key + '" width="96" height="54" aria-hidden="true"></canvas>' +
+                    '<span class="ai-menu__preset-name">' + label + '</span></button>';
             }
 
             // Live sliders (CSS filter on <video>)
@@ -1524,15 +1635,17 @@
             for (var j = 0; j < LIVE_SLIDERS.length; j++) {
                 var s = LIVE_SLIDERS[j];
                 var v = st[s.key];
+                var fill = this._sliderFill(s.min, s.max, v);
                 slidersHtml +=
                     '<div class="ai-menu__slider-row">' +
-                        '<label class="ai-menu__slider-label">' +
-                            '<span class="material-icons ai-menu__slider-icon">' + s.icon + '</span>' +
+                        '<label class="ai-menu__slider-label" for="aiMenuSlider-' + s.key + '">' +
+                            '<span class="material-icons ai-menu__slider-icon" aria-hidden="true">' + s.icon + '</span>' +
                             '<span>' + s.label + '</span>' +
                             '<span class="ai-menu__slider-val" data-slider-val="' + s.key + '">' + (v > 0 ? '+' : '') + v + '</span>' +
                         '</label>' +
-                        '<input type="range" class="ai-menu__slider" data-slider="' + s.key + '"' +
-                               ' min="' + s.min + '" max="' + s.max + '" step="1" value="' + v + '">' +
+                        '<input type="range" class="ai-menu__slider" id="aiMenuSlider-' + s.key + '" data-slider="' + s.key + '"' +
+                               ' min="' + s.min + '" max="' + s.max + '" step="1" value="' + v + '"' +
+                               ' style="--ai-from:' + fill.from + ';--ai-to:' + fill.to + '">' +
                     '</div>';
             }
 
@@ -1548,13 +1661,15 @@
             var advHtml = '';
             for (var k = 0; k < adv.length; k++) {
                 var a = adv[k];
+                var afill = this._sliderFill(a.min, a.max, a.val);
                 advHtml +=
                     '<div class="ai-menu__adv-row">' +
-                        '<label class="ai-menu__adv-label">' + a.label +
+                        '<label class="ai-menu__adv-label" for="aiMenuAdv-' + a.key + '">' + a.label +
                             '<span class="ai-menu__adv-val" data-adv-val="' + a.key + '">' + a.val + '</span>' +
                         '</label>' +
-                        '<input type="range" class="ai-menu__adv-slider" data-adv-slider="' + a.key + '"' +
-                               ' min="' + a.min + '" max="' + a.max + '" step="' + a.step + '" value="' + a.val + '">' +
+                        '<input type="range" class="ai-menu__adv-slider" id="aiMenuAdv-' + a.key + '" data-adv-slider="' + a.key + '"' +
+                               ' min="' + a.min + '" max="' + a.max + '" step="' + a.step + '" value="' + a.val + '"' +
+                               ' style="--ai-from:' + afill.from + ';--ai-to:' + afill.to + '">' +
                     '</div>';
             }
 
@@ -1562,7 +1677,7 @@
                 '<div class="ai-menu__section">' +
                     '<div class="ai-menu__section-title">' +
                         '<span>Look</span>' +
-                        '<span class="ai-menu__section-sub">Live — no transcode</span>' +
+                        '<span class="ai-menu__section-sub">live, no transcoding</span>' +
                     '</div>' +
                     '<div class="ai-menu__presets">' + chipsHtml + '</div>' +
                 '</div>' +
@@ -1571,9 +1686,9 @@
                     '<div class="ai-menu__sliders">' + slidersHtml + '</div>' +
                 '</div>' +
                 '<div class="ai-menu__section">' +
-                    '<button class="ai-menu__adv-toggle" data-action="filter-advanced-toggle">' +
-                        '<span>Advanced (applies on next seek)</span>' +
-                        '<span class="material-icons ai-menu__adv-caret">expand_more</span>' +
+                    '<button class="ai-menu__adv-toggle" data-action="filter-advanced-toggle" aria-expanded="false">' +
+                        '<span>Advanced <span class="ai-menu__adv-note">applies on next seek</span></span>' +
+                        '<span class="material-icons ai-menu__adv-caret" aria-hidden="true">expand_more</span>' +
                     '</button>' +
                     '<div class="ai-menu__adv" data-adv-pane>' + advHtml + '</div>' +
                 '</div>' +
@@ -1843,7 +1958,9 @@
             var tabs = menu.querySelectorAll('[data-tab]');
             var panes = menu.querySelectorAll('[data-pane]');
             for (var i = 0; i < tabs.length; i++) {
-                tabs[i].classList.toggle('ai-menu__tab--active', tabs[i].getAttribute('data-tab') === tabName);
+                var on = tabs[i].getAttribute('data-tab') === tabName;
+                tabs[i].classList.toggle('ai-menu__tab--active', on);
+                tabs[i].setAttribute('aria-selected', on ? 'true' : 'false');
             }
             for (var j = 0; j < panes.length; j++) {
                 panes[j].classList.toggle('ai-menu__pane--active', panes[j].getAttribute('data-pane') === tabName);
@@ -1852,6 +1969,48 @@
             // so it is re-read on every visit rather than cached from when the panel
             // opened. Seeking to a different episode changes the answer.
             if (tabName === 'auto') this._renderAutoPane(menu);
+            if (tabName === 'filters') this._paintPresetPreviews(menu);
+        },
+
+        // Highlight one preset tile (or none, when the sliders made a custom look).
+        _markPreset: function(menu, preset) {
+            var presets = menu.querySelectorAll('[data-preset]');
+            for (var i = 0; i < presets.length; i++) {
+                var on = presets[i].getAttribute('data-preset') === preset;
+                presets[i].classList.toggle('ai-menu__preset--active', on);
+                presets[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+            }
+        },
+
+        // Paint each preset tile with the frame on screen right now, under that preset's
+        // CSS filter, so the choice is "this, on my video" instead of a name. Drawing a
+        // video into a canvas never reads pixels back, so a cross-origin stream is fine.
+        _paintPresetPreviews: function(menu) {
+            var tiles = menu.querySelectorAll('canvas[data-preset-preview]');
+            var video = this.findVideoElement();
+            var live = !!(video && video.readyState >= 2 && video.videoWidth > 0);
+            for (var i = 0; i < tiles.length; i++) {
+                var c = tiles[i];
+                var ctx = c.getContext && c.getContext('2d');
+                if (!ctx) continue;
+                var drawn = false;
+                if (live) {
+                    try {
+                        // Cover-crop the frame to the tile's shape.
+                        var vw = video.videoWidth, vh = video.videoHeight, r = c.width / c.height;
+                        var cw = Math.min(vw, vh * r), ch = cw / r;
+                        ctx.drawImage(video, (vw - cw) / 2, (vh - ch) / 2, cw, ch, 0, 0, c.width, c.height);
+                        drawn = true;
+                    } catch (e) { drawn = false; }
+                }
+                if (!drawn) {
+                    var g = ctx.createLinearGradient(0, 0, 0, c.height);
+                    g.addColorStop(0, '#1d3b5a'); g.addColorStop(0.6, '#b7715a'); g.addColorStop(1, '#f2c37e');
+                    ctx.fillStyle = g;
+                    ctx.fillRect(0, 0, c.width, c.height);
+                }
+                c.style.filter = PRESET_CSS[c.getAttribute('data-preset-preview')] || 'none';
+            }
         },
 
         _onSliderInput: function(menu, slider) {
@@ -1864,8 +2023,8 @@
             this._filterState.enabled = true;
             var valEl = menu.querySelector('[data-slider-val="' + key + '"]');
             if (valEl) valEl.textContent = (v > 0 ? '+' : '') + v;
-            var presets = menu.querySelectorAll('[data-preset]');
-            for (var i = 0; i < presets.length; i++) presets[i].classList.remove('ai-menu__preset--active');
+            this._syncSliderFill(slider);
+            this._markPreset(menu, null);
             this._applyFilterState(this._filterState);
         },
 
@@ -1877,6 +2036,7 @@
             if (!isNaN(v)) this._filterState[key] = v;
             var valEl = menu.querySelector('[data-adv-val="' + key + '"]');
             if (valEl) valEl.textContent = (key === 'colorTemperature' || key === 'filmGrain') ? v.toFixed(0) : v.toFixed(2);
+            this._syncSliderFill(slider);
         },
 
         _pickPreset: function(menu, preset) {
@@ -1888,13 +2048,11 @@
             this._filterState.contrast = 0;
             this._filterState.saturation = 0;
             // Reflect in UI
-            var presets = menu.querySelectorAll('[data-preset]');
-            for (var i = 0; i < presets.length; i++) {
-                presets[i].classList.toggle('ai-menu__preset--active', presets[i].getAttribute('data-preset') === preset);
-            }
+            this._markPreset(menu, preset);
             var sliders = menu.querySelectorAll('[data-slider]');
             for (var j = 0; j < sliders.length; j++) {
                 sliders[j].value = 0;
+                this._syncSliderFill(sliders[j]);
                 var k = sliders[j].getAttribute('data-slider');
                 var valEl = menu.querySelector('[data-slider-val="' + k + '"]');
                 if (valEl) valEl.textContent = '0';
@@ -1968,10 +2126,11 @@
                     // Update UI to reflect loaded state
                     var menu = document.querySelector('#aiUpscalerQuickMenu');
                     if (menu) {
-                        var presets = menu.querySelectorAll('[data-preset]');
-                        for (var i = 0; i < presets.length; i++) {
-                            presets[i].classList.toggle('ai-menu__preset--active', presets[i].getAttribute('data-preset') === self._filterState.preset);
-                        }
+                        self._markPreset(menu, self._filterState.preset);
+                        // The pane was rendered before this answer arrived, with Save
+                        // disabled; the server has now answered, so let the POST decide.
+                        var save = menu.querySelector('[data-action="filter-save"]');
+                        if (save) { save.disabled = false; save.removeAttribute('title'); }
                     }
                 }
             }).catch(function(err) {
@@ -1980,19 +2139,28 @@
         },
 
         _resetFilters: function(menu) {
+            var canSave = !!(this._filterState && this._filterState.canSave);
             this._filterState = this._defaultFilterState();
+            this._filterState.canSave = canSave;
             // Reflect default state in all controls
             var sliders = menu.querySelectorAll('[data-slider]');
             for (var i = 0; i < sliders.length; i++) {
                 sliders[i].value = 0;
+                this._syncSliderFill(sliders[i]);
                 var k = sliders[i].getAttribute('data-slider');
                 var valEl = menu.querySelector('[data-slider-val="' + k + '"]');
                 if (valEl) valEl.textContent = '0';
             }
-            var presets = menu.querySelectorAll('[data-preset]');
-            for (var j = 0; j < presets.length; j++) {
-                presets[j].classList.toggle('ai-menu__preset--active', presets[j].getAttribute('data-preset') === 'none');
+            // The advanced sliders reset too, so what they show matches what Save sends.
+            var advSliders = menu.querySelectorAll('[data-adv-slider]');
+            for (var a = 0; a < advSliders.length; a++) {
+                var ak = advSliders[a].getAttribute('data-adv-slider');
+                advSliders[a].value = this._filterState[ak];
+                this._syncSliderFill(advSliders[a]);
+                var advVal = menu.querySelector('[data-adv-val="' + ak + '"]');
+                if (advVal) advVal.textContent = String(this._filterState[ak]);
             }
+            this._markPreset(menu, 'none');
             this._applyFilterState(this._filterState);
             this.showPlayerNotification('Filters reset', 'info');
         },
@@ -2032,8 +2200,16 @@
         quickSetModel: function(model) {
             var self = this;
             var menu = document.querySelector('#aiUpscalerQuickMenu');
-            var modelBtn = menu ? menu.querySelector('[data-model="' + model + '"]') : null;
-            var slot = menu ? menu.querySelector('[data-state-slot="' + model + '"]') : null;
+            // A pinned favorite has two rows (Favorites and its category); both follow the load.
+            var modelBtns = menu ? Array.prototype.slice.call(menu.querySelectorAll('[data-model="' + model + '"]')) : [];
+            var slots = menu ? Array.prototype.slice.call(menu.querySelectorAll('[data-state-slot="' + model + '"]')) : [];
+            function showState(kind, html) {
+                slots.forEach(function(slot) {
+                    slot.classList.remove('ai-menu__state--ready', 'ai-menu__state--need-dl', 'ai-menu__state--busy', 'ai-menu__state--err');
+                    slot.classList.add('ai-menu__state--' + kind);
+                    slot.innerHTML = html;
+                });
+            }
             var state = (this._modelStates && this._modelStates[model]) || null;
             var needsDownload = state && !state.downloaded && state.available;
 
@@ -2052,12 +2228,8 @@
             function current() { return generation === RealtimeUpscaler._generation && !loading.signal.aborted; }
 
             // Show inline spinner on the clicked model; keep menu open
-            if (modelBtn) modelBtn.classList.add('ai-menu__model--loading');
-            if (slot) {
-                slot.classList.remove('ai-menu__state--ready','ai-menu__state--need-dl','ai-menu__state--err');
-                slot.classList.add('ai-menu__state--busy');
-                slot.innerHTML = '<div class="ai-menu__spinner"></div>';
-            }
+            modelBtns.forEach(function(b) { b.classList.add('ai-menu__model--loading'); });
+            showState('busy', '<div class="ai-menu__spinner"></div>');
             this.showPlayerNotification(
                 (needsDownload ? 'Downloading ' : 'Loading ') + model + (needsDownload ? ' (may take 30-120s)' : '...'),
                 'info'
@@ -2085,17 +2257,17 @@
                 if (!current()) return;
                 // Update active styling + refresh states
                 if (menu) {
-                    menu.querySelectorAll('.ai-menu__model').forEach(function(b) { b.classList.remove('ai-menu__model--active'); });
-                    if (modelBtn) {
-                        modelBtn.classList.remove('ai-menu__model--loading');
-                        modelBtn.classList.add('ai-menu__model--active');
-                    }
+                    menu.querySelectorAll('.ai-menu__model').forEach(function(b) {
+                        b.classList.remove('ai-menu__model--active');
+                        b.setAttribute('aria-pressed', 'false');
+                    });
                 }
-                if (slot) {
-                    slot.classList.remove('ai-menu__state--busy');
-                    slot.classList.add('ai-menu__state--ready');
-                    slot.innerHTML = '&#10003;';
-                }
+                modelBtns.forEach(function(b) {
+                    b.classList.remove('ai-menu__model--loading');
+                    b.classList.add('ai-menu__model--active');
+                    b.setAttribute('aria-pressed', 'true');
+                });
+                showState('ready', self._stateGlyph('ready'));
                 if (self._modelStates && self._modelStates[model]) {
                     self._modelStates[model].downloaded = true;
                     self._modelStates[model].loaded = true;
@@ -2113,12 +2285,8 @@
             }).catch(function(err) {
                 if (!current()) return;
                 console.error('AI Upscaler: quickSetModel failed', err);
-                if (modelBtn) modelBtn.classList.remove('ai-menu__model--loading');
-                if (slot) {
-                    slot.classList.remove('ai-menu__state--busy');
-                    slot.classList.add('ai-menu__state--err');
-                    slot.innerHTML = '&#9888;';
-                }
+                modelBtns.forEach(function(b) { b.classList.remove('ai-menu__model--loading'); });
+                showState('err', self._stateGlyph('err'));
                 var msg = (err && err.message) ? err.message : 'unknown error';
                 // Surface config-specific hint when AI service token is missing
                 if (/API_TOKEN|403|401/.test(msg)) {
@@ -2143,8 +2311,12 @@
                 var newState = !config.EnablePlugin;
                 PlayerIntegration.updatePluginConfig({ EnablePlugin: newState });
                 // Live-update switch visual without closing the menu
-                var sw = document.querySelector('#aiUpscalerQuickMenu .ai-menu__switch');
-                if (sw) sw.classList.toggle('ai-menu__switch--on', newState);
+                var sw = document.querySelector('#aiUpscalerQuickMenu [data-action="toggle"]');
+                if (sw) {
+                    sw.classList.toggle('ai-menu__switch--on', newState);
+                    sw.setAttribute('aria-checked', newState ? 'true' : 'false');
+                    sw.title = (newState ? 'Disable' : 'Enable') + ' upscaling';
+                }
                 PlayerIntegration.showPlayerNotification(
                     'Upscaling ' + (newState ? 'enabled' : 'disabled'),
                     newState ? 'success' : 'warning'
@@ -2510,228 +2682,251 @@
 
             var styles = document.createElement('style');
             styles.id = 'aiUpscalerPlayerStyles';
-            // v1.6.1.15 — Redesign: Non-AI style, matches Docker AI Service dashboard
-            // Colors: --bg #0b0d12 --surface #11141b --surface-2 #161a23 --border #1f2430
-            //         --text #e6e8ec --text-dim #9199a6 --text-muted #5c6472 --accent #3b82f6
+            // Redesign: a smoked-glass panel over the picture. Jellyfin's own accent
+            // (#00a4dc, the player's progress bar) marks "on" and "selected"; green, amber
+            // and red are reserved for the live frame-rate readout. Tokens live on .ai-menu
+            // so nothing leaks into jellyfin-web. No web fonts: the panel uses the font
+            // jellyfin-web already ships (Noto Sans), which also works on offline servers.
             styles.textContent = [
                 /* Player toolbar button */
                 '#aiUpscalerButton{display:inline-flex!important;align-items:center;justify-content:center;color:#e6e8ec;cursor:pointer;transition:color .15s}',
-                '#aiUpscalerButton:hover{color:#3b82f6}',
+                '#aiUpscalerButton:hover{color:#00a4dc}',
                 '#aiUpscalerButton .material-icons{font-size:24px}',
 
-                /* Menu shell */
-                '.ai-menu{position:fixed;bottom:90px;z-index:100000;width:380px;max-height:calc(100vh - 140px);background:#0b0d12;border:1px solid #1f2430;border-radius:6px;box-shadow:0 10px 30px rgba(0,0,0,.55);overflow:hidden;animation:aiMenuIn .16s ease-out;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;display:flex;flex-direction:column;color:#e6e8ec}',
-                '.ai-menu--right{right:20px}.ai-menu--left{left:20px}.ai-menu--center{left:50%;transform:translateX(-50%)}',
-                '@keyframes aiMenuIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}',
-                '.ai-menu--center{animation:aiMenuInCenter .16s ease-out}',
-                '@keyframes aiMenuInCenter{from{opacity:0;transform:translateX(-50%) translateY(6px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}',
+                /* Panel shell */
+                '.ai-menu{--ai-glass:rgba(12,14,19,.8);--ai-solid:#0f1217;--ai-raise:rgba(255,255,255,.055);--ai-raise-2:rgba(255,255,255,.09);--ai-line:rgba(255,255,255,.09);--ai-line-2:rgba(255,255,255,.18);--ai-text:#f1f3f6;--ai-dim:#aab2bf;--ai-faint:#7d8594;--ai-accent:#00a4dc;--ai-accent-ink:#7fd3f2;--ai-accent-bg:rgba(0,164,220,.16);--ai-good:#3ddc97;--ai-warn:#f5b94a;--ai-bad:#ff6b6b;--ai-mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;' +
+                    'position:fixed;bottom:96px;z-index:100000;width:400px;max-width:calc(100vw - 32px);max-height:calc(100vh - 128px);display:flex;flex-direction:column;background:var(--ai-solid);color:var(--ai-text);border:1px solid var(--ai-line);border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.35);overflow:hidden;font-family:"Noto Sans",-apple-system,"Segoe UI",system-ui,sans-serif;font-size:13px;line-height:1.45;text-align:left;animation:aiMenuIn .2s cubic-bezier(.2,.8,.2,1)}',
+                '@supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){.ai-menu{background:var(--ai-glass);-webkit-backdrop-filter:blur(22px) saturate(1.35);backdrop-filter:blur(22px) saturate(1.35)}}',
+                '.ai-menu--right{right:24px}.ai-menu--left{left:24px}.ai-menu--center{left:50%;transform:translateX(-50%);animation-name:aiMenuInCenter}',
+                '@keyframes aiMenuIn{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}',
+                '@keyframes aiMenuInCenter{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%)}}',
+                '.ai-menu *{box-sizing:border-box}',
+                '.ai-menu .material-icons{font-size:18px;line-height:1}',
+                '.ai-menu__switch,.ai-menu__close,.ai-menu__tab,.ai-menu__chip,.ai-menu__model,.ai-menu__scale,.ai-menu__preset,.ai-menu__adv-toggle,.ai-menu__filter-btn,.ai-menu__action{font-family:inherit;-webkit-appearance:none;appearance:none;margin:0}',
+                /* Focus: visible for keyboards and TV remotes; hidden for mouse clicks where supported */
+                '.ai-menu button:focus,.ai-menu input:focus,.ai-menu summary:focus{outline:2px solid var(--ai-accent);outline-offset:2px}',
+                '.ai-menu button:focus:not(:focus-visible),.ai-menu input:focus:not(:focus-visible),.ai-menu summary:focus:not(:focus-visible){outline:none}',
 
                 /* Header */
-                '.ai-menu__header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#11141b;border-bottom:1px solid #1f2430;flex-shrink:0}',
-                '.ai-menu__header-left{display:flex;align-items:center;gap:10px}',
-                '.ai-menu__logo{font-size:16px;color:#3b82f6;width:22px;height:22px;background:rgba(59,130,246,.10);border:1px solid rgba(59,130,246,.35);border-radius:4px;display:grid;place-items:center}',
-                '.ai-menu__title{font-size:13px;font-weight:600;color:#e6e8ec;letter-spacing:.2px;line-height:1.15}',
-                '.ai-menu__version{font-size:10px;color:#5c6472;font-weight:500;margin-top:1px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}',
-                '.ai-menu__header-right{display:flex;align-items:center;gap:8px}',
+                '.ai-menu__grip{display:none}',
+                '.ai-menu__header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 12px 12px 16px;flex-shrink:0}',
+                '.ai-menu__brand{display:flex;align-items:center;gap:11px;min-width:0}',
+                '.ai-menu .ai-menu__logo{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--ai-accent-bg);color:var(--ai-accent-ink);font-size:18px}',
+                '.ai-menu__title{font-size:15px;font-weight:700;letter-spacing:.005em;line-height:1.15}',
+                '.ai-menu__version{margin-top:3px;font:500 11px/1 var(--ai-mono);color:var(--ai-faint)}',
+                '.ai-menu__header-right{display:flex;align-items:center;gap:6px}',
+                '.ai-menu__close{width:34px;height:34px;padding:0;border:0;border-radius:10px;background:transparent;color:var(--ai-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s}',
+                '.ai-menu__close:hover{background:var(--ai-raise-2);color:var(--ai-text)}',
+                '.ai-menu .ai-menu__close .material-icons{font-size:20px}',
 
-                /* Switch */
-                '.ai-menu__switch{position:relative;width:36px;height:20px;border-radius:3px;border:1px solid #2a3040;background:#161a23;cursor:pointer;transition:border-color .15s,background .15s;padding:0;flex-shrink:0}',
-                '.ai-menu__switch::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:2px;background:#5c6472;transition:left .15s,background .15s}',
-                '.ai-menu__switch--on{border-color:#3b82f6;background:rgba(59,130,246,.14)}',
-                '.ai-menu__switch--on::after{background:#3b82f6;left:18px}',
-                '.ai-menu__switch--sm{width:30px;height:17px}',
-                '.ai-menu__switch--sm::after{width:11px;height:11px}',
-                '.ai-menu__switch--sm.ai-menu__switch--on::after{left:15px}',
+                /* Switches */
+                '.ai-menu__switch{position:relative;width:44px;height:26px;padding:0;flex-shrink:0;border-radius:13px;border:1px solid var(--ai-line-2);background:rgba(255,255,255,.08);cursor:pointer;transition:background .18s,border-color .18s}',
+                '.ai-menu__switch::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#c9cfd8;box-shadow:0 1px 3px rgba(0,0,0,.45);transition:transform .18s cubic-bezier(.2,.8,.2,1),background .18s}',
+                '.ai-menu__switch--on{background:var(--ai-accent);border-color:var(--ai-accent)}',
+                '.ai-menu__switch--on::after{transform:translateX(18px);background:#fff}',
+                '.ai-menu__switch--sm{width:38px;height:22px;border-radius:11px}',
+                '.ai-menu__switch--sm::after{width:14px;height:14px}',
+                '.ai-menu__switch--sm.ai-menu__switch--on::after{transform:translateX(16px)}',
 
-                /* v1.8.3.18 — Auto pane. Same palette as the rest of the panel
-                   (--bg #0b0d12, --surface-2 #161a23, --border #1f2430, accent #3b82f6);
-                   the accent is reserved for "auto is on", so an off state never glows. */
-                '.ai-menu__auto-loading{padding:18px 4px;color:#5c6472;font-size:12px;text-align:center}',
-                '.ai-menu__auto-master{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #1f2430;border-radius:6px;background:#11141b}',
-                '.ai-menu__auto-master--on{border-color:rgba(59,130,246,.45);background:rgba(59,130,246,.07)}',
-                '.ai-menu__auto-master-text{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}',
-                '.ai-menu__auto-master-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#e6e8ec}',
-                '.ai-menu__auto-state{font-size:9px;letter-spacing:.1em;padding:1px 5px;border-radius:2px;background:#1f2430;color:#8b93a1}',
-                '.ai-menu__auto-master--on .ai-menu__auto-state{background:rgba(59,130,246,.2);color:#7dabf8}',
-                '.ai-menu__auto-master-sub{font-size:11px;line-height:1.45;color:#5c6472}',
-                '.ai-menu__auto-card{margin-top:10px;padding:11px 12px;border:1px solid #1f2430;border-radius:6px;background:#161a23}',
-                '.ai-menu__auto-card--muted{color:#5c6472;font-size:11px;line-height:1.5}',
-                '.ai-menu__auto-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}',
-                '.ai-menu__auto-card-title{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#5c6472}',
-                '.ai-menu__auto-scale{font-size:11px;font-weight:600;color:#7dabf8}',
-                '.ai-menu__auto-model{font-size:14px;font-weight:600;color:#e6e8ec;word-break:break-all}',
-                '.ai-menu__auto-size{font-size:11px;color:#8b93a1;margin-top:2px;font-variant-numeric:tabular-nums}',
-                '.ai-menu__auto-reason{font-size:11px;line-height:1.5;color:#8b93a1;margin-top:6px}',
-                '.ai-menu__auto-warn{font-size:11px;line-height:1.5;color:#fbbf24;margin-top:6px;padding-left:9px;border-left:2px solid rgba(251,191,36,.45)}',
-                '.ai-menu__auto-signals{margin-top:7px}',
-                '.ai-menu__auto-signals summary{cursor:pointer;font-size:10px;color:#5c6472;outline:none}',
-                '.ai-menu__auto-signals ul{margin:5px 0 0;padding-left:15px;font-size:10px;line-height:1.6;color:#5c6472}',
-                '.ai-menu__auto-row{display:flex;align-items:center;gap:12px;padding:9px 2px;border-bottom:1px solid #1a1e28}',
-                '.ai-menu__auto-row:last-of-type{border-bottom:none}',
-                '.ai-menu__auto-row--off{opacity:.45}',
-                '.ai-menu__auto-row-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}',
-                '.ai-menu__auto-row-label{font-size:12px;color:#e6e8ec}',
-                '.ai-menu__auto-row-sub{font-size:10px;line-height:1.45;color:#5c6472}',
-                '.ai-menu__auto-suggest{display:flex;align-items:center;gap:10px;margin-top:10px;padding:9px 11px;border:1px solid rgba(52,211,153,.35);border-radius:6px;background:rgba(52,211,153,.07)}',
-                '.ai-menu__auto-suggest-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}',
-                '.ai-menu__auto-suggest-label{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#5c6472}',
-                '.ai-menu__auto-suggest-value{font-size:12px;color:#e6e8ec}',
-                '.ai-menu__auto-suggest-cur{color:#5c6472;font-size:11px}',
-                '.ai-menu__auto-actions{display:flex;gap:8px;margin-top:14px}',
-                '.ai-menu__auto-actions .ai-menu__filter-btn{flex:1}',
-
-                '.ai-menu__close{background:transparent;border:1px solid transparent;color:#5c6472;font-size:18px;cursor:pointer;padding:0;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:3px;transition:color .15s,border-color .15s;line-height:1}',
-                '.ai-menu__close:hover{color:#e6e8ec;border-color:#2a3040}',
-
-                /* Live status strip (upscaling state + FPS + model) */
-                '.ai-menu__status{display:flex;align-items:center;gap:6px;padding:8px 14px;background:#0b0d12;border-bottom:1px solid #1f2430;font-size:11px;color:#9199a6;flex-shrink:0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
-                '.ai-menu__status-dot{width:7px;height:7px;border-radius:50%;background:#5c6472;flex-shrink:0;transition:background .2s}',
-                '.ai-menu__status-dot--on{background:#34d399;box-shadow:0 0 8px rgba(52,211,153,.6)}',
-                '.ai-menu__status-dot--off{background:#5c6472}',
-                '.ai-menu__status-dot--warn{background:#fbbf24}',
-                '.ai-menu__status-dot--err{background:#ef4444}',
-                '.ai-menu__status-state{color:#e6e8ec;font-weight:600;letter-spacing:.5px;font-size:10px}',
-                '.ai-menu__status-sep{color:#2a3040}',
-                '.ai-menu__status-mode{color:#93c5fd;font-weight:500}',
-                '.ai-menu__status-fps{color:#e6e8ec;font-weight:500}',
-                '.ai-menu__status-model{color:#9199a6;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}',
-
-                /* Summary strip (models-ready counter) */
-                '.ai-menu__summary{display:flex;align-items:center;gap:8px;padding:8px 14px;background:#0b0d12;border-bottom:1px solid #1f2430;font-size:11px;color:#9199a6;flex-shrink:0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}',
-                '.ai-menu__summary-dot{width:6px;height:6px;border-radius:50%;background:#34d399;flex-shrink:0}',
-                '.ai-menu__summary-dot--off{background:#5c6472}',
-                '.ai-menu__summary-strong{color:#e6e8ec;font-weight:600}',
-
-                /* Body */
-                '.ai-menu__body{padding:10px 12px;overflow-y:auto;flex:1;min-height:0}',
-                '.ai-menu__body::-webkit-scrollbar{width:6px}',
-                '.ai-menu__body::-webkit-scrollbar-thumb{background:#2a3040;border-radius:3px}',
-                '.ai-menu__body::-webkit-scrollbar-thumb:hover{background:#3b4558}',
-                '.ai-menu__body::-webkit-scrollbar-track{background:transparent}',
-
-                /* Filter chips */
-                '.ai-menu__chips{display:flex;gap:6px;padding:2px 2px 10px;flex-wrap:wrap}',
-                '.ai-menu__chip{padding:4px 10px;background:#161a23;border:1px solid #1f2430;border-radius:3px;color:#9199a6;font-size:11px;font-weight:500;cursor:pointer;transition:border-color .15s,color .15s;letter-spacing:.2px}',
-                '.ai-menu__chip:hover{border-color:#2a3040;color:#e6e8ec}',
-                '.ai-menu__chip--active{background:rgba(59,130,246,.10);border-color:#3b82f6;color:#93c5fd}',
-
-                /* Section */
-                '.ai-menu__section{margin-bottom:14px}',
-                '.ai-menu__section:last-child{margin-bottom:0}',
-                '.ai-menu__section-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#5c6472;padding:0 2px 8px;display:flex;align-items:center;justify-content:space-between}',
-                '.ai-menu__section-sub{font-size:10px;font-weight:500;color:#475569;text-transform:none;letter-spacing:.2px}',
-
-                /* Category group */
-                '.ai-menu__cat{margin-bottom:10px}',
-                '.ai-menu__cat:last-child{margin-bottom:0}',
-                '.ai-menu__cat-head{display:flex;align-items:baseline;gap:8px;padding:2px 4px 5px;border-bottom:1px solid #1f2430;margin-bottom:4px}',
-                '.ai-menu__cat-name{font-size:11px;font-weight:600;color:#cbd5e1;letter-spacing:.2px}',
-                '.ai-menu__cat-desc{font-size:10px;color:#5c6472;font-style:normal}',
-
-                /* Model button */
-                '.ai-menu__model{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;background:#11141b;border:1px solid #1f2430;border-radius:3px;color:#cbd5e1;font-size:12px;cursor:pointer;transition:border-color .12s,background .12s;margin:3px 0;text-align:left;position:relative}',
-                '.ai-menu__model:hover{background:#161a23;border-color:#2a3040;color:#e6e8ec}',
-                '.ai-menu__model--active{background:rgba(59,130,246,.08)!important;border-color:#3b82f6!important;color:#e6e8ec!important}',
-                '.ai-menu__model--loading{opacity:.6;pointer-events:none}',
-
-                '.ai-menu__model-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}',
-                '.ai-menu__model-scale{font-size:10px;color:#9199a6;font-weight:600;padding:1px 6px;background:#0b0d12;border:1px solid #1f2430;border-radius:3px;flex-shrink:0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}',
-                '.ai-menu__badge{font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.35);color:#93c5fd;font-weight:600;text-transform:uppercase;letter-spacing:.5px;flex-shrink:0}',
-
-                /* State icons */
-                '.ai-menu__state{width:16px;height:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px}',
-                '.ai-menu__state--ready{color:#34d399}',
-                '.ai-menu__state--need-dl{color:#5c6472}',
-                '.ai-menu__state--busy{color:#3b82f6}',
-                '.ai-menu__state--err{color:#f87171}',
-                '.ai-menu__spinner{width:12px;height:12px;border:2px solid #1f2430;border-top-color:#3b82f6;border-radius:50%;animation:aiSpin .7s linear infinite}',
-                '@keyframes aiSpin{to{transform:rotate(360deg)}}',
-
-                /* Scale picker */
-                '.ai-menu__scales{display:flex;gap:6px}',
-                '.ai-menu__scale{flex:1;padding:8px;background:#11141b;border:1px solid #1f2430;border-radius:3px;color:#cbd5e1;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .15s,background .15s;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}',
-                '.ai-menu__scale:hover{background:#161a23;border-color:#2a3040;color:#e6e8ec}',
-                '.ai-menu__scale--active{background:rgba(59,130,246,.10)!important;border-color:#3b82f6!important;color:#93c5fd!important}',
-
-                /* Real-Time card */
-                '.ai-menu__rt-card{padding:10px 12px;background:#11141b;border:1px solid #1f2430;border-radius:3px}',
-                '.ai-menu__rt-status{display:flex;align-items:center;gap:8px;font-size:12px;color:#9199a6;margin-bottom:9px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}',
-                '.ai-menu__rt-label{color:#5c6472;font-weight:500}',
-                '.ai-menu__rt-value{font-weight:600;letter-spacing:.2px;color:#e6e8ec}',
-                '.ai-menu__rt-indicator{width:7px;height:7px;border-radius:50%;background:#475569;flex-shrink:0}',
-                '.ai-menu__rt-indicator--on{background:#34d399;animation:aiPulse 1.8s ease-in-out infinite}',
+                /* Live readout: frame rate, its trend against the video rate, state, engine, model */
+                '.ai-menu__status{margin:0 12px;padding:12px 14px 11px;border-radius:12px;background:var(--ai-raise);border:1px solid var(--ai-line);flex-shrink:0}',
+                '.ai-menu__readout{display:flex;align-items:center;gap:12px}',
+                '.ai-menu__status-fps{display:flex;align-items:baseline;gap:5px;min-width:70px;font:500 12px/1 var(--ai-mono);color:var(--ai-faint);white-space:nowrap}',
+                '.ai-menu__status-fps b{font:600 28px/1 var(--ai-mono);letter-spacing:-.03em;color:var(--ai-text);font-variant-numeric:tabular-nums}',
+                '.ai-menu__status-fps--warn b{color:var(--ai-warn)}',
+                '.ai-menu__status-fps--err b{color:var(--ai-bad)}',
+                '.ai-menu__spark{flex:1;min-width:0;height:36px;overflow:visible}',
+                '.ai-menu__spark-line{fill:none;stroke:var(--ai-good);stroke-width:1.75;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}',
+                '.ai-menu__spark--warn .ai-menu__spark-line{stroke:var(--ai-warn)}',
+                '.ai-menu__spark--err .ai-menu__spark-line{stroke:var(--ai-bad)}',
+                '.ai-menu__spark-target{stroke:var(--ai-line-2);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}',
+                '.ai-menu__pill{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;padding:5px 9px;border-radius:999px;background:rgba(255,255,255,.07)}',
+                '.ai-menu__status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--ai-faint)}',
+                '.ai-menu__status-dot--on{background:var(--ai-good);box-shadow:0 0 0 3px rgba(61,220,151,.18);animation:aiPulse 2.4s ease-in-out infinite}',
+                '.ai-menu__status-dot--off{background:var(--ai-faint)}',
+                '.ai-menu__status-dot--warn{background:var(--ai-warn)}',
+                '.ai-menu__status-dot--err{background:var(--ai-bad)}',
                 '@keyframes aiPulse{0%,100%{opacity:1}50%{opacity:.55}}',
-                '.ai-menu__rt-row{display:flex;gap:6px}',
-                '.ai-menu__rt-btn{flex:1;padding:7px;background:#161a23;border:1px solid #2a3040;border-radius:3px;color:#cbd5e1;font-size:11px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s;letter-spacing:.2px}',
-                '.ai-menu__rt-btn:hover{border-color:#3b82f6;color:#e6e8ec}',
+                '.ai-menu__status-state{font:700 10.5px/1 var(--ai-mono);letter-spacing:.08em;color:var(--ai-text)}',
+                '.ai-menu__status-meta{display:flex;align-items:center;gap:7px;min-width:0;margin-top:10px;font-size:12px;color:var(--ai-dim)}',
+                '.ai-menu__status-mode{flex-shrink:0;font-weight:700;color:var(--ai-accent-ink);white-space:nowrap}',
+                '.ai-menu__status-sep{color:var(--ai-faint)}',
+                '.ai-menu__status-model{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:500 12px/1.3 var(--ai-mono)}',
 
-                /* Action link */
-                '.ai-menu__action{display:flex;align-items:center;justify-content:center;width:100%;padding:10px;background:#11141b;border:1px solid #1f2430;border-radius:3px;color:#cbd5e1;font-size:12px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s;letter-spacing:.2px}',
-                '.ai-menu__action:hover{border-color:#3b82f6;color:#e6e8ec}',
+                /* Tabs: one segmented control */
+                '.ai-menu__tabs{display:flex;gap:4px;margin:12px 12px 0;padding:4px;flex-shrink:0;border-radius:12px;background:rgba(0,0,0,.28);border:1px solid var(--ai-line)}',
+                '.ai-menu__tab{position:relative;flex:1;min-width:0;min-height:38px;display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 4px;border:0;border-radius:9px;background:transparent;color:var(--ai-dim);font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer;transition:background .15s,color .15s}',
+                '.ai-menu .ai-menu__tab .material-icons{font-size:17px}',
+                '.ai-menu__tab:hover{color:var(--ai-text);background:rgba(255,255,255,.05)}',
+                '.ai-menu__tab--active,.ai-menu__tab--active:hover{background:var(--ai-raise-2);color:var(--ai-text);box-shadow:inset 0 0 0 1px var(--ai-line)}',
+                '.ai-menu .ai-menu__tab--active .material-icons{color:var(--ai-accent-ink)}',
+                '.ai-menu__tab-live{position:absolute;top:6px;right:7px;width:6px;height:6px;border-radius:50%;background:transparent}',
+                '.ai-menu__tab-live--on{background:var(--ai-good)}',
 
-                /* Skeleton loading */
-                '.ai-menu__skeleton{height:34px;margin:4px 0;background:linear-gradient(90deg,#11141b 0%,#161a23 50%,#11141b 100%);background-size:200% 100%;border-radius:3px;animation:aiShimmer 1.2s ease-in-out infinite}',
-                '@keyframes aiShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}',
-
-                /* Notification toast */
-                '.ai-notif-host{position:fixed;top:20px;right:20px;z-index:100001;display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none;max-height:80vh}',
-                '.ai-notif{position:static;padding:10px 14px;border-radius:3px;color:#e6e8ec;font-size:12px;font-weight:500;z-index:100001;animation:aiNotifIn .22s ease-out;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:340px;background:#0b0d12;border:1px solid #2a3040}',
-                '.ai-notif--info{border-color:#3b82f6;color:#93c5fd}',
-                '.ai-notif--success{border-color:#34d399;color:#6ee7b7}',
-                '.ai-notif--warning{border-color:#fbbf24;color:#fcd34d}',
-                '.ai-notif--error{border-color:#f87171;color:#fca5a5}',
-                '@keyframes aiNotifIn{from{transform:translateX(16px);opacity:0}to{transform:translateX(0);opacity:1}}',
-
-                /* Tab bar — underline style matching Docker dashboard */
-                '.ai-menu__tabs{display:flex;gap:0;padding:0 12px;background:#11141b;border-bottom:1px solid #1f2430}',
-                '.ai-menu__tab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 6px;background:transparent;border:none;border-bottom:2px solid transparent;color:#9199a6;font-size:12px;font-weight:500;cursor:pointer;transition:color .15s,border-color .15s;letter-spacing:.2px}',
-                '.ai-menu__tab .material-icons{font-size:15px}',
-                '.ai-menu__tab:hover{color:#e6e8ec}',
-                '.ai-menu__tab--active{color:#e6e8ec;border-bottom-color:#3b82f6}',
-                '.ai-menu__tab-live{width:6px;height:6px;border-radius:50%;background:transparent;transition:background .2s}',
-                '.ai-menu__tab-live--on{background:#34d399;animation:aiPulse 1.8s ease-in-out infinite}',
+                /* Body and panes */
+                '.ai-menu__body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:14px 12px 14px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent}',
+                '.ai-menu__body::-webkit-scrollbar{width:10px}',
+                '.ai-menu__body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border:3px solid transparent;border-radius:5px;background-clip:padding-box}',
+                '.ai-menu__body::-webkit-scrollbar-track{background:transparent}',
                 '.ai-menu__pane{display:none}',
-                '.ai-menu__pane--active{display:block}',
-                '.ai-menu__footer{padding-top:10px;margin-top:6px;border-top:1px solid #1f2430}',
+                '.ai-menu__pane--active{display:block;animation:aiFade .16s ease-out}',
+                '@keyframes aiFade{from{opacity:0}to{opacity:1}}',
+                '.ai-menu__section{margin-top:18px}',
+                '.ai-menu__section:first-child{margin-top:0}',
+                '.ai-menu__section-title{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 2px 9px;font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ai-faint)}',
+                '.ai-menu__section-sub{font-size:11px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--ai-faint);text-align:right}',
 
-                /* Preset chips grid */
-                '.ai-menu__presets{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}',
-                '.ai-menu__preset{padding:8px 4px;background:#11141b;border:1px solid #1f2430;border-radius:3px;color:#cbd5e1;font-size:11px;font-weight:600;cursor:pointer;transition:border-color .12s,color .12s;text-align:center;letter-spacing:.1px}',
-                '.ai-menu__preset:hover{border-color:#2a3040;color:#e6e8ec}',
-                '.ai-menu__preset--active{background:rgba(59,130,246,.10);border-color:#3b82f6;color:#93c5fd}',
+                /* Models: filter chips, groups, rows */
+                '.ai-menu__chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}',
+                '.ai-menu__chip{min-height:32px;padding:5px 13px;border-radius:999px;border:1px solid var(--ai-line);background:transparent;color:var(--ai-dim);font-size:12.5px;font-weight:600;cursor:pointer;transition:background .15s,color .15s,border-color .15s}',
+                '.ai-menu__chip:hover{color:var(--ai-text);border-color:var(--ai-line-2)}',
+                '.ai-menu__chip--active,.ai-menu__chip--active:hover{background:var(--ai-accent-bg);border-color:rgba(0,164,220,.55);color:var(--ai-accent-ink)}',
+                '.ai-menu__cat{margin-bottom:16px}',
+                '.ai-menu__cat:last-child{margin-bottom:0}',
+                '.ai-menu__cat-head{display:flex;align-items:baseline;gap:8px;padding:0 4px 7px}',
+                '.ai-menu__cat-name{font-size:12.5px;font-weight:700;color:var(--ai-text)}',
+                '.ai-menu__cat-desc{font-size:11.5px;color:var(--ai-faint)}',
+                '.ai-menu__model{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;margin:0 0 4px;padding:8px 10px 8px 12px;border-radius:10px;border:1px solid transparent;background:var(--ai-raise);color:var(--ai-text);font-size:13px;text-align:left;cursor:pointer;transition:background .12s,border-color .12s}',
+                '.ai-menu__model:hover{background:var(--ai-raise-2)}',
+                '.ai-menu__model--active,.ai-menu__model--active:hover{background:var(--ai-accent-bg);border-color:rgba(0,164,220,.5)}',
+                '.ai-menu__model--loading{opacity:.65;pointer-events:none}',
+                '.ai-menu__radio{width:16px;height:16px;flex-shrink:0;border-radius:50%;border:2px solid var(--ai-line-2);transition:border-color .15s}',
+                '.ai-menu__model--active .ai-menu__radio{border-color:var(--ai-accent);background:radial-gradient(circle,var(--ai-accent) 0,var(--ai-accent) 3.5px,transparent 4.5px)}',
+                '.ai-menu__model-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}',
+                '.ai-menu__badge{flex-shrink:0;padding:3px 7px;border-radius:6px;background:rgba(255,255,255,.07);color:var(--ai-dim);font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}',
+                '.ai-menu__model--active .ai-menu__badge{background:rgba(0,164,220,.22);color:var(--ai-accent-ink)}',
+                '.ai-menu__model-scale{flex-shrink:0;min-width:26px;text-align:right;font:600 12px/1 var(--ai-mono);color:var(--ai-dim)}',
+                '.ai-menu__state{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--ai-faint)}',
+                '.ai-menu .ai-menu__state .material-icons{font-size:18px}',
+                '.ai-menu__state--ready{color:var(--ai-good)}',
+                '.ai-menu__state--need-dl{color:var(--ai-faint)}',
+                '.ai-menu__state--busy{color:var(--ai-accent-ink)}',
+                '.ai-menu__state--err{color:var(--ai-bad)}',
+                '.ai-menu__spinner{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.14);border-top-color:var(--ai-accent);animation:aiSpin .7s linear infinite}',
+                '@keyframes aiSpin{to{transform:rotate(360deg)}}',
+                '.ai-menu__scales{display:flex;gap:4px;padding:4px;border-radius:12px;background:rgba(0,0,0,.28);border:1px solid var(--ai-line)}',
+                '.ai-menu__scale{flex:1;min-height:38px;border:0;border-radius:9px;background:transparent;color:var(--ai-dim);font:600 13px/1 var(--ai-mono);cursor:pointer;transition:background .15s,color .15s}',
+                '.ai-menu__scale:hover{color:var(--ai-text)}',
+                '.ai-menu__scale--active,.ai-menu__scale--active:hover{background:var(--ai-raise-2);color:var(--ai-text);box-shadow:inset 0 0 0 1px var(--ai-line)}',
 
-                /* Live sliders */
-                '.ai-menu__sliders{display:flex;flex-direction:column;gap:9px}',
-                '.ai-menu__slider-row{display:flex;flex-direction:column;gap:5px}',
-                '.ai-menu__slider-label{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:#cbd5e1;letter-spacing:.2px}',
-                '.ai-menu__slider-icon{font-size:14px;color:#3b82f6}',
-                '.ai-menu__slider-val{margin-left:auto;color:#93c5fd;font-variant-numeric:tabular-nums;min-width:32px;text-align:right;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}',
-                '.ai-menu__slider{width:100%;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:#1f2430;outline:none;cursor:pointer}',
-                '.ai-menu__slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:12px;height:12px;border-radius:2px;background:#3b82f6;cursor:pointer;border:1px solid #0b0d12}',
-                '.ai-menu__slider::-webkit-slider-thumb:hover{background:#60a5fa}',
-                '.ai-menu__slider::-moz-range-thumb{width:12px;height:12px;border-radius:2px;background:#3b82f6;cursor:pointer;border:1px solid #0b0d12}',
+                /* Filters: preset tiles with a live preview of the current frame */
+                '.ai-menu__presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}',
+                '.ai-menu__preset{display:flex;flex-direction:column;gap:6px;padding:4px 4px 7px;min-width:0;border-radius:11px;border:1px solid transparent;background:var(--ai-raise);color:var(--ai-dim);font-size:11.5px;font-weight:600;text-align:center;cursor:pointer;transition:background .12s,border-color .12s,color .12s}',
+                '.ai-menu__preset:hover{background:var(--ai-raise-2);color:var(--ai-text)}',
+                '.ai-menu__preset--active,.ai-menu__preset--active:hover{border-color:var(--ai-accent);background:var(--ai-accent-bg);color:var(--ai-text)}',
+                '.ai-menu__preset-preview{display:block;width:100%;height:auto;border-radius:8px;background:#1b2330}',
+                '.ai-menu__preset-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+                '.ai-menu__sliders{display:flex;flex-direction:column;gap:14px}',
+                '.ai-menu__slider-row{display:flex;flex-direction:column;gap:6px}',
+                '.ai-menu__slider-label{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--ai-text)}',
+                '.ai-menu .ai-menu__slider-icon{font-size:17px;color:var(--ai-faint)}',
+                '.ai-menu__slider-val{margin-left:auto;min-width:40px;text-align:right;font:600 12px/1 var(--ai-mono);color:var(--ai-accent-ink);font-variant-numeric:tabular-nums}',
+                '.ai-menu__slider,.ai-menu__adv-slider{-webkit-appearance:none;appearance:none;width:100%;height:4px;margin:7px 0;border-radius:2px;cursor:pointer;background:linear-gradient(to right,rgba(255,255,255,.15) var(--ai-from,0%),var(--ai-accent) var(--ai-from,0%),var(--ai-accent) var(--ai-to,0%),rgba(255,255,255,.15) var(--ai-to,0%))}',
+                '.ai-menu__slider::-webkit-slider-thumb,.ai-menu__adv-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;border:0;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5),0 0 0 4px rgba(0,164,220,.25);cursor:pointer}',
+                '.ai-menu__slider::-moz-range-thumb,.ai-menu__adv-slider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;border:0;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5),0 0 0 4px rgba(0,164,220,.25);cursor:pointer}',
+                '.ai-menu__adv-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:42px;padding:8px 10px 8px 12px;border-radius:10px;border:1px solid var(--ai-line);background:transparent;color:var(--ai-text);font-size:12.5px;font-weight:600;text-align:left;cursor:pointer;transition:border-color .15s,background .15s}',
+                '.ai-menu__adv-toggle:hover{border-color:var(--ai-line-2);background:var(--ai-raise)}',
+                '.ai-menu__adv-note{margin-left:6px;font-weight:500;color:var(--ai-faint)}',
+                '.ai-menu .ai-menu__adv-caret{font-size:20px;color:var(--ai-faint)}',
+                '.ai-menu__adv{display:flex;flex-direction:column;gap:8px;max-height:0;overflow:hidden;transition:max-height .28s ease}',
+                '.ai-menu__adv--open{max-height:640px;padding-top:10px}',
+                '.ai-menu__adv-row{display:flex;flex-direction:column;gap:4px;padding:9px 12px;border-radius:10px;background:var(--ai-raise)}',
+                '.ai-menu__adv-label{display:flex;justify-content:space-between;gap:10px;font-size:12px;font-weight:600;color:var(--ai-dim)}',
+                '.ai-menu__adv-val{font:600 12px/1 var(--ai-mono);color:var(--ai-accent-ink);font-variant-numeric:tabular-nums}',
 
-                /* Advanced collapsible */
-                '.ai-menu__adv-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;padding:8px 10px;background:#11141b;border:1px solid #1f2430;border-radius:3px;color:#9199a6;font-size:11px;font-weight:600;cursor:pointer;transition:color .15s,border-color .15s;letter-spacing:.2px}',
-                '.ai-menu__adv-toggle:hover{border-color:#2a3040;color:#e6e8ec}',
-                '.ai-menu__adv-caret{font-size:16px;color:#5c6472}',
-                '.ai-menu__adv{max-height:0;overflow:hidden;transition:max-height .28s ease;display:flex;flex-direction:column;gap:7px}',
-                '.ai-menu__adv--open{max-height:480px;padding-top:8px}',
-                '.ai-menu__adv-row{display:flex;flex-direction:column;gap:3px;padding:5px 8px;background:#0b0d12;border:1px solid #1f2430;border-radius:3px}',
-                '.ai-menu__adv-label{display:flex;justify-content:space-between;font-size:10px;font-weight:600;color:#5c6472;text-transform:uppercase;letter-spacing:.4px}',
-                '.ai-menu__adv-val{color:#93c5fd;font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}',
-                '.ai-menu__adv-slider{width:100%;-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;background:#1f2430;outline:none;cursor:pointer}',
-                '.ai-menu__adv-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:10px;height:10px;border-radius:2px;background:#3b82f6;cursor:pointer;border:1px solid #0b0d12}',
-                '.ai-menu__adv-slider::-moz-range-thumb{width:10px;height:10px;border-radius:2px;background:#3b82f6;cursor:pointer;border:1px solid #0b0d12}',
-
-                /* Filter action buttons */
-                '.ai-menu__filter-actions{display:flex;gap:7px;padding-top:6px}',
-                '.ai-menu__filter-btn{flex:1;padding:9px;border-radius:3px;font-size:12px;font-weight:600;cursor:pointer;transition:border-color .15s,background .15s;letter-spacing:.2px}',
+                /* Buttons */
+                '.ai-menu__filter-actions{display:flex;gap:8px;margin-top:18px}',
+                '.ai-menu__filter-btn{flex:1;min-height:40px;padding:9px 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s,color .15s}',
                 '.ai-menu__filter-btn:disabled{opacity:.4;cursor:not-allowed}',
-                '.ai-menu__filter-btn--secondary{background:#11141b;border:1px solid #1f2430;color:#cbd5e1}',
-                '.ai-menu__filter-btn--secondary:hover:not(:disabled){border-color:#2a3040;color:#e6e8ec}',
-                '.ai-menu__filter-btn--primary{background:rgba(59,130,246,.12);border:1px solid #3b82f6;color:#93c5fd}',
-                '.ai-menu__filter-btn--primary:hover:not(:disabled){background:rgba(59,130,246,.2);color:#e6e8ec}'
+                '.ai-menu__filter-btn--secondary{background:transparent;border:1px solid var(--ai-line-2);color:var(--ai-text)}',
+                '.ai-menu__filter-btn--secondary:hover:not(:disabled){background:var(--ai-raise)}',
+                /* Dark ink on the accent: white on #00a4dc is under 3:1 */
+                '.ai-menu__filter-btn--primary{background:var(--ai-accent);border:1px solid var(--ai-accent);color:#03141d}',
+                '.ai-menu__filter-btn--primary:hover:not(:disabled){background:#1cb4e8;border-color:#1cb4e8}',
+
+                /* Auto pane */
+                '.ai-menu__auto-loading{padding:26px 4px;color:var(--ai-faint);font-size:12.5px;text-align:center}',
+                '.ai-menu__auto-master{display:flex;align-items:center;gap:14px;padding:14px;border-radius:12px;background:var(--ai-raise);border:1px solid var(--ai-line)}',
+                '.ai-menu__auto-master--on{background:linear-gradient(135deg,rgba(0,164,220,.17),rgba(0,164,220,.05));border-color:rgba(0,164,220,.45)}',
+                '.ai-menu__auto-master-text{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1}',
+                '.ai-menu__auto-master-title{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:700}',
+                '.ai-menu__auto-state{padding:4px 6px;border-radius:5px;background:rgba(255,255,255,.08);color:var(--ai-dim);font:700 10px/1 var(--ai-mono);letter-spacing:.1em}',
+                '.ai-menu__auto-master--on .ai-menu__auto-state{background:rgba(0,164,220,.22);color:var(--ai-accent-ink)}',
+                '.ai-menu__auto-master-sub{font-size:12px;line-height:1.5;color:var(--ai-dim)}',
+                '.ai-menu__auto-card{margin-top:10px;padding:14px;border-radius:12px;background:var(--ai-raise);border:1px solid var(--ai-line)}',
+                '.ai-menu__auto-card--muted{color:var(--ai-dim);font-size:12.5px;line-height:1.55}',
+                '.ai-menu__auto-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}',
+                '.ai-menu__auto-card-title{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ai-faint)}',
+                '.ai-menu__auto-scale{padding:4px 7px;border-radius:6px;background:rgba(0,164,220,.18);color:var(--ai-accent-ink);font:700 12px/1 var(--ai-mono)}',
+                '.ai-menu__auto-model{font:600 18px/1.25 var(--ai-mono);letter-spacing:-.01em;word-break:break-all}',
+                '.ai-menu__auto-size{margin-top:5px;font:500 12px/1.3 var(--ai-mono);color:var(--ai-dim)}',
+                '.ai-menu__auto-reason{margin-top:9px;font-size:12.5px;line-height:1.55;color:var(--ai-dim)}',
+                '.ai-menu__auto-warn{margin-top:9px;padding:8px 10px;border-radius:8px;background:rgba(245,185,74,.1);color:var(--ai-warn);font-size:12px;line-height:1.5}',
+                '.ai-menu__auto-signals{margin-top:9px}',
+                '.ai-menu__auto-signals summary{cursor:pointer;font-size:12px;color:var(--ai-faint)}',
+                '.ai-menu__auto-signals ul{margin:6px 0 0;padding-left:18px;font-size:12px;line-height:1.6;color:var(--ai-dim)}',
+                '.ai-menu__auto-row{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--ai-line)}',
+                '.ai-menu__auto-row:last-of-type{border-bottom:0}',
+                '.ai-menu__auto-row--off{opacity:.45}',
+                '.ai-menu__auto-row-text{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}',
+                '.ai-menu__auto-row-label{font-size:13px;font-weight:600}',
+                '.ai-menu__auto-row-sub{font-size:11.5px;line-height:1.45;color:var(--ai-faint)}',
+                '.ai-menu__auto-suggest{display:flex;align-items:center;gap:12px;margin-top:10px;padding:12px 12px 12px 14px;border-radius:12px;background:rgba(61,220,151,.07);border:1px solid rgba(61,220,151,.3)}',
+                '.ai-menu__auto-suggest-text{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}',
+                '.ai-menu__auto-suggest-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ai-faint)}',
+                '.ai-menu__auto-suggest-value{font-size:13.5px;font-weight:600}',
+                '.ai-menu__auto-suggest-cur{font-size:12px;font-weight:500;color:var(--ai-faint)}',
+                '.ai-menu__auto-suggest .ai-menu__filter-btn{flex:0 0 auto}',
+                '.ai-menu__auto-actions{display:flex;gap:8px;margin-top:16px}',
+
+                /* Realtime pane */
+                '.ai-menu__rt-card{padding:14px;border-radius:12px;background:var(--ai-raise);border:1px solid var(--ai-line)}',
+                '.ai-menu__rt-status{display:flex;align-items:center;gap:10px;min-width:0}',
+                '.ai-menu__rt-indicator{width:9px;height:9px;flex-shrink:0;border-radius:50%;background:var(--ai-faint)}',
+                '.ai-menu__rt-indicator--on{background:var(--ai-good);box-shadow:0 0 0 4px rgba(61,220,151,.16);animation:aiPulse 2.4s ease-in-out infinite}',
+                '.ai-menu__rt-label{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ai-faint)}',
+                '.ai-menu__rt-value{margin-left:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 13.5px/1.2 var(--ai-mono);color:var(--ai-dim)}',
+                '.ai-menu__rt-value--on{color:var(--ai-good)}',
+                '.ai-menu__rt-row{display:flex;gap:8px;margin-top:14px}',
+                '.ai-menu__engines{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}',
+                '.ai-menu__engine{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:10px;border:1px solid transparent;background:var(--ai-raise)}',
+                '.ai-menu__engine--on{border-color:rgba(61,220,151,.4);background:rgba(61,220,151,.07)}',
+                '.ai-menu__engine-name{font-size:13px;font-weight:600}',
+                '.ai-menu__engine--on .ai-menu__engine-name::after{content:"running";margin-left:8px;padding:2px 6px;border-radius:5px;background:rgba(61,220,151,.18);color:var(--ai-good);font:700 9.5px/1 var(--ai-mono);letter-spacing:.08em;text-transform:uppercase;vertical-align:2px}',
+                '.ai-menu__engine-desc{font-size:11.5px;line-height:1.45;color:var(--ai-faint)}',
+
+                /* Footer */
+                '.ai-menu__footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 10px 10px 16px;flex-shrink:0;border-top:1px solid var(--ai-line)}',
+                '.ai-menu__summary{display:flex;align-items:center;gap:8px;min-width:0;font-size:12px;color:var(--ai-dim)}',
+                '.ai-menu__summary-dot{width:7px;height:7px;flex-shrink:0;border-radius:50%;background:var(--ai-good)}',
+                '.ai-menu__summary-dot--off{background:var(--ai-faint)}',
+                '.ai-menu__summary-strong{font-family:var(--ai-mono);font-weight:600;color:var(--ai-text)}',
+                '.ai-menu__action{display:inline-flex;align-items:center;gap:2px;min-height:34px;padding:6px 6px 6px 12px;border:0;border-radius:9px;background:transparent;color:var(--ai-accent-ink);font-size:12.5px;font-weight:700;white-space:nowrap;cursor:pointer;transition:background .15s}',
+                '.ai-menu__action:hover{background:var(--ai-accent-bg)}',
+
+                /* Phones: a bottom sheet across the full width */
+                '@media (max-width:600px){' +
+                    '.ai-menu,.ai-menu--left,.ai-menu--right,.ai-menu--center{left:0;right:0;bottom:0;width:auto;max-width:none;max-height:80vh;border-radius:18px 18px 0 0;border-bottom:0;transform:none;animation-name:aiSheetIn;padding-bottom:env(safe-area-inset-bottom,0px)}' +
+                    '.ai-menu__grip{display:block;width:38px;height:4px;margin:8px auto 0;border-radius:2px;background:rgba(255,255,255,.25)}' +
+                    '.ai-menu__header{padding-top:8px}' +
+                    '.ai-menu__tab{gap:4px;font-size:12px}' +
+                '}',
+                '@keyframes aiSheetIn{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}',
+                /* Short windows: less offset from the bottom, more room for content */
+                '@media (max-height:620px) and (min-width:601px){.ai-menu{bottom:72px;max-height:calc(100vh - 88px)}}',
+                /* TVs and large monitors, usually read from a distance. zoom scales the
+                   panel's own lengths too, so its offset and height cap are divided back. */
+                '@media (min-width:1800px){.ai-menu{zoom:1.15;bottom:84px;max-height:calc((100vh - 150px) / 1.15)}}',
+                '@media (prefers-reduced-motion:reduce){.ai-menu,.ai-menu *,.ai-notif{animation:none!important;transition:none!important}}',
+
+                /* Notifications */
+                '.ai-notif-host{position:fixed;top:20px;right:20px;z-index:100001;display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none;max-height:80vh}',
+                '.ai-notif{position:static;display:flex;align-items:center;gap:10px;max-width:360px;padding:10px 14px;border-radius:12px;background:rgba(15,18,23,.94);border:1px solid rgba(255,255,255,.1);box-shadow:0 12px 32px rgba(0,0,0,.45);color:#f1f3f6;font:500 13px/1.4 "Noto Sans",-apple-system,"Segoe UI",system-ui,sans-serif;pointer-events:none;animation:aiNotifIn .22s ease-out}',
+                '.ai-notif::before{content:"";width:8px;height:8px;flex-shrink:0;border-radius:50%;background:#00a4dc}',
+                '.ai-notif--success::before{background:#3ddc97}',
+                '.ai-notif--warning::before{background:#f5b94a}',
+                '.ai-notif--error::before{background:#ff6b6b}',
+                '@keyframes aiNotifIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}'
             ].join('');
 
             document.head.appendChild(styles);

@@ -2,7 +2,7 @@
 
 [![Built with Claude Opus 5.5](https://img.shields.io/badge/Built%20with-Claude%20Opus%205.5-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
 
-> **Built with Claude Opus 5** — this plugin is developed and maintained entirely with [Anthropic's Claude models](https://www.anthropic.com/claude): **Opus 5 since v1.8.3.13**, Fable 5 for v1.8.3.5–v1.8.3.12, Opus 4.8 before that. Code contributions, Dockerfiles, CI workflows and documentation are produced in a pair-programming style with the model; the maintainer ([Kuschel-code](https://github.com/Kuschel-code)) reviews, tests and publishes every change. Release commits carry the `Co-Authored-By: Claude` trailer as disclosure.
+> **Built with Claude Opus 5.5** — this plugin is developed with [Anthropic's Claude models](https://www.anthropic.com/claude): **Opus 5.5 since September 2026** (the review of v1.8.3.32 and the redesigned player menu, settings page and support assistant on `main`), Opus 5 for v1.8.3.13–v1.8.3.30, Fable 5 for v1.8.3.5–v1.8.3.12 and Opus 4.8 before that. v1.8.3.31 and v1.8.3.32 were prepared with OpenAI Codex. Code, Dockerfiles, CI workflows and documentation are written in a pair-programming style with the model; the maintainer ([Kuschel-code](https://github.com/Kuschel-code)) reviews, tests and publishes every change. Commits made with Claude carry a `Co-Authored-By: Claude` trailer as disclosure.
 
 ---
 
@@ -15,6 +15,14 @@
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, with AI inference in a Docker service and video decoding/encoding on the Jellyfin host.
 
 **Release status (2026-09-23):** v1.8.3.32 is released for Jellyfin 12.0+ / .NET 10. It passed 443 C# tests against each of 12.0 and 12.1 and a real isolated 12.1 plugin-startup test. Jellyfin 10.11 users retain v1.8.3.31. Target-server acceptance was waived; actual playback, GPU and HDR target-hardware behavior remain unverified.
+
+**Known issues in v1.8.3.31–v1.8.3.32** (found in a review on 2026-09-24, not fixed in a release yet):
+- Real-time upscaling refuses some SDR videos with an "HDR" message, in every mode: DVD/SD rips tagged `smpte170m`/`bt470bg` and 10-bit files without colour tags. SD rips still work as a library/batch job.
+- Library jobs refuse 10-bit files without colour tags (common for anime encodes) with `HDR requires PQ/ST.2084`.
+- HDR batch output keeps the model's colour but not its detail: its brightness is a plain bicubic enlargement.
+- In Server AI mode a slow server shows a slideshow, and during a server outage the last upscaled frame stays on screen; the automatic switch to WebGL was removed in v1.8.3.31. Switch the mode from the player menu.
+
+**On `main`, not in a release yet:** a redesigned in-player menu (live frame-rate readout, filter previews on the playing frame, phone and TV layouts), a redesigned settings page with keyboard- and remote-friendly tabs, and a website support assistant that understands German and typos.
 
 **Docker Images (released in lockstep with the plugin, both at v1.8.3.32):** All seven regular version pins and docker7 tags are published and registry-verified, including ten platform configurations. NVIDIA latest also points to v1.8.3.32. [Release verification and Docker digests](docs/RELEASE-v1.8.3.32-PUBLICATION.md).
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
@@ -114,7 +122,7 @@ When you press play, the plugin enhances the video in real-time. It offers sever
 
 **Pair it with what you already have:** on a desktop browser you can also use your GPU's own VSR (NVIDIA RTX Video Super Resolution / Intel VSR); for mpv there's mpv-shim + Anime4K. This plugin is the *hub* that brings anime/AI upscaling to every web/TV/mobile client **and** batch-upscales your whole library.
 
-**How it decides:** At playback start, a benchmark runs against the Docker service. If the server can process frames fast enough (≥80% of video FPS), it uses Server AI mode. Otherwise, it falls back to WebGL. If server performance drops during playback, it auto-switches to WebGL.
+**How it decides:** At playback start, a benchmark runs against the Docker service. If the server can process frames fast enough (≥80% of video FPS), it uses Server AI mode. Otherwise, it falls back to WebGL. Since v1.8.3.31 it no longer switches to WebGL by itself when the server slows down during playback (see the known issues above); switch the mode from the player menu.
 
 **Visual indicators:**
 - FPS overlay (top-left corner): Shows current FPS, mode, and model
