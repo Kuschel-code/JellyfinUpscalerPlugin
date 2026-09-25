@@ -1,7 +1,9 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-exports.loadPlayer = function () {
+// options.globals are installed before the script runs; options.realStreamLookup keeps
+// the script's own item lookup instead of a fixed SDR stream.
+exports.loadPlayer = function (options = {}) {
     let now = 0, serial = 0;
     const requests = [], draws = [], images = [], intervals = new Map(), notices = [];
     const context = {drawImage: (...args) => draws.push(args)};
@@ -26,10 +28,13 @@ exports.loadPlayer = function () {
         fetch(url, options) { return new Promise((resolve, reject) => { requests.push({url, options, resolve, reject}); }); }
     };
     sandbox.Math.random = () => 0;
+    Object.assign(sandbox, options.globals);
     sandbox.window = sandbox;
     vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../Configuration/player-integration.js'), 'utf8'), sandbox);
     sandbox.PlayerIntegration.showPlayerNotification = (...args) => notices.push(args);
-    sandbox.PlayerIntegration._readPlayingVideoStream = async () => ({Type: 'Video', ColorTransfer: 'bt709', BitDepth: 8, AverageFrameRate: 30});
+    if (!options.realStreamLookup) {
+        sandbox.PlayerIntegration._readPlayingVideoStream = async () => ({Type: 'Video', ColorTransfer: 'bt709', BitDepth: 8, AverageFrameRate: 30});
+    }
     const rt = sandbox.RealtimeUpscaler;
     rt._createFpsOverlay = () => {};
     return {rt, video, requests, draws, images, notices, sandbox,

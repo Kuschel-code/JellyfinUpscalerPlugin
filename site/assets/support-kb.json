@@ -1,6 +1,6 @@
 {
-  "version": "1.8.3.33",
-  "updated": "2026-09-24",
+  "version": "1.8.3.34",
+  "updated": "2026-09-25",
   "repo": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin",
   "newIssueUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/new",
   "intro": "Hi! I'm the AI Upscaler support assistant. I answer from every support topic we've ever handled (each with a step-by-step guide), and I can search all GitHub issues live. Ask about install errors, GPU not used, Docker/NAS setup, API tokens, models, and more. You can ask in English or German.",
@@ -302,6 +302,32 @@
         "failed to load library"
       ],
       "answer": "Step by step for NVIDIA:\n1. Use the **`docker7`** (NVIDIA) image.\n2. Install the NVIDIA Container Toolkit on the host.\n3. Run with `--gpus all` (or `runtime: nvidia` in compose).\n4. Verify GPU passthrough: `docker exec <container> nvidia-smi` must succeed.\n5. If you saw `INVALID_ARGUMENT` or a `libonnxruntime_providers` load error, update to the **latest version** (v1.7.8 brought FP16 + provider fixes) and re-pull.\n6. Check `/gpu-verify` → `CUDAExecutionProvider` / `TensorrtExecutionProvider`."
+    },
+    {
+      "id": "realtime-standby",
+      "title": "Real-time stays on Standby: \"Video color metadata unavailable\"",
+      "issues": [
+        86,
+        87
+      ],
+      "keywords": [
+        "standby",
+        "stays on standby",
+        "color metadata unavailable",
+        "colour metadata unavailable",
+        "video color metadata unavailable",
+        "metadata unavailable",
+        "realtime processing cannot be validated",
+        "cannot be validated",
+        "realtime does not start",
+        "real-time doesn't start",
+        "realtime won't start",
+        "real-time not starting",
+        "bleibt auf standby",
+        "echtzeit startet nicht",
+        "farbmetadaten"
+      ],
+      "answer": "**Fixed in v1.8.3.34.** v1.8.3.31–v1.8.3.33 refused real-time upscaling for *every* video in the Jellyfin web client with \"Video color metadata unavailable; realtime processing cannot be validated\", and the menu stayed on **Standby**. The player looked for the playing item in the page address, which Jellyfin 10.9 and later no longer contains. The AI service is not the cause: if its log ends with `Uvicorn running on http://0.0.0.0:5000`, it is fine.\n1. Update the plugin to **v1.8.3.34** (Dashboard → Plugins → Catalog), restart Jellyfin, then reload the browser tab (Ctrl+F5) so the new player script loads.\n2. Play the video again. If the message stays, run **⋮ → Refresh metadata** on the item once: a file Jellyfin has not scanned yet has no colour information to check.\n3. Still refused? Open an issue and include the browser console lines that start with `AI Upscaler`.\n\nv1.8.3.31, the version for Jellyfin 10.11, has the same defect."
     },
     {
       "id": "realtime-webgl",
