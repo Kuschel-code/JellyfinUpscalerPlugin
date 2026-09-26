@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, with AI inference in a Docker service and video decoding/encoding on the Jellyfin host.
 
-**Release status (2026-09-25):** v1.8.3.34 is released for Jellyfin 12.0+ / .NET 10. It makes real-time upscaling start again in the web client, which v1.8.3.31–v1.8.3.33 refused for every video. Jellyfin 10.11 users retain v1.8.3.31, which has the same defect. Target-server acceptance was not run; actual playback, GPU and HDR target-hardware behavior remain unverified.
+**Release status (2026-09-26):** v1.8.3.34 is released for Jellyfin 12.0+ / .NET 10. It makes real-time upscaling start again in the web client, which v1.8.3.31–v1.8.3.33 refused for every video. Jellyfin 10.11 users retain v1.8.3.31, which has the same defect. Target-server acceptance was not run; actual playback, GPU and HDR target-hardware behavior remain unverified.
 
 **Fixed in v1.8.3.34** (reported in GitHub issues #86 and #87 on 2026-09-24):
 - Real-time upscaling never started in the web client. Every video showed "Video color metadata unavailable; realtime processing cannot be validated" and the menu stayed on Standby. Since v1.8.3.31 the player looked for the playing item in the page address, where Jellyfin 10.9 and later no longer put it. It now reads the item from the video's stream address, or from the web client's playback request when Jellyfin transcodes, and checks the colour format of the version that actually plays.

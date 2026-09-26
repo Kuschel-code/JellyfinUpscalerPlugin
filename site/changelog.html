@@ -14,7 +14,7 @@
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Every release carries its full notes on the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
   <h2>v1.8.3.34 - Real-time upscaling starts again</h2>
-  <p class="date">2026-09-25 · target-server acceptance not run; GPU, live-player and HDR target-hardware behavior remain unverified</p>
+  <p class="date">2026-09-26 · target-server acceptance not run; GPU, live-player and HDR target-hardware behavior remain unverified</p>
   <ul>
     <li>Issues #86 and #87: since v1.8.3.31 real-time upscaling refused every video in the web client with "Video color metadata unavailable; realtime processing cannot be validated", and the menu stayed on Standby. The player looked for the playing item in the page address, where Jellyfin 10.9 and later no longer put it.</li>
     <li>It now reads the item from the video's stream address (direct play), or from the web client's playback request when Jellyfin transcodes to HLS. For an item with several versions it checks the colour format of the version that plays.</li>
