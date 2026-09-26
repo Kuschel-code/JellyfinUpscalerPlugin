@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.8.3.34",
+        "changelog": "v1.8.3.34: Real-time upscaling starts again in the web client. Since v1.8.3.31 it refused every video with \"Video color metadata unavailable\", because Jellyfin 10.9 and later no longer put the playing item in the page address; the player now reads the item from the video's stream or the web client's playback request and checks the version that plays. Requires Jellyfin 12.0 or newer. Target-hardware playback, GPU and HDR acceptance remain unverified.",
+        "targetAbi": "12.0.0.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.3.34/JellyfinUpscalerPlugin-v1.8.3.34.zip",
+        "checksum": "c7ef37ea0df7c1bcf1b5b7270329b676",
+        "timestamp": "2026-09-26T02:38:07Z"
+      },
+      {
         "version": "1.8.3.33",
         "changelog": "v1.8.3.33: Redesigned in-player menu and settings page. SDR videos (DVD/SD rips, untagged 10-bit) are no longer refused as HDR in real time or in library jobs; HDR batch output keeps the model's detail; Server AI hides stale frames during outages and falls back to Lanczos when the server cannot keep up. Requires Jellyfin 12.0 or newer. Target-hardware playback, GPU and HDR acceptance remain unverified.",
         "targetAbi": "12.0.0.0",
