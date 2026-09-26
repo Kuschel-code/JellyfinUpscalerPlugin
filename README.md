@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.34 — Jellyfin 12
+# Jellyfin AI Upscaler Plugin v1.8.3.35 — Jellyfin 12
 
 [![Built with Claude Opus 5.5](https://img.shields.io/badge/Built%20with-Claude%20Opus%205.5-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
 
@@ -14,7 +14,10 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, with AI inference in a Docker service and video decoding/encoding on the Jellyfin host.
 
-**Release status (2026-09-26):** v1.8.3.34 is released for Jellyfin 12.0+ / .NET 10. It makes real-time upscaling start again in the web client, which v1.8.3.31–v1.8.3.33 refused for every video. Jellyfin 10.11 users retain v1.8.3.31, which has the same defect. Target-server acceptance was not run; actual playback, GPU and HDR target-hardware behavior remain unverified.
+**Release status (2026-09-26):** v1.8.3.35 is released for Jellyfin 12.0+ / .NET 10. The player button no longer needs write access to Jellyfin's web folder, and since v1.8.3.34 real-time upscaling starts again in the web client. Jellyfin 10.11 users retain v1.8.3.31, which has both defects. Target-server acceptance was not run; actual playback, GPU and HDR target-hardware behavior remain unverified.
+
+**Fixed in v1.8.3.35** (reported in GitHub issue #75):
+- The player button never appeared when Jellyfin could not write its web client's `index.html`: on a default Windows install (the server runs as NetworkService under `Program Files`), with the Debian package, snaps and read-only containers. It showed only in a tab that had opened the plugin's settings. The plugin now adds its script to the page as Jellyfin serves it; the file on disk is left alone.
 
 **Fixed in v1.8.3.34** (reported in GitHub issues #86 and #87 on 2026-09-24):
 - Real-time upscaling never started in the web client. Every video showed "Video color metadata unavailable; realtime processing cannot be validated" and the menu stayed on Standby. Since v1.8.3.31 the player looked for the playing item in the page address, where Jellyfin 10.9 and later no longer put it. It now reads the item from the video's stream address, or from the web client's playback request when Jellyfin transcodes, and checks the colour format of the version that actually plays.
@@ -27,7 +30,7 @@ AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neura
 
 **New in v1.8.3.33:** a redesigned in-player menu (live frame-rate readout, filter previews on the playing frame, phone and TV layouts) and settings page (keyboard- and remote-friendly tabs).
 
-**Docker Images (released in lockstep with the plugin, both at v1.8.3.34):** All seven regular version pins and docker7 tags are published and registry-verified, including ten platform configurations. NVIDIA latest also points to v1.8.3.34. The AI service itself is unchanged since v1.8.3.33. [Release notes](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.34).
+**Docker Images (released in lockstep with the plugin, both at v1.8.3.35):** All seven regular version pins and docker7 tags are published and registry-verified, including ten platform configurations. NVIDIA latest also points to v1.8.3.35. The AI service itself is unchanged since v1.8.3.33. [Release notes](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.35).
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -44,7 +47,7 @@ Download sizes range from **0.27 GB** (`docker7-cpu`) to **20 GB** (`docker7-amd
 
 ---
 
-[Download Jellyfin 12 release v1.8.3.34](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.34) (requires Jellyfin 12.0+, five runtime DLLs plus meta.json).
+[Download Jellyfin 12 release v1.8.3.35](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.35) (requires Jellyfin 12.0+, five runtime DLLs plus meta.json).
 
 ## Architecture
 
@@ -54,7 +57,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.34   │  │
+│  │  AI Upscaler Plugin v1.8.3.35   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
@@ -172,7 +175,7 @@ The in-player button lets you:
 
 ## Jellyfin 12 compatibility
 
-The v1.8.3.34 release targets **Jellyfin.Controller 12.0.0 / .NET 10**. Jellyfin 12.1 is also published; see the [official releases](https://github.com/jellyfin/jellyfin/releases). Build and runtime evidence is tracked in [docs/JELLYFIN-12-READINESS.md](docs/JELLYFIN-12-READINESS.md); GPU, real-player and HDR target-hardware acceptance remain separate.
+The v1.8.3.35 release targets **Jellyfin.Controller 12.0.0 / .NET 10**. Jellyfin 12.1 is also published; see the [official releases](https://github.com/jellyfin/jellyfin/releases). Build and runtime evidence is tracked in [docs/JELLYFIN-12-READINESS.md](docs/JELLYFIN-12-READINESS.md); GPU, real-player and HDR target-hardware acceptance remain separate.
 
 ## Installation
 
@@ -374,9 +377,9 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 
 Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
-- `:docker7-v1.8.3.34` — NVIDIA pin for the currently published release
-- `:v1.8.3.34-<backend>` — published backend pin (e.g. `:v1.8.3.34-cpu`)
-- `:rc-v<version>[-backend]` — release-candidate images, published ahead of a release when one is wanted; `:rc-v<version>-<commit>[-backend]` pins the exact build. The last candidates were `:rc-v1.8.3.32…`; v1.8.3.33 and v1.8.3.34 went straight to release.
+- `:docker7-v1.8.3.35` — NVIDIA pin for the currently published release
+- `:v1.8.3.35-<backend>` — published backend pin (e.g. `:v1.8.3.35-cpu`)
+- `:rc-v<version>[-backend]` — release-candidate images, published ahead of a release when one is wanted; `:rc-v<version>-<commit>[-backend]` pins the exact build. The last candidates were `:rc-v1.8.3.32…`; v1.8.3.33 to v1.8.3.35 went straight to release.
 
 CUDA is the default: keep `SKIP_TENSORRT=true`. Enable TensorRT only with compatible libraries in the image. See [Docker setup and controlled updates](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docker-ai-service/README.md).
 
@@ -389,7 +392,7 @@ The full version history lives on the website and the release pages — this REA
 - **[Changelog (website)](https://kuschel-code.github.io/JellyfinUpscalerPlugin/changelog.html)** — every release in detail
 - **[GitHub Releases](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases)** — release notes and downloadable ZIPs
 
-Release: **v1.8.3.34** — real-time upscaling starts again in the web client (since v1.8.3.31 it refused every video with "Video color metadata unavailable"); all seven Docker variants. v1.8.3.31 remains available for Jellyfin 10.11.
+Release: **v1.8.3.35** — the player button no longer needs write access to Jellyfin's web folder (Windows installs, Debian package, snaps, read-only containers); all seven Docker variants. v1.8.3.31 remains available for Jellyfin 10.11.
 
 ---
 
@@ -403,12 +406,13 @@ Release: **v1.8.3.34** — real-time upscaling starts again in the web client (s
 
 ### Player button not showing
 1. The button only appears in **web browsers** (Chrome, Edge, Firefox, Brave), not in the native apps (Windows app, mobile, TV). Open Jellyfin via `http://YOUR_IP:8096`.
-2. Restart Jellyfin and check its log (Dashboard → Logs). `AI Upscaler: Player script injected via …` means the button is set up. `Could not inject player script into index.html` means Jellyfin cannot write the `index.html` of its web client, at the path the warning names:
+2. Since v1.8.3.35 the plugin adds its script to the web client's page as Jellyfin serves it, so a read-only web folder no longer matters (Windows installer, Debian package, snap, read-only containers). After a restart and the first page load, the log (Dashboard → Logs) shows `Player script injected via …` or `Player script added to index.html as Jellyfin serves it`.
+3. Neither line? Then Jellyfin is not serving the web client itself (for example, a separate web server serves jellyfin-web), and the plugin cannot reach the page.
+4. On v1.8.3.34 or older, including v1.8.3.31 for Jellyfin 10.11, the plugin can only edit the file itself. If the log says `Could not inject player script into index.html`, give Jellyfin write access to the `index.html` it names, then restart Jellyfin:
    - **Windows installer:** Jellyfin runs as the NetworkService account by default, which cannot write to `Program Files`. In an administrator Command Prompt, run `icacls "C:\Program Files\Jellyfin\Server\jellyfin-web\index.html" /grant *S-1-5-20:M` and restart the "Jellyfin Server" service. If you run the tray app instead of the service, use `/grant "%USERNAME%":M`.
    - **Debian/Ubuntu package:** `sudo chown jellyfin /usr/share/jellyfin/web/index.html`, then `sudo systemctl restart jellyfin`.
-   - **Docker:** the official image works as is. For a read-only container, bind-mount a patched `index.html`.
-3. Until then, opening the plugin's settings page loads the button into that browser tab only. Reloading the tab or opening a new one removes it again.
-4. A Jellyfin update replaces `index.html`. If the warning returns after an update, repeat the step once.
+
+   Until then, opening the plugin's settings page loads the button into that browser tab only; reloading the tab removes it again. A Jellyfin update replaces `index.html`, so repeat the step if the warning returns.
 
 There is no "Upscale" button on item pages: whole libraries are upscaled by the scheduled task "Scan & Upscale Library" (Dashboard → Scheduled Tasks).
 

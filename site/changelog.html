@@ -7,12 +7,20 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.34</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.35</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Every release carries its full notes on the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
+  <h2>v1.8.3.35 - Player button without write access</h2>
+  <p class="date">2026-09-26 · target-server acceptance not run; GPU, live-player and HDR target-hardware behavior remain unverified</p>
+  <ul>
+    <li>Issue #75: the player button appeared only when Jellyfin could write its web client's <code>index.html</code>. A default Windows install (NetworkService under Program Files), the Debian package, snaps and read-only containers never got it, except in a tab that had opened the plugin's settings.</li>
+    <li>The plugin now adds its script to the page as Jellyfin serves it and leaves the file alone. The page is sent uncompressed and in full, so a cached copy cannot keep an older release's script.</li>
+    <li>Checked on Jellyfin 12.1.0 with a read-only web folder: v1.8.3.34 served the page without the script, v1.8.3.35 served it with the script, and the web client loaded it with no errors.</li>
+    <li>The AI service is unchanged; all seven Docker variants are republished at v1.8.3.35 to keep versions in step.</li>
+  </ul>
   <h2>v1.8.3.34 - Real-time upscaling starts again</h2>
   <p class="date">2026-09-26 · target-server acceptance not run; GPU, live-player and HDR target-hardware behavior remain unverified</p>
   <ul>
@@ -618,7 +626,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.34</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.35</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
+using JellyfinUpscalerPlugin.Services;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
@@ -58,6 +59,9 @@ namespace JellyfinUpscalerPlugin
         /// <summary>
         /// Attempts to inject the player script into Jellyfin's index.html.
         /// Tries the primary web path first, then known Docker container paths.
+        /// v1.8.3.35 - when the file cannot be written, <see cref="PlayerScriptMiddleware"/>
+        /// adds the tag to the page as Jellyfin serves it, so a read-only web folder is no
+        /// longer a problem and not reported as one.
         /// </summary>
         private void InjectPlayerScriptWithFallback()
         {
@@ -88,18 +92,17 @@ namespace JellyfinUpscalerPlugin
                 }
                 catch (UnauthorizedAccessException ex)
                 {
-                    _logger.LogWarning("AI Upscaler: Cannot write to {WebPath} (read-only): {Message}", webPath, ex.Message);
+                    _logger.LogDebug("AI Upscaler: Cannot write to {WebPath} (read-only): {Message}", webPath, ex.Message);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning("AI Upscaler: Failed to inject at {WebPath}: {Message}", webPath, ex.Message);
+                    _logger.LogDebug("AI Upscaler: Failed to inject at {WebPath}: {Message}", webPath, ex.Message);
                 }
             }
 
-            _logger.LogWarning(
-                "AI Upscaler: Could not inject player script into index.html. " +
-                "The player button will be activated when you visit the plugin config page. " +
-                "Tried paths: {Paths}", string.Join(", ", pathsToTry));
+            _logger.LogInformation(
+                "AI Upscaler: index.html is not writable ({Paths}); the player script is added to the page as Jellyfin serves it",
+                string.Join(", ", pathsToTry));
         }
 
         /// <summary>
@@ -121,39 +124,29 @@ namespace JellyfinUpscalerPlugin
             }
 
             var contents = File.ReadAllText(indexPath);
-            var scriptTag = $"<script src=\"configurationpage?name=UPSCALERPlayerIntegration&release={version}\"></script>";
+            string injected;
+            try
+            {
+                if (!PlayerScriptTag.TryInject(contents, PlayerScriptTag.For(version), out injected))
+                {
+                    _logger.LogWarning("AI Upscaler: No </head> in {Path}, skipping injection", indexPath);
+                    return false;
+                }
+            }
+            catch (RegexMatchTimeoutException ex)
+            {
+                _logger.LogWarning(ex, "AI Upscaler: Regex timeout injecting into {Path}, skipping injection", indexPath);
+                return false;
+            }
 
             // Already injected with current version?
-            if (contents.Contains(scriptTag, StringComparison.OrdinalIgnoreCase))
+            if (ReferenceEquals(injected, contents))
             {
                 _logger.LogDebug("AI Upscaler: Player script already injected at {Path}", indexPath);
                 return true;
             }
 
-            // Remove old versions of our script tag (with regex timeout protection)
-            var pattern = @"<script src=""configurationpage\?name=UPSCALERPlayerIntegration[^""]*""></script>";
-            try
-            {
-                contents = Regex.Replace(contents, pattern, string.Empty, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
-            }
-            catch (RegexMatchTimeoutException ex)
-            {
-                _logger.LogWarning(ex, "AI Upscaler: Regex timeout removing old script tag, proceeding");
-            }
-
-            // Inject before </head>
-            try
-            {
-                var headEndRegex = new Regex(@"</head>", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
-                contents = headEndRegex.Replace(contents, scriptTag + "</head>", 1);
-            }
-            catch (RegexMatchTimeoutException ex)
-            {
-                _logger.LogWarning(ex, "AI Upscaler: Regex timeout finding </head>, skipping injection");
-                return false;
-            }
-
-            File.WriteAllText(indexPath, contents);
+            File.WriteAllText(indexPath, injected);
             return true;
         }
 
