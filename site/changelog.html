@@ -19,6 +19,7 @@
     <li>Issues #86 and #87: since v1.8.3.31 real-time upscaling refused every video in the web client with "Video color metadata unavailable; realtime processing cannot be validated", and the menu stayed on Standby. The player looked for the playing item in the page address, where Jellyfin 10.9 and later no longer put it.</li>
     <li>It now reads the item from the video's stream address (direct play), or from the web client's playback request when Jellyfin transcodes to HLS. For an item with several versions it checks the colour format of the version that plays.</li>
     <li>v1.8.3.31, the version for Jellyfin 10.11, has the same defect.</li>
+    <li>Issue #75: on a default Windows install Jellyfin runs as NetworkService, cannot write its web client's <code>index.html</code>, and the player button never became permanent. The README and the support assistant now give the Windows fix; they no longer advise a reload that removes the button again.</li>
     <li>The AI service is unchanged; all seven Docker variants are republished at v1.8.3.34 to keep versions in step.</li>
     <li>Local regression run: 454 C#, 212 Python and 74 Node behavior tests passed, plus a headless Chromium check with the stream and PlaybackInfo addresses Jellyfin 12.1 uses. Not a GPU or live-player certification.</li>
   </ul>

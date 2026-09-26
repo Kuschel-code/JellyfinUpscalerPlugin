@@ -402,11 +402,15 @@ Release: **v1.8.3.34** — real-time upscaling starts again in the web client (s
 4. Install the latest version fresh from repository
 
 ### Player button not showing
-1. The button only works in **web browsers** (Chrome, Edge, Firefox)
-2. It does NOT work in native apps (Windows app, mobile, TV)
-3. Open Jellyfin via `http://YOUR_IP:8096` in a browser
-4. Visit the plugin config page once to activate the bootstrap
-5. Hard refresh: `Ctrl+Shift+R`
+1. The button only appears in **web browsers** (Chrome, Edge, Firefox, Brave), not in the native apps (Windows app, mobile, TV). Open Jellyfin via `http://YOUR_IP:8096`.
+2. Restart Jellyfin and check its log (Dashboard → Logs). `AI Upscaler: Player script injected via …` means the button is set up. `Could not inject player script into index.html` means Jellyfin cannot write the `index.html` of its web client, at the path the warning names:
+   - **Windows installer:** Jellyfin runs as the NetworkService account by default, which cannot write to `Program Files`. In an administrator Command Prompt, run `icacls "C:\Program Files\Jellyfin\Server\jellyfin-web\index.html" /grant *S-1-5-20:M` and restart the "Jellyfin Server" service. If you run the tray app instead of the service, use `/grant "%USERNAME%":M`.
+   - **Debian/Ubuntu package:** `sudo chown jellyfin /usr/share/jellyfin/web/index.html`, then `sudo systemctl restart jellyfin`.
+   - **Docker:** the official image works as is. For a read-only container, bind-mount a patched `index.html`.
+3. Until then, opening the plugin's settings page loads the button into that browser tab only. Reloading the tab or opening a new one removes it again.
+4. A Jellyfin update replaces `index.html`. If the warning returns after an update, repeat the step once.
+
+There is no "Upscale" button on item pages: whole libraries are upscaled by the scheduled task "Scan & Upscale Library" (Dashboard → Scheduled Tasks).
 
 ### Docker container not starting
 ```bash
