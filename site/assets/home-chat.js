@@ -308,6 +308,7 @@
   // Pasted logs are detected, matched against known failure signatures first
   // (instant, deterministic), otherwise distilled + sent to the AI.
   var LOG_PATTERNS = [
+    { re: /color metadata unavailable|realtime processing cannot be validated/i, kb: "realtime-standby" },
     { re: /HDR requires (PQ|BT\.2020)|HDR realtime and (masking|multi-frame processing) are not supported|unknown transfer functions are not supported|Dynamic HDR \(Dolby Vision/i, kb: "hdr-support" },
     { re: /rate limit exceeded|circuit breaker (open|half-open)|too many concurrent requests|"detail"\s*:\s*"Busy"|HTTP 503|HTTP 429/i, kb: "service-busy" },
     { re: /no detector loaded/i, kb: "object-masking" },

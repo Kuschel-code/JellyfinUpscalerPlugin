@@ -1,6 +1,6 @@
 {
-  "version": "1.8.3.33",
-  "updated": "2026-09-24",
+  "version": "1.8.3.34",
+  "updated": "2026-09-26",
   "repo": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin",
   "newIssueUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/new",
   "intro": "Hi! I'm the AI Upscaler support assistant. I answer from every support topic we've ever handled (each with a step-by-step guide), and I can search all GitHub issues live. Ask about install errors, GPU not used, Docker/NAS setup, API tokens, models, and more. You can ask in English or German.",
@@ -304,6 +304,32 @@
       "answer": "Step by step for NVIDIA:\n1. Use the **`docker7`** (NVIDIA) image.\n2. Install the NVIDIA Container Toolkit on the host.\n3. Run with `--gpus all` (or `runtime: nvidia` in compose).\n4. Verify GPU passthrough: `docker exec <container> nvidia-smi` must succeed.\n5. If you saw `INVALID_ARGUMENT` or a `libonnxruntime_providers` load error, update to the **latest version** (v1.7.8 brought FP16 + provider fixes) and re-pull.\n6. Check `/gpu-verify` → `CUDAExecutionProvider` / `TensorrtExecutionProvider`."
     },
     {
+      "id": "realtime-standby",
+      "title": "Real-time stays on Standby: \"Video color metadata unavailable\"",
+      "issues": [
+        86,
+        87
+      ],
+      "keywords": [
+        "standby",
+        "stays on standby",
+        "color metadata unavailable",
+        "colour metadata unavailable",
+        "video color metadata unavailable",
+        "metadata unavailable",
+        "realtime processing cannot be validated",
+        "cannot be validated",
+        "realtime does not start",
+        "real-time doesn't start",
+        "realtime won't start",
+        "real-time not starting",
+        "bleibt auf standby",
+        "echtzeit startet nicht",
+        "farbmetadaten"
+      ],
+      "answer": "**Fixed in v1.8.3.34.** v1.8.3.31–v1.8.3.33 refused real-time upscaling for *every* video in the Jellyfin web client with \"Video color metadata unavailable; realtime processing cannot be validated\", and the menu stayed on **Standby**. The player looked for the playing item in the page address, which Jellyfin 10.9 and later no longer contains. The AI service is not the cause: if its log ends with `Uvicorn running on http://0.0.0.0:5000`, it is fine.\n1. Update the plugin to **v1.8.3.34** (Dashboard → Plugins → Catalog), restart Jellyfin, then reload the browser tab (Ctrl+F5) so the new player script loads.\n2. Play the video again. If the message stays, run **⋮ → Refresh metadata** on the item once: a file Jellyfin has not scanned yet has no colour information to check.\n3. Still refused? Open an issue and include the browser console lines that start with `AI Upscaler`.\n\nv1.8.3.31, the version for Jellyfin 10.11, has the same defect."
+    },
+    {
       "id": "realtime-webgl",
       "title": "Real-time keeps falling back to WebGL / poor playback",
       "issues": [
@@ -599,9 +625,17 @@
         "button not showing",
         "knopf fehlt",
         "button fehlt",
-        "kein button"
+        "kein button",
+        "windows",
+        "program files",
+        "networkservice",
+        "network service",
+        "icacls",
+        "access denied",
+        "upscale button",
+        "button is missing"
       ],
-      "answer": "The plugin adds the player button by writing one `<script>` tag into jellyfin-web's `index.html`. If the log shows `Cannot write to ... (read-only): Access to the path '.../index.html' is denied`, the Jellyfin service user has no write access to the web root (typical for the native Debian/Ubuntu package, where `/usr/share/jellyfin/web` is owned by root).\n\nFix (native package):\n```\nsudo chown jellyfin /usr/share/jellyfin/web/index.html\nsudo systemctl restart jellyfin\n```\nThe log should then say `Player script injected via /usr/share/jellyfin/web` and the button is permanent.\n\nNotes:\n- Visiting the plugin config page only activates the button for your **current browser tab** — after a refresh or on another device it is gone again. Only the index.html injection is permanent.\n- A `jellyfin-web` package update replaces index.html (owner root again) — repeat the chown once if the warning returns; the plugin re-injects on the next restart.\n- Official Docker image: web root is writable, works out of the box. Deliberately read-only containers: overlay a patched `index.html` via bind mount."
+      "answer": "The plugin adds the player button by writing one `<script>` tag into jellyfin-web's `index.html`. If the log shows `Cannot write to ... (read-only): Access to the path '.../index.html' is denied`, the Jellyfin service user has no write access to the web root (typical for the native Debian/Ubuntu package, where `/usr/share/jellyfin/web` is owned by root).\n\nFix (native package):\n```\nsudo chown jellyfin /usr/share/jellyfin/web/index.html\nsudo systemctl restart jellyfin\n```\nFix (Windows installer): Jellyfin runs as the NetworkService account by default, which cannot write to `Program Files`. In an administrator Command Prompt:\n```\nicacls \"C:\\Program Files\\Jellyfin\\Server\\jellyfin-web\\index.html\" /grant *S-1-5-20:M\nnet stop JellyfinServer && net start JellyfinServer\n```\nRunning the tray app instead of the service? Grant your own account: `/grant \"%USERNAME%\":M`, then restart the tray app.\nAfter the restart the log says `Player script injected via <web folder>` and the button is permanent.\n\nNotes:\n- Visiting the plugin config page only activates the button for your **current browser tab** — after a refresh or on another device it is gone again. Only the index.html injection is permanent.\n- A `jellyfin-web` package update replaces index.html (owner root again) — repeat the chown once if the warning returns; the plugin re-injects on the next restart.\n- There is no \"Upscale\" button on item pages. Whole libraries are upscaled by the scheduled task **Scan & Upscale Library** (Dashboard → Scheduled Tasks).\n- Official Docker image: web root is writable, works out of the box. Deliberately read-only containers: overlay a patched `index.html` via bind mount."
     },
     {
       "id": "model-sha256-mismatch",

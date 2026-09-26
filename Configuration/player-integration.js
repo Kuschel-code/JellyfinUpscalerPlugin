@@ -7,7 +7,7 @@
 
     // Plugin configuration
     const PLUGIN_ID = 'f87f700e-679d-43e6-9c7c-b3a410dc3f22';
-    const PLUGIN_VERSION = '1.8.3.33';
+    const PLUGIN_VERSION = '1.8.3.34';
 
     // Prevent double-init
     if (window._aiUpscalerLoaded) return;
@@ -2421,21 +2421,100 @@
                    document.querySelector('.htmlvideoplayer video');
         },
 
-        // Extract Jellyfin itemId from the currently-playing video URL hash.
-        // Hash format: "#/video?id=<guid>&..."  Returns null if not on a video page.
+        // v1.8.3.34 - which item and version are playing, as {itemId, mediaSourceId}.
+        // Jellyfin 10.9+ plays at "#/video" with no id in the URL, so reading the hash
+        // alone found nothing and 1.8.3.31-33 refused every video as "color metadata
+        // unavailable" (#86, #87). Direct play names the item in the video's own source;
+        // under hls.js that source is a blob:, and the newest PlaybackInfo or HLS request
+        // stands in. The hash is still read for clients that put the id there.
+        _getPlayingMedia: function(video) {
+            video = video || this.findVideoElement();
+            var ref = this._mediaRefFromUrl(video && (video.currentSrc || video.src));
+            if (ref) return ref;
+            this._collectMediaRequests();
+            if (this._lastMediaRequest) return this._lastMediaRequest;
+            var id = this._hashParam('id');
+            return id ? { itemId: id, mediaSourceId: null } : null;
+        },
+
         _getPlayingItemId: function() {
+            var ref = this._getPlayingMedia();
+            return ref ? ref.itemId : null;
+        },
+
+        _hashParam: function(name) {
             try {
                 var hash = window.location.hash || '';
                 var qIdx = hash.indexOf('?');
                 if (qIdx < 0) return null;
-                var qs = hash.substring(qIdx + 1);
-                var params = qs.split('&');
+                var params = hash.substring(qIdx + 1).split('&');
                 for (var i = 0; i < params.length; i++) {
                     var kv = params[i].split('=');
-                    if (kv[0] === 'id' && kv[1]) return decodeURIComponent(kv[1]);
+                    if (kv[0] === name && kv[1]) return decodeURIComponent(kv[1]);
                 }
             } catch (e) {}
             return null;
+        },
+
+        // Stream, HLS and PlaybackInfo URLs name the item and usually the version:
+        // /Videos/{id}/stream.mkv?mediaSourceId=..., /videos/{id}/master.m3u8?MediaSourceId=...,
+        // /Items/{id}/PlaybackInfo. Subtitle, trickplay and image URLs do not match.
+        _MEDIA_URL: /\/(?:videos|items)\/([0-9a-f]{32}|[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})\/(?:stream\b|master\.m3u8|main\.m3u8|live\.m3u8|hls|playbackinfo\b)/i,
+
+        _mediaRefFromUrl: function(url) {
+            var match = this._MEDIA_URL.exec(String(url || ''));
+            if (!match) return null;
+            var source = /[?&]mediasourceid=([^&#]+)/i.exec(url);
+            var sourceId = source ? source[1] : null;
+            try { sourceId = sourceId && decodeURIComponent(sourceId); } catch (e) {}
+            return { itemId: match[1], mediaSourceId: sourceId };
+        },
+
+        // Playback requests this page has made; the one that started last wins. Under
+        // hls.js they are the only local record of what the video element plays.
+        _lastMediaRequest: null,
+        _lastMediaRequestAt: -1,
+        _mediaRequestObserver: null,
+
+        _noteMediaRequests: function(entries) {
+            for (var i = 0; entries && i < entries.length; i++) {
+                var ref = this._mediaRefFromUrl(entries[i].name);
+                if (ref && entries[i].startTime >= this._lastMediaRequestAt) {
+                    this._lastMediaRequest = ref;
+                    this._lastMediaRequestAt = entries[i].startTime;
+                }
+            }
+        },
+
+        // Started when the script loads, from index.html, so it sees every playback.
+        _watchMediaRequests: function() {
+            var self = this;
+            try {
+                var observer = new PerformanceObserver(function(list) { self._noteMediaRequests(list.getEntries()); });
+                try {
+                    observer.observe({ type: 'resource', buffered: true });
+                } catch (e) {
+                    // Older engines accept entryTypes only, without the earlier entries.
+                    observer.observe({ entryTypes: ['resource'] });
+                    this._noteMediaRequests(performance.getEntriesByType('resource'));
+                }
+                this._mediaRequestObserver = observer;
+            } catch (e) {
+                this._mediaRequestObserver = null;
+            }
+        },
+
+        // An observer's callback runs as a low-priority task and can trail the first
+        // frames, so a lookup takes the entries it still holds.
+        _collectMediaRequests: function() {
+            try {
+                var observer = this._mediaRequestObserver;
+                if (observer && typeof observer.takeRecords === 'function') {
+                    this._noteMediaRequests(observer.takeRecords());
+                } else if (!observer && window.performance && performance.getEntriesByType) {
+                    this._noteMediaRequests(performance.getEntriesByType('resource'));
+                }
+            } catch (e) {}
         },
 
         // Auto-Mode: ask the plugin to pick the best model + filter for this video.
@@ -2580,11 +2659,24 @@
             return String(stream.ColorPrimaries || '').toLowerCase() === 'bt2020' && !sdrTransfer;
         },
 
-        _readPlayingVideoStream: function() {
-            var itemId = this._getPlayingItemId();
-            if (!itemId) return Promise.resolve(null);
-            return ApiClient.getItem(ApiClient.getCurrentUserId(), itemId).then(function(item) {
-                var streams = item && (item.MediaStreams || (item.MediaSources && item.MediaSources[0] && item.MediaSources[0].MediaStreams)) || [];
+        _readPlayingVideoStream: function(video) {
+            var ref = this._getPlayingMedia(video);
+            if (!ref) return Promise.resolve(null);
+            var sameId = function(a, b) {
+                return String(a || '').replace(/-/g, '').toLowerCase() === String(b || '').replace(/-/g, '').toLowerCase();
+            };
+            return Promise.resolve().then(function() {
+                return ApiClient.getItem(ApiClient.getCurrentUserId(), ref.itemId);
+            }).then(function(item) {
+                if (!item) return null;
+                // An item with several versions lists them all; read the one that plays.
+                var sources = item.MediaSources || [];
+                var source = null;
+                for (var i = 0; ref.mediaSourceId && i < sources.length; i++) {
+                    if (sameId(sources[i].Id, ref.mediaSourceId)) { source = sources[i]; break; }
+                }
+                var streams = (source && source.MediaStreams) || item.MediaStreams ||
+                    (sources[0] && sources[0].MediaStreams) || [];
                 return streams.find(function(s) { return s.Type === 'Video'; }) || null;
             }).catch(function() { return null; });
         },
@@ -2596,7 +2688,7 @@
                     RealtimeUpscaler.start(video, config, null);
                     return Promise.resolve();
                 }
-                return this._readPlayingVideoStream().then(function(stream) {
+                return this._readPlayingVideoStream(video).then(function(stream) {
                 if (generation !== RealtimeUpscaler._generation) return;
                 if (!stream || PlayerIntegration._isHdrStream(stream)) {
                     RealtimeUpscaler._mode = 'off';
@@ -2985,6 +3077,7 @@
 
     // Make available globally
     window.PlayerIntegration = PlayerIntegration;
+    PlayerIntegration._watchMediaRequests();
 
     // Initialize
     if (document.readyState === 'loading') {
