@@ -13,6 +13,15 @@
     if (window._aiUpscalerLoaded) return;
     window._aiUpscalerLoaded = true;
 
+    // v1.8.3.35 - the engine scripts load relative to the web client, like the tag in
+    // index.html. An absolute "/web/..." path drops a configured base URL, and Jellyfin
+    // answers that with a redirect to its start page, so behind a base URL the Lanczos,
+    // Anime4K and WebGPU engines never loaded. The release query fetches them anew after
+    // an update, as the index.html tag does for this script.
+    function pluginScriptUrl(name) {
+        return 'configurationpage?name=' + name + '&release=' + PLUGIN_VERSION;
+    }
+
     // All available models grouped by category (synced with Python AVAILABLE_MODELS)
     const MODEL_CATALOG = {
         realesrgan: {
@@ -306,7 +315,7 @@
                 return;
             }
             var script = document.createElement('script');
-            script.src = '/web/configurationpage?name=UPSCALERWebGLShader';
+            script.src = pluginScriptUrl('UPSCALERWebGLShader');
             script.setAttribute('data-upscaler-webgl', '1');
             script.onload = function() { setTimeout(callback, 100); };
             script.onerror = function() {
@@ -371,7 +380,7 @@
                 return;
             }
             var script = document.createElement('script');
-            script.src = '/web/configurationpage?name=UPSCALERAnime4K';
+            script.src = pluginScriptUrl('UPSCALERAnime4K');
             script.setAttribute('data-upscaler-anime4k', '1');
             script.onload = function() { setTimeout(function() { callback(!!resolved()); }, 50); };
             script.onerror = function() {
@@ -495,7 +504,7 @@
                 return;
             }
             var script = document.createElement('script');
-            script.src = '/web/configurationpage?name=UPSCALERWebGPUAI';
+            script.src = pluginScriptUrl('UPSCALERWebGPUAI');
             script.setAttribute('data-upscaler-webgpu-ai', '1');
             script.onload = function() { setTimeout(function() { callback(!!window.WebGPUAIUpscaler); }, 50); };
             script.onerror = function() {
