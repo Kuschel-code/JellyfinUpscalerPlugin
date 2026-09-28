@@ -1,10 +1,10 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
 
-annotated-doc==0.0.4
+annotated-doc==0.0.5
     # via fastapi
 annotated-types==0.8.0
     # via pydantic
-anyio==4.14.2
+anyio==4.15.1
     # via
     #   httpx
     #   starlette
@@ -13,17 +13,17 @@ certifi==2026.7.22
     # via
     #   httpcore
     #   httpx
-click==8.4.2
+click==8.5.0
     # via uvicorn
 einops==0.8.2
     # via spandrel
-fastapi==0.140.0
+fastapi==0.141.1
     # via -r /w/requirements-cpu.txt
-filelock==3.32.0
+filelock==4.0.5
     # via torch
 flatbuffers==25.12.19
     # via onnxruntime
-fsspec==2026.6.0
+fsspec==2026.9.0
     # via torch
 h11==0.16.0
     # via
@@ -35,7 +35,7 @@ httptools==0.8.0
     # via uvicorn
 httpx==0.28.1
     # via -r /w/requirements-cpu.txt
-idna==3.18
+idna==3.20
     # via
     #   anyio
     #   httpx
@@ -43,16 +43,16 @@ jinja2==3.1.6
     # via torch
 markupsafe==3.0.3
     # via jinja2
-ml-dtypes==0.5.4
+ml-dtypes==0.6.0
     # via
     #   onnx
     #   onnx-ir
     #   onnxscript
 mpmath==1.3.0
     # via sympy
-networkx==3.6.1
+networkx==3.7
     # via torch
-numpy==2.5.1
+numpy==2.5.3
     # via
     #   -r /w/requirements-cpu.txt
     #   ml-dtypes
@@ -63,20 +63,20 @@ numpy==2.5.1
     #   opencv-contrib-python
     #   spandrel
     #   torchvision
-onnx==1.22.0
+onnx==1.23.0
     # via
     #   -r /w/requirements-converter.txt
     #   onnx-ir
     #   onnxscript
-onnx-ir==0.2.1
+onnx-ir==1.0.0
     # via onnxscript
-onnxruntime==1.27.0
+onnxruntime==1.30.0
     # via -r /w/requirements-cpu.txt
-onnxscript==0.7.1
+onnxscript==0.7.2
     # via -r /w/requirements-converter.txt
-opencv-contrib-python==4.13.0.92
+opencv-contrib-python==4.14.0.94
     # via -r /w/requirements-cpu.txt
-packaging==26.2
+packaging==26.3
     # via
     #   onnxruntime
     #   onnxscript
@@ -84,15 +84,15 @@ pillow==12.3.0
     # via
     #   -r /w/requirements-cpu.txt
     #   torchvision
-protobuf==7.35.1
+protobuf==7.36.2
     # via
     #   onnx
     #   onnxruntime
-pydantic==2.13.4
+pydantic==2.13.5
     # via fastapi
-pydantic-core==2.46.4
+pydantic-core==2.46.5
     # via pydantic
-python-dotenv==1.2.2
+python-dotenv==1.2.3
     # via uvicorn
 python-multipart==0.0.32
     # via -r /w/requirements-cpu.txt
@@ -102,7 +102,7 @@ safetensors==0.8.0
     # via spandrel
 spandrel==0.4.2
     # via -r /w/requirements-converter.txt
-starlette==1.3.1
+starlette==1.7.0
     # via
     #   -r /w/requirements-cpu.txt
     #   fastapi
@@ -110,12 +110,12 @@ sympy==1.14.0
     # via
     #   onnx-ir
     #   torch
-torch==2.13.0+cpu
+torch==2.14.0+cpu
     # via
     #   -r /w/requirements-converter.txt
     #   spandrel
     #   torchvision
-torchvision==0.28.0+cpu
+torchvision==0.29.0+cpu
     # via spandrel
 typing-extensions==4.16.0
     # via
@@ -130,17 +130,17 @@ typing-extensions==4.16.0
     #   starlette
     #   torch
     #   typing-inspection
-typing-inspection==0.4.2
+typing-inspection==0.4.4
     # via
     #   fastapi
     #   pydantic
-uvicorn==0.51.0
+uvicorn==0.54.0
     # via -r /w/requirements-cpu.txt
 uvloop==0.22.1
     # via uvicorn
-watchfiles==1.2.0
+watchfiles==1.3.0
     # via uvicorn
-websockets==16.1.1
+websockets==17.1
     # via uvicorn
 
 # The following packages are considered to be unsafe in a requirements file:
