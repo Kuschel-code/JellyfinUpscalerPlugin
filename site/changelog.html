@@ -13,13 +13,15 @@
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Every release carries its full notes on the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
-  <h2>v1.8.3.35 - Player button without write access</h2>
+  <h2>v1.8.3.35 - Player button without write access; engines behind a base URL</h2>
   <p class="date">2026-09-26 · target-server acceptance not run; GPU, live-player and HDR target-hardware behavior remain unverified</p>
   <ul>
     <li>Issue #75: the player button appeared only when Jellyfin could write its web client's <code>index.html</code>. A default Windows install (NetworkService under Program Files), the Debian package, snaps and read-only containers never got it, except in a tab that had opened the plugin's settings.</li>
     <li>The plugin now adds its script to the page as Jellyfin serves it and leaves the file alone. The page is sent uncompressed and in full, so a cached copy cannot keep an older release's script.</li>
     <li>Checked on Jellyfin 12.1.0 with a read-only web folder: v1.8.3.34 served the page without the script, v1.8.3.35 served it with the script, and the web client loaded it with no errors.</li>
+    <li>Behind a Jellyfin base URL (for example <code>/jellyfin</code>) the Lanczos, Anime4K and WebGPU real-time engines never loaded: they were requested without the base URL, and Jellyfin redirected the request to its start page. They now load relative to the web client; checked on Jellyfin 12.1.0 behind <code>/jellyfin</code>.</li>
     <li>The AI service is unchanged; all seven Docker variants are republished at v1.8.3.35 to keep versions in step.</li>
+    <li>Local regression run: 466 C#, 212 Python and 77 Node behavior tests passed. Not a GPU or live-player certification.</li>
   </ul>
   <h2>v1.8.3.34 - Real-time upscaling starts again</h2>
   <p class="date">2026-09-26 · target-server acceptance not run; GPU, live-player and HDR target-hardware behavior remain unverified</p>

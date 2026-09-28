@@ -8,5 +8,5 @@
     "framework": "net10.0",
     "owner": "Kuschel-code",
     "category": "Video Enhancement",
-    "changelog": "v1.8.3.35: The player button no longer needs write access to Jellyfin's web folder. The plugin adds its script to index.html as Jellyfin serves the page, so Windows installs (NetworkService), the Debian package, snaps and read-only containers get the button in every browser tab. Requires Jellyfin 12.0 or newer. Target-hardware playback, GPU and HDR acceptance remain unverified."
+    "changelog": "v1.8.3.35: The player button no longer needs write access to Jellyfin's web folder. The plugin adds its script to index.html as Jellyfin serves the page, so Windows installs (NetworkService), the Debian package, snaps and read-only containers get the button in every browser tab. Behind a Jellyfin base URL, the Lanczos, Anime4K and WebGPU real-time engines load again. Requires Jellyfin 12.0 or newer. Target-hardware playback, GPU and HDR acceptance remain unverified."
 }

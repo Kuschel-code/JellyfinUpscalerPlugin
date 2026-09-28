@@ -18,6 +18,7 @@ AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neura
 
 **Fixed in v1.8.3.35** (reported in GitHub issue #75):
 - The player button never appeared when Jellyfin could not write its web client's `index.html`: on a default Windows install (the server runs as NetworkService under `Program Files`), with the Debian package, snaps and read-only containers. It showed only in a tab that had opened the plugin's settings. The plugin now adds its script to the page as Jellyfin serves it; the file on disk is left alone.
+- Behind a Jellyfin base URL (for example `/jellyfin`), the Lanczos, Anime4K and WebGPU real-time engines never loaded: they were requested without the base URL, and Jellyfin redirected the request to its start page. They now load relative to the web client.
 
 **Fixed in v1.8.3.34** (reported in GitHub issues #86 and #87 on 2026-09-24):
 - Real-time upscaling never started in the web client. Every video showed "Video color metadata unavailable; realtime processing cannot be validated" and the menu stayed on Standby. Since v1.8.3.31 the player looked for the playing item in the page address, where Jellyfin 10.9 and later no longer put it. It now reads the item from the video's stream address, or from the web client's playback request when Jellyfin transcodes, and checks the colour format of the version that actually plays.
@@ -392,7 +393,7 @@ The full version history lives on the website and the release pages — this REA
 - **[Changelog (website)](https://kuschel-code.github.io/JellyfinUpscalerPlugin/changelog.html)** — every release in detail
 - **[GitHub Releases](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases)** — release notes and downloadable ZIPs
 
-Release: **v1.8.3.35** — the player button no longer needs write access to Jellyfin's web folder (Windows installs, Debian package, snaps, read-only containers); all seven Docker variants. v1.8.3.31 remains available for Jellyfin 10.11.
+Release: **v1.8.3.35** — the player button no longer needs write access to Jellyfin's web folder (Windows installs, Debian package, snaps, read-only containers), and the browser real-time engines load behind a base URL; all seven Docker variants. v1.8.3.31 remains available for Jellyfin 10.11.
 
 ---
 
