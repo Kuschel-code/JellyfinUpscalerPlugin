@@ -9,6 +9,14 @@
     "category": "Video Enhancement",
     "versions": [
       {
+        "version": "1.8.3.35",
+        "changelog": "v1.8.3.35: The player button no longer needs write access to Jellyfin's web folder. The plugin adds its script to index.html as Jellyfin serves the page, so Windows installs (NetworkService), the Debian package, snaps and read-only containers get the button in every browser tab. Behind a Jellyfin base URL, the Lanczos, Anime4K and WebGPU real-time engines load again. Requires Jellyfin 12.0 or newer. Target-hardware playback, GPU and HDR acceptance remain unverified.",
+        "targetAbi": "12.0.0.0",
+        "sourceUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/download/v1.8.3.35/JellyfinUpscalerPlugin-v1.8.3.35.zip",
+        "checksum": "3ad205c518a842865d71c56797b22298",
+        "timestamp": "2026-09-28T00:16:49Z"
+      },
+      {
         "version": "1.8.3.34",
         "changelog": "v1.8.3.34: Real-time upscaling starts again in the web client. Since v1.8.3.31 it refused every video with \"Video color metadata unavailable\", because Jellyfin 10.9 and later no longer put the playing item in the page address; the player now reads the item from the video's stream or the web client's playback request and checks the version that plays. Requires Jellyfin 12.0 or newer. Target-hardware playback, GPU and HDR acceptance remain unverified.",
         "targetAbi": "12.0.0.0",
