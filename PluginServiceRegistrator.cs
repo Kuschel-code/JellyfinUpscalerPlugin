@@ -1,4 +1,5 @@
 using System;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using MediaBrowser.Controller.Plugins;
 using MediaBrowser.Controller;
@@ -23,6 +24,10 @@ namespace JellyfinUpscalerPlugin
             // Live model catalog is fetched dynamically via HttpUpscalerService.GetModelsAsync().
             serviceCollection.AddSingleton<UpscalerProgressHub>();
             serviceCollection.AddSingleton<LibraryScanHelper>();
+
+            // v1.8.3.35 - adds the player script tag to index.html as Jellyfin serves it,
+            // so the player button no longer needs write access to the web folder (#75).
+            serviceCollection.AddTransient<IStartupFilter, PlayerScriptStartupFilter>();
 
             // HTTP-based AI Service (Docker)
             serviceCollection.AddSingleton<HttpUpscalerService>();

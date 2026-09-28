@@ -1,5 +1,5 @@
 {
-  "version": "1.8.3.34",
+  "version": "1.8.3.35",
   "updated": "2026-09-26",
   "repo": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin",
   "newIssueUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/new",
@@ -604,7 +604,7 @@
     },
     {
       "id": "player-button-missing",
-      "title": "Player button missing / \"Could not inject player script\" (read-only web root)",
+      "title": "Player button missing / \"Could not inject player script\" (read-only web folder)",
       "issues": [
         75
       ],
@@ -633,9 +633,11 @@
         "icacls",
         "access denied",
         "upscale button",
-        "button is missing"
+        "button is missing",
+        "snap",
+        "nixos"
       ],
-      "answer": "The plugin adds the player button by writing one `<script>` tag into jellyfin-web's `index.html`. If the log shows `Cannot write to ... (read-only): Access to the path '.../index.html' is denied`, the Jellyfin service user has no write access to the web root (typical for the native Debian/Ubuntu package, where `/usr/share/jellyfin/web` is owned by root).\n\nFix (native package):\n```\nsudo chown jellyfin /usr/share/jellyfin/web/index.html\nsudo systemctl restart jellyfin\n```\nFix (Windows installer): Jellyfin runs as the NetworkService account by default, which cannot write to `Program Files`. In an administrator Command Prompt:\n```\nicacls \"C:\\Program Files\\Jellyfin\\Server\\jellyfin-web\\index.html\" /grant *S-1-5-20:M\nnet stop JellyfinServer && net start JellyfinServer\n```\nRunning the tray app instead of the service? Grant your own account: `/grant \"%USERNAME%\":M`, then restart the tray app.\nAfter the restart the log says `Player script injected via <web folder>` and the button is permanent.\n\nNotes:\n- Visiting the plugin config page only activates the button for your **current browser tab** — after a refresh or on another device it is gone again. Only the index.html injection is permanent.\n- A `jellyfin-web` package update replaces index.html (owner root again) — repeat the chown once if the warning returns; the plugin re-injects on the next restart.\n- There is no \"Upscale\" button on item pages. Whole libraries are upscaled by the scheduled task **Scan & Upscale Library** (Dashboard → Scheduled Tasks).\n- Official Docker image: web root is writable, works out of the box. Deliberately read-only containers: overlay a patched `index.html` via bind mount."
+      "answer": "**Fixed in v1.8.3.35:** the plugin adds its script to the web client's page as Jellyfin serves it, so a read-only web folder no longer matters. Update the plugin, restart Jellyfin and reload the browser tab. The log then says `Player script added to index.html as Jellyfin serves it`.\n\nOn v1.8.3.34 or older (including v1.8.3.31 for Jellyfin 10.11) the plugin must write `index.html` itself. If the log shows `Cannot write to ... (read-only): Access to the path '.../index.html' is denied` or `Could not inject player script`, give Jellyfin write access:\n\nFix (native package):\n```\nsudo chown jellyfin /usr/share/jellyfin/web/index.html\nsudo systemctl restart jellyfin\n```\nFix (Windows installer): Jellyfin runs as the NetworkService account by default, which cannot write to `Program Files`. In an administrator Command Prompt:\n```\nicacls \"C:\\Program Files\\Jellyfin\\Server\\jellyfin-web\\index.html\" /grant *S-1-5-20:M\nnet stop JellyfinServer && net start JellyfinServer\n```\nRunning the tray app instead of the service? Grant your own account: `/grant \"%USERNAME%\":M`, then restart the tray app.\nAfter the restart the log says `Player script injected via <web folder>` and the button is permanent.\n\nNotes:\n- Visiting the plugin config page only activates the button for your **current browser tab** — after a refresh or on another device it is gone again. Only the index.html injection is permanent.\n- A `jellyfin-web` package update replaces index.html (owner root again) — repeat the chown once if the warning returns; the plugin re-injects on the next restart.\n- There is no \"Upscale\" button on item pages. Whole libraries are upscaled by the scheduled task **Scan & Upscale Library** (Dashboard → Scheduled Tasks).\n- Official Docker image: web root is writable, works out of the box. Deliberately read-only containers: overlay a patched `index.html` via bind mount."
     },
     {
       "id": "model-sha256-mismatch",
