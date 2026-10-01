@@ -68,7 +68,7 @@ docker run -d \
 docker run -d \
   --name jellyfin-ai-upscaler \
   --device=/dev/kfd --device=/dev/dri \
-  --group-add video \
+  --group-add <VIDEO_GID> --group-add <RENDER_GID> \
   -p 127.0.0.1:5000:5000 \
   -v ai-models:/app/models \
   -v ai-cache:/app/cache \
@@ -77,12 +77,15 @@ docker run -d \
   kuscheltier/jellyfin-ai-upscaler:docker7-amd
 ```
 
+> **GPU group IDs:** use the HOST's numeric GIDs (`stat -c '%g' /dev/kfd /dev/dri/renderD128` on the host), not the names `video`/`render`. `--group-add video` resolves the name *inside* the container, where it is a different GID, so the container cannot open the GPU and silently runs on the CPU. The same applies to the Vulkan image. The container's startup log and `GET /doctor` print the exact GID if the device cannot be opened.
+
 ### 🔵 Intel GPU (OpenVINO)
 
 ```bash
 docker run -d \
   --name jellyfin-ai-upscaler \
   --device=/dev/dri \
+  --group-add <RENDER_GID> \
   -p 127.0.0.1:5000:5000 \
   -v ai-models:/app/models \
   -v ai-cache:/app/cache \

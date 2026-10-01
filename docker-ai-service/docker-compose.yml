@@ -142,6 +142,8 @@ volumes:
 #     build:
 #       context: .
 #       dockerfile: Dockerfile.intel   # use Dockerfile.amd for AMD GPUs
+#       # AMD (ROCm) and Vulkan images need the same numeric host GIDs as the Intel one above
+#       # (host: stat -c '%g' /dev/kfd /dev/dri/renderD128) - never the names video/render.
 #     container_name: jellyfin-ai-upscaler-wsl2
 #     ports:
 #       - "5000:5000"

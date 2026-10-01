@@ -75,19 +75,19 @@ COPY requirements-amd.txt requirements.txt
 # 1.22.2.post1, yet the runtime reported ['AzureExecutionProvider','CPUExecutionProvider']
 # because plain onnxruntime (pulled by requirements) won. requirements-amd.txt no
 # longer lists it; we also uninstall any pre-baked copy, then force-install the rocm
-# build as the sole provider. The `|| pip install onnxruntime` tail remains only as a
-# genuine wheel-unavailable safety net (a visible CPU image, never a silent one).
+# build as the sole provider. The `|| pip install onnxruntime` tail only lets the next
+# step report the problem: that CPU-only result FAILS the build below, so a CPU image
+# can never be published under the amd tag.
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip && \
     pip install -r requirements.txt && \
     { pip uninstall -y onnxruntime onnxruntime-gpu || true; } && \
     { pip install --force-reinstall "onnxruntime-rocm<=1.22.99" || pip install onnxruntime; }
 
-# Build-time provider visibility (issue #69 lesson): make the result VISIBLE so a
-# CPU-only AMD image is never published unnoticed. ROCMExecutionProvider present =
-# real GPU acceleration; missing = the wheel was genuinely unavailable and we fell
-# back to CPU (a valid degraded mode for AMD, unlike the hard-fail NVIDIA/Intel paths).
-RUN python3 -c "import onnxruntime as ort; p = ort.get_available_providers(); print('ONNX providers:', p); print('OK: ROCMExecutionProvider present') if 'ROCMExecutionProvider' in p else print('WARNING: ROCMExecutionProvider MISSING - AMD image will run inference on CPU. Build continues (CPU is a valid fallback).')"
+# Build-time provider assert (issue #69 lesson, same guard as the NVIDIA/Intel images): fail
+# the build when ROCMExecutionProvider is missing. It used to only print a WARNING and carry
+# on, which published a CPU-only image under the amd tag.
+RUN python3 -c "import onnxruntime as ort; p = ort.get_available_providers(); print('ONNX providers:', p); assert 'ROCMExecutionProvider' in p, 'BUILD FAIL: ROCMExecutionProvider missing - the onnxruntime-rocm wheel was unavailable and plain onnxruntime (CPU) would ship under the amd tag'; print('OK: ROCMExecutionProvider present')"
 
 # Copy application code
 COPY app/ ./app/
