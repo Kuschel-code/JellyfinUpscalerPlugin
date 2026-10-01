@@ -1,6 +1,7 @@
 using System;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -133,11 +134,146 @@ namespace JellyfinUpscalerPlugin.Tests.Services
             using var client = mockHttp.ToHttpClient();
             using var service = CreateService(client);
 
+            service.DelayAsync = (_, _) => Task.CompletedTask; // do not really wait out the busy retries
+
             var error = await Assert.ThrowsAsync<HttpRequestException>(() =>
                 service.UpscaleImageAsync(new byte[] { 1 }, requireSuccess: true));
 
+            // A service that stays busy past the bounded retries still surfaces its status and detail.
             Assert.Equal(HttpStatusCode.TooManyRequests, error.StatusCode);
             Assert.Contains("GPU queue is full", error.Message);
+            Assert.Equal(1 + JellyfinUpscalerPlugin.Services.HttpUpscalerService.MaxBusyRetries, mockHttp.GetMatchCount(matcher));
+        }
+
+        // -- Busy service (HTTP 429 / 503) must be waited out, not turned into a failed frame --
+        // Library jobs abort on the FIRST frame the AI service rejects (no local-resize fallback any
+        // more). A 429 only means "every slot is taken right now" and a 503 "circuit breaker cooling
+        // down" (Retry-After: 10): both pass, so one of them must not cost the whole movie.
+
+        [Theory]
+        [InlineData(HttpStatusCode.TooManyRequests)]
+        [InlineData(HttpStatusCode.ServiceUnavailable)]
+        public async Task UpscaleImageAsync_WaitsOutABusyService_AndSucceeds(HttpStatusCode busy)
+        {
+            var upscaled = new byte[] { 0x89, 0x50, 0x4E, 0x47 };
+            int calls = 0;
+            using var mockHttp = new MockHttpMessageHandler();
+            mockHttp.When("http://localhost:5000/upscale").Respond(_ =>
+                ++calls <= 3
+                    ? new HttpResponseMessage(busy) { Content = new StringContent("busy") }
+                    : new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(upscaled) });
+            using var client = mockHttp.ToHttpClient();
+            using var service = CreateService(client);
+            var waits = new System.Collections.Generic.List<TimeSpan>();
+            service.DelayAsync = (d, _) => { waits.Add(d); return Task.CompletedTask; };
+
+            var result = await service.UpscaleImageAsync(new byte[] { 1 }, requireSuccess: true);
+
+            Assert.Equal(upscaled, result);
+            Assert.Equal(4, calls);
+            Assert.Equal(3, waits.Count);
+            Assert.All(waits, w => Assert.InRange(w, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(15)));
+        }
+
+        [Fact]
+        public async Task UpscaleImageAsync_HonoursRetryAfterFromABusyService()
+        {
+            int calls = 0;
+            using var mockHttp = new MockHttpMessageHandler();
+            mockHttp.When("http://localhost:5000/upscale").Respond(_ =>
+            {
+                if (++calls > 1)
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[] { 1 }) };
+                var r = new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+                r.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromSeconds(10));
+                return r;
+            });
+            using var client = mockHttp.ToHttpClient();
+            using var service = CreateService(client);
+            var waits = new System.Collections.Generic.List<TimeSpan>();
+            service.DelayAsync = (d, _) => { waits.Add(d); return Task.CompletedTask; };
+
+            await service.UpscaleImageAsync(new byte[] { 1 }, requireSuccess: true);
+
+            // The circuit breaker cools down for 10s: waiting the default 1s would burn a retry for nothing.
+            Assert.Equal(new[] { TimeSpan.FromSeconds(10) }, waits);
+        }
+
+        [Fact]
+        public async Task UpscaleImageAsync_CapsAnAbsurdRetryAfter()
+        {
+            int calls = 0;
+            using var mockHttp = new MockHttpMessageHandler();
+            mockHttp.When("http://localhost:5000/upscale").Respond(_ =>
+            {
+                if (++calls > 1)
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[] { 1 }) };
+                var r = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+                r.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromHours(6));
+                return r;
+            });
+            using var client = mockHttp.ToHttpClient();
+            using var service = CreateService(client);
+            var waits = new System.Collections.Generic.List<TimeSpan>();
+            service.DelayAsync = (d, _) => { waits.Add(d); return Task.CompletedTask; };
+
+            await service.UpscaleImageAsync(new byte[] { 1 }, requireSuccess: true);
+
+            Assert.Equal(TimeSpan.FromSeconds(15), Assert.Single(waits));
+        }
+
+        [Fact]
+        public async Task UpscaleImageAsync_BusyWaitsDoNotConsumeTheErrorRetryBudget()
+        {
+            // Busy a few times, then a genuine 500 must still get its own normal retries.
+            var sequence = new System.Collections.Generic.Queue<HttpStatusCode>(new[]
+            {
+                HttpStatusCode.TooManyRequests, HttpStatusCode.TooManyRequests,
+                HttpStatusCode.InternalServerError, HttpStatusCode.InternalServerError, HttpStatusCode.InternalServerError,
+            });
+            using var mockHttp = new MockHttpMessageHandler();
+            var matcher = mockHttp.When("http://localhost:5000/upscale").Respond(_ =>
+                new HttpResponseMessage(sequence.Count > 0 ? sequence.Dequeue() : HttpStatusCode.InternalServerError));
+            using var client = mockHttp.ToHttpClient();
+            using var service = CreateService(client);
+            service.DelayAsync = (_, _) => Task.CompletedTask;
+
+            await Assert.ThrowsAsync<HttpRequestException>(() =>
+                service.UpscaleImageAsync(new byte[] { 1 }, requireSuccess: true));
+
+            Assert.Equal(2 + 3, mockHttp.GetMatchCount(matcher)); // 2 busy + (1 + 2 error retries)
+        }
+
+        [Fact]
+        public async Task UpscaleImageAsync_RealClientErrorsAreStillNotRetried()
+        {
+            using var mockHttp = new MockHttpMessageHandler();
+            var matcher = mockHttp.When("http://localhost:5000/upscale")
+                .Respond(HttpStatusCode.BadRequest, "application/json", "{\"detail\":\"No model loaded\"}");
+            using var client = mockHttp.ToHttpClient();
+            using var service = CreateService(client);
+            service.DelayAsync = (_, _) => Task.CompletedTask;
+
+            var error = await Assert.ThrowsAsync<HttpRequestException>(() =>
+                service.UpscaleImageAsync(new byte[] { 1 }, requireSuccess: true));
+
+            Assert.Equal(HttpStatusCode.BadRequest, error.StatusCode);
+            Assert.Equal(1, mockHttp.GetMatchCount(matcher));
+        }
+
+        [Fact]
+        public async Task UpscaleImageAsync_CancellationDuringABusyWaitStopsTheJob()
+        {
+            using var cts = new CancellationTokenSource();
+            using var mockHttp = new MockHttpMessageHandler();
+            var matcher = mockHttp.When("http://localhost:5000/upscale").Respond(HttpStatusCode.TooManyRequests);
+            using var client = mockHttp.ToHttpClient();
+            using var service = CreateService(client);
+            service.DelayAsync = (_, ct) => { cts.Cancel(); ct.ThrowIfCancellationRequested(); return Task.CompletedTask; };
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                service.UpscaleImageAsync(new byte[] { 1 }, cancellationToken: cts.Token));
+
             Assert.Equal(1, mockHttp.GetMatchCount(matcher));
         }
 

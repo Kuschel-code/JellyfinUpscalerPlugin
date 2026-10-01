@@ -158,6 +158,11 @@ class AppState:
         self.current_model_type: str = "opencv"  # "opencv", "onnx", or "ncnn"
         self.providers: list = []
         self.use_gpu: bool = True
+        # Issue #90: OpenVINO listed as an active provider but running on its CPU device
+        # (the GPU was requested and could not be used). gpu_is_active() must not call that a GPU.
+        self.openvino_on_cpu: bool = False
+        # Human-readable reason the requested GPU is not in use (None when it is, or none was asked for).
+        self.gpu_unavailable_reason: Optional[str] = None
         self.processing_count: int = 0
         self.max_concurrent: int = 4
         self.gpu_device_id: int = 0  # GPU device index for multi-GPU systems
@@ -1690,6 +1695,11 @@ def detect_hardware():
                         import stat
                         st = rn.stat()
                         logger.info(f"Intel GPU: {rn} permissions: {oct(st.st_mode)}, gid: {st.st_gid}")
+                    # Issue #90: a node that exists but cannot be opened makes OpenVINO report
+                    # "Device GPU is not available" much later - say so up front, with the fix.
+                    startup_hint = gpu_access_hint(_render_node_access())
+                    if startup_hint:
+                        logger.warning(f"Intel GPU: {startup_hint}")
                 except Exception as perm_err:
                     logger.warning(f"Intel GPU: Cannot read /dev/dri: {perm_err}")
             else:
@@ -2347,6 +2357,114 @@ except Exception as e:
     return False
 
 
+# --- GPU render-node access / OpenVINO CPU device (issue #90) -----------------
+# "[OpenVINO] Device GPU is not available" hides the most common cause on Intel/AMD boxes:
+# this process cannot OPEN /dev/dri/renderD*. `group_add: render` resolves the group NAME
+# inside the container, where `render` is an arbitrary GID that normally differs from the HOST
+# group that owns the device node. Compare what the node needs with what this process has and
+# say the numeric fix, instead of leaving the operator to guess from an onnxruntime banner.
+
+def _render_node_accessible(st_mode: int, st_uid: int, st_gid: int, uid: int, groups) -> bool:
+    """True when a process running as `uid` with `groups` may open the node read+write
+    (inference needs both). Root is treated as able to open it (Docker keeps DAC_OVERRIDE)."""
+    if uid == 0:
+        return True
+    if st_uid == uid:
+        return (st_mode & 0o600) == 0o600
+    if st_gid in groups:
+        return (st_mode & 0o060) == 0o060
+    return (st_mode & 0o006) == 0o006
+
+
+def _process_identity() -> tuple:
+    """(uid, sorted group ids) of this process, primary group included."""
+    groups = set(os.getgroups())
+    groups.add(os.getgid())
+    return os.getuid(), sorted(groups)
+
+
+def _render_node_access(dri_dir: Path = Path("/dev/dri"), uid: Optional[int] = None, groups=None) -> list:
+    """One entry per render node: {path, gid, mode, accessible}. Empty when there is none
+    (or on a platform without /dev/dri)."""
+    try:
+        nodes = sorted(dri_dir.glob("renderD*"))
+    except OSError:
+        return []
+    if not nodes:
+        return []
+    if uid is None or groups is None:
+        uid, groups = _process_identity()
+    result = []
+    for node in nodes:
+        try:
+            st = node.stat()
+        except OSError as e:
+            result.append({"path": str(node), "gid": None, "mode": None, "accessible": False, "error": str(e)})
+            continue
+        result.append({
+            "path": str(node),
+            "gid": st.st_gid,
+            "mode": oct(st.st_mode & 0o777),
+            "accessible": _render_node_accessible(st.st_mode, st.st_uid, st.st_gid, uid, groups),
+        })
+    return result
+
+
+def gpu_access_hint(nodes: list, uid: Optional[int] = None, groups=None) -> Optional[str]:
+    """Actionable text when render nodes exist but none of them can be opened; else None."""
+    if not nodes or any(n.get("accessible") for n in nodes):
+        return None
+    if uid is None or groups is None:
+        uid, groups = _process_identity()
+    gids = sorted({n["gid"] for n in nodes if n.get("gid") is not None})
+    paths = ", ".join(n["path"] for n in nodes)
+    gid_list = ", ".join(f'"{g}"' for g in gids) or '"<host render GID>"'
+    first_gid = gids[0] if gids else "<host render GID>"
+    return (
+        f"{paths} exists, but this container process (uid={uid}, groups={list(groups)}) may not "
+        f"open it; the device is owned by GID {gids or 'unknown'}. Fix: give the container the "
+        f"HOST's numeric GID - compose `group_add: [{gid_list}]` or `docker run --group-add {first_gid}` "
+        f"(find it on the host with `stat -c '%g' /dev/dri/renderD128`). `group_add: render` does "
+        f"not help: the NAME is resolved inside the container, where `render` is a different GID."
+    )
+
+
+def _gpu_unavailable_reason() -> str:
+    """Why a requested Intel/OpenVINO GPU could not be used, as specifically as we can tell."""
+    if not any(Path("/dev/dri").glob("renderD*")):
+        if Path("/dev/dxg").exists():
+            return ("WSL2 GPU bridge (/dev/dxg) is present but the GPU runtime did not initialise; "
+                    "check the /usr/lib/wsl mount and LD_LIBRARY_PATH (docker-compose.yml, WSL2 section).")
+        return "no /dev/dri render node in the container - pass `devices: [\"/dev/dri:/dev/dri\"]`."
+    hint = gpu_access_hint(_render_node_access())
+    if hint:
+        return hint
+    return ("the render node is accessible, but OpenVINO still reports no usable GPU: the Intel "
+            "compute runtime in the image may not support this GPU/driver, or the GPU is not fully "
+            "exposed inside the VM. Run `clinfo -l` in the container and check /doctor.")
+
+
+def _openvino_cpu_session(model_path: Path, sess_options):
+    """OpenVINO EP on its CPU device - what an Intel box without a usable GPU should run on.
+
+    Returns None unless OpenVINOExecutionProvider is really active: when the EP cannot start,
+    onnxruntime does not raise, it rebuilds the session on the plain CPU provider and returns
+    that, which is neither OpenVINO nor something to report as such."""
+    try:
+        session = ort.InferenceSession(
+            str(model_path), sess_options,
+            providers=['OpenVINOExecutionProvider', 'CPUExecutionProvider'],
+            provider_options=[{'device_type': 'CPU'}, {}]
+        )
+    except Exception as e:
+        logger.warning(f"OpenVINO CPU device also failed: {e}")
+        return None
+    if 'OpenVINOExecutionProvider' not in session.get_providers():
+        logger.warning("OpenVINO CPU device did not start either (onnxruntime fell back to the plain CPU provider)")
+        return None
+    return session
+
+
 async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -> bool:
     """Load an ONNX model (Real-ESRGAN) into memory with robust GPU fallback.
 
@@ -2383,6 +2501,8 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
                     state.onnx_model_name = model_name
                     state.cv_model = None
                     state.providers = session.get_providers()
+                    state.openvino_on_cpu = False
+                    state.gpu_unavailable_reason = None
                 logger.info(f"ONNX model {model_name} loaded with override providers: {state.providers}")
                 return True
             except Exception as e:
@@ -2460,6 +2580,8 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
         session = None
         last_error = None
         openvino_cpu_fallback = False
+        gpu_wanted = state.use_gpu
+        gpu_reason: Optional[str] = None
 
         for chain_idx, chain in enumerate(provider_chains):
             providers = chain['providers']
@@ -2479,6 +2601,22 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
 
                 actual_providers = session.get_providers()
                 logger.info(f"Session created with providers: {actual_providers}")
+
+                # Issue #90: when the OpenVINO GPU device is missing, onnxruntime does not raise -
+                # it prints "EP Error ... Falling back to ['CPUExecutionProvider']" and hands back
+                # a session on the plain CPU provider. The except-branch below therefore never ran
+                # for this failure. Catch it here: say why, then use OpenVINO's CPU device.
+                if chain_name == 'OpenVINO GPU' and 'OpenVINOExecutionProvider' not in actual_providers:
+                    gpu_reason = _gpu_unavailable_reason()
+                    logger.warning(f"OpenVINO GPU is not usable: {gpu_reason}")
+                    ov_cpu = _openvino_cpu_session(model_path, chain_sess_options)
+                    if ov_cpu is not None:
+                        session = ov_cpu
+                        openvino_cpu_fallback = True
+                        logger.warning("OpenVINO is running on the CPU device, NOT the GPU (see reason above)")
+                        break
+                    session = None
+                    continue
 
                 # Verify GPU is actually active
                 gpu_providers = [p for p in actual_providers if p != 'CPUExecutionProvider']
@@ -2519,19 +2657,14 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
 
                 # OpenVINO GPU failed — try CPU device before giving up
                 if 'OpenVINOExecutionProvider' in providers and 'GPU' in str(e):
-                    try:
-                        logger.info("OpenVINO GPU failed, trying OpenVINO CPU device...")
-                        cpu_options = [{'device_type': 'CPU'}, {}]
-                        session = ort.InferenceSession(
-                            str(model_path), chain_sess_options,
-                            providers=providers, provider_options=cpu_options
-                        )
-                        actual_providers = session.get_providers()
-                        logger.warning("OpenVINO running on CPU (GPU compute runtime not available)")
+                    gpu_reason = _gpu_unavailable_reason()
+                    logger.warning(f"OpenVINO GPU is not usable: {gpu_reason}")
+                    ov_cpu = _openvino_cpu_session(model_path, chain_sess_options)
+                    if ov_cpu is not None:
+                        session = ov_cpu
+                        logger.warning("OpenVINO is running on the CPU device, NOT the GPU (see reason above)")
                         openvino_cpu_fallback = True
                         break
-                    except Exception as e2:
-                        logger.warning(f"OpenVINO CPU also failed: {e2}")
 
                 session = None
                 continue
@@ -2591,6 +2724,10 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
             state.last_load_error = None
             # Update providers list inside lock for thread safety
             state.providers = session.get_providers()
+            state.openvino_on_cpu = openvino_cpu_fallback
+            gpu_live = (not openvino_cpu_fallback
+                        and any(p in _NON_CPU_PROVIDERS for p in state.providers))
+            state.gpu_unavailable_reason = gpu_reason if (gpu_wanted and not gpu_live) else None
             if openvino_cpu_fallback:
                 state.use_gpu = False
         # Explicitly free old session outside lock to avoid holding it during GC
@@ -3844,7 +3981,10 @@ def gpu_is_active() -> bool:
     loaded (provider list still empty) fall back to the requested USE_GPU
     intent so a freshly started GPU box doesn't read 'no GPU'."""
     if state.providers:
-        return any(p in _NON_CPU_PROVIDERS for p in state.providers)
+        # OpenVINO stays in the provider list when it runs on its CPU device (issue #90),
+        # which is not a GPU.
+        return any(p in _NON_CPU_PROVIDERS and not (p == "OpenVINOExecutionProvider" and state.openvino_on_cpu)
+                   for p in state.providers)
     return state.use_gpu
 
 
@@ -3894,6 +4034,7 @@ async def status():
         "model_type": state.current_model_type,
         "available_providers": state.providers,
         "using_gpu": gpu_is_active(),
+        "gpu_unavailable_reason": state.gpu_unavailable_reason,
         "loaded_models": [state.current_model] if state.current_model else [],
         "processing_count": state.processing_count,
         "max_concurrent": state.max_concurrent,
@@ -4080,7 +4221,8 @@ async def gpu_verify():
         "using_gpu": gpu_is_active(),
         "gpu_requested": state.use_gpu,
         "gpu_device_id": state.gpu_device_id,
-        "gpu_list": state.gpu_list
+        "gpu_list": state.gpu_list,
+        "gpu_unavailable_reason": state.gpu_unavailable_reason,
     }
 
     # clinfo for OpenCL/Intel
@@ -4108,6 +4250,10 @@ async def gpu_verify():
             diagnostics["dev_dri"] = {"exists": True, "error": str(e)}
     else:
         diagnostics["dev_dri"] = {"exists": False, "hint": "Pass --device=/dev/dri to Docker for Intel GPU access"}
+
+    # Can this process actually OPEN the render node? (issue #90)
+    render_nodes = _render_node_access()
+    diagnostics["render_nodes"] = render_nodes
 
     # WSL2 / Docker Desktop diagnostics (issue #66)
     diagnostics["wsl2"] = {
@@ -4146,6 +4292,9 @@ async def gpu_verify():
 
     # Troubleshooting tips based on detected issues
     tips = []
+    access_hint = gpu_access_hint(render_nodes)
+    if access_hint:
+        tips.append(access_hint)
     if not state.use_gpu:
         tips.append("GPU disabled. Set USE_GPU=true environment variable to enable.")
     if diagnostics.get("clinfo", "").startswith("error") or "not available" in diagnostics.get("clinfo", ""):
@@ -4235,9 +4384,11 @@ async def doctor():
         "nvidia": "Grant the GPU: compose `deploy.resources.reservations.devices: "
                   "[{driver: nvidia, count: all, capabilities: [gpu]}]` "
                   "(older Docker: `runtime: nvidia`; CLI: `docker run --gpus all`).",
-        "amd": "Pass ROCm devices: `--device=/dev/kfd --device=/dev/dri` + "
-               "`group_add: [video, render]`.",
-        "intel": "Pass the render node: `--device=/dev/dri` + `group_add: render`.",
+        "amd": "Pass ROCm devices: `--device=/dev/kfd --device=/dev/dri` + the HOST's "
+               "numeric video/render GIDs (`group_add: [\"<gid>\"]`, `stat -c '%g' /dev/dri/renderD128`).",
+        "intel": "Pass the render node: `--device=/dev/dri` + the HOST's numeric render GID "
+                 "(`group_add: [\"<gid>\"]`, from `stat -c '%g' /dev/dri/renderD128` on the host). "
+                 "`group_add: render` resolves the name INSIDE the container, which is a different GID.",
         "intel-wsl2": "WSL2/Docker-Desktop: `devices: [/dev/dxg:/dev/dxg]` + "
                       "`volumes: [/usr/lib/wsl:/usr/lib/wsl:ro]` + "
                       "`environment: [LD_LIBRARY_PATH=/usr/lib/wsl/lib]`.",
@@ -4265,7 +4416,8 @@ async def doctor():
         checks.append({"check": "gpu_provider_active", "status": "fail",
                        "detail": f"GPU device present and {sorted(gpu_eps)} compiled in, "
                                  f"but inference runs on CPU (active providers={providers})",
-                       "fix": "GPU runtime failed to initialise -- almost always a HOST "
+                       "fix": state.gpu_unavailable_reason or
+                              "GPU runtime failed to initialise -- almost always a HOST "
                               "driver/toolkit version mismatch (your image is correct). Update the "
                               "host NVIDIA driver (>= what the image's CUDA needs) or ROCm, recreate "
                               "the container, and check `docker logs` for the onnxruntime error "
@@ -4295,6 +4447,23 @@ async def doctor():
         checks.append({"check": "device_passthrough", "status": "fail",
                        "detail": pt_detail,
                        "fix": device_fix.get(backend, "Pass your GPU device into the container.")})
+
+    # 3b) gpu_device_access - the render node can actually be OPENED by this process (issue #90).
+    #     Present-but-unopenable is the usual cause of "Device GPU is not available".
+    render_nodes = _render_node_access()
+    if render_nodes:
+        nodes_detail = "; ".join(
+            f"{n['path']} gid={n['gid']} mode={n['mode']} accessible={n['accessible']}"
+            for n in render_nodes)
+        node_hint = gpu_access_hint(render_nodes)
+        if node_hint:
+            gpu_live = bool(providers) and gpu_active
+            checks.append({"check": "gpu_device_access",
+                           "status": "warn" if gpu_live else "fail",
+                           "detail": nodes_detail, "fix": node_hint})
+        else:
+            checks.append({"check": "gpu_device_access", "status": "ok",
+                           "detail": nodes_detail, "fix": None})
 
     # 4) onnx_provider_pkg — the right onnxruntime build (no vendor shadowing).
     avail = set(ort.get_available_providers()) if ONNX_AVAILABLE else set()
