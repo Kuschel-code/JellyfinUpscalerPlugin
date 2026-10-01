@@ -35,6 +35,29 @@ detect_backend() {
     echo "cpu"
 }
 
+# Issue #90: a render node that exists but cannot be opened makes OpenVINO/OpenCL report
+# "Device GPU is not available" and the service silently runs on the CPU. `group_add: render`
+# does not fix it: the group NAME resolves inside the container, to a different GID than the
+# HOST group that owns /dev/dri/renderD128.
+check_render_access() {
+    local node denied="" gid
+    for node in /dev/dri/renderD*; do
+        [ -e "$node" ] || continue
+        if [ -r "$node" ] && [ -w "$node" ]; then
+            return 0
+        fi
+        denied="$node"
+    done
+    [ -n "$denied" ] || return 0
+    gid="$(stat -c '%g' "$denied" 2>/dev/null || echo '?')"
+    log "WARNING: $denied exists but this container user cannot open it (uid=$(id -u), groups=$(id -G))."
+    log "  The device belongs to GID ${gid}. Give the container the HOST's numeric GID:"
+    log "    compose:    group_add: [\"${gid}\"]"
+    log "    docker run: --group-add ${gid}"
+    log "  (find it on the host: stat -c '%g' /dev/dri/renderD128)"
+    log "  'group_add: render' does NOT work - the name resolves to a different GID in the container."
+}
+
 BACKEND="$(detect_backend || echo cpu)"
 USE_GPU_VAL="${USE_GPU:-false}"
 
@@ -55,5 +78,7 @@ if [ "${USE_GPU_VAL}" = "true" ] && [ "${BACKEND}" = "cpu" ]; then
     log "  - intel/vulkan: pass --device=/dev/dri"
     log "  Falling back to CPU inference (slow)."
 fi
+
+check_render_access
 
 exec "$@"

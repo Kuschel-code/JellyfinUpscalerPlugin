@@ -226,10 +226,11 @@ Support for Intel iGPU and Arc discrete GPUs via OpenVINO 2025.4.
 # Build Intel version
 docker build -f Dockerfile.intel --build-arg APP_VERSION=1.8.3.32 --build-arg APP_COMMIT="$(git rev-parse --short HEAD)" -t jellyfin-ai-upscaler:rc-intel .
 
-# Run with Intel GPU access
+# Run with Intel GPU access (replace 105 with: stat -c '%g' /dev/dri/renderD128 on the HOST)
 docker run -d \
   --name jellyfin-ai-upscaler-intel \
   --device=/dev/dri \
+  --group-add 105 \
   -p 127.0.0.1:5000:5000 \
   -v ai-models:/app/models \
   -v ai-cache:/app/cache \
@@ -242,6 +243,9 @@ docker run -d \
 - Intel iGPU (6th gen+) or Intel Arc GPU
 - Linux host with `/dev/dri` device access
 - Intel GPU drivers installed on host
+- The container user must be able to **open** `/dev/dri/renderD128`: pass the host's **numeric** render GID (`--group-add 105` / compose `group_add: ["105"]`, from `stat -c '%g' /dev/dri/renderD128`). `group_add: render` does **not** work - the name is resolved inside the container, where `render` is a different GID.
+
+**GPU not used?** Symptom in `docker logs`: `[OpenVINO] Device GPU is not available` followed by `Falling back to ['CPUExecutionProvider']`. Check `GET /doctor` (`gpu_device_access`), `GET /status` (`gpu_unavailable_reason`) and the first lines of `docker logs` (the entrypoint prints the exact GID when the render node is not openable). Without GPU access the service runs on OpenVINO's CPU device and reports `using_gpu: false`.
 
 ---
 
