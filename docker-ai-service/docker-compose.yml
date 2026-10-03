@@ -118,6 +118,12 @@ volumes:
 #       - ai-cache:/app/cache
 #     devices:
 #       - /dev/dri:/dev/dri  # Required for Intel GPU access
+#     # The container user must be allowed to OPEN /dev/dri/renderD128. Use the HOST's numeric
+#     # render GID (host: stat -c '%g' /dev/dri/renderD128). `group_add: [render]` does NOT work:
+#     # the name is resolved inside the container, where `render` is a different GID, and
+#     # OpenVINO then reports "Device GPU is not available" and runs on the CPU (issue #90).
+#     group_add:
+#       - "105"   # <- replace with YOUR host's render GID
 #     environment:
 #       - USE_GPU=true
 #       - OPENVINO_DEVICE=GPU
@@ -136,6 +142,8 @@ volumes:
 #     build:
 #       context: .
 #       dockerfile: Dockerfile.intel   # use Dockerfile.amd for AMD GPUs
+#       # AMD (ROCm) and Vulkan images need the same numeric host GIDs as the Intel one above
+#       # (host: stat -c '%g' /dev/kfd /dev/dri/renderD128) - never the names video/render.
 #     container_name: jellyfin-ai-upscaler-wsl2
 #     ports:
 #       - "5000:5000"

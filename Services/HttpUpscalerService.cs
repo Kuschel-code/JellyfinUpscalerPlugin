@@ -28,6 +28,34 @@ namespace JellyfinUpscalerPlugin.Services
         private readonly object _healthLock = new();
 
         /// <summary>
+        /// How often a BUSY AI service (HTTP 429 / 503) is waited out per frame. Separate from the
+        /// error retries: "every slot is taken right now" and "circuit breaker cooling down for 10s"
+        /// are not failures, and a library job aborts on the first frame the service rejects.
+        /// </summary>
+        internal const int MaxBusyRetries = 6;
+        private static readonly TimeSpan MinBusyWait = TimeSpan.FromSeconds(1);
+        private static readonly TimeSpan MaxBusyWait = TimeSpan.FromSeconds(15);
+
+        /// <summary>Seam for the retry waits so tests do not sleep for real.</summary>
+        internal Func<TimeSpan, CancellationToken, Task> DelayAsync { get; set; } = Task.Delay;
+
+        private static bool IsBusy(System.Net.HttpStatusCode status) =>
+            status == System.Net.HttpStatusCode.TooManyRequests || status == System.Net.HttpStatusCode.ServiceUnavailable;
+
+        /// <summary>
+        /// How long to wait before retrying a busy service: the service's own Retry-After (the
+        /// circuit breaker sends 10) clamped to 1-15s, else 1, 2, 4, 8, 8, 8s.
+        /// </summary>
+        internal static TimeSpan BusyWait(HttpResponseMessage response, int busyRetry)
+        {
+            var retryAfter = response.Headers.RetryAfter;
+            TimeSpan? requested = retryAfter?.Delta
+                ?? (retryAfter?.Date is { } at ? at - DateTimeOffset.UtcNow : null);
+            var wait = requested ?? TimeSpan.FromSeconds(Math.Min(8, 1 << Math.Max(0, busyRetry - 1)));
+            return wait < MinBusyWait ? MinBusyWait : wait > MaxBusyWait ? MaxBusyWait : wait;
+        }
+
+        /// <summary>
         /// Invalidate the health check cache so the next call does a fresh check.
         /// Call this when the AI Service URL changes or before explicit Test Connection.
         /// </summary>
@@ -266,6 +294,7 @@ namespace JellyfinUpscalerPlugin.Services
             var baseUrl = GetServiceUrl();
             const int maxRetries = 2;
             Exception? lastFailure = null;
+            int busyRetries = 0;
 
             for (int attempt = 0; attempt <= maxRetries; attempt++)
             {
@@ -303,6 +332,18 @@ namespace JellyfinUpscalerPlugin.Services
                         lastFailure = new HttpRequestException(
                             $"Docker AI service rejected upscaling (HTTP {(int)response.StatusCode}): {error}",
                             null, response.StatusCode);
+                        if (IsBusy(response.StatusCode) && busyRetries < MaxBusyRetries)
+                        {
+                            // Busy / cooling down, not broken: wait it out. Does not use up the error retries.
+                            busyRetries++;
+                            var wait = BusyWait(response, busyRetries);
+                            _logger.LogWarning(
+                                "AI service is busy (HTTP {StatusCode}); waiting {Wait:F0}s before retry {Retry}/{Max}",
+                                (int)response.StatusCode, wait.TotalSeconds, busyRetries, MaxBusyRetries);
+                            await DelayAsync(wait, cancellationToken);
+                            attempt--;
+                            continue;
+                        }
                         _logger.LogError("AI service upscaling failed: {StatusCode} - {Error}", response.StatusCode, error);
                         // Don't retry on 4xx client errors
                         if ((int)response.StatusCode < 500) break;
@@ -333,7 +374,7 @@ namespace JellyfinUpscalerPlugin.Services
                 if (attempt < maxRetries)
                 {
                     // Exponential backoff: 1s, 2s
-                    await Task.Delay(TimeSpan.FromSeconds(1 << attempt), cancellationToken);
+                    await DelayAsync(TimeSpan.FromSeconds(1 << attempt), cancellationToken);
                 }
             }
 

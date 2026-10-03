@@ -87,7 +87,7 @@ docker run -d --name jellyfin-ai-upscaler \
 # AMD ROCm (RDNA2+)
 docker run -d --name jellyfin-ai-upscaler \
   --device=/dev/kfd --device=/dev/dri \
-  --group-add video -p 5000:5000 \
+  --group-add <VIDEO_GID> --group-add <RENDER_GID> -p 5000:5000 \
   -v upscaler-models:/app/models \
   -e API_TOKEN=change-me-please \
   kuscheltier/jellyfin-ai-upscaler:docker7-amd
