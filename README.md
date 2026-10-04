@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.35 — Jellyfin 12
+# Jellyfin AI Upscaler Plugin v1.8.3.36 — Jellyfin 12
 
 [![Built with Claude Opus 5.5](https://img.shields.io/badge/Built%20with-Claude%20Opus%205.5-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
 
@@ -14,7 +14,9 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, with AI inference in a Docker service and video decoding/encoding on the Jellyfin host.
 
-**Release status (2026-09-26):** v1.8.3.35 is released for Jellyfin 12.0+ / .NET 10. The player button no longer needs write access to Jellyfin's web folder, and since v1.8.3.34 real-time upscaling starts again in the web client. Jellyfin 10.11 users retain v1.8.3.31, which has both defects. Target-server acceptance was not run; actual playback, GPU and HDR target-hardware behavior remain unverified.
+**Release status (2026-10-04):** v1.8.3.36 is released for Jellyfin 12.0+ / .NET 10. Library jobs now wait out a busy AI service (HTTP 429/503) instead of failing the whole video, and the AI service explains why an Intel/AMD GPU is not used (see issue #90: pass the host's numeric render group ID, not the name `render`). Target-server acceptance was not run; actual playback, GPU and HDR target-hardware behavior remain unverified.
+
+**Previous release status (2026-09-26):** v1.8.3.35 is released for Jellyfin 12.0+ / .NET 10. The player button no longer needs write access to Jellyfin's web folder, and since v1.8.3.34 real-time upscaling starts again in the web client. Jellyfin 10.11 users retain v1.8.3.31, which has both defects. Target-server acceptance was not run; actual playback, GPU and HDR target-hardware behavior remain unverified.
 
 **Fixed in v1.8.3.35** (reported in GitHub issue #75):
 - The player button never appeared when Jellyfin could not write its web client's `index.html`: on a default Windows install (the server runs as NetworkService under `Program Files`), with the Debian package, snaps and read-only containers. It showed only in a tab that had opened the plugin's settings. The plugin now adds its script to the page as Jellyfin serves it; the file on disk is left alone.
@@ -31,7 +33,7 @@ AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neura
 
 **New in v1.8.3.33:** a redesigned in-player menu (live frame-rate readout, filter previews on the playing frame, phone and TV layouts) and settings page (keyboard- and remote-friendly tabs).
 
-**Docker Images (released in lockstep with the plugin, both at v1.8.3.35):** All seven regular version pins and docker7 tags are published and registry-verified, including ten platform configurations. NVIDIA latest also points to v1.8.3.35. The AI service itself is unchanged since v1.8.3.33. [Release notes](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.35).
+**Docker Images (released in lockstep with the plugin, both at v1.8.3.36):** All seven regular version pins and docker7 tags are published and registry-verified, including ten platform configurations. NVIDIA latest also points to v1.8.3.35. The AI service itself is unchanged since v1.8.3.33. [Release notes](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.35).
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -58,7 +60,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.35   │  │
+│  │  AI Upscaler Plugin v1.8.3.36   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │

@@ -7,12 +7,20 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.35</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.36</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Every release carries its full notes on the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
+  <h2>v1.8.3.36 - A busy AI service no longer fails a library job; unusable Intel GPU is explained</h2>
+  <p class="date">2026-10-04 · target-server acceptance not run; GPU, live-player and HDR target-hardware behavior remain unverified</p>
+  <ul>
+    <li>Library jobs failed the whole video on the first frame the AI service rejected, and an HTTP 429 (all slots busy, for example while someone plays video through the same container) or a 503 during the circuit breaker's 10 second cooldown counted as final. These are now waited out, up to 6 times per frame, following the service's <code>Retry-After</code>. Real client errors and cancellation behave as before (discussion #80).</li>
+    <li>Issue #90 (Intel Arc, "Device GPU is not available"): onnxruntime silently rebuilt the session on the CPU and the service never said why. The service now detects this, reports the reason, runs OpenVINO on its CPU device instead, and no longer reports that as a GPU. Usual cause: <code>group_add: render</code> names a group that has a different ID inside the container than the host's render group. The startup log, <code>/doctor</code> (<code>gpu_device_access</code>), <code>/gpu-verify</code> and <code>/status</code> now name the exact numeric group ID to use.</li>
+    <li>Docs: the install pages, README and compose file now say to pass the host's numeric GPU group IDs (AMD, Intel and Vulkan images). The AMD image build now fails when the ROCm provider is missing, instead of publishing a CPU-only image under the amd tag.</li>
+    <li>The Intel fix was checked against a simulated onnxruntime and in a real container with a device only one group may open; it was not run on a real Arc GPU, so a driver problem on such a machine is not ruled out.</li>
+  </ul>
   <h2>v1.8.3.35 - Player button without write access; engines behind a base URL</h2>
   <p class="date">2026-09-26 · target-server acceptance not run; GPU, live-player and HDR target-hardware behavior remain unverified</p>
   <ul>
@@ -628,7 +636,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.35</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.36</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>
