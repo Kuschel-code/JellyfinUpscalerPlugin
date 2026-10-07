@@ -34,7 +34,7 @@ All tags belong to `kuscheltier/jellyfin-ai-upscaler`. Candidate jobs also publi
 
 - **40+ AI Models** - Real-ESRGAN, SPAN, SwinIR, FSRCNN, ESPCN, LapSRN, EDSR, and more
 - **NVIDIA GPU Support** - CUDA 12.8 by default; `SKIP_TENSORRT=true`. TensorRT needs explicit opt-in and compatible image libraries.
-- **AMD GPU Support** - ROCm 6.2 base; actual acceleration depends on host drivers, device access and the loaded model.
+- **AMD GPU Support** - ROCm 7.2.4 base; actual acceleration depends on host drivers, device access and the loaded model.
 - **Intel GPU Support** - OpenVINO 2025.4 acceleration (Arc, iGPU)
 - **Apple Silicon** - Docker runs CPU inference. CoreML requires a native macOS installation.
 - **Vulkan GPU Support** - ncnn for AMD pre-RDNA2, Intel iGPU, any Vulkan GPU
@@ -76,6 +76,8 @@ docker run -d \
   --env-file .env \
   kuscheltier/jellyfin-ai-upscaler:docker7-amd
 ```
+
+> **AMD before v1.8.3.36:** older `docker7-amd` images never ran ONNX models on the GPU (no ROCm path in the service, and an ONNX Runtime built for a different ROCm than the image; issue #98). After a model is loaded, `GET /gpu-verify` must show `ROCMExecutionProvider` in `active_providers` and `using_gpu: true`; if not, `GET /status` → `gpu_unavailable_reason` says why. RX 6800/6900, RX 7700-7900 and RX 9000 work as is; other RDNA2 cards (RX 6600/6700) need `-e HSA_OVERRIDE_GFX_VERSION=10.3.0`, RX 7600 needs `11.0.0`.
 
 > **GPU group IDs:** use the HOST's numeric GIDs (`stat -c '%g' /dev/kfd /dev/dri/renderD128` on the host), not the names `video`/`render`. `--group-add video` resolves the name *inside* the container, where it is a different GID, so the container cannot open the GPU and silently runs on the CPU. The same applies to the Vulkan image. The container's startup log and `GET /doctor` print the exact GID if the device cannot be opened.
 

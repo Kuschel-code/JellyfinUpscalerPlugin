@@ -1663,17 +1663,21 @@ def detect_hardware():
                     if mem_result.returncode == 0:
                         for line in mem_result.stdout.split("\n"):
                             if "Total" in line:
-                                # Extract memory size
-                                parts = line.split()
+                                # Extract memory size. rocm-smi prints "VRAM Total Memory (B): <bytes>".
+                                parts = line.replace(":", " ").split()
                                 for i, p in enumerate(parts):
                                     if p.isdigit():
-                                        state.gpu_memory = f"{int(p)} MB"
+                                        mb = int(p) // (1024 * 1024) if "(B)" in line else int(p)
+                                        state.gpu_memory = f"{mb} MB"
                                         break
                 except Exception as e:
                     logger.debug(f"Failed to detect AMD GPU VRAM via rocm-smi: {e}")
                     state.gpu_memory = "Unknown"
 
                 gpu_detected = True
+                # Issue #98: without a gpu_list entry the dashboard and /gpu-verify showed no GPU.
+                state.gpu_list.append({"index": 0, "name": state.gpu_name,
+                                       "memory": state.gpu_memory or "Unknown", "type": "amd"})
                 logger.info(f"Detected AMD GPU: {state.gpu_name}")
         except Exception as e:
             logger.debug(f"AMD GPU not detected: {e}")
@@ -2444,6 +2448,117 @@ def _gpu_unavailable_reason() -> str:
             "exposed inside the VM. Run `clinfo -l` in the container and check /doctor.")
 
 
+def _rocm_provider_load_error() -> Optional[str]:
+    """The ROCm libraries the ROCm EP library cannot find, or None when it resolves.
+
+    Issue #98: get_available_providers() lists ROCMExecutionProvider from the wheel's build
+    config, not from a successful load. When the wheel was built against another ROCm major
+    than the image ships (libamdhip64.so.7 vs .so.6), the library cannot be opened, onnxruntime
+    prints an EP error and silently continues on the CPU provider.
+
+    Uses `ldd` and never dlopen(): loading the library runs ROCm initialisation that aborts the
+    whole process when no GPU is reachable."""
+    try:
+        lib = Path(ort.__file__).parent / "capi" / "libonnxruntime_providers_rocm.so"
+        if not lib.exists():
+            return None
+        result = subprocess.run(["ldd", str(lib)], capture_output=True, text=True, timeout=15)
+    except Exception:
+        return None
+    missing = list(dict.fromkeys(line.split("=>")[0].strip()
+                                 for line in result.stdout.splitlines() if "not found" in line))
+    return f"{', '.join(missing)} not found" if missing else None
+
+
+def _probe_rocm_subprocess(model_path_str: str, device_id: int) -> Optional[str]:
+    """Create a ROCm session and run one inference in a child process.
+
+    Returns None when ROCm works, else why not. A child process because onnxruntime-rocm
+    aborts (not raises) when the GPU cannot be initialised."""
+    if not isinstance(device_id, int) or device_id < 0 or device_id > 99:
+        device_id = 0
+    probe_code = """
+import sys
+import numpy as np
+import onnxruntime as ort
+sess = ort.InferenceSession(sys.argv[1], providers=['ROCMExecutionProvider', 'CPUExecutionProvider'],
+                            provider_options=[{'device_id': int(sys.argv[2])}, {}])
+if 'ROCMExecutionProvider' not in sess.get_providers():
+    print('FAIL:onnxruntime fell back to the CPU provider')
+    sys.exit(1)
+dtypes = {'tensor(float16)': np.float16, 'tensor(double)': np.float64, 'tensor(int64)': np.int64,
+          'tensor(int32)': np.int32, 'tensor(uint8)': np.uint8}
+feed = {}
+for inp in sess.get_inputs():
+    shape = [d if isinstance(d, int) and d > 0 else 16 for d in inp.shape]
+    feed[inp.name] = (np.random.rand(*shape) * 16).astype(dtypes.get(inp.type, np.float32))
+sess.run(None, feed)
+print('OK')
+"""
+    import sys
+    try:
+        result = subprocess.run([sys.executable or "python3", "-c", probe_code, model_path_str, str(device_id)],
+                                capture_output=True, text=True, timeout=300)
+    except subprocess.TimeoutExpired:
+        return "probe timed out after 300 s"
+    except Exception as e:
+        return f"probe could not run: {e}"
+    if result.returncode == 0 and "OK" in result.stdout:
+        return None
+    lines = [l.strip() for l in (result.stdout + "\n" + result.stderr).splitlines() if l.strip()]
+    detail = next((l for l in reversed(lines) if l.startswith("FAIL:")), None)
+    if detail is None:
+        hip = [l for l in lines if "HIP failure" in l or "hipError" in l]
+        detail = hip[-1] if hip else (lines[-1] if lines else "no output")
+        detail = detail[detail.find("HIP failure"):] if "HIP failure" in detail else detail
+    if result.returncode < 0:
+        detail = f"{detail} (child killed by signal {-result.returncode})"
+    return detail[:400]
+
+
+def _rocm_usable_for(model_path) -> bool:
+    """True when this model may get a ROCm session in this process (probed in a child first).
+
+    For the loaders that build one session directly (detector, face restore, RIFE). Blocking:
+    call it from a worker thread in async code."""
+    try:
+        if not (state.use_gpu and ONNX_AVAILABLE and "ROCMExecutionProvider" in ort.get_available_providers()):
+            return False
+    except Exception:
+        return False
+    error = _probe_rocm_subprocess(str(model_path), int(state.gpu_device_id))
+    if error:
+        logger.warning(f"AMD ROCm GPU is not usable for {Path(model_path).name}: {error}")
+        return False
+    return True
+
+
+def _rocm_unavailable_reason() -> str:
+    """Why a requested AMD/ROCm GPU could not be used, as specifically as we can tell."""
+    load_error = _rocm_provider_load_error()
+    if load_error:
+        return (f"the ROCm execution provider cannot be loaded ({load_error}). The onnxruntime-rocm "
+                "build in this image does not match its ROCm libraries - an image problem, not your "
+                "setup. Update the docker7-amd image.")
+    kfd = Path("/dev/kfd")
+    if not kfd.exists():
+        return ("no /dev/kfd in the container - ROCm needs both devices: "
+                "`devices: [\"/dev/kfd:/dev/kfd\", \"/dev/dri:/dev/dri\"]`.")
+    if not os.access(kfd, os.R_OK | os.W_OK):
+        gid = kfd.stat().st_gid
+        return (f"/dev/kfd exists, but this container process may not open it; it is owned by GID "
+                f"{gid}. Fix: give the container the HOST's numeric GID - compose "
+                f"`group_add: [\"{gid}\"]`, docker run `--group-add {gid}`.")
+    if not any(Path("/dev/dri").glob("renderD*")):
+        return "no /dev/dri render node in the container - pass `devices: [\"/dev/dri:/dev/dri\"]`."
+    hint = gpu_access_hint(_render_node_access())
+    if hint:
+        return hint
+    return ("/dev/kfd and the render node are accessible, but the ROCm provider still did not start: "
+            "this ROCm build may not support the GPU (RDNA2/gfx1030 and newer are supported; older "
+            "cards may need HSA_OVERRIDE_GFX_VERSION). Run `rocminfo` in the container and check /doctor.")
+
+
 def _openvino_cpu_session(model_path: Path, sess_options):
     """OpenVINO EP on its CPU device - what an Intel box without a usable GPU should run on.
 
@@ -2470,8 +2585,9 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
 
     Chain order (CUDA first to avoid TensorRT poisoning the CUDA context):
     1. CUDA + CPU (reliable, fast to test)
-    2. OpenVINO GPU + CPU (Intel GPUs)
-    3. CPU only (always works)
+    2. ROCm + CPU (AMD GPUs)
+    3. OpenVINO GPU + CPU (Intel GPUs)
+    4. CPU only (always works)
 
     After CUDA succeeds, optionally probe TensorRT in a subprocess.
     If TensorRT works, reload with TensorRT for better performance.
@@ -2515,6 +2631,7 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
 
         # Build provider chains — CUDA first (safe), TensorRT probed separately
         provider_chains = []
+        gpu_reason: Optional[str] = None
 
         if state.use_gpu:
             # Chain 1: CUDA + CPU (most reliable GPU path — try FIRST)
@@ -2524,6 +2641,25 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
                     'options': [{'device_id': int(device_id)}, {}],
                     'name': 'CUDA'
                 })
+
+            # ROCm + CPU (AMD GPUs). Issue #98: this chain did not exist, so the AMD image ran
+            # every model on the CPU although ROCMExecutionProvider was available.
+            # Probed in a subprocess first: without a reachable GPU (no /dev/kfd, wrong GID,
+            # unsupported card) onnxruntime-rocm does not raise, it ABORTS the process
+            # ("HIP failure 100: no ROCm-capable device is detected"). In-process that would take
+            # the whole service down instead of falling back to the CPU.
+            if 'ROCMExecutionProvider' in available_providers:
+                rocm_error = await asyncio.get_running_loop().run_in_executor(
+                    None, _probe_rocm_subprocess, str(model_path), int(device_id))
+                if rocm_error is None:
+                    provider_chains.append({
+                        'providers': ['ROCMExecutionProvider', 'CPUExecutionProvider'],
+                        'options': [{'device_id': int(device_id)}, {}],
+                        'name': 'ROCm'
+                    })
+                else:
+                    gpu_reason = f"{_rocm_unavailable_reason()} (ROCm probe: {rocm_error})"
+                    logger.warning(f"AMD ROCm GPU is not usable: {gpu_reason}")
 
             # Chain 2: OpenVINO GPU (Intel GPUs)
             if 'OpenVINOExecutionProvider' in available_providers:
@@ -2581,7 +2717,6 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
         last_error = None
         openvino_cpu_fallback = False
         gpu_wanted = state.use_gpu
-        gpu_reason: Optional[str] = None
 
         for chain_idx, chain in enumerate(provider_chains):
             providers = chain['providers']
@@ -2618,6 +2753,13 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
                     session = None
                     continue
 
+                # Issue #98: same silent CPU fallback when the ROCm EP cannot start.
+                if chain_name == 'ROCm' and 'ROCMExecutionProvider' not in actual_providers:
+                    gpu_reason = _rocm_unavailable_reason()
+                    logger.warning(f"AMD ROCm GPU is not usable: {gpu_reason}")
+                    session = None
+                    continue
+
                 # Verify GPU is actually active
                 gpu_providers = [p for p in actual_providers if p != 'CPUExecutionProvider']
 
@@ -2636,6 +2778,7 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
                         logger.info(f"GPU inference verification passed ({gpu_providers[0]}) input_shape={input_shape}")
                     except Exception as verify_err:
                         logger.warning(f"GPU inference verification failed: {verify_err}")
+                        gpu_reason = gpu_reason or f"{chain_name} started, but a test inference on it failed: {verify_err}"
                         del session
                         session = None
                         continue
@@ -2665,6 +2808,10 @@ async def load_onnx_model(model_name: str, model_info: dict, model_path: Path) -
                         logger.warning("OpenVINO is running on the CPU device, NOT the GPU (see reason above)")
                         openvino_cpu_fallback = True
                         break
+
+                if 'ROCMExecutionProvider' in providers:
+                    gpu_reason = f"{_rocm_unavailable_reason()} (session error: {e})"
+                    logger.warning(f"AMD ROCm GPU is not usable: {gpu_reason}")
 
                 session = None
                 continue
@@ -3417,6 +3564,8 @@ def load_rife_model(model_name: str = "rife-v4.9") -> bool:
             providers.append('CUDAExecutionProvider')
         if 'OpenVINOExecutionProvider' in available_providers and state.use_gpu:
             providers.append('OpenVINOExecutionProvider')
+        if not providers and _rocm_usable_for(model_path):   # issue #98
+            providers.append('ROCMExecutionProvider')
         providers.append('CPUExecutionProvider')
 
         session = ort.InferenceSession(str(model_path), providers=providers)
@@ -3579,6 +3728,8 @@ def load_face_restore_model(model_name: str) -> dict:
     providers = []
     if 'CUDAExecutionProvider' in available_providers and state.use_gpu:
         providers.append('CUDAExecutionProvider')
+    elif _rocm_usable_for(model_path):   # issue #98
+        providers.append('ROCMExecutionProvider')
     providers.append('CPUExecutionProvider')
 
     sess = ort.InferenceSession(str(model_path), providers=providers)
@@ -4151,6 +4302,43 @@ async def recommend_endpoint():
     return recommend_model()
 
 
+def _amd_gpus_from_sysfs(drm_path: Path, start_index: int = 0) -> list:
+    """AMD render nodes (PCI vendor 0x1002) with VRAM from amdgpu's sysfs counters."""
+    gpus = []
+    if not drm_path.exists():
+        return gpus
+    for render_node in sorted(drm_path.glob("renderD*")):
+        device_path = render_node / "device"
+        try:
+            if (device_path / "vendor").read_text().strip() != "0x1002":
+                continue
+        except OSError:
+            continue
+
+        def _mb(name):
+            try:
+                return int((device_path / name).read_text().strip()) // (1024 * 1024)
+            except (OSError, ValueError):
+                return 0
+
+        total = _mb("mem_info_vram_total")
+        used = _mb("mem_info_vram_used")
+        try:
+            device_id_hex = (device_path / "device").read_text().strip()
+        except OSError:
+            device_id_hex = "unknown"
+        amd_name = next((g["name"] for g in state.gpu_list if g.get("type") == "amd"), None)
+        gpus.append({
+            "index": start_index + len(gpus),
+            "name": amd_name or f"AMD GPU ({device_id_hex})",
+            "memory_total_mb": total,
+            "memory_free_mb": max(total - used, 0) if total else 0,
+            "driver": "amdgpu",
+            "type": "amd",
+        })
+    return gpus
+
+
 @app.get("/gpus")
 async def list_gpus():
     """Enumerate available GPUs for multi-GPU selection."""
@@ -4204,6 +4392,10 @@ async def list_gpus():
                         })
     except Exception as e:
         logger.debug(f"Intel GPU enumeration skipped: {e}")
+
+    # AMD GPUs via render nodes (issue #98: they were never listed). amdgpu exposes VRAM in sysfs,
+    # so this needs no rocm-smi.
+    gpus.extend(_amd_gpus_from_sysfs(Path("/sys/class/drm"), start_index=len(gpus)))
 
     return {
         "gpus": gpus,
@@ -4333,6 +4525,13 @@ def _detect_backend() -> str:
     # No GPU provider active yet → derive from device hints / requested intent.
     if Path("/dev/dxg").exists():
         return "intel-wsl2"
+    # Issue #98: the AMD image without a usable GPU is still the AMD image - calling it
+    # "cpu" made /doctor say "CPU image, no GPU image selected" to someone running docker7-amd.
+    try:
+        if ONNX_AVAILABLE and "ROCMExecutionProvider" in ort.get_available_providers():
+            return "amd"
+    except Exception:
+        pass
     return "cpu"
 
 
@@ -4376,6 +4575,11 @@ async def doctor():
         nvidia_ok = False
     passthrough_ok = has_dri or has_dxg or nvidia_ok
     pt_detail = f"/dev/dri renderD*={has_dri}, /dev/dxg={has_dxg}, nvidia-smi={nvidia_ok}"
+    if backend == "amd":
+        # ROCm needs the compute device too; a render node alone is not enough (issue #98).
+        has_kfd = Path("/dev/kfd").exists()
+        passthrough_ok = has_dri and has_kfd
+        pt_detail += f", /dev/kfd={has_kfd}"
     avail = set(ort.get_available_providers()) if ONNX_AVAILABLE else set()
     gpu_eps = avail & set(_NON_CPU_PROVIDERS)
 
@@ -4432,7 +4636,8 @@ async def doctor():
         checks.append({"check": "gpu_provider_active", "status": "fail",
                        "detail": f"on CPU though backend '{backend}' was detected; "
                                  f"providers={providers}",
-                       "fix": f"Pull `docker7-{backend}` and pass the device "
+                       "fix": state.gpu_unavailable_reason or
+                              f"Pull `docker7-{backend}` and pass the device "
                               f"(see device_passthrough)."})
 
     # 3) device_passthrough — the GPU device reaches the container.
@@ -4484,6 +4689,15 @@ async def doctor():
     else:
         checks.append({"check": "onnx_provider_pkg", "status": "ok",
                        "detail": f"available EPs: {sorted(avail)}", "fix": None})
+
+    # 4b) rocm_provider_loadable - "available" only means compiled in (issue #98): the ROCm EP
+    #     library must also load against the ROCm libraries in this image.
+    if "ROCMExecutionProvider" in avail:
+        rocm_err = _rocm_provider_load_error()
+        checks.append({"check": "rocm_provider_loadable",
+                       "status": "fail" if rocm_err else "ok",
+                       "detail": rocm_err or "libonnxruntime_providers_rocm.so resolves its ROCm libraries",
+                       "fix": _rocm_unavailable_reason() if rocm_err else None})
 
     # 5) api_token — auth is configured (a token, or explicit disable).
     api_token_env = os.getenv("API_TOKEN", "")
@@ -6054,14 +6268,16 @@ async def load_detector_endpoint(request: Request, model_name: str = Form(...), 
     # this endpoint shipped dead in the first place.
     available = ort.get_available_providers()
     providers = []
+    loop = asyncio.get_running_loop()
     if 'CUDAExecutionProvider' in available and state.use_gpu:
         providers.append('CUDAExecutionProvider')
+    elif await loop.run_in_executor(None, _rocm_usable_for, path):   # issue #98 (AMD detectors)
+        providers.append('ROCMExecutionProvider')
     providers.append('CPUExecutionProvider')
 
     def _load():
         return ort.InferenceSession(str(path), providers=providers)
 
-    loop = asyncio.get_running_loop()
     sess = await loop.run_in_executor(_cpu_executor, _load)
 
     # Ask the model how it wants to be driven instead of assuming one shape. A
