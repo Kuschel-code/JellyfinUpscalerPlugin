@@ -452,7 +452,7 @@
 
   function load() {
     // shared diagnostics (pasted /doctor JSON and logs); the bot works without it, just less precisely
-    if (!window.SupportDiagnose) { var ds = document.createElement("script"); ds.src = "assets/support-diagnose.js"; document.head.appendChild(ds); }
+    if (!window.SupportDiagnose) { var ds = document.createElement("script"); ds.src = "assets/support-diagnose.js?v=2"; document.head.appendChild(ds); }
     fetch("assets/support-kb.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (d) { KB = d; }).catch(function () { KB = null; });
   }
 

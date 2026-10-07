@@ -296,7 +296,8 @@
       "title": "AMD GPU support (ROCm / Vulkan)",
       "issues": [
         49,
-        59
+        59,
+        98
       ],
       "keywords": [
         "amd",
@@ -306,9 +307,14 @@
         "rx",
         "ncnn",
         "amd gpu",
-        "miopen"
+        "miopen",
+        "hip failure",
+        "no rocm-capable device",
+        "libamdhip64",
+        "rx 6800",
+        "rocm-smi"
       ],
-      "answer": "Two AMD paths. **ROCm (`docker7-amd`)** — step by step:\n1. Use the `docker7-amd` image (v1.7.8 fixed it actually using the GPU; earlier it ran on CPU).\n2. Pass `/dev/kfd` **and** `/dev/dri`, plus the HOST's numeric `--group-add` IDs (`stat -c '%g' /dev/kfd /dev/dri/renderD128` on the host), not the names `video`/`render`.\n3. Check `/gpu-verify` → `ROCMExecutionProvider`.\n\n**Vulkan (`docker7-vulkan`, best for older cards)** — step by step:\n1. Use the `docker7-vulkan` image.\n2. Pass `/dev/dri`.\n3. ncnn-Vulkan runs on most AMD/Intel GPUs."
+      "answer": "Two AMD paths. **ROCm (`docker7-amd`)** — step by step:\n1. Use a `docker7-amd` image **from v1.8.3.36 on**. Older ones never ran ONNX models on the GPU: the service had no ROCm path at all, and the image's ONNX Runtime did not match its ROCm libraries (issue #98). They fell back to the CPU without an error.\n2. Pass `/dev/kfd` **and** `/dev/dri`, plus the HOST's numeric `--group-add` IDs (`stat -c '%g' /dev/kfd /dev/dri/renderD128` on the host), not the names `video`/`render`.\n3. Load a model, then check `/gpu-verify`: `active_providers` must start with `ROCMExecutionProvider` and `using_gpu` must be `true`. `onnx_providers` lists ROCm even when it does not run, so it proves nothing. If it is still on the CPU, `/status` → `gpu_unavailable_reason` and `/doctor` say why.\n4. Supported out of the box: RX 6800/6900 (gfx1030), RX 7900/7800/7700 (gfx1100/1101), RX 9000 (gfx1200/1201). Other RDNA2/3 cards (e.g. RX 6600/6700, RX 7600) need `HSA_OVERRIDE_GFX_VERSION=10.3.0` (RDNA2) or `11.0.0` (RDNA3).\n\n**Vulkan (`docker7-vulkan`, best for older cards)** — step by step:\n1. Use the `docker7-vulkan` image.\n2. Pass `/dev/dri`.\n3. ncnn-Vulkan runs on most AMD/Intel GPUs."
     },
     {
       "id": "nvidia-error",

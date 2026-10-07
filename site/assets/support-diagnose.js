@@ -27,7 +27,12 @@
   var GPU_HEAD = "The container cannot use the GPU. The usual cause: `group_add: render` names a group whose ID " +
     "inside the container differs from the host's render group. Use the host's numeric ID " +
     "(`stat -c '%g' /dev/dri/renderD128` on the host) in `group_add: [\"<number>\"]`.";
+  var ROCM_HEAD = "AMD ROCm is not running on the GPU. docker7-amd images before v1.8.3.36 never used it (issue #98); " +
+    "update the image, pass `/dev/kfd` and `/dev/dri` with the host's numeric group IDs, then check `/status` -> " +
+    "`gpu_unavailable_reason`.";
   var SIGNATURES = [
+    { re: /amd rocm gpu is not usable|hip failure \d+|no rocm-capable device|libamdhip64\.so[^\n]*(not found|cannot open)|libhipblas\.so[^\n]*(not found|cannot open)|ep error[\s\S]{0,400}rocm/i,
+      kb: "amd-vulkan", head: ROCM_HEAD },
     { re: /device gpu is not available|ep error[\s\S]{0,400}openvino|falling back to \[?['"]?cpuexecutionprovider|openvino (is )?running on the cpu device|openvino gpu is not usable/i,
       kb: "gpu-device-not-available", head: GPU_HEAD },
     { re: /(may not|cannot|can't) open it|permission denied[^\n]*\/dev\/dri|cannot open[^\n]*renderd\d+|owned by gid|belongs to gid/i,

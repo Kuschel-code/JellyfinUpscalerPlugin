@@ -857,16 +857,16 @@
       const gpus = r.gpus || r || [];
       const body = $('#gpus-body');
       if (!gpus.length) {
-        body.innerHTML = '<tr><td colspan="6" class="muted" style="padding:16px">no GPUs detected by nvidia-smi / rocm-smi</td></tr>';
+        body.innerHTML = '<tr><td colspan="6" class="muted" style="padding:16px">no GPUs detected (nvidia-smi / render nodes)</td></tr>';
         return;
       }
       body.innerHTML = gpus.map(g => `<tr>
         <td class="num">${g.index ?? '—'}</td>
-        <td><span class="tag">${g.vendor || 'GPU'}</span></td>
+        <td><span class="tag">${g.vendor || g.type || 'GPU'}</span></td>
         <td>${g.name || '—'}</td>
-        <td class="muted">${g.driver_version || '—'}</td>
-        <td class="num">${g.memory_total ? fmt.mb(g.memory_total) : '—'}</td>
-        <td class="num">${g.memory_free != null ? fmt.mb(g.memory_free) : '—'}</td>
+        <td class="muted">${g.driver_version || g.driver || '—'}</td>
+        <td class="num">${fmt.mb(g.memory_total ?? g.memory_total_mb)}</td>
+        <td class="num">${fmt.mb(g.memory_free ?? g.memory_free_mb)}</td>
       </tr>`).join('');
     } catch (e) {
       $('#gpus-body').innerHTML = `<tr><td colspan="6" class="muted" style="padding:16px">/gpus unavailable (${e.message})</td></tr>`;

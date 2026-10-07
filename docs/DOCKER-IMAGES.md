@@ -40,9 +40,9 @@ The two exceptions are deliberate and neither is a shortcut:
   which pip-tools cannot generate hashes against. Removing that index would pull
   PyPI's torch, i.e. the CUDA build, taking the image from 0.27 GB of shared base
   plus deps to roughly 2.5 GB - a very large price for a hash.
-- **amd** resolves its stack inside the ROCm base, which ships torch 2.3 compiled
-  against numpy 1.x. It deliberately keeps `numpy<2` and `opencv<4.12`; locking it
-  here would fight that resolution rather than record it.
+- **amd** resolves its stack inside the ROCm base. It still keeps `numpy<2` and
+  `opencv<4.12` (see below); locking it here would fight that resolution rather than
+  record it.
 
 Both still pin versions through their `.txt` ranges. What they do without is the
 content guarantee - a re-uploaded wheel at the same version would install.
@@ -51,30 +51,37 @@ content guarantee - a re-uploaded wheel at the same version would install.
 base runs as a non-root user and could not write the output file, and the CUDA
 runtime base ships no Python at all. Both are fixed in the generator workflow.
 
-## Why `docker7-amd` is 20 GB
+## The `docker7-amd` base (changed for issue #98)
 
-The base is `rocm/pytorch:rocm6.2_…_pytorch_2.3.0`, which ships a full PyTorch
-build even though this service runs inference through **ONNX Runtime**. Almost
-all of the 20 GB comes from that base, not from our layers.
+Until v1.8.3.35 the base was `rocm/pytorch:rocm6.2_…_pytorch_2.3.0` (about 20 GB, almost all
+of it a PyTorch build this service never used). It also could not work: the
+`pip install "onnxruntime-rocm<=1.22.99"` line resolved to **1.22.2.post3**, which is built
+against **ROCm 7.2.4** (`NEEDED libamdhip64.so.7`, `libhipblas.so.3`, `RUNPATH /opt/rocm-7.2.4/lib`),
+while ROCm 6.2 ships `libamdhip64.so.6`. The ROCm EP library could not be opened and ONNX
+Runtime silently ran on the CPU. `get_available_providers()` still listed
+`ROCMExecutionProvider` (it reports the build, not a load), so the build guard passed. On top
+of that, the service had no ROCm provider chain at all.
 
-It also forces a frozen dependency stack:
+Now the base is `rocm/dev-ubuntu-22.04:7.2.4-complete` (ROCm runtime and libraries, no
+PyTorch; about 7.3 GB compressed), and the wheel is pinned to exactly `1.22.2.post3`. **Bump the
+two together or not at all.** The build fails if the ROCm EP library does not resolve against
+the image (`ldd`, not `dlopen`: loading it initialises HIP, which aborts without a GPU).
 
-- `numpy>=1.24,<2.0` — the base's torch 2.3 is compiled against numpy 1.x; numpy 2 breaks it.
-- `opencv-contrib-python>=4.10,<4.12` — opencv 4.12+ requires numpy 2, which the cap above forbids.
+Verified on 2026-10-07 by unpacking that base and running the Dockerfile's apt, pip and guard
+steps in it: the guard passes, and it fails with `libamdhip64.so.7 => not found` when that
+library is removed (the old mismatch). Without a GPU, creating a ROCm session **aborts the
+process** (`HIP failure 100: no ROCm-capable device is detected`), so the service probes ROCm
+in a child process first and falls back to the CPU with a reason in `/status` and `/doctor`.
+Not verified: inference on a real AMD GPU (no AMD hardware in CI or the dev sandbox).
 
-**Accepted risk:** the capped opencv carries **CVE-2025-53644**, which affects
-JPEG2000 decoding. This service decodes PNG and JPEG frames only and never
-touches JPEG2000, so the vulnerable path is not reachable from our code.
+GPU targets of the wheel: gfx908, gfx942, gfx1030, gfx1100, gfx1101, gfx1200, gfx1201. Other
+RDNA2/RDNA3 cards need `HSA_OVERRIDE_GFX_VERSION=10.3.0` / `11.0.0`.
 
-**Exit trigger — revisit when either becomes true:**
-
-1. A ROCm base image with **torch ≥ 2.4** (numpy-2 compatible) is published, **or**
-2. `onnxruntime-rocm` works on a slim base (e.g. `rocm/dev-ubuntu-22.04`) without the PyTorch payload.
-
-Either one lets us drop both caps *and* cut the image size dramatically — the
-frozen stack and the 20 GB are the same problem. The weekly
-`lock-requirements` workflow re-resolves the AMD requirements against the base
-and fails loudly if the caps ever stop holding, so this cannot rot silently.
+**Dependency caps:** `numpy<2` and `opencv-contrib-python<4.12` were forced by the base's
+torch 2.3. There is no torch now, so they can be lifted (opencv 4.12+ also closes
+**CVE-2025-53644**, JPEG2000, not reachable here). They are kept for this change on purpose:
+lifting them is a separate, behaviour-changing dependency jump that needs its own full
+dry-run.
 
 ## Converter image: RAM guidance
 

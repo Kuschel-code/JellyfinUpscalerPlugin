@@ -67,6 +67,9 @@ test('other known signatures map to the right entry', () => {
     ['Docker AI service did not produce an upscaled frame: HTTP 503 Busy', 'service-busy'],
     ['CUDA driver version is insufficient for CUDA runtime version', 'nvidia-error'],
     ['BUILD FAIL: ROCMExecutionProvider missing', 'amd-vulkan'],
+    ['AMD ROCm GPU is not usable: no /dev/kfd in the container', 'amd-vulkan'],
+    ['HIP failure 100: no ROCm-capable device is detected ; GPU=-1', 'amd-vulkan'],
+    ['libamdhip64.so.7 => not found', 'amd-vulkan'],
     ["onnx_providers: ['AzureExecutionProvider', 'CPUExecutionProvider']", 'gpu-on-cpu'],
     ['sha256 mismatch for model realesrgan-x4', 'model-sha256-mismatch'],
   ];
@@ -75,6 +78,12 @@ test('other known signatures map to the right entry', () => {
     assert.ok(r, text);
     assert.ok(ids(r).includes(want), `${text} -> ${r && ids(r)} (wanted ${want})`);
   }
+});
+
+test('a ROCm log gets the AMD answer first, not the Intel render-group one', () => {
+  const log = "Trying chain 2/3: ROCm\n*************** EP Error ***************\nEP Error rocm_call.cc HIP failure 100: no ROCm-capable device is detected\nFalling back to ['CPUExecutionProvider'] and retrying.";
+  const r = D.analyze(log, KB, LATEST);
+  assert.equal(ids(r)[0], 'amd-vulkan');
 });
 
 test('each GPU-device phrase is recognised on its own (not only inside the full #90 log)', () => {

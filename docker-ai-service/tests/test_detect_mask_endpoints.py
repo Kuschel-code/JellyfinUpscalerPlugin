@@ -136,6 +136,27 @@ def test_loading_a_detector_actually_runs(service):
     assert r.json()["input_size"] == 640, "the size must come from the model's own input shape"
 
 
+def test_detector_asks_for_rocm_when_the_probe_says_it_works(service):
+    """Issue #98: on the AMD image the detector only ever asked for CUDA, so YOLO ran on the CPU."""
+    main = sys.modules["app.main"]
+    seen = []
+    real_session = main.ort.InferenceSession
+
+    def recording_session(path, *a, providers=None, **kw):
+        seen.append(list(providers or []))
+        return real_session(path, *a, providers=["CPUExecutionProvider"], **kw)
+
+    old = (main._rocm_usable_for, main.ort.InferenceSession)
+    main._rocm_usable_for = lambda _path: True
+    main.ort.InferenceSession = recording_session
+    try:
+        r = service.post("/models/load-detector", data={"model_name": "singledet", "input_size": 640})
+    finally:
+        main._rocm_usable_for, main.ort.InferenceSession = old
+    assert r.status_code == 200, r.text
+    assert seen and seen[0][0] == "ROCMExecutionProvider", seen
+
+
 def test_detect_mask_without_a_detector_is_a_clean_400(service):
     r = service.post("/detect-mask", content=_frame())
     assert r.status_code == 400

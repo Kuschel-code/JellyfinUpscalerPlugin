@@ -2,13 +2,18 @@
 # AI Upscaler Service - AMD GPU (ROCm) Version
 # ============================================
 # Build: docker build -f Dockerfile.amd -t kuscheltier/jellyfin-ai-upscaler:amd .
-# Run: docker run --device=/dev/kfd --device=/dev/dri --group-add video -p 5000:5000 kuscheltier/jellyfin-ai-upscaler:amd
+# Run: docker run --device=/dev/kfd --device=/dev/dri --group-add <host GID of /dev/kfd and renderD128> -p 5000:5000 kuscheltier/jellyfin-ai-upscaler:amd
 
-# ROCm 6.2 + PyTorch 2.3.0 — verified tag on Docker Hub
-# Note: onnxruntime-rocm is deprecated after v1.23 (ROCm EP removed).
-# GPU inference works via ROCm + ONNX Runtime ≤1.22.x; CPU fallback otherwise.
-# Pinned by digest for reproducible, supply-chain-safe builds (digest fetched 2026-06-18; bump tag+digest together).
-FROM rocm/pytorch:rocm6.2_ubuntu22.04_py3.10_pytorch_release_2.3.0@sha256:931d3e3dcebe6c6fab84adf16cfca3e1d1449100df7c881a46fccd06f6c9bc1c
+# ROCm 7.2.4 runtime + libraries (MIOpen, hipBLAS, hipFFT), no PyTorch.
+# Issue #98: the base used to be rocm/pytorch:rocm6.2 (ROCm 6.2, libamdhip64.so.6), while
+# `pip install "onnxruntime-rocm<=1.22.99"` resolved to 1.22.2.post3, which is built against
+# ROCm 7.2.4 (NEEDED libamdhip64.so.7 + libhipblas.so.3, RUNPATH /opt/rocm-7.2.4/lib). The ROCm
+# EP library could not even be opened, onnxruntime silently ran everything on the CPU, and
+# get_available_providers() kept listing ROCm because it reports the build, not a load.
+# The base and the wheel are pinned TOGETHER now: bump both or neither.
+# The service runs inference through ONNX Runtime only, so the 20 GB PyTorch base bought nothing.
+# Pinned by digest (fetched 2026-10-07; single-arch linux/amd64 image).
+FROM rocm/dev-ubuntu-22.04:7.2.4-complete@sha256:e3909c89d9434e2816568f727e89bf6a00d6d9d746defc6b9957dbeb16d1ac31
 
 # Build-time metadata — REQUIRED build arg, set by CI from the release tag:
 #   --build-arg APP_VERSION=<tag> --build-arg APP_COMMIT=$(git rev-parse --short HEAD)
@@ -23,7 +28,7 @@ ENV APP_VERSION=${APP_VERSION} \
     APP_COMMIT=${APP_COMMIT}
 
 LABEL org.opencontainers.image.title="Jellyfin AI Upscaler (AMD ROCm)" \
-      org.opencontainers.image.description="AI Upscaler Service with AMD ROCm 6.2 GPU Acceleration (RDNA3/RDNA2)" \
+      org.opencontainers.image.description="AI Upscaler Service with AMD ROCm 7.2 GPU Acceleration (RDNA2/RDNA3/RDNA4)" \
       org.opencontainers.image.vendor="Kuschel-code" \
       org.opencontainers.image.source="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" \
       org.opencontainers.image.documentation="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docker-ai-service/README.md" \
@@ -35,6 +40,8 @@ LABEL org.opencontainers.image.title="Jellyfin AI Upscaler (AMD ROCm)" \
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV USE_GPU=true
+# rocm-smi / rocminfo for GPU detection and for users debugging inside the container.
+ENV PATH="/opt/rocm/bin:${PATH}"
 # HSA_OVERRIDE_GFX_VERSION: Set this at runtime for YOUR specific GPU if needed.
 # Example: HSA_OVERRIDE_GFX_VERSION=11.0.0 for RX 7900 (gfx1100)
 # Do NOT set a default — it breaks GPUs that aren't gfx1100.
@@ -42,7 +49,11 @@ ENV USE_GPU=true
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install system dependencies for OpenCV
+# The ROCm base ships no Python; Ubuntu 22.04's is 3.10 (the onnxruntime-rocm wheel needs >=3.10).
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python-is-python3 \
     libgl1 \
     libglib2.0-0 \
     libsm6 \
@@ -57,37 +68,34 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Copy requirements first for layer caching
-# v1.8.3.20 - NOT hash-pinned, and this is deliberate.
-# The ROCm base ships torch 2.3 compiled against numpy 1.x, so the stack is
-# resolved IN the base by the weekly workflow and deliberately keeps numpy<2 and
-# opencv<4.12. Locking it here would fight that resolution rather than record it.
-# Tracked in docs/DOCKER-IMAGES.md.
+# NOT hash-pinned, deliberately (docs/DOCKER-IMAGES.md): the AMD stack is resolved in this base.
 COPY requirements-amd.txt requirements.txt
 
 # Install Python dependencies, then the ROCm ONNX Runtime.
-# onnxruntime-rocm ≤1.22.x is the last version with the ROCm EP (removed after v1.23).
+# onnxruntime-rocm 1.22.x is the last line with the ROCm EP (removed after v1.23).
 #
-# IMPORTANT (FIX-2): onnxruntime-rocm PROVIDES the `onnxruntime` module itself, so
-# plain `onnxruntime` must NOT be present alongside it — otherwise the plain build
-# (which reports AzureExecutionProvider/CPU) shadows the ROCm one and
-# ROCMExecutionProvider never appears. That was the real cause of the CPU-only AMD
-# image: the 2026-05-29 build log shows the rocm wheel installing fine as
-# 1.22.2.post1, yet the runtime reported ['AzureExecutionProvider','CPUExecutionProvider']
-# because plain onnxruntime (pulled by requirements) won. requirements-amd.txt no
-# longer lists it; we also uninstall any pre-baked copy, then force-install the rocm
-# build as the sole provider. The `|| pip install onnxruntime` tail only lets the next
-# step report the problem: that CPU-only result FAILS the build below, so a CPU image
-# can never be published under the amd tag.
+# The wheel is pinned EXACTLY to the build that matches the base's ROCm 7.2.4 (see FROM).
+# A floating "<=1.22.99" is what broke the image when post2/post3 moved from ROCm 6.4 to 7.2.
+#
+# IMPORTANT (FIX-2): onnxruntime-rocm PROVIDES the `onnxruntime` module itself, so plain
+# `onnxruntime` must NOT be present alongside it - the plain build (Azure/CPU) would shadow
+# the ROCm one. requirements-amd.txt does not list it; any copy pulled in anyway is removed.
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade pip && \
-    pip install -r requirements.txt && \
-    { pip uninstall -y onnxruntime onnxruntime-gpu || true; } && \
-    { pip install --force-reinstall "onnxruntime-rocm<=1.22.99" || pip install onnxruntime; }
+    python3 -m pip install --upgrade pip && \
+    python3 -m pip install -r requirements.txt && \
+    { python3 -m pip uninstall -y onnxruntime onnxruntime-gpu || true; } && \
+    python3 -m pip install "onnxruntime-rocm==1.22.2.post3"
 
-# Build-time provider assert (issue #69 lesson, same guard as the NVIDIA/Intel images): fail
-# the build when ROCMExecutionProvider is missing. It used to only print a WARNING and carry
-# on, which published a CPU-only image under the amd tag.
-RUN python3 -c "import onnxruntime as ort; p = ort.get_available_providers(); print('ONNX providers:', p); assert 'ROCMExecutionProvider' in p, 'BUILD FAIL: ROCMExecutionProvider missing - the onnxruntime-rocm wheel was unavailable and plain onnxruntime (CPU) would ship under the amd tag'; print('OK: ROCMExecutionProvider present')"
+# Build-time provider guard (issues #69, #98). Two checks, because the first one alone passed
+# for a CPU-only image: get_available_providers() lists ROCm from the build config, so the
+# provider library must also RESOLVE against this image's ROCm libraries - a wheel/base ROCm
+# mismatch fails here with "libamdhip64.so.N => not found". ldd, not dlopen: loading the
+# library initialises HIP, which aborts on a build machine without an AMD GPU.
+RUN python3 -c "import onnxruntime as ort; p = ort.get_available_providers(); print('ONNX providers:', p); assert 'ROCMExecutionProvider' in p, 'BUILD FAIL: ROCMExecutionProvider missing - plain onnxruntime (CPU) would ship under the amd tag'" && \
+    ROCM_EP="$(python3 -c "import os, onnxruntime; print(os.path.join(os.path.dirname(onnxruntime.__file__), 'capi', 'libonnxruntime_providers_rocm.so'))")" && \
+    { test -f "$ROCM_EP" || { echo "BUILD FAIL: $ROCM_EP missing"; exit 1; }; } && \
+    if ldd "$ROCM_EP" | grep "not found"; then echo "BUILD FAIL: the ROCm EP library does not resolve against this image's ROCm - onnxruntime-rocm and the base image are built for different ROCm versions"; exit 1; fi && \
+    echo "OK: ROCMExecutionProvider present and its ROCm libraries resolve"
 
 # Copy application code
 COPY app/ ./app/

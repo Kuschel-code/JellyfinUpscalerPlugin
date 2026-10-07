@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, with AI inference in a Docker service and video decoding/encoding on the Jellyfin host.
 
-**Release status (2026-10-07):** v1.8.3.36 is released for Jellyfin 12.0+ / .NET 10. Library jobs now wait out a busy AI service (HTTP 429/503) instead of failing the whole video. The AI service now explains why an Intel/AMD GPU is not used (issue #90: pass the host's numeric render group ID, not the name `render`) and runs OpenVINO on its CPU device instead of silently falling back; that part lives in the AI service, so it reaches you with the 1.8.3.36 Docker images, which are **not published yet**. Target-server acceptance was not run; actual playback, GPU and HDR target-hardware behavior remain unverified.
+**Release status (2026-10-07):** v1.8.3.36 is released for Jellyfin 12.0+ / .NET 10. Library jobs now wait out a busy AI service (HTTP 429/503) instead of failing the whole video. The AI service now explains why an Intel/AMD GPU is not used (issue #90: pass the host's numeric render group ID, not the name `render`) and runs OpenVINO on its CPU device instead of silently falling back. The AMD image now actually uses ROCm (issue #98: it never did before; new ROCm 7.2.4 base, about 7.5 GB instead of about 20 GB). Both parts live in the AI service, so it reaches you with the 1.8.3.36 Docker images, which are **not published yet**. Target-server acceptance was not run; actual playback, GPU and HDR target-hardware behavior remain unverified.
 
 **Previous release status (2026-09-26):** v1.8.3.35 is released for Jellyfin 12.0+ / .NET 10. The player button no longer needs write access to Jellyfin's web folder, and since v1.8.3.34 real-time upscaling starts again in the web client. Jellyfin 10.11 users retain v1.8.3.31, which has both defects. Target-server acceptance was not run; actual playback, GPU and HDR target-hardware behavior remain unverified.
 
@@ -33,7 +33,7 @@ AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neura
 
 **New in v1.8.3.33:** a redesigned in-player menu (live frame-rate readout, filter previews on the playing frame, phone and TV layouts) and settings page (keyboard- and remote-friendly tabs).
 
-**Docker Images (to be released in lockstep with the plugin, both at v1.8.3.36):** The published images are at v1.8.3.35: all seven regular version pins and docker7 tags, registry-verified, including ten platform configurations, and NVIDIA latest. The AI service changed in v1.8.3.36 (Intel/OpenVINO fallback and diagnostics, AMD build guard, numeric GPU group IDs), so its images need a rebuild and are **not published yet**; update the container together with the plugin once they are. Until then, Intel/AMD users can apply the fix from issue #90 by hand: pass the host's numeric render group ID. The AI service was unchanged from v1.8.3.33 to v1.8.3.35. [Release notes](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.36).
+**Docker Images (to be released in lockstep with the plugin, both at v1.8.3.36):** The published images are at v1.8.3.35: all seven regular version pins and docker7 tags, registry-verified, including ten platform configurations, and NVIDIA latest. The AI service changed in v1.8.3.36 (Intel/OpenVINO fallback and diagnostics, AMD ROCm support on a ROCm 7.2.4 base, numeric GPU group IDs), so its images need a rebuild and are **not published yet**; update the container together with the plugin once they are. Until then, Intel/AMD users can apply the fix from issue #90 by hand: pass the host's numeric render group ID. The AI service was unchanged from v1.8.3.33 to v1.8.3.35. [Release notes](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.36).
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -42,7 +42,7 @@ AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neura
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-cpu` (CPU Only — multi-threaded ONNXRuntime, multi-arch)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-converter` (CPU + pth→ONNX converter for OpenModelDB community models — opt-in)
 
-Download sizes range from **0.27 GB** (`docker7-cpu`) to **20 GB** (`docker7-amd`, ROCm base) — see **[docs/DOCKER-IMAGES.md](docs/DOCKER-IMAGES.md)** for the full table, the converter's RAM guidance and why the AMD stack is frozen.
+Download sizes range from **0.27 GB** (`docker7-cpu`) to about **7.5 GB** (`docker7-amd`, ROCm 7.2 base) — see **[docs/DOCKER-IMAGES.md](docs/DOCKER-IMAGES.md)** for the full table, the converter's RAM guidance and the AMD stack.
 
 **Report bugs:** [GitHub Issues](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues)
 
@@ -371,7 +371,7 @@ After installation, find settings under **Dashboard → Plugins → AI Upscaler 
 | Tag | GPU | Use Case |
 |-----|-----|----------|
 | `:docker7` | NVIDIA CUDA 12.8 (TensorRT opt-in) | RTX 50/40/30/20, GTX 16/10 |
-| `:docker7-amd` | AMD ROCm 6.2 | RX 7000, RX 6000 |
+| `:docker7-amd` | AMD ROCm 7.2 | RX 9000, RX 7000, RX 6000 (RDNA2+) |
 | `:docker7-intel` | Intel OpenVINO 2025.4 | Arc A-Series, Iris Xe, iGPU |
 | `:docker7-apple` | ARM64 Optimized (multi-arch) | Apple M1–M5 (Docker=CPU, native=CoreML) |
 | `:docker7-vulkan` | Vulkan (ncnn) | AMD pre-RDNA2, Intel iGPU, any Vulkan GPU |
