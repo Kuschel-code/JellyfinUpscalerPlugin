@@ -520,6 +520,17 @@
       });
       return;
     }
+    // 2b) pasted /doctor, /status, /gpu-verify JSON or a log with known signatures -> a deterministic
+    // diagnosis built from the paste itself (support-diagnose.js), plus the matching KB steps. The
+    // local LOG_PATTERNS below stay as the fallback when that script did not load.
+    var dx = window.SupportDiagnose && window.SupportDiagnose.analyze(query, KB, LATEST);
+    if (dx) {
+      addEl(srcLabel("kb", "Diagnosis") + md(dx.markdown), "bot");
+      dx.entries.slice(0, 2).forEach(function (e) { addEl(renderKb(e), "bot"); });
+      remember("(pasted " + dx.kind + ")", dx.entries.map(function (e) { return e.title; }).join("; ") || dx.markdown.slice(0, 160));
+      finish();
+      return;
+    }
     // 3) pasted log -> match known failure signatures first (instant, exact)
     if (looksLikeLog(query)) {
       var logHits = matchLogPatterns(query);
@@ -580,7 +591,7 @@
     busy = true; sendBtn.disabled = true;
     lastQuery = q;
     activate();
-    addEl(esc(q), "user");
+    addEl(esc(q.length > 400 ? q.slice(0, 400) + "\u2026 (" + q.length + " characters pasted)" : q), "user");
     input.value = "";
     input.style.height = "";                    // collapse an expanded log box
     form.classList.remove("hc-multiline");      // regardless of send path

@@ -289,7 +289,15 @@
       }
     });
   }
+  // Pasted /doctor, /status, /gpu-verify JSON or a log with known failure signatures: answer from
+  // the paste itself (support-diagnose.js), then show the matching KB steps.
+  function showDiagnosis(dx) {
+    addMsg("<strong>Diagnosis</strong><br>" + md(dx.markdown), "bot");
+    if (dx.entries.length) addMsg(answerFor(dx.entries[0], dx.entries.slice(1)), "bot");
+  }
   function respond(query) {
+    var dx = window.SupportDiagnose && window.SupportDiagnose.analyze(query, KB, LATEST);
+    if (dx) { showDiagnosis(dx); return; }
     var hits = search(query);
     if (hits.length) { addMsg(answerFor(hits[0], hits.slice(1, 3)), "bot"); return; }
     if (HAIKU_ENDPOINT) { doHaiku(query); return; }
@@ -298,7 +306,7 @@
   }
   function send() {
     var q = input.value.trim(); if (!q) return;
-    lastQuery = q; addMsg(esc(q), "user"); input.value = "";
+    lastQuery = q; addMsg(esc(q.length > 400 ? q.slice(0, 400) + "\u2026 (" + q.length + " characters pasted)" : q), "user"); input.value = "";
     setTimeout(function () { respond(q); }, 120);
   }
 
@@ -443,6 +451,8 @@
   }
 
   function load() {
+    // shared diagnostics (pasted /doctor JSON and logs); the bot works without it, just less precisely
+    if (!window.SupportDiagnose) { var ds = document.createElement("script"); ds.src = "assets/support-diagnose.js"; document.head.appendChild(ds); }
     fetch("assets/support-kb.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (d) { KB = d; }).catch(function () { KB = null; });
   }
 
