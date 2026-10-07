@@ -14,7 +14,7 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, with AI inference in a Docker service and video decoding/encoding on the Jellyfin host.
 
-**Release status (2026-10-04):** v1.8.3.36 is released for Jellyfin 12.0+ / .NET 10. Library jobs now wait out a busy AI service (HTTP 429/503) instead of failing the whole video, and the AI service explains why an Intel/AMD GPU is not used (see issue #90: pass the host's numeric render group ID, not the name `render`). Target-server acceptance was not run; actual playback, GPU and HDR target-hardware behavior remain unverified.
+**Release status (2026-10-07):** v1.8.3.36 is released for Jellyfin 12.0+ / .NET 10. Library jobs now wait out a busy AI service (HTTP 429/503) instead of failing the whole video. The AI service now explains why an Intel/AMD GPU is not used (issue #90: pass the host's numeric render group ID, not the name `render`) and runs OpenVINO on its CPU device instead of silently falling back; that part lives in the AI service, so it reaches you with the 1.8.3.36 Docker images, which are **not published yet**. Target-server acceptance was not run; actual playback, GPU and HDR target-hardware behavior remain unverified.
 
 **Previous release status (2026-09-26):** v1.8.3.35 is released for Jellyfin 12.0+ / .NET 10. The player button no longer needs write access to Jellyfin's web folder, and since v1.8.3.34 real-time upscaling starts again in the web client. Jellyfin 10.11 users retain v1.8.3.31, which has both defects. Target-server acceptance was not run; actual playback, GPU and HDR target-hardware behavior remain unverified.
 
@@ -33,7 +33,7 @@ AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neura
 
 **New in v1.8.3.33:** a redesigned in-player menu (live frame-rate readout, filter previews on the playing frame, phone and TV layouts) and settings page (keyboard- and remote-friendly tabs).
 
-**Docker Images (released in lockstep with the plugin, both at v1.8.3.36):** All seven regular version pins and docker7 tags are published and registry-verified, including ten platform configurations. NVIDIA latest also points to v1.8.3.35. The AI service itself is unchanged since v1.8.3.33. [Release notes](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.35).
+**Docker Images (released in lockstep with the plugin):** The published images are at v1.8.3.35: all seven regular version pins and docker7 tags, registry-verified, including ten platform configurations, and NVIDIA latest. The AI service changed in v1.8.3.36 (Intel/OpenVINO fallback and diagnostics, AMD build guard, numeric GPU group IDs), so its images need a rebuild and are **not published yet**; update the container together with the plugin once they are. Until then, Intel/AMD users can apply the fix from issue #90 by hand: pass the host's numeric render group ID. The AI service was unchanged from v1.8.3.33 to v1.8.3.35. [Release notes](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.36).
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -50,7 +50,7 @@ Download sizes range from **0.27 GB** (`docker7-cpu`) to **20 GB** (`docker7-amd
 
 ---
 
-[Download Jellyfin 12 release v1.8.3.35](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.35) (requires Jellyfin 12.0+, five runtime DLLs plus meta.json).
+[Download Jellyfin 12 release v1.8.3.36](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.36) (requires Jellyfin 12.0+, five runtime DLLs plus meta.json).
 
 ## Architecture
 
@@ -178,7 +178,7 @@ The in-player button lets you:
 
 ## Jellyfin 12 compatibility
 
-The v1.8.3.35 release targets **Jellyfin.Controller 12.0.0 / .NET 10**. Jellyfin 12.1 is also published; see the [official releases](https://github.com/jellyfin/jellyfin/releases). Build and runtime evidence is tracked in [docs/JELLYFIN-12-READINESS.md](docs/JELLYFIN-12-READINESS.md); GPU, real-player and HDR target-hardware acceptance remain separate.
+The v1.8.3.36 release targets **Jellyfin.Controller 12.0.0 / .NET 10**. Jellyfin 12.1 is also published; see the [official releases](https://github.com/jellyfin/jellyfin/releases). Build and runtime evidence is tracked in [docs/JELLYFIN-12-READINESS.md](docs/JELLYFIN-12-READINESS.md); GPU, real-player and HDR target-hardware acceptance remain separate.
 
 ## Installation
 
@@ -395,7 +395,7 @@ The full version history lives on the website and the release pages — this REA
 - **[Changelog (website)](https://kuschel-code.github.io/JellyfinUpscalerPlugin/changelog.html)** — every release in detail
 - **[GitHub Releases](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases)** — release notes and downloadable ZIPs
 
-Release: **v1.8.3.35** — the player button no longer needs write access to Jellyfin's web folder (Windows installs, Debian package, snaps, read-only containers), and the browser real-time engines load behind a base URL; all seven Docker variants. v1.8.3.31 remains available for Jellyfin 10.11.
+Release: **v1.8.3.36** — library jobs wait out a busy AI service (HTTP 429/503), and the AI service explains an unusable Intel/AMD GPU (numeric render group ID); the plugin ZIP is released, the matching Docker images are not published yet. v1.8.3.35 made the player button work without write access to Jellyfin's web folder and loads the browser real-time engines behind a base URL. v1.8.3.31 remains available for Jellyfin 10.11.
 
 ---
 
