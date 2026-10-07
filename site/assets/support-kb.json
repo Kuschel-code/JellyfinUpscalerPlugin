@@ -1,6 +1,6 @@
 {
-  "version": "1.8.3.35",
-  "updated": "2026-09-26",
+  "version": "1.8.3.36",
+  "updated": "2026-10-07",
   "repo": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin",
   "newIssueUrl": "https://github.com/Kuschel-code/JellyfinUpscalerPlugin/issues/new",
   "intro": "Hi! I'm the AI Upscaler support assistant. I answer from every support topic we've ever handled (each with a step-by-step guide), and I can search all GitHub issues live. Ask about install errors, GPU not used, Docker/NAS setup, API tokens, models, and more. You can ask in English or German.",
@@ -144,7 +144,36 @@
         "grafikkarte wird nicht genutzt",
         "nutzt die cpu"
       ],
-      "answer": "If `/gpu-verify` shows `AzureExecutionProvider`, you're on the wrong/old image (plain onnxruntime, no GPU provider). Step by step:\n1. Choose the right image: `docker7-intel` / `docker7-amd` / `docker7` (NVIDIA).\n2. Force a fresh pull:\n```\ndocker compose pull\ndocker compose up -d --force-recreate\n```\n3. Pass the GPU device: `--gpus all` (NVIDIA), `/dev/dri` (Intel/AMD Linux), or `/dev/dxg` (WSL2).\n4. On native Linux also add `group_add: render`.\n5. Re-check `http://IP:5000/gpu-verify` → `active_providers` should list a non-CPU provider.\n(v1.7.8 also fixed a display bug where `using_gpu:false` showed even with OpenVINO active — trust `active_providers`.)"
+      "answer": "If `/gpu-verify` shows `AzureExecutionProvider`, you're on the wrong/old image (plain onnxruntime, no GPU provider). Step by step:\n1. Choose the right image: `docker7-intel` / `docker7-amd` / `docker7` (NVIDIA).\n2. Force a fresh pull:\n```\ndocker compose pull\ndocker compose up -d --force-recreate\n```\n3. Pass the GPU device: `--gpus all` (NVIDIA), `/dev/dri` (Intel/AMD Linux), or `/dev/dxg` (WSL2).\n4. On native Linux (Intel/AMD) the container must be allowed to open `/dev/dri/renderD128`: pass the HOST's numeric render group ID, not the name. On the host run `stat -c '%g' /dev/dri/renderD128`, then `group_add: [\"<that number>\"]`. `group_add: render` resolves the name inside the container, to a different ID, and the GPU silently stays unused.\n5. Re-check `http://IP:5000/gpu-verify` → `active_providers` should list a non-CPU provider.\n(v1.7.8 also fixed a display bug where `using_gpu:false` showed even with OpenVINO active — trust `active_providers`.)"
+    },
+    {
+      "id": "gpu-device-not-available",
+      "title": "Intel/AMD: \"Device GPU is not available\" or the GPU is never used (render group)",
+      "issues": [
+        90
+      ],
+      "keywords": [
+        "device gpu is not available",
+        "openvino",
+        "gpu not available",
+        "ep error",
+        "falling back to cpuexecutionprovider",
+        "group_add",
+        "group_add render",
+        "render group",
+        "renderd128",
+        "dev/dri",
+        "arc a380",
+        "a380",
+        "intel arc",
+        "permission denied dri",
+        "gpu wird nicht genutzt",
+        "gpu nicht verfügbar",
+        "render gruppe",
+        "gruppen id",
+        "gid"
+      ],
+      "answer": "Typical log: `[OpenVINO] Device GPU is not available`, then `Falling back to ['CPUExecutionProvider']`. Usually the container cannot open the GPU, because `group_add: render` names a group whose ID inside the container differs from the host's render group. Step by step:\n1. On the host run `stat -c '%g' /dev/dri/renderD128` (for example `105`).\n2. Use that NUMBER in your compose and recreate the container:\n```\ngroup_add:\n  - \"105\"\n```\n3. Open `http://IP:5000/doctor`: the `gpu_device_access` check names the exact group ID if the device still cannot be opened; `/status` shows `gpu_unavailable_reason`.\n4. Check `/gpu-verify` -> `active_providers` should list `OpenVINOExecutionProvider` and `using_gpu` should be true.\nThe 1.8.3.36 AI service image adds these checks and runs OpenVINO on its CPU device (reported as `using_gpu: false`) instead of silently falling back. If the GPU is still not used with an accessible device, post your `/doctor` output in a GitHub issue; a driver problem is then possible."
     },
     {
       "id": "intel-arc-wsl2",
@@ -279,7 +308,7 @@
         "amd gpu",
         "miopen"
       ],
-      "answer": "Two AMD paths. **ROCm (`docker7-amd`)** — step by step:\n1. Use the `docker7-amd` image (v1.7.8 fixed it actually using the GPU; earlier it ran on CPU).\n2. Pass `/dev/kfd` **and** `/dev/dri`, plus `--group-add video`.\n3. Check `/gpu-verify` → `ROCMExecutionProvider`.\n\n**Vulkan (`docker7-vulkan`, best for older cards)** — step by step:\n1. Use the `docker7-vulkan` image.\n2. Pass `/dev/dri`.\n3. ncnn-Vulkan runs on most AMD/Intel GPUs."
+      "answer": "Two AMD paths. **ROCm (`docker7-amd`)** — step by step:\n1. Use the `docker7-amd` image (v1.7.8 fixed it actually using the GPU; earlier it ran on CPU).\n2. Pass `/dev/kfd` **and** `/dev/dri`, plus the HOST's numeric `--group-add` IDs (`stat -c '%g' /dev/kfd /dev/dri/renderD128` on the host), not the names `video`/`render`.\n3. Check `/gpu-verify` → `ROCMExecutionProvider`.\n\n**Vulkan (`docker7-vulkan`, best for older cards)** — step by step:\n1. Use the `docker7-vulkan` image.\n2. Pass `/dev/dri`.\n3. ncnn-Vulkan runs on most AMD/Intel GPUs."
     },
     {
       "id": "nvidia-error",

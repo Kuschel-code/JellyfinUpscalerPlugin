@@ -14,7 +14,7 @@
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Every release carries its full notes on the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
   <h2>v1.8.3.36 - A busy AI service no longer fails a library job; unusable Intel GPU is explained</h2>
-  <p class="date">2026-10-04 · target-server acceptance not run; GPU, live-player and HDR target-hardware behavior remain unverified</p>
+  <p class="date">2026-10-07 · plugin released, the matching Docker images are not published yet · target-server acceptance not run; GPU, live-player and HDR target-hardware behavior remain unverified</p>
   <ul>
     <li>Library jobs failed the whole video on the first frame the AI service rejected, and an HTTP 429 (all slots busy, for example while someone plays video through the same container) or a 503 during the circuit breaker's 10 second cooldown counted as final. These are now waited out, up to 6 times per frame, following the service's <code>Retry-After</code>. Real client errors and cancellation behave as before (discussion #80).</li>
     <li>Issue #90 (Intel Arc, "Device GPU is not available"): onnxruntime silently rebuilt the session on the CPU and the service never said why. The service now detects this, reports the reason, runs OpenVINO on its CPU device instead, and no longer reports that as a GPU. Usual cause: <code>group_add: render</code> names a group that has a different ID inside the container than the host's render group. The startup log, <code>/doctor</code> (<code>gpu_device_access</code>), <code>/gpu-verify</code> and <code>/status</code> now name the exact numeric group ID to use.</li>
