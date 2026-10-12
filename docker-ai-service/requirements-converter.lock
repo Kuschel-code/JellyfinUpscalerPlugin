@@ -17,9 +17,9 @@ click==8.5.0
     # via uvicorn
 einops==0.8.2
     # via spandrel
-fastapi==0.142.2
+fastapi==0.143.0
     # via -r /w/requirements-cpu.txt
-filelock==4.0.11
+filelock==4.1.1
     # via torch
 flatbuffers==25.12.19
     # via onnxruntime
@@ -31,7 +31,7 @@ h11==0.16.0
     #   uvicorn
 httpcore==1.0.9
     # via httpx
-httptools==0.8.0
+httptools==0.9.0
     # via uvicorn
 httpx==0.28.1
     # via -r /w/requirements-cpu.txt
@@ -52,7 +52,7 @@ mpmath==1.3.0
     # via sympy
 networkx==3.7
     # via torch
-numpy==2.5.3
+numpy==2.5.4
     # via
     #   -r /w/requirements-cpu.txt
     #   ml-dtypes
@@ -63,20 +63,20 @@ numpy==2.5.3
     #   opencv-contrib-python
     #   spandrel
     #   torchvision
-onnx==1.23.1
+onnx==1.23.2
     # via
     #   -r /w/requirements-converter.txt
     #   onnx-ir
     #   onnxscript
 onnx-ir==1.0.0
     # via onnxscript
-onnxruntime==1.30.0
+onnxruntime==1.31.0
     # via -r /w/requirements-cpu.txt
 onnxscript==0.7.2
     # via -r /w/requirements-converter.txt
 opencv-contrib-python==4.14.0.94
     # via -r /w/requirements-cpu.txt
-opentelemetry-api==1.45.0
+opentelemetry-api==1.45.1
     # via fastapi
 packaging==26.3
     # via
@@ -90,9 +90,9 @@ protobuf==7.36.2
     # via
     #   onnx
     #   onnxruntime
-pydantic==2.13.5
+pydantic==2.14.1
     # via fastapi
-pydantic-core==2.46.5
+pydantic-core==2.50.1
     # via pydantic
 python-dotenv==1.2.4
     # via uvicorn
