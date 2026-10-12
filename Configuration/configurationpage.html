@@ -1109,7 +1109,7 @@
         var refreshInterval = null;
         var _initialized = false;
 
-        function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+        function esc(s) { if (!s) return ''; return String(s).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
         // v1.8.3.30, issue #77: "if you hit a toggle in quick succession, the notifications
         // will simply pile on top of each other". They did - literally. Each toast was its
