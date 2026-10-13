@@ -424,6 +424,22 @@ namespace JellyfinUpscalerPlugin.Controllers
             });
         }
 
+        /// <summary>
+        /// The settings the player reads, for any signed-in user. The player used to read
+        /// Jellyfin's admin-only plugin configuration, so real-time upscaling never started
+        /// for anyone else. Changes still need an administrator (see UpscalerPlayerConfig).
+        /// The route is the one PR #101 proposed.
+        /// </summary>
+        [HttpGet("config")]
+        [Authorize]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> GetPlayerConfig()
+        {
+            var config = Plugin.Instance?.Configuration;
+            if (config == null) return BadRequest();
+            return Ok(UpscalerPlayerConfig.From(config));
+        }
+
         [HttpPost("test")]
         [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]

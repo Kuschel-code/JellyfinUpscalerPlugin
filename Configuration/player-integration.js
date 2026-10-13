@@ -999,14 +999,20 @@
             }
         },
 
-        // Get config with 10s cache
+        // Get config with 10s cache. Jellyfin's plugin-configuration API is admin-only, so
+        // reading it here left real-time upscaling off for every other user (403).
+        // Upscaler/config answers any signed-in user, with only the settings the player reads.
         getPluginConfig: function() {
             var now = Date.now();
             if (this._cachedConfig && (now - this._configCacheTime) < 10000) {
                 return Promise.resolve(this._cachedConfig);
             }
             if (window.ApiClient) {
-                return window.ApiClient.getPluginConfiguration(PLUGIN_ID).then(function(config) {
+                return window.ApiClient.ajax({
+                    type: 'GET',
+                    url: window.ApiClient.getUrl('Upscaler/config'),
+                    dataType: 'json'
+                }).then(function(config) {
                     PlayerIntegration._cachedConfig = config;
                     PlayerIntegration._configCacheTime = Date.now();
                     return config;
@@ -1015,14 +1021,29 @@
             return Promise.resolve({});
         },
 
+        // Jellyfin REPLACES the whole configuration with what is posted, and the copy above
+        // lacks the AI service URL, its token, the webhooks and the rest. So a change always
+        // starts from the full configuration, read fresh, and changes run one at a time:
+        // a second quick toggle must not post a copy that misses the first.
         updatePluginConfig: function(updates) {
             if (!window.ApiClient) return Promise.reject(new Error('ApiClient unavailable'));
-            return this.getPluginConfig().then(function(config) {
-                var newConfig = Object.assign({}, config, updates);
-                PlayerIntegration._cachedConfig = newConfig;
-                PlayerIntegration._configCacheTime = Date.now();
-                return window.ApiClient.updatePluginConfiguration(PLUGIN_ID, newConfig);
-            });
+            var write = function() {
+                return window.ApiClient.getPluginConfiguration(PLUGIN_ID).then(function(config) {
+                    var newConfig = Object.assign({}, config, updates);
+                    return window.ApiClient.updatePluginConfiguration(PLUGIN_ID, newConfig).then(function() {
+                        PlayerIntegration._cachedConfig = newConfig;
+                        PlayerIntegration._configCacheTime = Date.now();
+                    });
+                }).catch(function(err) {
+                    if (err && (err.status === 401 || err.status === 403)) {
+                        throw new Error('only a Jellyfin administrator can change these settings');
+                    }
+                    throw err;
+                });
+            };
+            var result = (this._configWrite || Promise.resolve()).then(write, write);
+            this._configWrite = result.catch(function() {});
+            return result;
         },
 
         // Menu management
@@ -2342,32 +2363,40 @@
             });
         },
 
+        // Both report success only once the server has the change: a user who is not an
+        // administrator cannot save, and used to be told the new value was set anyway.
         setScale: function(scale) {
-            this.updatePluginConfig({ ScaleFactor: scale });
-            this.showPlayerNotification('Scale: ' + scale + 'x', 'success');
             var menu = document.querySelector('#aiUpscalerQuickMenu');
             if (menu) menu.remove();
             this._cleanupMenu();
+            return this.updatePluginConfig({ ScaleFactor: scale }).then(function() {
+                PlayerIntegration.showPlayerNotification('Scale: ' + scale + 'x', 'success');
+            }, function(err) {
+                PlayerIntegration.showPlayerNotification(
+                    'Could not save: ' + ((err && err.message) || 'unknown error'), 'warning');
+            });
         },
 
         toggleUpscaling: function() {
             this.getPluginConfig().then(function(config) {
                 var newState = !config.EnablePlugin;
-                PlayerIntegration.updatePluginConfig({ EnablePlugin: newState });
-                // Live-update switch visual without closing the menu
-                var sw = document.querySelector('#aiUpscalerQuickMenu [data-action="toggle"]');
-                if (sw) {
-                    sw.classList.toggle('ai-menu__switch--on', newState);
-                    sw.setAttribute('aria-checked', newState ? 'true' : 'false');
-                    sw.title = (newState ? 'Disable' : 'Enable') + ' upscaling';
-                }
-                PlayerIntegration.showPlayerNotification(
-                    'Upscaling ' + (newState ? 'enabled' : 'disabled'),
-                    newState ? 'success' : 'warning'
-                );
+                return PlayerIntegration.updatePluginConfig({ EnablePlugin: newState }).then(function() {
+                    // Live-update switch visual without closing the menu
+                    var sw = document.querySelector('#aiUpscalerQuickMenu [data-action="toggle"]');
+                    if (sw) {
+                        sw.classList.toggle('ai-menu__switch--on', newState);
+                        sw.setAttribute('aria-checked', newState ? 'true' : 'false');
+                        sw.title = (newState ? 'Disable' : 'Enable') + ' upscaling';
+                    }
+                    PlayerIntegration.showPlayerNotification(
+                        'Upscaling ' + (newState ? 'enabled' : 'disabled'),
+                        newState ? 'success' : 'warning'
+                    );
+                });
             }).catch(function(err) {
-                console.error('AI Upscaler: config fetch failed', err);
-                PlayerIntegration.showPlayerNotification('Failed to toggle upscaling', 'error');
+                console.error('AI Upscaler: toggling upscaling failed', err);
+                PlayerIntegration.showPlayerNotification(
+                    'Failed to toggle upscaling: ' + ((err && err.message) || 'unknown error'), 'error');
             });
         },
 
