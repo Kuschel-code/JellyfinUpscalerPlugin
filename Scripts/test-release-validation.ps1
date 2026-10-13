@@ -38,7 +38,7 @@ try {
     $null = Assert-ReleaseFeedEntry @(@{guid=$guid; versions=@($short)}) 'v1.9.0' $repo $abi
     $script:passed++
     $stage = Join-Path $tmp 'stage'; $null = New-Item -ItemType Directory $stage
-    $names = @('CliWrap.dll', 'FFMpegCore.dll', 'Instances.dll', 'JellyfinUpscalerPlugin.dll', 'meta.json', 'SixLabors.ImageSharp.dll')
+    $names = @('CliWrap.dll', 'FFMpegCore.dll', 'Instances.dll', 'JellyfinUpscalerPlugin.dll', 'meta.json', 'SixLabors.ImageSharp.dll', 'System.IO.Hashing.dll')
     foreach ($name in $names) { Copy-Item (Join-Path $PublishDir $name) $stage }
     $zip = Join-Path $tmp 'plugin.zip'
     function New-TestZip {
@@ -48,15 +48,15 @@ try {
     function Check-TestZip { Assert-PluginArchive $zip $tag $meta.targetAbi (Join-Path $tmp 'unzipped') }
     New-TestZip; Check-TestZip; $script:passed++
     Set-Content (Join-Path $stage 'Extra.Tests.dll') 'unexpected'; New-TestZip
-    Expect-Rejection { Check-TestZip } 'exactly six'
+    Expect-Rejection { Check-TestZip } "exactly $($names.Count) runtime files"
     Remove-Item (Join-Path $stage 'Extra.Tests.dll')
     Remove-Item (Join-Path $stage 'Instances.dll'); New-TestZip
-    Expect-Rejection { Check-TestZip } 'exactly six'
+    Expect-Rejection { Check-TestZip } "exactly $($names.Count) runtime files"
     Copy-Item (Join-Path $PublishDir 'Instances.dll') $stage
     New-TestZip
     $archive = [IO.Compression.ZipFile]::Open($zip, [IO.Compression.ZipArchiveMode]::Update)
     try { $null = $archive.CreateEntry('Instances.dll') } finally { $archive.Dispose() }
-    Expect-Rejection { Check-TestZip } 'exactly six'
+    Expect-Rejection { Check-TestZip } "exactly $($names.Count) runtime files"
     [IO.File]::WriteAllBytes((Join-Path $stage 'Instances.dll'), [byte[]]@()); New-TestZip
     Expect-Rejection { Check-TestZip } 'nonempty Instances.dll'
     Copy-Item (Join-Path $PublishDir 'CliWrap.dll') (Join-Path $stage 'Instances.dll') -Force; New-TestZip

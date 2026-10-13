@@ -9,7 +9,7 @@ Slim C# plugin (~1.6 MB) that talks HTTP to an external Docker AI microservice (
 
 ## Commands
 ```bash
-dotnet build JellyfinUpscalerPlugin.csproj -c Release   # Release build; warnings are treated as errors
+dotnet build JellyfinUpscalerPlugin.csproj -c Release   # Release build; warnings are treated as errors; needs the Six Labors key (below)
 pwsh Scripts/verify-release.ps1        # AFTER a release: re-downloads assets, SHA round-trip vs all 3 feeds, ZIP content check
 pwsh Scripts/sync-fallback-models.ps1  # regenerates Resources/models-fallback.json from docker AVAILABLE_MODELS
 ```
@@ -24,12 +24,13 @@ pwsh Scripts/sync-fallback-models.ps1  # regenerates Resources/models-fallback.j
 
 ## Release process (manual — CI does NOT release!)
 1. Stamp the version: csproj (`Version`/`AssemblyVersion`/`FileVersion`, always 4-part) and `meta.json` (`version` mirrors the git tag: 3-part when the 4th part is 0; its `targetAbi` stays 3-part `12.0.0`). Assembly version ≠ manifest version ⇒ Jellyfin restart-loop. Feeds are stamped in step 4.
-2. Build the ZIP. Forbidden inside: `Scripts/`, `*.pdb`, `*.deps.json`, test DLLs. `dotnet build` outputs only the main DLL — the transitive NuGet deps (FFMpegCore, CliWrap, ImageSharp, Instances) MUST be added or the plugin dies with NotSupported + tombstone (recovery: `/Plugins/{id}/{ver}/Enable`).
+2. Build the ZIP. Forbidden inside: `Scripts/`, `*.pdb`, `*.deps.json`, test DLLs. `dotnet build` outputs only the main DLL — the transitive NuGet deps (FFMpegCore, CliWrap, ImageSharp, Instances, System.IO.Hashing) MUST be added or the plugin dies with NotSupported + tombstone (recovery: `/Plugins/{id}/{ver}/Enable`).
 3. `gh release create vX.Y.Z <zip>` (check for an existing tag first — global rule).
 4. Update version (4-part) + checksum + sourceUrl in ALL THREE feeds and keep them identical (`targetAbi` there is 4-part `12.0.0.0`). One missed feed = users see the update but cannot install it (caused issue #74).
 5. Run `pwsh Scripts/verify-release.ps1`. A release is not done until it passes.
 
 ## Things That Will Bite You
+- **ImageSharp 4 refuses a Release build without a Six Labors license key** (an MSBuild check before `CoreCompile`; Debug builds only warn). CI reads the repo secret `SIXLABORS_LICENSE_KEY`; locally set the environment variable `SixLaborsLicenseKey` or put the key into a `sixlabors.lic` in the repo root (gitignored). Never commit the key. An assembly-scoped community key must name the exact AssemblyName `JellyfinUpscalerPlugin`. Fork PRs get no secrets, so `build.yml` and the audit ZIP check build them Debug. Do not go back to 3.x: every 3.x version trips NuGet audit, and its NU190x warnings are errors in Release. ImageSharp 4 also needs `System.IO.Hashing.dll` in the ZIP. Without it every PNG encode or decode throws FileNotFoundException, which failed 26 of the 52 image tests.
 - **CI auto-release was deliberately removed** after v1.6.1.11/12, when two workflows raced manual uploads and shipped corrupt ZIPs. Never re-add release/upload steps to `build.yml` or `build-and-release.yml`.
 - **Model catalog lives in 3 places** that must stay in sync: `main.py AVAILABLE_MODELS` → `Resources/models-fallback.json` (via sync script) → `site/models.html` (manual). CI (`v1.7.1-audit-checks.yml`) diffs the first two; the third is on you.
 - **Never install plain `onnxruntime` next to `onnxruntime-rocm`/`-openvino`** — the plain wheel (AzureExecutionProvider) shadows the GPU providers → silent CPU fallback.
