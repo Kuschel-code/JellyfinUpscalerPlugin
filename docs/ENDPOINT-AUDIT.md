@@ -19,8 +19,8 @@ which, rather than carrying 67 routes and guessing.
 
 | | Count |
 |---|---:|
-| Routes on the controller | **69** |
-| Called by the plugin's own UI | 48 |
+| Routes on the controller | **70** |
+| Called by the plugin's own UI | 49 |
 | Documented but not called by the UI | 1 |
 | **No reference anywhere in this repo** | **20** |
 
