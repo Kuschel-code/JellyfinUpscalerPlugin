@@ -1,37 +1,57 @@
-// v1.7.1 - WebGPU + ONNX Runtime Web realtime AI upscaler.
+// v1.8.3.47 - WebGPU + ONNX Runtime Web realtime AI upscaler.
 //
 // Goal: real Real-ESRGAN compact inference in the browser, GPU-accelerated via WebGPU.
-// Industry-comparable to mpv-upscale-2x_animejanai (TensorRT) but for any browser with
-// WebGPU support (Chrome 113+, Edge 113+, Firefox 142+, Safari 26+, Opera 99+).
+// Optimized for AMD RDNA2 / WebGPU: vectorized tensor conversions, resolution safety clamping,
+// and granular status lifecycle reporting.
 //
 // Defensive fallback chain (any layer can fail; we never break playback):
 //   WebGPU not available             -> caller falls back to Lanczos
 //   onnxruntime-web load fails       -> caller falls back to Lanczos
 //   Model fetch fails                -> caller falls back to Lanczos
 //   Inference throws                 -> log + skip frame, do not crash render loop
-//   Inference too slow (<0.8x rate)  -> auto-stop and log a hint
 //
-// onnxruntime-web is loaded from jsdelivr at runtime (no plugin bundling).
-// Model files are fetched from HuggingFace mirrors (configured below).
 (function () {
     'use strict';
 
-    // Pinned ONNX Runtime Web version. Bump deliberately when also re-testing the integration.
+    // Pinned ONNX Runtime Web version.
     var ORT_CDN_URL = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.webgpu.min.js';
 
-    // Real-ESRGAN compact (anime + general). FP16 quantized, ~3-5MB each.
+    function localModelUrl(name) {
+        try {
+            if (window.ApiClient && typeof ApiClient.getUrl === 'function') {
+                return ApiClient.getUrl('Upscaler/models/file/' + encodeURIComponent(name));
+            }
+        } catch (e) {}
+        return '';
+    }
+
+    // Real-ESRGAN compact & NomosUni. Models natively scale 2x / 4x.
     var MODEL_CATALOG = {
         'realesrgan-compact-x2': {
             scale: 2,
+            name: 'NomosUni / Real-ESRGAN Compact Anime',
             urls: [
-                'https://huggingface.co/onnx-community/Real-ESRGAN-Anime/resolve/main/realesr-animevideov3-x2-fp16.onnx',
-                'https://cdn.jsdelivr.net/gh/onnx-community/Real-ESRGAN-Anime/realesr-animevideov3-x2-fp16.onnx'
+                function() { return localModelUrl('nomosuni-compact-x2'); },
+                function() { return localModelUrl('span-x2'); },
+                'https://huggingface.co/nimjinwei/designerplatform-models/resolve/main/realesr-animevideov3.onnx',
+                'https://huggingface.co/xiaojiaenen/lingtuan-sr-models/resolve/main/realesr-animevideov3-x4.onnx'
+            ]
+        },
+        'nomosuni-compact-x2': {
+            scale: 2,
+            name: 'NomosUni Compact x2',
+            urls: [
+                function() { return localModelUrl('nomosuni-compact-x2'); },
+                function() { return localModelUrl('span-x2'); }
             ]
         },
         'realesrgan-compact-x4': {
             scale: 4,
+            name: 'Real-ESRGAN General x4',
             urls: [
-                'https://huggingface.co/onnx-community/Real-ESRGAN-Anime/resolve/main/realesr-animevideov3-x4-fp16.onnx'
+                function() { return localModelUrl('nomosuni-compact-x2'); },
+                'https://huggingface.co/xiaojiaenen/lingtuan-sr-models/resolve/main/realesr-animevideov3-x4.onnx',
+                'https://huggingface.co/CoderViking/realesr-general-x4v3-onnx/resolve/main/realesr-general-x4v3.onnx'
             ]
         }
     };
@@ -42,29 +62,49 @@
         _ctx: null,
         _session: null,
         _modelKey: null,
-        _scale: 2,
+        _scale: 4,
         _running: false,
+        _processing: false,
         _fpsCallback: null,
+        _statusCallback: null,
+        _status: 'idle',
         _frameCount: 0,
         _lastFpsTime: 0,
-        _slowFrameCount: 0,
         _onFatal: null,
+        _srcCanvas: null,
+        _srcCtx: null,
+        _tensorData: null,
+        _tensorW: 0,
+        _tensorH: 0,
+        _outImg: null,
+        _outPixels32: null,
+        _outW: 0,
+        _outH: 0,
+
+        _setStatus: function (s) {
+            this._status = s;
+            if (this._statusCallback) {
+                try { this._statusCallback(s); } catch (e) {}
+            }
+        },
 
         start: async function (video, opts) {
             opts = opts || {};
             this._video = video;
             this._modelKey = opts.modelKey || 'realesrgan-compact-x2';
             this._fpsCallback = opts.fpsCallback || null;
+            this._statusCallback = opts.statusCallback || null;
             this._onFatal = opts.onFatal || function () {};
 
+            this._setStatus('Checking WebGPU...');
             if (!('gpu' in navigator)) {
-                console.warn('AI Upscaler RT/WebGPU: navigator.gpu missing - browser does not support WebGPU. Fallback to Lanczos.');
+                console.warn('AI Upscaler RT/WebGPU: navigator.gpu missing - browser does not support WebGPU.');
                 return false;
             }
             try {
                 var adapter = await navigator.gpu.requestAdapter();
                 if (!adapter) {
-                    console.warn('AI Upscaler RT/WebGPU: requestAdapter() returned null. Fallback to Lanczos.');
+                    console.warn('AI Upscaler RT/WebGPU: requestAdapter() returned null.');
                     return false;
                 }
             } catch (e) {
@@ -72,6 +112,7 @@
                 return false;
             }
 
+            this._setStatus('Loading ONNX Runtime...');
             var ortLoaded = await this._loadOrt();
             if (!ortLoaded) return false;
 
@@ -80,11 +121,14 @@
                 console.warn('AI Upscaler RT/WebGPU: unknown model key', this._modelKey);
                 return false;
             }
-            this._scale = modelEntry.scale;
+            this._scale = modelEntry.scale || 4;
+
+            this._setStatus('Downloading Neural Model (2.5MB)...');
             var session = await this._loadModel(modelEntry.urls);
             if (!session) return false;
             this._session = session;
 
+            this._setStatus('Compiling WebGPU Kernels...');
             this._canvas = document.createElement('canvas');
             this._canvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:999;';
             this._canvas.id = 'aiWebgpuCanvas';
@@ -96,9 +140,10 @@
             }
 
             this._running = true;
+            this._processing = false;
             this._frameCount = 0;
-            this._slowFrameCount = 0;
             this._lastFpsTime = performance.now();
+            this._setStatus('running');
             console.log('AI Upscaler RT/WebGPU: started with', this._modelKey, 'scale=', this._scale);
             this._renderLoop();
             return true;
@@ -106,6 +151,8 @@
 
         stop: function () {
             this._running = false;
+            this._processing = false;
+            this._setStatus('idle');
             try { if (this._session && typeof this._session.release === 'function') this._session.release(); } catch (e) {}
             this._session = null;
             if (this._canvas && this._canvas.parentElement) {
@@ -113,6 +160,14 @@
             }
             this._canvas = null;
             this._ctx = null;
+            this._srcCanvas = null;
+            this._srcCtx = null;
+            this._tensorData = null;
+            this._outImg = null;
+            this._outPixels32 = null;
+            if (this._video && this._video.style.opacity === '0') {
+                this._video.style.opacity = '';
+            }
         },
 
         _loadOrt: async function () {
@@ -143,11 +198,20 @@
 
         _loadModel: async function (urls) {
             for (var i = 0; i < urls.length; i++) {
+                var url = urls[i];
+                if (typeof url === 'function') {
+                    try { url = url(); } catch (e) { url = ''; }
+                }
+                if (!url) continue;
                 try {
-                    console.log('AI Upscaler RT/WebGPU: fetching model from', urls[i]);
-                    var response = await fetch(urls[i]);
+                    console.log('AI Upscaler RT/WebGPU: fetching model from', url);
+                    var headers = {};
+                    if (window.ApiClient && typeof ApiClient.accessToken === 'function' && ApiClient.accessToken()) {
+                        headers['Authorization'] = 'MediaBrowser Token="' + ApiClient.accessToken() + '"';
+                    }
+                    var response = await fetch(url, { headers: headers });
                     if (!response.ok) {
-                        console.warn('AI Upscaler RT/WebGPU: model fetch HTTP', response.status, urls[i]);
+                        console.warn('AI Upscaler RT/WebGPU: model fetch HTTP', response.status, url);
                         continue;
                     }
                     var modelBuffer = await response.arrayBuffer();
@@ -158,7 +222,7 @@
                     console.log('AI Upscaler RT/WebGPU: model loaded, inputs=', session.inputNames, 'outputs=', session.outputNames);
                     return session;
                 } catch (e) {
-                    console.warn('AI Upscaler RT/WebGPU: model load failed for', urls[i], e);
+                    console.warn('AI Upscaler RT/WebGPU: model load failed for', url, e);
                 }
             }
             console.warn('AI Upscaler RT/WebGPU: all model URLs failed - fallback');
@@ -173,59 +237,69 @@
                     requestAnimationFrame(function () { self._renderLoop(); });
                     return;
                 }
-                var t0 = performance.now();
-                await this._processFrame();
-                var elapsed = performance.now() - t0;
+                if (!this._processing) {
+                    this._processing = true;
+                    var t0 = performance.now();
+                    await this._processFrame();
+                    this._processing = false;
 
-                if (elapsed > 50) {
-                    this._slowFrameCount++;
-                    if (this._slowFrameCount > 30) {
-                        console.warn('AI Upscaler RT/WebGPU: 30 consecutive slow frames - hardware too weak. Stopping.');
-                        this._onFatal('inference_too_slow');
-                        this.stop();
-                        return;
+                    this._frameCount++;
+                    var now = performance.now();
+                    if (now - this._lastFpsTime > 1000) {
+                        var fps = this._frameCount * 1000 / (now - this._lastFpsTime);
+                        if (this._fpsCallback) this._fpsCallback(fps);
+                        this._frameCount = 0;
+                        this._lastFpsTime = now;
                     }
-                } else {
-                    this._slowFrameCount = 0;
-                }
-
-                this._frameCount++;
-                var now = performance.now();
-                if (now - this._lastFpsTime > 1000) {
-                    var fps = this._frameCount * 1000 / (now - this._lastFpsTime);
-                    if (this._fpsCallback) this._fpsCallback(fps);
-                    this._frameCount = 0;
-                    this._lastFpsTime = now;
                 }
             } catch (e) {
+                this._processing = false;
                 console.warn('AI Upscaler RT/WebGPU: render-loop frame error (continuing)', e);
             }
             requestAnimationFrame(function () { self._renderLoop(); });
         },
 
         _processFrame: async function () {
-            var w = this._video.videoWidth;
-            var h = this._video.videoHeight;
-            if (!w || !h) return;
+            var rawW = this._video.videoWidth;
+            var rawH = this._video.videoHeight;
+            if (!rawW || !rawH) return;
 
-            var srcCanvas = document.createElement('canvas');
-            srcCanvas.width = w;
-            srcCanvas.height = h;
-            var srcCtx = srcCanvas.getContext('2d');
-            srcCtx.drawImage(this._video, 0, 0, w, h);
-            var imgData = srcCtx.getImageData(0, 0, w, h);
+            // Safe 1440p target clamping:
+            // Since the model scales 4x, clamp input height to 360p (so 4x output = 1440p).
+            // This prevents exponential tensor explosion and keeps WebGPU inference responsive.
+            var maxInH = Math.min(360, Math.round(1440 / Math.max(1, this._scale)));
+            var scaleIn = Math.min(1.0, maxInH / Math.max(1, rawH));
+            var inW = Math.round(rawW * scaleIn);
+            var inH = Math.round(rawH * scaleIn);
 
-            var tensorData = new Float32Array(3 * h * w);
-            for (var y = 0; y < h; y++) {
-                for (var x = 0; x < w; x++) {
-                    var srcIdx = (y * w + x) * 4;
-                    var dstIdx = y * w + x;
-                    tensorData[0 * h * w + dstIdx] = imgData.data[srcIdx + 0] / 255.0;
-                    tensorData[1 * h * w + dstIdx] = imgData.data[srcIdx + 1] / 255.0;
-                    tensorData[2 * h * w + dstIdx] = imgData.data[srcIdx + 2] / 255.0;
-                }
+            if (!this._srcCanvas) {
+                this._srcCanvas = document.createElement('canvas');
+                this._srcCtx = this._srcCanvas.getContext('2d', { willReadFrequently: true });
             }
-            var inputTensor = new window.ort.Tensor('float32', tensorData, [1, 3, h, w]);
+            if (this._srcCanvas.width !== inW || this._srcCanvas.height !== inH) {
+                this._srcCanvas.width = inW;
+                this._srcCanvas.height = inH;
+            }
+            this._srcCtx.drawImage(this._video, 0, 0, inW, inH);
+            var imgData = this._srcCtx.getImageData(0, 0, inW, inH);
+
+            var hw = inH * inW;
+            var reqLen = 3 * hw;
+            if (!this._tensorData || this._tensorData.length !== reqLen) {
+                this._tensorData = new Float32Array(reqLen);
+            }
+            var tensorData = this._tensorData;
+            var data = imgData.data;
+            var inv255 = 1.0 / 255.0;
+
+            for (var i = 0; i < hw; i++) {
+                var srcIdx = i * 4;
+                tensorData[i] = data[srcIdx] * inv255;
+                tensorData[hw + i] = data[srcIdx + 1] * inv255;
+                tensorData[2 * hw + i] = data[srcIdx + 2] * inv255;
+            }
+
+            var inputTensor = new window.ort.Tensor('float32', tensorData, [1, 3, inH, inW]);
             var inputName = this._session.inputNames[0];
             var outputName = this._session.outputNames[0];
             var feeds = {};
@@ -237,20 +311,33 @@
             var outW = output.dims[3];
             var outData = output.data;
 
-            this._canvas.width = outW;
-            this._canvas.height = outH;
-            var outImg = this._ctx.createImageData(outW, outH);
-            for (var oy = 0; oy < outH; oy++) {
-                for (var ox = 0; ox < outW; ox++) {
-                    var srcI = oy * outW + ox;
-                    var dstI = srcI * 4;
-                    outImg.data[dstI + 0] = Math.max(0, Math.min(255, outData[0 * outH * outW + srcI] * 255));
-                    outImg.data[dstI + 1] = Math.max(0, Math.min(255, outData[1 * outH * outW + srcI] * 255));
-                    outImg.data[dstI + 2] = Math.max(0, Math.min(255, outData[2 * outH * outW + srcI] * 255));
-                    outImg.data[dstI + 3] = 255;
-                }
+            if (this._canvas.width !== outW || this._canvas.height !== outH) {
+                this._canvas.width = outW;
+                this._canvas.height = outH;
+                this._outImg = this._ctx.createImageData(outW, outH);
+                this._outPixels32 = new Uint32Array(this._outImg.data.buffer);
             }
-            this._ctx.putImageData(outImg, 0, 0);
+            var outPixels32 = this._outPixels32;
+            var totalOut = outH * outW;
+            var d0 = 0;
+            var d1 = totalOut;
+            var d2 = totalOut * 2;
+
+            // Vectorized 32-bit pixel packing (1 write per pixel instead of 4 byte writes)
+            for (var j = 0; j < totalOut; j++) {
+                var r = (outData[d0 + j] * 255.0) | 0;
+                var g = (outData[d1 + j] * 255.0) | 0;
+                var b = (outData[d2 + j] * 255.0) | 0;
+                outPixels32[j] = 0xFF000000 |
+                    ((b < 0 ? 0 : (b > 255 ? 255 : b)) << 16) |
+                    ((g < 0 ? 0 : (g > 255 ? 255 : g)) << 8) |
+                    (r < 0 ? 0 : (r > 255 ? 255 : r));
+            }
+            this._ctx.putImageData(this._outImg, 0, 0);
+
+            if (this._video.style.opacity !== '0') {
+                this._video.style.opacity = '0';
+            }
         }
     };
 
