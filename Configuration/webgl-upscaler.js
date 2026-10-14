@@ -13,8 +13,10 @@
         texture: null,
         videoElement: null,
         animationFrameId: null,
-        sharpness: 0.75,
-        deblock: 0.75,
+        // main's look by default. The player has no control for either; the localStorage
+        // keys read in init() are the only way to change them.
+        sharpness: 0.5,
+        deblock: 0,
         onFpsUpdate: null,
         _fpsFrameCount: 0,
         _fpsLastTime: 0,
@@ -23,6 +25,7 @@
         _texWidth: 0,
         _texHeight: 0,
         _hasRenderedFrame: false,
+        _lastDrawnTime: -1,
         _vertexShader: null,
         _fragmentShader: null,
         _uniformLocations: null,
@@ -417,6 +420,19 @@
             }
         },
 
+        // Output size relative to the source: the size the video is shown at (CSS pixels x
+        // devicePixelRatio, as object-fit: contain lays it out), between the source size and
+        // twice it. A fixed 2x drew 3840x2160 for every 1080p video, whatever the screen:
+        // four times the pixels of a 1080p display, each sampled 36 times.
+        _displayScale: function(video) {
+            var boxW = video.clientWidth || (this.canvas && this.canvas.clientWidth) || 0;
+            var boxH = video.clientHeight || (this.canvas && this.canvas.clientHeight) || 0;
+            if (!boxW || !boxH) return 1;
+            var dpr = window.devicePixelRatio || 1;
+            var shown = Math.min(boxW / video.videoWidth, boxH / video.videoHeight) * dpr;
+            return Math.max(1, Math.min(2, shown));
+        },
+
         // Render frame
         render: function() {
             if (!this.enabled || !this.gl || this.gl.isContextLost()) {
@@ -427,7 +443,7 @@
             this._scheduleNextFrame();
 
             const video = this.videoElement;
-            if (!video || video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0 || video.paused || video.ended) {
+            if (!video || video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
                 // If video is buffering or stopped, ensure native video is visible
                 if (!this._hasRenderedFrame && video && video.style.opacity === '0') {
                     video.style.opacity = '1';
@@ -437,15 +453,14 @@
 
             const gl = this.gl;
             
-            // Adaptive target: scale up to 2x integer or match the screen display resolution
-            // Strictly preserve the video's intrinsic aspect ratio to prevent distortion (e.g. 4:3 stretching)
+            // Output size: the explicit one if set, else the displayed size (_displayScale).
+            // Both sides scale by the same factor, so a 4:3 video is never stretched.
             var targetW, targetH;
             if (this._explicitWidth && this._explicitHeight) {
                 targetW = this._explicitWidth;
                 targetH = this._explicitHeight;
             } else {
-                // Integer 2x scale for SD and HD; 1x passthrough for 1440p/4K to maintain high fps on iGPU
-                var scale = (video.videoHeight >= 1440) ? 1.0 : 2.0;
+                var scale = this._displayScale(video);
                 targetW = Math.round(video.videoWidth * scale);
                 targetH = Math.round(video.videoHeight * scale);
             }
@@ -453,6 +468,15 @@
             // Ensure even pixel dimensions
             targetW = Math.max(2, (targetW & ~1));
             targetH = Math.max(2, (targetH & ~1));
+
+            // A paused video still shows a new frame when the viewer seeks: the video frame
+            // callback fires for it, and the rAF fallback sees currentTime move. Skipping
+            // every paused frame left the overlay on the old picture over the hidden video.
+            // Nothing new (same frame, same size): nothing to draw.
+            if (this._hasRenderedFrame && (video.paused || video.ended) && video.currentTime === this._lastDrawnTime &&
+                this.canvas.width === targetW && this.canvas.height === targetH) {
+                return;
+            }
 
             if (this.canvas.width !== targetW || this.canvas.height !== targetH) {
                 this.canvas.width = targetW;
@@ -514,6 +538,7 @@
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
             this._hasRenderedFrame = true;
+            this._lastDrawnTime = video.currentTime;
 
             // Ensure native video is hidden only once upscaled canvas is actively drawing
             if (video.style.opacity !== '0') {
