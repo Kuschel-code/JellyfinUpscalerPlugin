@@ -1461,7 +1461,9 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
 
-        function refreshPreUpscaled(page, targetPage) {
+        // rescan: the Refresh button asks the server for a new library scan; paging, the
+        // filter and search reuse the last one (kept for a minute).
+        function refreshPreUpscaled(page, targetPage, rescan) {
             if (targetPage !== undefined) _preupscaledPage = targetPage;
             var filterEl = page.querySelector('#preupscaled-filter');
             var searchEl = page.querySelector('#preupscaled-search');
@@ -1470,6 +1472,7 @@
 
             var url = 'Upscaler/preupscaled?page=' + _preupscaledPage + '&pageSize=25&filter=' + encodeURIComponent(filter);
             if (search) url += '&search=' + encodeURIComponent(search);
+            if (rescan) url += '&refresh=true';
 
             ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl(url), dataType: 'json' }).then(function(data) {
                 if (!data || !data.success) throw new Error(data && data.error || 'Failed');
@@ -3261,7 +3264,7 @@
 
             page.querySelector('#btn-refresh-status').addEventListener('click', function() { refreshDashboard(page); });
             page.querySelector('#btn-refresh-jobs').addEventListener('click', function() { refreshJobs(page); });
-            page.querySelector('#btn-refresh-preupscaled')?.addEventListener('click', function() { refreshPreUpscaled(page); });
+            page.querySelector('#btn-refresh-preupscaled')?.addEventListener('click', function() { refreshPreUpscaled(page, undefined, true); });
             page.querySelector('#btn-refresh-cache').addEventListener('click', function() { refreshCache(page); });
 
             var preupscaledSearch = page.querySelector('#preupscaled-search');
