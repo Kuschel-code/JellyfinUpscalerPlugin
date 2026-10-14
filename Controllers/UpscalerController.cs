@@ -377,6 +377,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// a library picker for the scheduled-scan scope filter (issue #64).
         /// </summary>
         [HttpGet("libraries")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetLibraries()
         {
@@ -1798,6 +1799,7 @@ namespace JellyfinUpscalerPlugin.Controllers
 
         /// <summary>Get queue status — pending, active, completed jobs.</summary>
         [HttpGet("queue")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetQueueStatus()
         {
@@ -1806,6 +1808,7 @@ namespace JellyfinUpscalerPlugin.Controllers
 
         /// <summary>Enqueue a video for processing with optional priority.</summary>
         [HttpPost("queue/add")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> EnqueueJob(
             [FromQuery] string inputPath,
@@ -1878,6 +1881,7 @@ namespace JellyfinUpscalerPlugin.Controllers
 
         /// <summary>Cancel a pending queued job.</summary>
         [HttpPost("queue/{jobId}/cancel")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> CancelQueuedJob(string jobId)
         {
@@ -1887,6 +1891,7 @@ namespace JellyfinUpscalerPlugin.Controllers
 
         /// <summary>Change priority of a pending job (1=highest, 10=lowest).</summary>
         [HttpPost("queue/{jobId}/priority")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> SetJobPriority(string jobId, [FromQuery] int priority)
         {
