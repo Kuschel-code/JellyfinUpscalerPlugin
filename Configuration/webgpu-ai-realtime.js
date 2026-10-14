@@ -1,13 +1,13 @@
-// v1.8.3.47 - WebGPU + ONNX Runtime Web realtime AI upscaler.
+// WebGPU + ONNX Runtime Web realtime AI upscaler.
 //
-// Goal: real Real-ESRGAN compact inference in the browser, GPU-accelerated via WebGPU.
-// Optimized for AMD RDNA2 / WebGPU: vectorized tensor conversions, resolution safety clamping,
-// and granular status lifecycle reporting.
+// Goal: real Real-ESRGAN compact inference in the browser, GPU-accelerated via WebGPU,
+// with reused tensors, packed 32-bit pixel writes and a bounded output size.
 //
 // Defensive fallback chain (any layer can fail; we never break playback):
 //   WebGPU not available             -> caller falls back to Lanczos
 //   onnxruntime-web load fails       -> caller falls back to Lanczos
-//   Model fetch fails                -> caller falls back to Lanczos
+//   Model fetch or checksum fails    -> caller falls back to Lanczos
+//   Inference too slow (30 frames)   -> onFatal('inference_too_slow') -> Lanczos
 //   Inference throws                 -> log + skip frame, do not crash render loop
 //
 (function () {
@@ -16,45 +16,54 @@
     // Pinned ONNX Runtime Web version.
     var ORT_CDN_URL = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.webgpu.min.js';
 
-    function localModelUrl(name) {
-        try {
-            if (window.ApiClient && typeof ApiClient.getUrl === 'function') {
-                return ApiClient.getUrl('Upscaler/models/file/' + encodeURIComponent(name));
-            }
-        } catch (e) {}
-        return '';
-    }
-
-    // Real-ESRGAN compact & NomosUni. Models natively scale 2x / 4x.
+    // Two Real-ESRGAN SRVGGNetCompact models: 4x, NCHW RGB float32 in [0,1], any frame size,
+    // converted from xinntao/Real-ESRGAN's official weights (BSD-3-Clause; provenance in each
+    // repository's README). Every source is pinned to a commit and checked against its
+    // SHA-256 before ONNX Runtime sees it.
+    // - The onnx-community repository this used before is gone (HTTP 401), which had turned
+    //   the mode off for everyone without a sign.
+    // - A "resolve/main" URL follows whatever its owner uploads next.
+    // - No Jellyfin token goes to these hosts.
     var MODEL_CATALOG = {
-        'realesrgan-compact-x2': {
-            scale: 2,
-            name: 'NomosUni / Real-ESRGAN Compact Anime',
-            urls: [
-                function() { return localModelUrl('nomosuni-compact-x2'); },
-                function() { return localModelUrl('span-x2'); },
-                'https://huggingface.co/nimjinwei/designerplatform-models/resolve/main/realesr-animevideov3.onnx',
-                'https://huggingface.co/xiaojiaenen/lingtuan-sr-models/resolve/main/realesr-animevideov3-x4.onnx'
-            ]
-        },
-        'nomosuni-compact-x2': {
-            scale: 2,
-            name: 'NomosUni Compact x2',
-            urls: [
-                function() { return localModelUrl('nomosuni-compact-x2'); },
-                function() { return localModelUrl('span-x2'); }
-            ]
-        },
-        'realesrgan-compact-x4': {
+        'realesr-animevideov3-x4': {
             scale: 4,
-            name: 'Real-ESRGAN General x4',
-            urls: [
-                function() { return localModelUrl('nomosuni-compact-x2'); },
-                'https://huggingface.co/xiaojiaenen/lingtuan-sr-models/resolve/main/realesr-animevideov3-x4.onnx',
-                'https://huggingface.co/CoderViking/realesr-general-x4v3-onnx/resolve/main/realesr-general-x4v3.onnx'
+            name: 'Real-ESRGAN AnimeVideo v3 x4',
+            sources: [
+                { url: 'https://huggingface.co/xiaojiaenen/lingtuan-sr-models/resolve/29adb237e42934ce2cc87a1a4887f4950cb8ab55/realesr-animevideov3-x4.onnx',
+                  sha256: '14114520123405712c92c2b266a49e906f03b595335e53e3604cdc03c5a408e4' },
+                { url: 'https://huggingface.co/nimjinwei/designerplatform-models/resolve/12754caf542bcf74a2cefc18d9f1dc5ffbe5ec71/realesr-animevideov3.onnx',
+                  sha256: 'ca1b795ec579a82acc45644e4550e7ddf6530c1c1388a62511667c13db97fa25' }
+            ]
+        },
+        'realesr-general-x4v3': {
+            scale: 4,
+            name: 'Real-ESRGAN General x4 v3',
+            sources: [
+                { url: 'https://huggingface.co/CoderViking/realesr-general-x4v3-onnx/resolve/c6a971706797c7502945a2b4c4274fce4900d4ab/realesr-general-x4v3.onnx',
+                  sha256: '1940a93ee08283a0a7286183186357b1688fe9fa8ede74604b424586aaddf112' },
+                { url: 'https://huggingface.co/nimjinwei/designerplatform-models/resolve/12754caf542bcf74a2cefc18d9f1dc5ffbe5ec71/realesr-general-x4v3.onnx',
+                  sha256: '7bd8296de37d280246d7a848d01305c84e3906e73c8509d37b73563adb639122' }
             ]
         }
     };
+    var DEFAULT_MODEL = 'realesr-animevideov3-x4';
+    // keys used before the catalog was rebuilt
+    var MODEL_ALIASES = { 'realesrgan-compact-x2': 'realesr-animevideov3-x4', 'realesrgan-compact-x4': 'realesr-general-x4v3' };
+
+    // Output height cap. The input is shrunk to MAX_OUTPUT_LINES / scale lines (360 for a 4x
+    // model) so the tensors stay small enough for real-time inference.
+    var MAX_OUTPUT_LINES = 1440;
+
+    // Hex SHA-256 of the bytes, or null where the browser has no WebCrypto: a Jellyfin
+    // served over plain HTTP is not a secure context. The commit-pinned URL still holds then.
+    async function sha256Hex(buffer) {
+        var subtle = window.crypto && window.crypto.subtle;
+        if (!subtle) return null;
+        var digest = new Uint8Array(await subtle.digest('SHA-256', buffer));
+        var hex = '';
+        for (var i = 0; i < digest.length; i++) hex += ('0' + digest[i].toString(16)).slice(-2);
+        return hex;
+    }
 
     var WebGPUAIUpscaler = {
         _video: null,
@@ -70,6 +79,7 @@
         _status: 'idle',
         _frameCount: 0,
         _lastFpsTime: 0,
+        _slowFrameCount: 0,
         _onFatal: null,
         _srcCanvas: null,
         _srcCtx: null,
@@ -91,7 +101,7 @@
         start: async function (video, opts) {
             opts = opts || {};
             this._video = video;
-            this._modelKey = opts.modelKey || 'realesrgan-compact-x2';
+            this._modelKey = MODEL_ALIASES[opts.modelKey] || opts.modelKey || DEFAULT_MODEL;
             this._fpsCallback = opts.fpsCallback || null;
             this._statusCallback = opts.statusCallback || null;
             this._onFatal = opts.onFatal || function () {};
@@ -121,14 +131,13 @@
                 console.warn('AI Upscaler RT/WebGPU: unknown model key', this._modelKey);
                 return false;
             }
-            this._scale = modelEntry.scale || 4;
-
             this._setStatus('Downloading Neural Model (2.5MB)...');
-            var session = await this._loadModel(modelEntry.urls);
+            var session = await this._loadModel(modelEntry.sources);
             if (!session) return false;
             this._session = session;
 
             this._setStatus('Compiling WebGPU Kernels...');
+            this._scale = await this._probeScale(session, modelEntry.scale);
             this._canvas = document.createElement('canvas');
             this._canvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:999;';
             this._canvas.id = 'aiWebgpuCanvas';
@@ -141,6 +150,7 @@
 
             this._running = true;
             this._processing = false;
+            this._slowFrameCount = 0;
             this._frameCount = 0;
             this._lastFpsTime = performance.now();
             this._setStatus('running');
@@ -196,25 +206,26 @@
             });
         },
 
-        _loadModel: async function (urls) {
-            for (var i = 0; i < urls.length; i++) {
-                var url = urls[i];
-                if (typeof url === 'function') {
-                    try { url = url(); } catch (e) { url = ''; }
-                }
-                if (!url) continue;
+        _loadModel: async function (sources) {
+            for (var i = 0; i < sources.length; i++) {
+                var source = sources[i];
                 try {
-                    console.log('AI Upscaler RT/WebGPU: fetching model from', url);
-                    var headers = {};
-                    if (window.ApiClient && typeof ApiClient.accessToken === 'function' && ApiClient.accessToken()) {
-                        headers['Authorization'] = 'MediaBrowser Token="' + ApiClient.accessToken() + '"';
-                    }
-                    var response = await fetch(url, { headers: headers });
+                    console.log('AI Upscaler RT/WebGPU: fetching model from', source.url);
+                    // No credentials: these are third-party hosts, and the viewer's Jellyfin
+                    // token must never go there.
+                    var response = await fetch(source.url, { credentials: 'omit' });
                     if (!response.ok) {
-                        console.warn('AI Upscaler RT/WebGPU: model fetch HTTP', response.status, url);
+                        console.warn('AI Upscaler RT/WebGPU: model fetch HTTP', response.status, source.url);
                         continue;
                     }
                     var modelBuffer = await response.arrayBuffer();
+                    var digest = await sha256Hex(modelBuffer);
+                    if (digest === null) {
+                        console.info('AI Upscaler RT/WebGPU: no WebCrypto (page not served over HTTPS); relying on the commit-pinned URL');
+                    } else if (digest !== source.sha256) {
+                        console.warn('AI Upscaler RT/WebGPU: model checksum mismatch, skipping', source.url, digest);
+                        continue;
+                    }
                     var session = await window.ort.InferenceSession.create(modelBuffer, {
                         executionProviders: ['webgpu', 'wasm'],
                         graphOptimizationLevel: 'all'
@@ -222,11 +233,27 @@
                     console.log('AI Upscaler RT/WebGPU: model loaded, inputs=', session.inputNames, 'outputs=', session.outputNames);
                     return session;
                 } catch (e) {
-                    console.warn('AI Upscaler RT/WebGPU: model load failed for', url, e);
+                    console.warn('AI Upscaler RT/WebGPU: model load failed for', source.url, e);
                 }
             }
-            console.warn('AI Upscaler RT/WebGPU: all model URLs failed - fallback');
+            console.warn('AI Upscaler RT/WebGPU: all model sources failed - fallback');
             return null;
+        },
+
+        // The scale the model really has, measured with a 16x16 frame (which also warms the
+        // kernels up). The catalog's figure is only the fallback: an entry labelled x2 once
+        // loaded 4x files, and the input cap was computed from the wrong number.
+        _probeScale: async function (session, declared) {
+            try {
+                var feeds = {};
+                feeds[session.inputNames[0]] = new window.ort.Tensor('float32', new Float32Array(3 * 16 * 16), [1, 3, 16, 16]);
+                var out = (await session.run(feeds))[session.outputNames[0]];
+                var measured = Math.round(out.dims[2] / 16);
+                if (measured >= 1 && measured <= 8) return measured;
+            } catch (e) {
+                console.warn('AI Upscaler RT/WebGPU: scale probe failed, using the catalog value', e);
+            }
+            return declared;
         },
 
         _renderLoop: async function () {
@@ -242,6 +269,20 @@
                     var t0 = performance.now();
                     await this._processFrame();
                     this._processing = false;
+                    if (!this._running) return;
+
+                    // Hardware that cannot keep up hands over to Lanczos instead of stuttering
+                    // for the rest of the film.
+                    if (performance.now() - t0 > 50) {
+                        if (++this._slowFrameCount > 30) {
+                            console.warn('AI Upscaler RT/WebGPU: 30 consecutive slow frames - hardware too weak. Stopping.');
+                            this._onFatal('inference_too_slow');
+                            this.stop();
+                            return;
+                        }
+                    } else {
+                        this._slowFrameCount = 0;
+                    }
 
                     this._frameCount++;
                     var now = performance.now();
@@ -264,10 +305,9 @@
             var rawH = this._video.videoHeight;
             if (!rawW || !rawH) return;
 
-            // Safe 1440p target clamping:
-            // Since the model scales 4x, clamp input height to 360p (so 4x output = 1440p).
-            // This prevents exponential tensor explosion and keeps WebGPU inference responsive.
-            var maxInH = Math.min(360, Math.round(1440 / Math.max(1, this._scale)));
+            // Never more than MAX_OUTPUT_LINES of output. A fixed 360-line input cap also held a
+            // 2x model to 720 lines out, below a 1080p source.
+            var maxInH = Math.max(1, Math.floor(MAX_OUTPUT_LINES / Math.max(1, this._scale)));
             var scaleIn = Math.min(1.0, maxInH / Math.max(1, rawH));
             var inW = Math.round(rawW * scaleIn);
             var inH = Math.round(rawH * scaleIn);
