@@ -75,6 +75,16 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # silently runs on CPU (the exact failure mode of the Intel/AMD onnxruntime bugs).
 RUN python -c "import onnxruntime as ort; p = ort.get_available_providers(); print('ONNX providers:', p); assert 'CUDAExecutionProvider' in p, 'BUILD FAIL: CUDAExecutionProvider missing - onnxruntime-gpu not correctly installed'"
 
+# Issue #98 lesson: "available" only means compiled in. The CUDA EP library must also resolve
+# the CUDA/cuDNN libraries of this base (cuBLAS 12, cuFFT 11, cuRAND 10, cuDNN 9), or a base
+# or wheel bump silently runs on the CPU. ldd only reads the library; libcuda.so.1 comes from
+# the host driver at runtime and is not a dependency of the EP library itself.
+RUN set -e; \
+    CUDA_EP="$(python -c "import os, onnxruntime; print(os.path.join(os.path.dirname(onnxruntime.__file__), 'capi', 'libonnxruntime_providers_cuda.so'))")"; \
+    if [ ! -f "$CUDA_EP" ]; then echo "BUILD FAIL: $CUDA_EP missing"; exit 1; fi; \
+    if ldd "$CUDA_EP" | grep "not found"; then echo "BUILD FAIL: the CUDA EP library does not resolve against this image's CUDA/cuDNN"; exit 1; fi; \
+    echo "OK: CUDAExecutionProvider library resolves its CUDA/cuDNN libraries"
+
 # Copy application code
 COPY app/ ./app/
 COPY static/ ./static/

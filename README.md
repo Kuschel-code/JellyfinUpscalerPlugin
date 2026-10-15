@@ -382,7 +382,7 @@ Each tag is published three ways so you can pin precisely:
 - `:docker7` — rolling tag family (Watchtower auto-updates)
 - `:docker7-v1.8.3.35` — NVIDIA pin for the currently published release
 - `:v1.8.3.35-<backend>` — published backend pin (e.g. `:v1.8.3.35-cpu`)
-- `:rc-v<version>[-backend]` — release-candidate images, published ahead of a release when one is wanted; `:rc-v<version>-<commit>[-backend]` pins the exact build. The last candidates were `:rc-v1.8.3.32…`; v1.8.3.33 to v1.8.3.35 went straight to release.
+- `:rc-v<version>[-backend]` — release-candidate images, published ahead of a release when one is wanted; `:rc-v<version>-<commit>[-backend]` pins the exact build. Check which commit a candidate was built from (the container log's `Commit:` line, or `APP_COMMIT` in `docker inspect`). The first `:rc-v1.8.3.36…` build, from commit `0c22b85`, predates the AMD fix for issue #98: its AMD image still has the ROCm 6.2 base and runs on the CPU (issue #102). v1.8.3.33 to v1.8.3.35 went straight to release.
 
 CUDA is the default: keep `SKIP_TENSORRT=true`. Enable TensorRT only with compatible libraries in the image. See [Docker setup and controlled updates](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/blob/main/docker-ai-service/README.md).
 

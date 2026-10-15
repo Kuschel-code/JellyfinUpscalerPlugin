@@ -33,9 +33,14 @@ jobs:
         
       - name: Build plugin
         run: dotnet build JellyfinUpscalerPlugin.csproj --configuration Release --no-restore
+        env:
+          # ImageSharp 4 refuses Release builds without a Six Labors license key (CLAUDE.md)
+          SixLaborsLicenseKey: ${{ secrets.SIXLABORS_LICENSE_KEY }}
 
       - name: Run C# tests
         run: dotnet test JellyfinUpscalerPlugin.Tests/JellyfinUpscalerPlugin.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=csharp.trx" --results-directory TestResults
+        env:
+          SixLaborsLicenseKey: ${{ secrets.SIXLABORS_LICENSE_KEY }}
 
       - name: Upload C# test results
         if: always()

@@ -55,26 +55,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Intel GPU compute runtime (NEO) from Intel's compute-runtime PPA
-# The oneapi repo does NOT contain the GPU compute runtime needed for OpenCL/Level-Zero.
-# We need packages from repositories.intel.com/gpu for Arc A310/A380/A770 and iGPU support.
-# Note: Intel's repo cert chain requires up-to-date ca-certificates.
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/* && \
-    curl -fsSL https://repositories.intel.com/gpu/intel-graphics.key | \
-    gpg --dearmor -o /usr/share/keyrings/intel-graphics.gpg && \
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/gpu/ubuntu jammy/lts/2350 unified" > \
-       /etc/apt/sources.list.d/intel-gpu.list && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-       intel-opencl-icd \
-       intel-level-zero-gpu \
-       level-zero \
-       intel-media-va-driver-non-free \
-       intel-compute-runtime \
-    && rm -rf /var/lib/apt/lists/* && \
-    echo "=== GPU Diagnostics ===" && \
-    clinfo --list 2>/dev/null || echo "clinfo: no platforms found (GPU may not be passed through)" && \
-    ls -la /dev/dri/ 2>/dev/null || echo "/dev/dri not available at build time (expected)"
+# Intel GPU compute runtime: the OpenVINO base already ships it (intel-opencl-icd and
+# intel-level-zero-gpu 24.48.31907.7 with IGC 2.2.3, the stack OpenVINO 2025 is validated with).
+# Until v1.8.3.36 a step here added Intel's jammy/lts/2350 (2023) repo and installed the same
+# packages from it. That apt-get install failed on every build - the published image contains
+# the repo list and key but none of the five packages - and the trailing
+# `|| echo "clinfo: no platforms found"` swallowed the failure. Had it ever succeeded it would
+# have put a 2023 driver under OpenVINO 2025. Removed; the guard after the pip step fails the
+# build if the GPU runtime is ever missing.
 
 # Ensure render/video groups exist, then add root + openvino for GPU access
 RUN groupadd -f render && groupadd -f video && \
@@ -100,6 +88,20 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # v1.7.5 - plain onnxruntime built fine but had no OpenVINO EP, so the image ran on
 # CPU while the dashboard showed the Intel GPU. This assert makes that impossible.
 RUN python3 -c "import onnxruntime as ort; p = ort.get_available_providers(); print('ONNX providers:', p); assert 'OpenVINOExecutionProvider' in p, 'BUILD FAIL: OpenVINOExecutionProvider missing - use onnxruntime-openvino, not plain onnxruntime'"
+
+# Issue #98 lesson: "available" only means compiled in. The OpenVINO EP and the GPU plugin
+# bundled in the wheel must also resolve their libraries (the GPU plugin needs libOpenCL.so.1),
+# and an Intel OpenCL driver must be registered, or the GPU plugin sees no device and the image
+# silently runs on the CPU. ldd only reads the libraries, it runs no code.
+RUN set -e; \
+    CAPI="$(python3 -c "import os, onnxruntime; print(os.path.join(os.path.dirname(onnxruntime.__file__), 'capi'))")"; \
+    for lib in libonnxruntime_providers_openvino.so libopenvino_intel_gpu_plugin.so; do \
+      if [ ! -f "$CAPI/$lib" ]; then echo "BUILD FAIL: $CAPI/$lib missing"; exit 1; fi; \
+      if ldd "$CAPI/$lib" | grep "not found"; then echo "BUILD FAIL: $lib does not resolve its libraries"; exit 1; fi; \
+    done; \
+    ICD="$(cat /etc/OpenCL/vendors/intel.icd 2>/dev/null || true)"; \
+    if [ -z "$ICD" ] || [ ! -f "$ICD" ]; then echo "BUILD FAIL: no Intel OpenCL driver registered (/etc/OpenCL/vendors/intel.icd -> '$ICD') - the OpenVINO GPU plugin would see no GPU"; exit 1; fi; \
+    echo "OK: OpenVINO EP and GPU plugin resolve, Intel OpenCL driver: $ICD"
 
 # Copy application code
 COPY app/ ./app/

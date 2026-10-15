@@ -75,15 +75,20 @@ jobs:
   zip-version-check:
     name: Published payload matches build version; release feeds remain consistent
     runs-on: ubuntu-latest
+    env:
+      # as in build.yml: fork PRs get no secrets and build Debug; Release needs the Six Labors key
+      BUILD_CONFIG: ${{ github.event.pull_request.head.repo.fork && 'Debug' || 'Release' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
       - name: Publish and package the exact runtime payload
+        env:
+          SixLaborsLicenseKey: ${{ secrets.SIXLABORS_LICENSE_KEY }}
         run: |
           set -euo pipefail
-          dotnet publish JellyfinUpscalerPlugin.csproj -c Release -o publish/ --nologo
+          dotnet publish JellyfinUpscalerPlugin.csproj -c "$BUILD_CONFIG" -o publish/ --nologo
           python3 Scripts/package-plugin.py publish candidate.zip
       - name: Validate actual ZIP assemblies and metadata
         shell: pwsh

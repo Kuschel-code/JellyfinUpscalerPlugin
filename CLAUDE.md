@@ -9,7 +9,7 @@ Slim C# plugin (~1.6 MB) that talks HTTP to an external Docker AI microservice (
 
 ## Commands
 ```bash
-dotnet build JellyfinUpscalerPlugin.csproj -c Release   # Release build; warnings are treated as errors
+dotnet build JellyfinUpscalerPlugin.csproj -c Release   # Release build; warnings are treated as errors; needs the Six Labors key (below)
 pwsh Scripts/verify-release.ps1        # AFTER a release: re-downloads assets, SHA round-trip vs all 3 feeds, ZIP content check
 pwsh Scripts/sync-fallback-models.ps1  # regenerates Resources/models-fallback.json from docker AVAILABLE_MODELS
 ```
@@ -24,12 +24,15 @@ pwsh Scripts/sync-fallback-models.ps1  # regenerates Resources/models-fallback.j
 
 ## Release process (manual — CI does NOT release!)
 1. Stamp the version: csproj (`Version`/`AssemblyVersion`/`FileVersion`, always 4-part) and `meta.json` (`version` mirrors the git tag: 3-part when the 4th part is 0; its `targetAbi` stays 3-part `12.0.0`). Assembly version ≠ manifest version ⇒ Jellyfin restart-loop. Feeds are stamped in step 4.
-2. Build the ZIP. Forbidden inside: `Scripts/`, `*.pdb`, `*.deps.json`, test DLLs. `dotnet build` outputs only the main DLL — the transitive NuGet deps (FFMpegCore, CliWrap, ImageSharp, Instances) MUST be added or the plugin dies with NotSupported + tombstone (recovery: `/Plugins/{id}/{ver}/Enable`).
+2. Build the ZIP. Forbidden inside: `Scripts/`, `*.pdb`, `*.deps.json`, test DLLs. `dotnet build` outputs only the main DLL — the transitive NuGet deps (FFMpegCore, CliWrap, ImageSharp, Instances, System.IO.Hashing) MUST be added or the plugin dies with NotSupported + tombstone (recovery: `/Plugins/{id}/{ver}/Enable`).
 3. `gh release create vX.Y.Z <zip>` (check for an existing tag first — global rule).
 4. Update version (4-part) + checksum + sourceUrl in ALL THREE feeds and keep them identical (`targetAbi` there is 4-part `12.0.0.0`). One missed feed = users see the update but cannot install it (caused issue #74).
 5. Run `pwsh Scripts/verify-release.ps1`. A release is not done until it passes.
 
 ## Things That Will Bite You
+- **ImageSharp 4 refuses a Release build without a Six Labors license key** (an MSBuild check before `CoreCompile`; Debug builds only warn). CI reads the repo secret `SIXLABORS_LICENSE_KEY`; locally set the environment variable `SixLaborsLicenseKey` or put the key into a `sixlabors.lic` in the repo root (gitignored). Never commit the key. An assembly-scoped community key must name the exact AssemblyName `JellyfinUpscalerPlugin`. Fork PRs get no secrets, so `build.yml` and the audit ZIP check build them Debug. Do not go back to 3.x: every 3.x version trips NuGet audit, and its NU190x warnings are errors in Release. ImageSharp 4 also needs `System.IO.Hashing.dll` in the ZIP. Without it every PNG encode or decode throws FileNotFoundException, which failed 26 of the 52 image tests.
+- **Jellyfin's `/Plugins/{id}/Configuration` is admin-only, and a POST to it REPLACES the whole configuration.** Code that runs for every user (the player) reads `GET /Upscaler/config` instead: `Models/UpscalerPlayerConfig.cs` holds exactly the fields `player-integration.js` reads, and `PlayerConfigEndpointTests` keeps the two equal. Before that, real-time upscaling never started for non-admins (403). A change must start from the full configuration read fresh, never from that copy: posting the copy back resets the AI service URL, its token, the webhooks and everything else it leaves out.
+- **The WebGPU AI mode downloads its models in the viewer's browser, from HuggingFace.** Pin every source to a commit (`resolve/<40-hex>/`) with its SHA-256 (`webgpu-ai-realtime.js` MODEL_CATALOG, values from `https://huggingface.co/api/models/<repo>?blobs=true`), and never send credentials there. The original onnx-community repository vanished (HTTP 401) and turned the mode off without a sign. A later version followed `resolve/main` of personal repositories and sent the viewer's Jellyfin token with every download. `tests/webgpu-ai-realtime.test.cjs` guards both.
 - **CI auto-release was deliberately removed** after v1.6.1.11/12, when two workflows raced manual uploads and shipped corrupt ZIPs. Never re-add release/upload steps to `build.yml` or `build-and-release.yml`.
 - **Model catalog lives in 3 places** that must stay in sync: `main.py AVAILABLE_MODELS` → `Resources/models-fallback.json` (via sync script) → `site/models.html` (manual). CI (`v1.7.1-audit-checks.yml`) diffs the first two; the third is on you.
 - **Never install plain `onnxruntime` next to `onnxruntime-rocm`/`-openvino`** — the plain wheel (AzureExecutionProvider) shadows the GPU providers → silent CPU fallback.
@@ -48,6 +51,7 @@ pwsh Scripts/sync-fallback-models.ps1  # regenerates Resources/models-fallback.j
 - **CI has no `cv2`/`onnxruntime`** — only `requirements-test.txt`. A test module that imports them at top level does not fail, it fails to COLLECT, so pytest reports one error for a file nobody reads while the suite looks broken elsewhere. The `client` fixture's stubs are runtime-only and do not help. Declare the dep if the test asserts on real pixels; stubbing makes such a test pass while proving nothing. (Bit twice: fixture tests, then object-mask tests.)
 - **`bump-version.py` does not touch `site/`** — run `Scripts/sync-site-topbar-versions.ps1` too, or `v1.7.1 Audit Checks` goes red on the brand-version drift.
 - **jellyfin-ffmpeg is built WITHOUT any DNN backend** (46 `--enable-*` flags, no `libopenvino`/`libtensorflow`/`libtorch`, `dnn` absent from `debian/rules`). `dnn_detect`/`dnn_classify`/`dnn_processing` can never run there. Detection belongs in the AI service. Never expose free-form `-vf`: `movie=`/`subtitles=` read files, and the controller is `[Authorize]` only, not admin.
+- **`get_available_providers()` lists what the wheel was BUILT with, not what LOADS.** docker7-amd listed ROCm for months while the service never requested it and the wheel (built for ROCm 7.2.4) could not open the base's ROCm 6.2 libs (#98). Build guards `ldd` the EP library; never `dlopen` it in a build or in the service - onnxruntime-rocm ABORTS the process when no GPU is reachable, so ROCm sessions are probed in a child process first. `onnxruntime-rocm` and the ROCm base image are pinned together: bump both or neither.
 - **ONNX detectors come in two incompatible families** — v5/v8-style single-head (raw anchors, caller does NMS) and the ONNX YOLOv3 exports (2 inputs, 3 outputs, internal NMS, boxes as `(y,x,y,x)` already in source coords). Read the session's own input/output metadata (`object_mask.plan_for`); never infer from tensor dimensions alone. A misread tensor does not throw — it draws boxes in the wrong place.
 
 ## CI workflows (7, in .github/workflows/)

@@ -28,7 +28,10 @@ test('exponential 250 ms to 2 s backoff, bounded jitter, and HTTP date', () => {
     for (const delay of [250, 500, 1000, 2000, 2000]) { h.rt._waitForFrame(null, 'Busy'); assert.equal(h.rt._nextFrameAt, delay); }
     h.sandbox.Math.random = () => 0.8; h.rt._retryCount = 0; h.rt._waitForFrame(null, 'Busy');
     assert.ok(h.rt._nextFrameAt > 250 && h.rt._nextFrameAt <= 2000);
-    assert.ok(h.rt._retryAfterMs(new Date(Date.now() + 20000).toUTCString()) >= 19000);
+    // An HTTP date has whole seconds: '20 s from now' is 19-20 s away once the milliseconds are cut,
+    // minus the time until it is read. '>= 19000' failed on CI when the clock sat near a second boundary.
+    const fromHttpDate = h.rt._retryAfterMs(new Date(Date.now() + 20000).toUTCString());
+    assert.ok(fromHttpDate >= 18000 && fromHttpDate <= 20000, String(fromHttpDate));
     assert.equal(h.rt._retryAfterMs('garbage'), 0);
 });
 test('stop and mode switch abort the request and ignore delayed responses', async () => {
