@@ -281,6 +281,7 @@
                 <button type="button" class="upscaler-tab" data-tab="models" role="tab" aria-selected="false">Models</button>
                 <button type="button" class="upscaler-tab" data-tab="settings" role="tab" aria-selected="false">Settings</button>
                 <button type="button" class="upscaler-tab" data-tab="jobs" role="tab" aria-selected="false">Jobs</button>
+                <button type="button" class="upscaler-tab" data-tab="preupscaled" role="tab" aria-selected="false">Pre-upscaled Videos</button>
                 <button type="button" class="upscaler-tab" data-tab="cache" role="tab" aria-selected="false">Cache</button>
                 <button type="button" class="upscaler-tab" data-tab="system" role="tab" aria-selected="false">System</button>
                 <button type="button" class="upscaler-tab" data-tab="filters" role="tab" aria-selected="false">Filters</button>
@@ -765,14 +766,15 @@
                                 <div class="fieldDescription">Select one or more libraries to scope the nightly scan. Leave empty to scan <strong>all</strong> libraries (legacy behavior).</div>
                             </div>
                             <div class="form-row">
-                                <div class="form-col inputContainer"><label class="inputLabel" for="MinResolutionWidth">Min Resolution Width</label><input type="number" id="MinResolutionWidth" min="0" max="7680" /><div class="fieldDescription">Videos below this width are upscaled (default: 1920)</div></div>
-                                <div class="form-col inputContainer"><label class="inputLabel" for="MinResolutionHeight">Min Resolution Height</label><input type="number" id="MinResolutionHeight" min="0" max="4320" /><div class="fieldDescription">Videos below this height are upscaled (default: 1080)</div></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MinResolutionWidth">Min Resolution Width</label><input type="number" id="MinResolutionWidth" min="0" max="7680" /><div class="fieldDescription">Videos below this width are upscaled (default: 1280, SD only)</div></div>
+                                <div class="form-col inputContainer"><label class="inputLabel" for="MinResolutionHeight">Min Resolution Height</label><input type="number" id="MinResolutionHeight" min="0" max="4320" /><div class="fieldDescription">Videos below this height are upscaled (default: 720, skips 720p/1080p HD)</div></div>
                             </div>
                             <div class="form-row" style="margin-top:0.5rem;">
                                 <div class="form-col inputContainer"><label class="inputLabel" for="MaxItemsPerScan">Max Items Per Scan</label><input type="number" id="MaxItemsPerScan" min="0" max="100000" /><div class="fieldDescription">0 = unlimited</div></div>
                             </div>
                             <div class="checkboxContainer" style="margin-top:0.5rem;"><label><input type="checkbox" id="RestrictToUnwatchedContent" /> Only upscale unwatched content</label></div>
                             <div class="checkboxContainer"><label><input type="checkbox" id="SkipUpscaledOnRescan" /> Skip already upscaled items on rescan</label></div>
+                            <div class="checkboxContainer"><label><input type="checkbox" id="SkipDuplicatesAndCopies" /> Skip duplicate and copy files (e.g. 'Copy of', 'Bản sao của', numbered copies)</label></div>
                             <div class="selectContainer" style="margin-top:0.5rem;">
                                 <label class="selectLabel" for="OutputCodec">Output Codec</label>
                                 <select id="OutputCodec">
@@ -865,6 +867,74 @@
                             <tr><td colspan="6" style="text-align:center;padding:1.5rem;opacity:0.5;">No jobs found</td></tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- ==================== TAB: PRE-UPSCALED VIDEOS ==================== -->
+            <div id="tab-preupscaled" class="tab-content" style="display:none;">
+                <div class="stat-row">
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:var(--accent);" id="stat-preupscaled-total">-</div>
+                        <div class="stat-label">Total Videos</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:var(--success);" id="stat-preupscaled-upscaled">-</div>
+                        <div class="stat-label">Pre-Upscaled</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:var(--warning);" id="stat-preupscaled-pending">-</div>
+                        <div class="stat-label">Pending Low-Res</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:#60a5fa;" id="stat-preupscaled-highres">-</div>
+                        <div class="stat-label">Native HD / 4K</div>
+                    </div>
+                </div>
+
+                <div class="upscaler-card" style="margin-bottom:1rem;padding:14px 18px;">
+                    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                        <div style="flex:1 1 240px;min-width:200px;">
+                            <input type="text" id="preupscaled-search" placeholder="Search by video title or file name..." style="margin:0;" />
+                        </div>
+                        <div style="flex:0 0 190px;">
+                            <select id="preupscaled-filter" style="margin:0;">
+                                <option value="all">All Videos</option>
+                                <option value="upscaled">Pre-Upscaled Only</option>
+                                <option value="pending">Pending (&lt; 720p)</option>
+                                <option value="highres">Native HD / 4K</option>
+                            </select>
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <button type="button" id="btn-refresh-preupscaled" class="quick-action-btn">Refresh</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="upscaler-card" style="padding:0;overflow:hidden;">
+                    <div style="overflow-x:auto;">
+                        <table id="preupscaled-table">
+                            <thead>
+                                <tr>
+                                    <th>Title &amp; Source File</th>
+                                    <th style="width:110px;text-align:center;">Resolution</th>
+                                    <th style="width:130px;text-align:center;">Status</th>
+                                    <th>Upscaled File / Output</th>
+                                    <th style="width:120px;text-align:center;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="preupscaled-tbody">
+                                <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-secondary);">Loading library videos...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="preupscaled-pagination" style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-top:1px solid var(--border);font-size:12.5px;color:var(--text-muted);flex-wrap:wrap;gap:8px;">
+                        <div id="preupscaled-page-info">Showing 0 of 0</div>
+                        <div style="display:flex;gap:6px;align-items:center;">
+                            <button type="button" id="btn-preupscaled-prev" class="quick-action-btn" style="min-height:30px;padding:4px 10px;" disabled>&larr; Prev</button>
+                            <span id="preupscaled-page-num" style="padding:0 6px;color:var(--text-primary);font-weight:600;">Page 1</span>
+                            <button type="button" id="btn-preupscaled-next" class="quick-action-btn" style="min-height:30px;padding:4px 10px;" disabled>Next &rarr;</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1109,7 +1179,7 @@
         var refreshInterval = null;
         var _initialized = false;
 
-        function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+        function esc(s) { if (!s) return ''; return String(s).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
         // v1.8.3.30, issue #77: "if you hit a toggle in quick succession, the notifications
         // will simply pile on top of each other". They did - literally. Each toast was its
@@ -1182,6 +1252,7 @@
 
                     if (tabId === 'dashboard') { refreshDashboard(page); startPerfMonitor(page); }
                     else if (tabId === 'jobs') refreshJobs(page);
+                    else if (tabId === 'preupscaled') refreshPreUpscaled(page);
                     else if (tabId === 'cache') refreshCache(page);
                     else if (tabId === 'system') refreshSystem(page);
                     // refreshFaceRestoreStatus lives inside initFilterTab's scope; it is only
@@ -1375,6 +1446,129 @@
                 // v1.8.3.14 - these buttons now also live in the dashboard activity strip,
                 // which would otherwise keep showing the pre-click state until its next poll.
                 refreshDashboard(page);
+            });
+        });
+
+        // ===== PRE-UPSCALED VIDEOS =====
+        var _preupscaledPage = 1;
+        var _preupscaledSearchDebounce = null;
+
+        function _formatFileSize(bytes) {
+            if (!bytes || bytes <= 0) return '0 B';
+            var k = 1024;
+            var sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            var i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        // rescan: the Refresh button asks the server for a new library scan; paging, the
+        // filter and search reuse the last one (kept for a minute).
+        function refreshPreUpscaled(page, targetPage, rescan) {
+            if (targetPage !== undefined) _preupscaledPage = targetPage;
+            var filterEl = page.querySelector('#preupscaled-filter');
+            var searchEl = page.querySelector('#preupscaled-search');
+            var filter = filterEl ? filterEl.value : 'all';
+            var search = searchEl ? searchEl.value.trim() : '';
+
+            var url = 'Upscaler/preupscaled?page=' + _preupscaledPage + '&pageSize=25&filter=' + encodeURIComponent(filter);
+            if (search) url += '&search=' + encodeURIComponent(search);
+            if (rescan) url += '&refresh=true';
+
+            ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl(url), dataType: 'json' }).then(function(data) {
+                if (!data || !data.success) throw new Error(data && data.error || 'Failed');
+
+                var totalEl = page.querySelector('#stat-preupscaled-total');
+                var upscaledEl = page.querySelector('#stat-preupscaled-upscaled');
+                var pendingEl = page.querySelector('#stat-preupscaled-pending');
+                var highresEl = page.querySelector('#stat-preupscaled-highres');
+                if (totalEl) totalEl.textContent = data.total != null ? data.total : '-';
+                if (upscaledEl) upscaledEl.textContent = data.upscaledCount != null ? data.upscaledCount : '-';
+                if (pendingEl) pendingEl.textContent = data.pendingCount != null ? data.pendingCount : '-';
+                if (highresEl) highresEl.textContent = data.highResCount != null ? data.highResCount : '-';
+
+                var tbody = page.querySelector('#preupscaled-tbody');
+                if (!tbody) return;
+
+                if (!data.items || data.items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-secondary);">No videos match the current criteria.</td></tr>';
+                } else {
+                    var rowsHtml = '';
+                    data.items.forEach(function(item) {
+                        var statusPill = '';
+                        var actionHtml = '';
+
+                        if (item.status === 'Pre-Upscaled') {
+                            statusPill = '<span class="status-pill status-pill--online">Pre-Upscaled</span>';
+                            actionHtml = '<button type="button" data-action="enqueue-video" data-path="' + esc(item.path) + '" data-name="' + esc(item.name) + '" class="quick-action-btn" style="padding:0.25rem 0.6rem;font-size:0.78rem;">Re-upscale</button>';
+                        } else if (item.status === 'Pending') {
+                            statusPill = '<span class="status-pill status-pill--warning">Pending</span>';
+                            actionHtml = '<button type="button" data-action="enqueue-video" data-path="' + esc(item.path) + '" data-name="' + esc(item.name) + '" class="raised btn-primary" style="padding:0.25rem 0.75rem;font-size:0.8rem;min-height:30px;width:auto;">Enqueue</button>';
+                        } else {
+                            statusPill = '<span class="status-pill status-pill--standalone" style="color:#60a5fa;border-color:rgba(96,165,250,0.3);background:rgba(96,165,250,0.08);">Native HD</span>';
+                            actionHtml = '<button type="button" data-action="enqueue-video" data-path="' + esc(item.path) + '" data-name="' + esc(item.name) + '" class="quick-action-btn" style="padding:0.25rem 0.6rem;font-size:0.78rem;opacity:0.75;">Upscale</button>';
+                        }
+
+                        var upscaledInfo = '<span style="color:var(--text-muted);">&mdash;</span>';
+                        if (item.isPreUpscaled && item.upscaledFileName) {
+                            var sizeStr = item.upscaledSize > 0 ? (' &middot; ' + _formatFileSize(item.upscaledSize)) : '';
+                            var dateStr = item.upscaledDate ? (' &middot; ' + new Date(item.upscaledDate).toLocaleDateString()) : '';
+                            upscaledInfo = '<div style="font-weight:600;color:var(--success);word-break:break-all;">' + esc(item.upscaledFileName) + '</div>' +
+                                           '<div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;">' + esc(item.upscaledPath || '') + sizeStr + dateStr + '</div>';
+                        }
+
+                        var resBadge = '<span style="font-family:var(--mono);font-size:0.8rem;padding:2px 6px;border-radius:4px;background:var(--bg);border:1px solid var(--border);">' + esc(item.resolution) + '</span>';
+
+                        rowsHtml += '<tr>' +
+                            '<td>' +
+                                '<div style="font-weight:600;font-size:0.92rem;color:var(--text-primary);margin-bottom:2px;">' + esc(item.name) + '</div>' +
+                                '<div class="file-path" style="font-size:0.75rem;color:var(--text-muted);" title="' + esc(item.path) + '">' + esc(item.fileName) + '</div>' +
+                            '</td>' +
+                            '<td style="text-align:center;">' + resBadge + '</td>' +
+                            '<td style="text-align:center;">' + statusPill + '</td>' +
+                            '<td>' + upscaledInfo + '</td>' +
+                            '<td style="text-align:center;">' + actionHtml + '</td>' +
+                        '</tr>';
+                    });
+                    tbody.innerHTML = rowsHtml;
+                }
+
+                var pageInfo = page.querySelector('#preupscaled-page-info');
+                var pageNum = page.querySelector('#preupscaled-page-num');
+                var prevBtn = page.querySelector('#btn-preupscaled-prev');
+                var nextBtn = page.querySelector('#btn-preupscaled-next');
+
+                var startIdx = data.filteredTotal > 0 ? ((data.page - 1) * data.pageSize + 1) : 0;
+                var endIdx = Math.min(data.page * data.pageSize, data.filteredTotal);
+                if (pageInfo) pageInfo.textContent = 'Showing ' + startIdx + ' \u2013 ' + endIdx + ' of ' + data.filteredTotal + ' videos';
+                if (pageNum) pageNum.textContent = 'Page ' + data.page + ' of ' + Math.max(1, data.totalPages);
+                if (prevBtn) prevBtn.disabled = data.page <= 1;
+                if (nextBtn) nextBtn.disabled = data.page >= data.totalPages;
+
+            }).catch(function(err) {
+                var tbody = page.querySelector('#preupscaled-tbody');
+                if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--danger);">Error loading library videos: ' + esc(err.message || err) + '</td></tr>';
+            });
+        }
+
+        // Delegated video enqueue action
+        document.addEventListener('click', function(e) {
+            var btn = e.target.closest('[data-action="enqueue-video"]');
+            if (!btn) return;
+            var path = btn.getAttribute('data-path');
+            var name = btn.getAttribute('data-name');
+            if (!path) return;
+            btn.disabled = true;
+            btn.textContent = 'Enqueuing...';
+            ApiClient.ajax({
+                type: 'POST',
+                url: ApiClient.getUrl('Upscaler/queue/add?inputPath=' + encodeURIComponent(path) + '&itemName=' + encodeURIComponent(name || ''))
+            }).then(function() {
+                showToast('Enqueued: ' + (name || path), '#4ade80');
+                btn.textContent = 'Enqueued \u2713';
+            }).catch(function(err) {
+                btn.disabled = false;
+                btn.textContent = 'Enqueue';
+                showToast('Failed to enqueue video: ' + (err && err.message || err), '#f87171');
             });
         });
 
@@ -1663,6 +1857,7 @@
                 var tab = activeTab.getAttribute('data-tab');
                 if (tab === 'dashboard') refreshDashboard(page);
                 else if (tab === 'jobs') refreshJobs(page);
+                else if (tab === 'preupscaled') refreshPreUpscaled(page);
             }, _stripLive ? 3000 : 15000);
         }
         function _errorHint(msg) {
@@ -2296,7 +2491,7 @@
                     'EnableAutoModelSelection',
                     'PauseQueueDuringPlayback','PersistQueueAcrossRestarts',
                     'WebhookOnComplete','WebhookOnFailure',
-                    'RestrictToUnwatchedContent','SkipUpscaledOnRescan',
+                    'RestrictToUnwatchedContent','SkipUpscaledOnRescan','SkipDuplicatesAndCopies',
                     'EnableRealtimeUpscaling','EnableVideoFilters','EnableDenoisePrefilter','EnablePipelineParallelism',
                     'EnableFaceRestore','EnableObjectMasking','ClientDriverUpscalingActive'];
                 checks.forEach(function(f) {
@@ -2396,7 +2591,7 @@
                     'EnableAutoModelSelection',
                     'PauseQueueDuringPlayback','PersistQueueAcrossRestarts',
                     'WebhookOnComplete','WebhookOnFailure',
-                    'RestrictToUnwatchedContent','SkipUpscaledOnRescan',
+                    'RestrictToUnwatchedContent','SkipUpscaledOnRescan','SkipDuplicatesAndCopies',
                     'EnableRealtimeUpscaling','EnableVideoFilters','EnableDenoisePrefilter','EnablePipelineParallelism',
                     'EnableFaceRestore','EnableObjectMasking','ClientDriverUpscalingActive'];
                 checks.forEach(function(f) {
@@ -3069,7 +3264,29 @@
 
             page.querySelector('#btn-refresh-status').addEventListener('click', function() { refreshDashboard(page); });
             page.querySelector('#btn-refresh-jobs').addEventListener('click', function() { refreshJobs(page); });
+            page.querySelector('#btn-refresh-preupscaled')?.addEventListener('click', function() { refreshPreUpscaled(page, undefined, true); });
             page.querySelector('#btn-refresh-cache').addEventListener('click', function() { refreshCache(page); });
+
+            var preupscaledSearch = page.querySelector('#preupscaled-search');
+            if (preupscaledSearch) {
+                preupscaledSearch.addEventListener('input', function() {
+                    if (_preupscaledSearchDebounce) clearTimeout(_preupscaledSearchDebounce);
+                    _preupscaledSearchDebounce = setTimeout(function() {
+                        _preupscaledPage = 1;
+                        refreshPreUpscaled(page);
+                    }, 300);
+                });
+            }
+            page.querySelector('#preupscaled-filter')?.addEventListener('change', function() {
+                _preupscaledPage = 1;
+                refreshPreUpscaled(page);
+            });
+            page.querySelector('#btn-preupscaled-prev')?.addEventListener('click', function() {
+                if (_preupscaledPage > 1) refreshPreUpscaled(page, _preupscaledPage - 1);
+            });
+            page.querySelector('#btn-preupscaled-next')?.addEventListener('click', function() {
+                refreshPreUpscaled(page, _preupscaledPage + 1);
+            });
 
             page.querySelector('#btn-quick-clear-cache').addEventListener('click', function() {
                 if (confirm('Clear all cached data?')) {

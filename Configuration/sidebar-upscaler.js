@@ -8,7 +8,7 @@
     var _observerAttached = false;
 
     // Text escaping helper for safe innerHTML (matches configurationpage.html esc())
-    function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+    function esc(s) { if (!s) return ''; return String(s).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
     // Add sidebar menu item for AI Upscaler Plugin
     function addSidebarItem() {
