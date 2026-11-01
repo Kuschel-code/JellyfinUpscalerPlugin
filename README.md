@@ -1,4 +1,4 @@
-# Jellyfin AI Upscaler Plugin v1.8.3.36 — Jellyfin 12
+# Jellyfin AI Upscaler Plugin v1.8.3.37 — Jellyfin 12
 
 [![Built with Claude Opus 5.5](https://img.shields.io/badge/Built%20with-Claude%20Opus%205.5-D97757?logo=anthropic&logoColor=white&style=for-the-badge)](https://www.anthropic.com/claude)
 
@@ -14,9 +14,17 @@
 
 AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neural networks, with AI inference in a Docker service and video decoding/encoding on the Jellyfin host.
 
-**Release status (2026-10-07):** v1.8.3.36 is released for Jellyfin 12.0+ / .NET 10. Library jobs now wait out a busy AI service (HTTP 429/503) instead of failing the whole video. The AI service now explains why an Intel/AMD GPU is not used (issue #90: pass the host's numeric render group ID, not the name `render`) and runs OpenVINO on its CPU device instead of silently falling back. The AMD image now actually uses ROCm (issue #98: it never did before; new ROCm 7.2.4 base, about 7.5 GB instead of about 20 GB). Both parts live in the AI service, so it reaches you with the 1.8.3.36 Docker images, which are **not published yet**. Target-server acceptance was not run; actual playback, GPU and HDR target-hardware behavior remain unverified.
+**Release status (2026-11-01):** v1.8.3.37 is prepared for Jellyfin 12.0+ / .NET 10 and **not published yet**: the release ZIP and the feed entries follow once the build passes with the Six Labors license key. It makes real-time upscaling work for users who are not Jellyfin administrators, closes three security holes (script injection through a file name in the dashboard, library paths and the job queue open to every user, the viewer's Jellyfin token sent to HuggingFace by the WebGPU mode), and adds a Pre-upscaled tab. Target-server acceptance was not run; actual playback, GPU and HDR target-hardware behavior remain unverified.
 
-**Previous release status (2026-09-26):** v1.8.3.35 is released for Jellyfin 12.0+ / .NET 10. The player button no longer needs write access to Jellyfin's web folder, and since v1.8.3.34 real-time upscaling starts again in the web client. Jellyfin 10.11 users retain v1.8.3.31, which has both defects. Target-server acceptance was not run; actual playback, GPU and HDR target-hardware behavior remain unverified.
+**Previous release status (2026-10-07):** v1.8.3.36 is released for Jellyfin 12.0+ / .NET 10. Library jobs now wait out a busy AI service (HTTP 429/503) instead of failing the whole video. The AI service now explains why an Intel/AMD GPU is not used (issue #90: pass the host's numeric render group ID, not the name `render`) and runs OpenVINO on its CPU device instead of silently falling back. The AMD image now actually uses ROCm (issue #98: it never did before; new ROCm 7.2.4 base, about 7.5 GB instead of about 20 GB). Both parts live in the AI service, so it reaches you with the 1.8.3.36 Docker images, which are **not published yet**. Target-server acceptance was not run; actual playback, GPU and HDR target-hardware behavior remain unverified.
+
+**Fixed in v1.8.3.37:**
+- Real-time upscaling never started for users who are not administrators: the player read its settings through Jellyfin's admin-only plugin configuration (HTTP 403). It now reads `GET /Upscaler/config`, which carries only the player's settings and never the AI service URL, its token or the webhooks. Changing settings from the player menu still needs an administrator.
+- Security: a library file name containing quotes could run script in the admin's dashboard (the queue table put it into an attribute unescaped). Quotes are escaped now.
+- Security: the library list (with server folder paths) and the job queue were open to every signed-in user, who could also queue GPU-heavy jobs and cancel other people's. They are admin-only now.
+- Security: the WebGPU AI mode sent the viewer's Jellyfin token to HuggingFace with every model download and followed whatever the model owners uploaded next. It now sends no credentials, pins every model to a commit and checks its SHA-256. The mode loads models again (its original repository had disappeared).
+- New: a Pre-upscaled tab (from PR #101 by tumo07) lists library videos below the configured resolution and whether an upscaled copy exists. The WebGL engine keeps the aspect ratio, redraws on a paused seek and sizes its canvas to the screen.
+- AI service (Docker images): the AMD image uses ROCm (issue #98), the NVIDIA and Intel builds check that their GPU provider really loads, Pillow (39 advisories) is gone from every service image, and the Vulkan image's ncnn path upscales correctly. ImageSharp 4.1.3 replaces 3.x, which had five advisories.
 
 **Fixed in v1.8.3.35** (reported in GitHub issue #75):
 - The player button never appeared when Jellyfin could not write its web client's `index.html`: on a default Windows install (the server runs as NetworkService under `Program Files`), with the Debian package, snaps and read-only containers. It showed only in a tab that had opened the plugin's settings. The plugin now adds its script to the page as Jellyfin serves it; the file on disk is left alone.
@@ -33,7 +41,7 @@ AI-powered video upscaling for Jellyfin. Upscale SD content to HD/4K using neura
 
 **New in v1.8.3.33:** a redesigned in-player menu (live frame-rate readout, filter previews on the playing frame, phone and TV layouts) and settings page (keyboard- and remote-friendly tabs).
 
-**Docker Images (to be released in lockstep with the plugin, both at v1.8.3.36):** The published images are at v1.8.3.35: all seven regular version pins and docker7 tags, registry-verified, including ten platform configurations, and NVIDIA latest. The AI service changed in v1.8.3.36 (Intel/OpenVINO fallback and diagnostics, AMD ROCm support on a ROCm 7.2.4 base, numeric GPU group IDs), so its images need a rebuild and are **not published yet**; update the container together with the plugin once they are. Until then, Intel/AMD users can apply the fix from issue #90 by hand: pass the host's numeric render group ID. The AI service was unchanged from v1.8.3.33 to v1.8.3.35. [Release notes](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.36).
+**Docker Images (to be released in lockstep with the plugin, both at v1.8.3.37):** The published images are at v1.8.3.35: all seven regular version pins and docker7 tags, registry-verified, including ten platform configurations, and NVIDIA latest. The AI service changed in v1.8.3.36 (Intel/OpenVINO fallback and diagnostics, AMD ROCm support on a ROCm 7.2.4 base, numeric GPU group IDs) and in v1.8.3.37 (no Pillow, GPU-provider build guards, correct Vulkan/ncnn upscaling), so its images need a rebuild and are **not published yet**; update the container together with the plugin once they are. Until then, Intel/AMD users can apply the fix from issue #90 by hand: pass the host's numeric render group ID. The AI service was unchanged from v1.8.3.33 to v1.8.3.35. [Release notes](https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases/tag/v1.8.3.36).
 *   `kuscheltier/jellyfin-ai-upscaler:docker7` (NVIDIA CUDA + cuDNN 9)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-amd` (AMD ROCm)
 *   `kuscheltier/jellyfin-ai-upscaler:docker7-intel` (Intel Arc/iGPU OpenVINO)
@@ -60,7 +68,7 @@ Jellyfin's plugin system tries to load ALL `.dll` files as .NET assemblies. Nati
 ┌──────────────────────────────────────────┐
 │  Jellyfin Server                         │
 │  ┌────────────────────────────────────┐  │
-│  │  AI Upscaler Plugin v1.8.3.36   │  │
+│  │  AI Upscaler Plugin v1.8.3.37   │  │
 │  │  ~1.6 MB — No native DLLs         │  │
 │  │  Sends frames via HTTP             │  │
 │  └──────────────┬─────────────────────┘  │
