@@ -1,6 +1,12 @@
 pytest>=8.0.0
-pytest-asyncio>=0.23.0
+pytest-asyncio>=0.24.0  # asyncio_default_fixture_loop_scope (pyproject.toml) exists from 0.24 on
 httpx>=0.27.0
+# Starlette's TestClient (the `client` fixture) runs on httpx2 from Starlette 1.10 on.
+# With only httpx it still works but warns that this is deprecated. FastAPI sets no
+# upper bound on Starlette and CI installs this file unlocked, so a later Starlette
+# without the httpx fallback would break every endpoint test at once. httpx above
+# stays: app/main.py and app/model_import.py use it at runtime.
+httpx2>=2.0.0
 Pillow>=12.2.0,<13.0
 numpy>=1.24.0
 python-multipart>=0.0.30,<1.0
