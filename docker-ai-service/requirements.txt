@@ -12,10 +12,9 @@ numpy>=1.24.0,<3.0.0
 # Image Processing - OpenCV with DNN Super Resolution
 opencv-contrib-python>=4.12.0,<5.0
 
-# No Pillow in this image. Nothing here imports it: the service decodes with OpenCV,
-# and the only Pillow user, the RealSR (ncnn) path, exists in the Vulkan image alone.
-# It could not be kept current either: Pillow 13.0.0, which fixes the 39 advisories in
-# 12.3.0, needs Python >= 3.11, and this image's Ubuntu 22.04 base runs Python 3.10.
+# No Pillow: the service decodes and encodes every image with OpenCV. Its only Pillow
+# user was the realsr-ncnn-vulkan-python path, which never installed in any image and
+# is gone. Tests (requirements-test.txt) and the converter (via torchvision) still get it.
 
 # Utilities
 httpx>=0.26.0

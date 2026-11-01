@@ -26,3 +26,6 @@ opencv-python-headless>=4.8.0,<5.0
 # onnxruntime-rocm/-openvino" rule in CLAUDE.md is not in play here.
 onnx>=1.15.0
 onnxruntime>=1.17.0
+# test_ncnn_backend.py runs the Vulkan image's ncnn path on real pixels, on the CPU,
+# with a hand-written network. Same range as Dockerfile.vulkan installs.
+ncnn>=1.0.20250503,<2.0

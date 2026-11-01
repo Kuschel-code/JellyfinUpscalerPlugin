@@ -84,9 +84,7 @@ packaging==26.3
     #   onnxruntime
     #   onnxscript
 pillow==13.0.0
-    # via
-    #   -r /w/requirements-cpu.txt
-    #   torchvision
+    # via torchvision
 protobuf==7.36.2
     # via
     #   onnx
