@@ -83,7 +83,7 @@ packaging==26.3
     #   onnx-ir
     #   onnxruntime
     #   onnxscript
-pillow==12.3.0
+pillow==13.0.0
     # via
     #   -r /w/requirements-cpu.txt
     #   torchvision

@@ -37,6 +37,7 @@ pwsh Scripts/sync-fallback-models.ps1  # regenerates Resources/models-fallback.j
 - **Model catalog lives in 3 places** that must stay in sync: `main.py AVAILABLE_MODELS` → `Resources/models-fallback.json` (via sync script) → `site/models.html` (manual). CI (`v1.7.1-audit-checks.yml`) diffs the first two; the third is on you.
 - **Never install plain `onnxruntime` next to `onnxruntime-rocm`/`-openvino`** — the plain wheel (AzureExecutionProvider) shadows the GPU providers → silent CPU fallback.
 - **pip version floors need a FULL dry-run** of every requirements set against the image's Python — testing partial pairs lies (opencv>=4.12 vs the old numpy<2 cap once killed all 6 builds). AMD/ROCm: torch 2.3 → keep numpy<2 and opencv<4.12.
+- **Pillow 13+ needs Python ≥ 3.11, and three images run 3.10** (Ubuntu 22.04 bases: `requirements.txt` = nvidia, `-intel`, `-amd`). Those three carry no Pillow at all: the service decodes with OpenCV, and the only Pillow user is the RealSR path of the Vulkan image. Do not add it back with a `<13` cap: 12.3.0 has 39 advisories (pip-audit in `build.yml` fails on them).
 - **README and `site/` are CRLF** — the global CRLF edit rule applies (single-line anchors only).
 - **docker-publish "Build amd" goes red** on the Trivy scan timeout (20 GB ROCm image) — the image IS pushed anyway; not a release blocker.
 - **Docker images publish via `docker7*` / `v*-docker7` tags**, not plugin `v*` tags.
