@@ -44,19 +44,18 @@ except ImportError:
     ONNX_AVAILABLE = False
     ort = None
 
-# ncnn-Vulkan for GPU super-resolution on AMD pre-RDNA2, Intel, etc.
+# ncnn-Vulkan for GPU super-resolution on AMD pre-RDNA2, Intel iGPUs and any other Vulkan
+# device. Only the Vulkan image installs it, and the service drives the raw bindings
+# itself. It used to try the realsr-ncnn-vulkan-python wrapper first, but that package
+# never installed in any image: it has no wheels, its last release is from 2022, and
+# the Dockerfile asked for a 2.x that does not exist. It also only knew its two bundled
+# RealSR models, so none of the catalog's ncnn ids would have loaded through it.
 try:
-    from realsr_ncnn_vulkan_python import RealSR
+    import ncnn
     NCNN_AVAILABLE = True
 except ImportError:
-    try:
-        import ncnn
-        NCNN_AVAILABLE = True
-        RealSR = None
-    except ImportError:
-        NCNN_AVAILABLE = False
-        RealSR = None
-        ncnn = None
+    NCNN_AVAILABLE = False
+    ncnn = None
 
 # Configure logging
 logging.basicConfig(
@@ -945,7 +944,7 @@ AVAILABLE_MODELS = {
         "name": "Real-ESRGAN x4 (Vulkan GPU)",
         "url": "",
         "scale": 4,
-        "description": "Real-ESRGAN x4 via ncnn-Vulkan. Works on any Vulkan GPU (AMD RX 5700, Intel Arc, etc.). Bundled with realsr-ncnn-vulkan.",
+        "description": "Real-ESRGAN x4 via ncnn-Vulkan. Works on any Vulkan GPU (AMD RX 5700, Intel Arc, etc.).",
         "type": "ncnn",
         "category": "vulkan",
         "model_type": "realesrgan",
@@ -2162,7 +2161,8 @@ async def load_model(model_name: str) -> bool:
     model_path = get_model_path(model_name)
     model_type = model_info.get("type", "pb")
 
-    # ncnn models are bundled with the realsr-ncnn-vulkan package — no file on disk needed
+    # ncnn models load from a .param/.bin pair, not from model_path itself;
+    # load_ncnn_model() checks those files and says which one is missing.
     if model_type != "ncnn" and not model_path.exists():
         logger.error(f"Model not found: {model_path}")
         return False
@@ -2178,40 +2178,61 @@ async def load_model(model_name: str) -> bool:
         return False
 
 
+def ncnn_model_files(model_name: str) -> "tuple[Path, Path]":
+    """The .param/.bin pair an ncnn catalog model loads from: <MODELS_DIR>/<id>.param and .bin."""
+    model_path = get_model_path(model_name)
+    return model_path.with_suffix(".param"), model_path.with_suffix(".bin")
+
+
+def ncnn_missing_files_message(model_name: str) -> Optional[str]:
+    """None when both ncnn files are in place, otherwise what to put where.
+
+    Nothing downloads these files: the catalog has no URL for them. They used to be
+    described as "bundled with realsr-ncnn-vulkan", but that package never installed
+    in any image (see the ncnn import at the top of this file).
+    """
+    param_path, bin_path = ncnn_model_files(model_name)
+    missing = [p.name for p in (param_path, bin_path) if not p.exists()]
+    if not missing:
+        return None
+    original = AVAILABLE_MODELS.get(model_name, {}).get("ncnn_model", model_name)
+    return (
+        f"{model_name} needs the ncnn files {param_path.name} and {bin_path.name} in "
+        f"{param_path.parent} (missing: {', '.join(missing)}). They are not downloaded "
+        f"automatically: copy the .param and .bin of the {original} model from its ncnn "
+        f"release there under those names."
+    )
+
+
 async def load_ncnn_model(model_name: str, model_info: dict, model_path: Path) -> bool:
-    """Load a model using ncnn-Vulkan backend for GPU inference on Vulkan-capable GPUs.
-    Supports pre-RDNA2 AMD (RX 5700 etc.), Intel iGPUs, and any Vulkan device.
-    Uses realsr-ncnn-vulkan-python wrapper or raw ncnn bindings."""
+    """Load an ncnn model for Vulkan inference (pre-RDNA2 AMD, Intel iGPUs, any Vulkan
+    device) from its .param/.bin pair, through the raw ncnn bindings."""
     if not NCNN_AVAILABLE:
-        logger.error("ncnn/Vulkan not available — install realsr-ncnn-vulkan-python or ncnn-vulkan")
-        state.last_load_error = "ncnn-Vulkan not installed"
+        logger.error("ncnn is not installed; only the Vulkan image (docker7-vulkan) ships it")
+        state.last_load_error = "ncnn-Vulkan not installed (use the docker7-vulkan image)"
         return False
 
     scale = model_info.get("scale", 4)
-    ncnn_model_name = model_info.get("ncnn_model", "realesrgan-x4plus")
     gpu_id = state.gpu_device_id
 
-    try:
-        if RealSR is not None:
-            # Use the realsr-ncnn-vulkan-python high-level wrapper
-            upscaler = RealSR(gpuid=gpu_id, model=ncnn_model_name, scale=scale)
-            logger.info(f"ncnn-Vulkan: Loaded {model_name} via RealSR wrapper (GPU {gpu_id})")
-        else:
-            # Fallback: raw ncnn bindings (requires .param + .bin files)
-            param_path = model_path.with_suffix('.param')
-            bin_path = model_path.with_suffix('.bin')
-            if not param_path.exists() or not bin_path.exists():
-                logger.error(f"ncnn model files not found: {param_path}, {bin_path}")
-                state.last_load_error = f"Missing .param/.bin files for {model_name}"
-                return False
+    problem = ncnn_missing_files_message(model_name)
+    if problem:
+        logger.error(problem)
+        state.last_load_error = problem
+        return False
+    param_path, bin_path = ncnn_model_files(model_name)
 
-            net = ncnn.Net()
-            net.opt.use_vulkan_compute = True
-            net.opt.num_threads = 4
-            net.load_param(str(param_path))
-            net.load_model(str(bin_path))
-            upscaler = net
-            logger.info(f"ncnn-Vulkan: Loaded {model_name} via raw ncnn (GPU {gpu_id})")
+    try:
+        net = ncnn.Net()
+        net.opt.use_vulkan_compute = True
+        net.opt.num_threads = 4
+        # ncnn reports a bad file through its return code, not an exception.
+        if net.load_param(str(param_path)) != 0:
+            raise RuntimeError(f"ncnn could not parse {param_path.name}")
+        if net.load_model(str(bin_path)) != 0:
+            raise RuntimeError(f"ncnn could not load the weights in {bin_path.name}")
+        upscaler = net
+        logger.info(f"ncnn-Vulkan: Loaded {model_name} (GPU {gpu_id})")
 
         with _model_lock:
             state.ncnn_upscaler = upscaler
@@ -2238,9 +2259,15 @@ async def load_ncnn_model(model_name: str, model_info: dict, model_path: Path) -
         return False
 
 
+# ncnn's super-resolution models (realsr-/realesrgan-ncnn-vulkan) work on RGB in 0..1:
+# their reference code divides by 255 before the network and multiplies by 255 after it.
+_NCNN_NORM = [1 / 255.0] * 3
+
+
 def upscale_with_ncnn(img: np.ndarray) -> np.ndarray:
-    """Upscale image using ncnn-Vulkan backend.
-    Uses RealSR wrapper (tile-based internally) or raw ncnn inference."""
+    """Upscale a BGR uint8 frame with the loaded ncnn model, in overlapping tiles that are
+    blended back together. The model sees what its reference implementation feeds it:
+    RGB scaled to 0..1, and its 0..1 RGB output is scaled back to 0..255 BGR."""
     with _model_lock:
         upscaler = state.ncnn_upscaler
         scale = state.ncnn_model_scale
@@ -2248,70 +2275,63 @@ def upscale_with_ncnn(img: np.ndarray) -> np.ndarray:
     if upscaler is None:
         raise ValueError("No ncnn model loaded")
 
-    if RealSR is not None and isinstance(upscaler, RealSR):
-        # RealSR wrapper handles tiling internally
-        # Convert BGR (OpenCV) to PIL Image for the wrapper
-        from PIL import Image as PILImage
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        pil_img = PILImage.fromarray(img_rgb)
-        result_pil = upscaler.process(pil_img)
-        result_rgb = np.array(result_pil)
-        return cv2.cvtColor(result_rgb, cv2.COLOR_RGB2BGR)
-    else:
-        # Raw ncnn — manual tile-based inference with weighted blending
-        h, w = img.shape[:2]
-        tile_size = ONNX_TILE_SIZE
-        overlap = 32
-        step = tile_size - overlap
-        out_h, out_w = h * scale, w * scale
-        output = np.zeros((out_h, out_w, 3), dtype=np.float32)
-        weight = np.zeros((out_h, out_w, 3), dtype=np.float32)
+    h, w = img.shape[:2]
+    tile_size = ONNX_TILE_SIZE
+    overlap = 32
+    step = tile_size - overlap
+    out_h, out_w = h * scale, w * scale
+    output = np.zeros((out_h, out_w, 3), dtype=np.float32)
+    weight = np.zeros((out_h, out_w, 3), dtype=np.float32)
 
-        def _ncnn_blend_weight(th: int, tw: int) -> np.ndarray:
-            wy = np.ones(th, dtype=np.float32)
-            wx = np.ones(tw, dtype=np.float32)
-            if overlap > 0:
-                ramp_len = min(overlap * scale, th // 2) if th > 1 else 0
-                if ramp_len > 0:
-                    ramp = np.linspace(0, 1, ramp_len + 1, dtype=np.float32)[1:]
-                    wy[:len(ramp)] = ramp
-                    wy[-len(ramp):] = ramp[::-1]
-                ramp_len_x = min(overlap * scale, tw // 2) if tw > 1 else 0
-                if ramp_len_x > 0:
-                    ramp_x = np.linspace(0, 1, ramp_len_x + 1, dtype=np.float32)[1:]
-                    wx[:len(ramp_x)] = ramp_x
-                    wx[-len(ramp_x):] = ramp_x[::-1]
-            return wy[:, None] * wx[None, :]
+    def _ncnn_blend_weight(th: int, tw: int) -> np.ndarray:
+        wy = np.ones(th, dtype=np.float32)
+        wx = np.ones(tw, dtype=np.float32)
+        if overlap > 0:
+            ramp_len = min(overlap * scale, th // 2) if th > 1 else 0
+            if ramp_len > 0:
+                ramp = np.linspace(0, 1, ramp_len + 1, dtype=np.float32)[1:]
+                wy[:len(ramp)] = ramp
+                wy[-len(ramp):] = ramp[::-1]
+            ramp_len_x = min(overlap * scale, tw // 2) if tw > 1 else 0
+            if ramp_len_x > 0:
+                ramp_x = np.linspace(0, 1, ramp_len_x + 1, dtype=np.float32)[1:]
+                wx[:len(ramp_x)] = ramp_x
+                wx[-len(ramp_x):] = ramp_x[::-1]
+        return wy[:, None] * wx[None, :]
 
-        for y in range(0, h, step):
-            for x in range(0, w, step):
-                # Clamp tile to image boundaries
-                y_end = min(y + tile_size, h)
-                x_end = min(x + tile_size, w)
-                y_start = max(y_end - tile_size, 0)
-                x_start = max(x_end - tile_size, 0)
-                tile = img[y_start:y_end, x_start:x_end]
-                th, tw = tile.shape[:2]
+    for y in range(0, h, step):
+        for x in range(0, w, step):
+            # Clamp tile to image boundaries
+            y_end = min(y + tile_size, h)
+            x_end = min(x + tile_size, w)
+            y_start = max(y_end - tile_size, 0)
+            x_start = max(x_end - tile_size, 0)
+            # from_pixels reads the buffer as packed rows of tw*3 bytes and ignores numpy
+            # strides, so a plain slice of a wider frame hands it the wrong pixels.
+            tile = np.ascontiguousarray(img[y_start:y_end, x_start:x_end])
+            th, tw = tile.shape[:2]
 
-                # ncnn inference
-                mat_in = ncnn.Mat.from_pixels(tile, ncnn.Mat.PixelType.PIXEL_BGR, tw, th)
-                ex = upscaler.create_extractor()
-                ex.input("data", mat_in)
-                _, mat_out = ex.extract("output")
-                # ncnn outputs CHW planar layout — reshape to CHW then transpose to HWC
-                raw = np.array(mat_out)
-                result_tile = raw.reshape(3, th * scale, tw * scale).transpose(1, 2, 0).astype(np.float32)
+            mat_in = ncnn.Mat.from_pixels(tile, ncnn.Mat.PixelType.PIXEL_BGR2RGB, tw, th)
+            mat_in.substract_mean_normalize([], _NCNN_NORM)
+            ex = upscaler.create_extractor()
+            ex.input("data", mat_in)
+            ret, mat_out = ex.extract("output")
+            if ret != 0:
+                raise RuntimeError(f"ncnn inference failed (extract returned {ret})")
+            # ncnn outputs planar CHW RGB in 0..1: to HWC, RGB -> BGR, back to 0..255
+            raw = np.array(mat_out)
+            result_tile = raw.reshape(3, th * scale, tw * scale).transpose(1, 2, 0)[:, :, ::-1]
+            result_tile = result_tile.astype(np.float32) * 255.0
 
-                oy, ox = y_start * scale, x_start * scale
-                oth, otw = th * scale, tw * scale
-                bw = _ncnn_blend_weight(oth, otw)[:, :, None]
+            oy, ox = y_start * scale, x_start * scale
+            oth, otw = th * scale, tw * scale
+            bw = _ncnn_blend_weight(oth, otw)[:, :, None]
 
-                output[oy:oy+oth, ox:ox+otw] += result_tile * bw
-                weight[oy:oy+oth, ox:ox+otw] += bw
+            output[oy:oy+oth, ox:ox+otw] += result_tile * bw
+            weight[oy:oy+oth, ox:ox+otw] += bw
 
-        weight = np.maximum(weight, 1e-8)
-        output = np.clip(output / weight, 0, 255).astype(np.uint8)
-        return output
+    weight = np.maximum(weight, 1e-8)
+    return np.clip(np.rint(output / weight), 0, 255).astype(np.uint8)
 
 
 def _probe_tensorrt_subprocess(model_path_str: str, device_id: int) -> bool:
@@ -2929,6 +2949,17 @@ async def download_model(model_name: str, progress_cb=None) -> bool:
         logger.error(f"Model {model_name} is not yet available for download")
         return False
 
+    # ncnn models have no download URL and are not bundled with anything. Report "ready"
+    # only when their .param/.bin pair is really there; this used to answer "bundled, no
+    # download needed" and let the load fail afterwards.
+    if model_info.get("type") == "ncnn":
+        problem = ncnn_missing_files_message(model_name)
+        if problem:
+            logger.error(problem)
+            return False
+        logger.info(f"Model {model_name}: ncnn files already in place")
+        return True
+
     model_path = get_model_path(model_name)
 
     if model_path.exists():
@@ -2952,11 +2983,7 @@ async def download_model(model_name: str, progress_cb=None) -> bool:
         try:
             download_url = model_info.get("url")
 
-            # ncnn models are bundled with the realsr-ncnn-vulkan package — no download needed
             if not download_url:
-                if model_info.get("type") == "ncnn":
-                    logger.info(f"Model {model_name} is bundled (ncnn) — no download needed")
-                    return True
                 raise ValueError(f"No download URL for model {model_name}")
 
             # Validate download URL against the allowlist (see _is_allowed_download_url).
@@ -4846,7 +4873,11 @@ async def list_models():
             "scale": info["scale"],
             "category": info.get("category", "general"),
             "type": info.get("type", "pb"),
-            "downloaded": model_path.exists() if is_available else False,
+            "downloaded": (
+                (ncnn_missing_files_message(model_id) is None
+                 if info.get("type") == "ncnn" else model_path.exists())
+                if is_available else False
+            ),
             "loaded": state.current_model == model_id,
             "available": is_available,
             "custom": bool(info.get("custom", False))
@@ -4869,6 +4900,10 @@ async def download_model_endpoint(model_name: str = Form(...), request: Request 
     if not model_info.get("available", True):
         raise HTTPException(status_code=400, detail=f"Model {model_name} is not yet available. Real-ESRGAN ONNX support coming soon!")
     
+    if model_info.get("type") == "ncnn":
+        problem = ncnn_missing_files_message(model_name)
+        if problem:
+            raise HTTPException(status_code=409, detail=problem)
     success = await download_model(model_name)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to download model")
@@ -4906,7 +4941,11 @@ async def _run_download_job(job_id: str, model_name: str):
                 job["status"] = "completed" if ok else "failed"
                 job["size_mb"] = round(size_mb, 2)
                 if not ok:
-                    job["error"] = "download returned failure"
+                    job["error"] = (
+                        ncnn_missing_files_message(model_name)
+                        if AVAILABLE_MODELS.get(model_name, {}).get("type") == "ncnn"
+                        else None
+                    ) or "download returned failure"
         if ok:
             _invalidate_models_cache()
     except Exception as e:
@@ -4930,8 +4969,10 @@ async def download_model_async_endpoint(model_name: str = Form(...), request: Re
     if not AVAILABLE_MODELS[model_name].get("available", True):
         raise HTTPException(status_code=400, detail=f"Model {model_name} is not yet available")
 
-    # already on disk -> short-circuit, no job needed
-    if get_model_path(model_name).exists():
+    # already on disk -> short-circuit, no job needed (an ncnn model is its .param/.bin pair)
+    if (ncnn_missing_files_message(model_name) is None
+            if AVAILABLE_MODELS[model_name].get("type") == "ncnn"
+            else get_model_path(model_name).exists()):
         return {"status": "completed", "model": model_name, "job_id": None, "already_present": True}
 
     job_id = uuid.uuid4().hex
@@ -4982,9 +5023,14 @@ async def load_model_endpoint(
 
     model_path = get_model_path(model_name)
 
-    # Auto-download model if not present (ncnn models are bundled, skip path check)
+    # Auto-download model if not present. An ncnn model is a .param/.bin pair that nothing
+    # downloads, so name the missing file instead of failing with a generic 500 below.
     model_type = model_info.get("type", "pb")
-    if model_type != "ncnn" and not model_path.exists():
+    if model_type == "ncnn":
+        problem = ncnn_missing_files_message(model_name)
+        if problem:
+            raise HTTPException(status_code=409, detail=problem)
+    elif not model_path.exists():
         logger.info(f"Model {model_name} not downloaded — auto-downloading...")
         dl_success = await download_model(model_name)
         if not dl_success:

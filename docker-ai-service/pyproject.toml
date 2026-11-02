@@ -1,3 +1,6 @@
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# Explicit, so pytest-asyncio stops warning that its default will change. There are no
+# async fixtures today; "function" is the scope that future default will be.
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]

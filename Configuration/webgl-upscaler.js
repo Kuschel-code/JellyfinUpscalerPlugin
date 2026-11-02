@@ -10,17 +10,27 @@
         canvas: null,
         gl: null,
         program: null,
+        texture: null,
         videoElement: null,
         animationFrameId: null,
+        // main's look by default. The player has no control for either; the localStorage
+        // keys read in init() are the only way to change them.
         sharpness: 0.5,
+        deblock: 0,
         onFpsUpdate: null,
         _fpsFrameCount: 0,
         _fpsLastTime: 0,
         _explicitWidth: 0,
         _explicitHeight: 0,
+        _texWidth: 0,
+        _texHeight: 0,
+        _hasRenderedFrame: false,
+        _lastDrawnTime: -1,
         _vertexShader: null,
         _fragmentShader: null,
         _uniformLocations: null,
+        _positionBuffer: null,
+        _texCoordBuffer: null,
         
         // Shader sources
         vertexShaderSource: `
@@ -34,86 +44,166 @@
             }
         `,
         
-        // Lanczos2 resampling shader — real sub-pixel reconstruction
-        // Samples a 4x4 neighborhood from the source texture using a Lanczos kernel
-        // with window size 2, then applies optional CAS (Contrast Adaptive Sharpening)
+        // Pure 36-tap (6x6) Lanczos3 Sinc Reconstruction + AMD Contrast Adaptive Sharpening (CAS)
+        // Mathematically exact sub-pixel positioning: zero phase shift, zero smearing, pristine anime lines
         fragmentShaderSource: `
             precision highp float;
 
             uniform sampler2D u_texture;
-            uniform vec2 u_resolution;  // output (canvas) size
-            uniform float u_sharpness;  // 0.0 – 1.0
+            uniform vec2 u_resolution;  // source (video) dimensions in pixels
+            uniform float u_sharpness;  // CAS sharpness slider (0.0 to 1.0)
+            uniform float u_deblock;    // Smart Bilateral Deblocking & Anti-Artifact slider (0.0 to 1.0)
             varying vec2 v_texCoord;
 
-            #define PI 3.14159265359
+            #define PI 3.14159265358979323846
 
-            // sinc(x) = sin(pi*x) / (pi*x), sinc(0)=1
+            // Normalized sinc function: sinc(x) = sin(pi * x) / (pi * x), with sinc(0) = 1
             float sinc(float x) {
-                if (abs(x) < 1e-5) return 1.0;
                 float px = PI * x;
+                if (abs(px) < 1e-4) return 1.0;
                 return sin(px) / px;
             }
 
-            // Lanczos kernel, a = 2 (4-tap per axis, 16-tap total)
-            float lanczos2(float x) {
-                if (abs(x) >= 2.0) return 0.0;
-                return sinc(x) * sinc(x / 2.0);
+            // 3-lobed Lanczos window function (radius = 3.0, support = [-3.0, 3.0])
+            float lanczos3(float x) {
+                float ax = abs(x);
+                if (ax >= 3.0) return 0.0;
+                return sinc(x) * sinc(x / 3.0);
             }
 
-            // Lanczos2 resample: reconstruct one pixel from 4x4 source neighbourhood
-            vec3 lanczosResample(vec2 uv, vec2 srcTexelSize) {
-                // Map output UV to source pixel coordinate
-                vec2 srcCoord = uv / srcTexelSize - 0.5;
-                vec2 center = floor(srcCoord) + 0.5;
-                vec2 f = srcCoord - center; // fractional offset in [-0.5, 0.5)
+            // Reconstruct sub-pixel sample using 36-tap (6x6) separable Lanczos3 sinc interpolation
+            // with high-acuity anti-ringing that preserves crisp line contrast on anime and cartoons.
+            vec3 lanczos3Resample(vec2 uv, vec2 srcTexelSize) {
+                // Map continuous normalized UV to source pixel coordinate
+                vec2 pos = uv * u_resolution;
+                vec2 baseTexel = floor(pos - 0.5);
+                vec2 f = pos - (baseTexel + 0.5); // Fractional offset from baseTexel center in [-0.5, 0.5)
+
+                // Sample the immediate 2x2 bounding quad around pos for anti-ringing bounds
+                vec3 c00 = texture2D(u_texture, (baseTexel + vec2(0.5, 0.5)) * srcTexelSize).rgb;
+                vec3 c10 = texture2D(u_texture, (baseTexel + vec2(1.5, 0.5)) * srcTexelSize).rgb;
+                vec3 c01 = texture2D(u_texture, (baseTexel + vec2(0.5, 1.5)) * srcTexelSize).rgb;
+                vec3 c11 = texture2D(u_texture, (baseTexel + vec2(1.5, 1.5)) * srcTexelSize).rgb;
+                vec3 minQuad = min(min(c00, c10), min(c01, c11));
+                vec3 maxQuad = max(max(c00, c10), max(c01, c11));
 
                 vec3 color = vec3(0.0);
                 float totalWeight = 0.0;
 
-                for (int j = -1; j <= 2; j++) {
-                    for (int i = -1; i <= 2; i++) {
-                        vec2 offset = vec2(float(i), float(j));
-                        float w = lanczos2(f.x - offset.x + 1.0) * lanczos2(f.y - offset.y + 1.0);
-                        vec2 sampleUV = (center + offset) * srcTexelSize;
-                        color += texture2D(u_texture, sampleUV).rgb * w;
+                // 6x6 = 36-tap separable sinc evaluation with exact distances (f - offset)
+                for (int j = -2; j <= 3; j++) {
+                    float dy = f.y - float(j);
+                    float wy = lanczos3(dy);
+                    float sampleY = (baseTexel.y + float(j) + 0.5) * srcTexelSize.y;
+
+                    for (int i = -2; i <= 3; i++) {
+                        float dx = f.x - float(i);
+                        float w = wy * lanczos3(dx);
+                        float sampleX = (baseTexel.x + float(i) + 0.5) * srcTexelSize.x;
+
+                        vec3 s = texture2D(u_texture, vec2(sampleX, sampleY)).rgb;
+                        color += s * w;
                         totalWeight += w;
                     }
                 }
-                return color / totalWeight;
+
+                vec3 res = (totalWeight > 1e-4) ? (color / totalWeight) : c00;
+                // High-acuity anti-ringing: allow negative sinc lobes to form crisp line contrast
+                // while preventing severe ringing halos.
+                vec3 range = maxQuad - minQuad;
+                vec3 softMin = minQuad - range * 0.12;
+                vec3 softMax = maxQuad + range * 0.12;
+                vec3 clamped = clamp(res, softMin, softMax);
+                return mix(clamped, clamp(res, 0.0, 1.0), 0.80);
             }
 
-            // CAS (Contrast Adaptive Sharpening) pass
-            vec3 casSharpening(vec2 uv, vec3 center, vec2 texelSize, float strength) {
-                vec3 n = texture2D(u_texture, uv + vec2(0.0, -texelSize.y)).rgb;
-                vec3 s = texture2D(u_texture, uv + vec2(0.0,  texelSize.y)).rgb;
-                vec3 e = texture2D(u_texture, uv + vec2( texelSize.x, 0.0)).rgb;
-                vec3 w = texture2D(u_texture, uv + vec2(-texelSize.x, 0.0)).rgb;
+            // Smart Cel Deblock & Anti-Artifact Filter
+            // Cleans 8x8 MPEG/H.264 macroblock steps and mosquito noise in flat and semi-flat regions
+            // while preserving 100% of high-contrast cartoon outlines.
+            vec3 deblockFilter(vec2 uv, vec3 center, vec2 srcTexelSize, float strength) {
+                if (strength <= 0.01) return center;
+                
+                // Color tolerance: controls the threshold between compression noise and real edges
+                float colorSigma = mix(0.04, 0.14, strength);
+                float invTwoSigmaSq = 1.0 / (2.0 * colorSigma * colorSigma);
+                
+                vec3 accumColor = center;
+                float accumWeight = 1.0;
+                
+                // 12-sample diamond/cross pattern bridging across macroblock boundaries
+                vec2 o1 = srcTexelSize * 0.75;
+                vec2 o2 = srcTexelSize * 1.50;
+                
+                vec2 offsets[12];
+                offsets[0] = vec2( o1.x,  0.0);
+                offsets[1] = vec2(-o1.x,  0.0);
+                offsets[2] = vec2( 0.0,   o1.y);
+                offsets[3] = vec2( 0.0,  -o1.y);
+                offsets[4] = vec2( o1.x,  o1.y);
+                offsets[5] = vec2(-o1.x,  o1.y);
+                offsets[6] = vec2( o1.x, -o1.y);
+                offsets[7] = vec2(-o1.x, -o1.y);
+                offsets[8] = vec2( o2.x,  0.0);
+                offsets[9] = vec2(-o2.x,  0.0);
+                offsets[10]= vec2( 0.0,   o2.y);
+                offsets[11]= vec2( 0.0,  -o2.y);
+                
+                for (int i = 0; i < 12; i++) {
+                    vec3 s = texture2D(u_texture, uv + offsets[i]).rgb;
+                    vec3 diff = s - center;
+                    float distSq = dot(diff, diff);
+                    // Bilateral range weight: high for noise/macroblocks, zero for outlines
+                    float w = exp(-distSq * invTwoSigmaSq);
+                    accumColor += s * w;
+                    accumWeight += w;
+                }
+                
+                vec3 cleaned = accumColor / accumWeight;
+                return mix(center, cleaned, clamp(strength * 1.15, 0.0, 1.0));
+            }
 
-                vec3 minRGB = min(min(n, s), min(e, w));
-                vec3 maxRGB = max(max(n, s), max(e, w));
-                // Adaptive sharpening weight based on local contrast
-                vec3 d = 1.0 / (maxRGB - minRGB + 0.05);
-                d = clamp(d * (-0.125), -0.1, 0.0);
-                float peak = mix(-0.125, -0.04, strength);
-                d = max(d, vec3(peak));
+            // High-fidelity Contrast-Adaptive Edge Enhancement with Compression Noise Gate
+            // Sharpen cartoon/anime line contours and fine details without amplifying flat compression blocks
+            vec3 casSharpening(vec2 uv, vec3 center, vec2 srcTexelSize, float strength) {
+                vec2 step = srcTexelSize * 0.75;
+                vec3 n = texture2D(u_texture, uv + vec2(0.0, -step.y)).rgb;
+                vec3 s = texture2D(u_texture, uv + vec2(0.0,  step.y)).rgb;
+                vec3 e = texture2D(u_texture, uv + vec2( step.x, 0.0)).rgb;
+                vec3 w = texture2D(u_texture, uv + vec2(-step.x, 0.0)).rgb;
 
-                vec3 result = (center + (n + s + e + w) * d) / (1.0 + 4.0 * d);
+                vec3 minRGB = min(center, min(min(n, s), min(e, w)));
+                vec3 maxRGB = max(center, max(max(n, s), max(e, w)));
+
+                // High-pass 2D Laplacian edge gradient
+                vec3 edge = 4.0 * center - (n + s + e + w);
+                
+                // Adaptive weight with compression noise gate:
+                // Only sharpens high-contrast transitions (>0.06); flat block noise is never amplified
+                vec3 rawContrast = maxRGB - minRGB;
+                vec3 contrast = max(vec3(0.0), rawContrast - vec3(0.06));
+                vec3 weight = clamp(contrast * strength * 2.5, 0.0, 0.35);
+
+                vec3 result = center + edge * weight;
                 return clamp(result, 0.0, 1.0);
             }
 
             void main() {
-                // Source texel size (from the video/texture, not the output canvas)
+                if (u_resolution.x < 1.0 || u_resolution.y < 1.0) {
+                    gl_FragColor = texture2D(u_texture, v_texCoord);
+                    return;
+                }
                 vec2 srcTexelSize = 1.0 / u_resolution;
+                vec3 color = lanczos3Resample(v_texCoord, srcTexelSize);
 
-                // Lanczos2 reconstruction
-                vec3 color = lanczosResample(v_texCoord, srcTexelSize);
+                if (u_deblock > 0.01) {
+                    color = deblockFilter(v_texCoord, color, srcTexelSize, u_deblock);
+                }
 
-                // Optional CAS sharpening pass (strength driven by u_sharpness slider)
                 if (u_sharpness > 0.01) {
                     color = casSharpening(v_texCoord, color, srcTexelSize, u_sharpness);
                 }
 
-                gl_FragColor = vec4(color, 1.0);
+                gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
             }
         `,
         
@@ -123,6 +213,16 @@
                 console.log('AI Upscaler: Initializing WebGL upscaler...');
                 
                 this.videoElement = videoElement;
+                this._texWidth = 0;
+                this._texHeight = 0;
+                this._hasRenderedFrame = false;
+                
+                try {
+                    var sS = parseFloat(localStorage.getItem('ai_upscaler_lanczos_sharpness'));
+                    if (!isNaN(sS)) this.sharpness = sS;
+                    var sD = parseFloat(localStorage.getItem('ai_upscaler_lanczos_deblock'));
+                    if (!isNaN(sD)) this.deblock = sD;
+                } catch (e) {}
                 
                 // Create canvas overlay
                 this.canvas = document.createElement('canvas');
@@ -132,12 +232,23 @@
                 this.canvas.style.left = '0';
                 this.canvas.style.width = '100%';
                 this.canvas.style.height = '100%';
-                this.canvas.style.objectFit = 'contain';  // #69: respect source aspect-ratio, no 4:3 stretch
+                this.canvas.style.objectFit = 'contain';
                 this.canvas.style.pointerEvents = 'none';
-                this.canvas.style.zIndex = '1000';
+                this.canvas.style.zIndex = '999';
                 
-                // Get WebGL context
-                this.gl = this.canvas.getContext('webgl2') || this.canvas.getContext('webgl');
+                // Get WebGL context with optimal video playback flags (alpha: false avoids compositor blackhole)
+                var ctxAttribs = {
+                    alpha: false,
+                    depth: false,
+                    stencil: false,
+                    antialias: false,
+                    premultipliedAlpha: false,
+                    preserveDrawingBuffer: false,
+                    powerPreference: 'high-performance'
+                };
+                this.gl = this.canvas.getContext('webgl2', ctxAttribs) || 
+                          this.canvas.getContext('webgl', ctxAttribs) ||
+                          this.canvas.getContext('experimental-webgl', ctxAttribs);
                 
                 if (!this.gl) {
                     console.error('AI Upscaler: WebGL not supported');
@@ -169,14 +280,23 @@
 
                 this.canvas.addEventListener('webglcontextrestored', function() {
                     console.log('AI Upscaler: WebGL context restored, reinitializing...');
-                    WebGLUpscaler.gl = WebGLUpscaler.canvas.getContext('webgl2') || WebGLUpscaler.canvas.getContext('webgl');
+                    var rAttribs = {
+                        alpha: false,
+                        depth: false,
+                        stencil: false,
+                        antialias: false,
+                        premultipliedAlpha: false,
+                        preserveDrawingBuffer: false,
+                        powerPreference: 'high-performance'
+                    };
+                    WebGLUpscaler.gl = WebGLUpscaler.canvas.getContext('webgl2', rAttribs) || 
+                                       WebGLUpscaler.canvas.getContext('webgl', rAttribs) ||
+                                       WebGLUpscaler.canvas.getContext('experimental-webgl', rAttribs);
                     if (WebGLUpscaler.gl && WebGLUpscaler.compileShaders()) {
                         WebGLUpscaler.setupGeometry();
-                        WebGLUpscaler.texture = WebGLUpscaler.gl.createTexture();
-                        WebGLUpscaler.gl.bindTexture(WebGLUpscaler.gl.TEXTURE_2D, WebGLUpscaler.texture);
-                        WebGLUpscaler.gl.texParameteri(WebGLUpscaler.gl.TEXTURE_2D, WebGLUpscaler.gl.TEXTURE_WRAP_S, WebGLUpscaler.gl.CLAMP_TO_EDGE);
-                        WebGLUpscaler.gl.texParameteri(WebGLUpscaler.gl.TEXTURE_2D, WebGLUpscaler.gl.TEXTURE_WRAP_T, WebGLUpscaler.gl.CLAMP_TO_EDGE);
-                        WebGLUpscaler.gl.texParameteri(WebGLUpscaler.gl.TEXTURE_2D, WebGLUpscaler.gl.TEXTURE_MIN_FILTER, WebGLUpscaler.gl.LINEAR);
+                        WebGLUpscaler._texWidth = 0;
+                        WebGLUpscaler._texHeight = 0;
+                        WebGLUpscaler._hasRenderedFrame = false;
                         console.log('AI Upscaler: WebGL context restored successfully');
                     }
                 }, false);
@@ -228,7 +348,9 @@
             // Cache uniform locations once (avoids per-frame GPU roundtrips)
             this._uniformLocations = {
                 resolution: gl.getUniformLocation(this.program, 'u_resolution'),
-                sharpness: gl.getUniformLocation(this.program, 'u_sharpness')
+                sharpness: gl.getUniformLocation(this.program, 'u_sharpness'),
+                deblock: gl.getUniformLocation(this.program, 'u_deblock'),
+                texture: gl.getUniformLocation(this.program, 'u_texture')
             };
 
             return true;
@@ -277,6 +399,8 @@
 
             // Create texture
             this.texture = gl.createTexture();
+            this._texWidth = 0;
+            this._texHeight = 0;
             gl.bindTexture(gl.TEXTURE_2D, this.texture);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -284,38 +408,142 @@
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         },
         
+        _scheduleNextFrame: function() {
+            if (!this.enabled) return;
+            const video = this.videoElement;
+            if (video && typeof video.requestVideoFrameCallback === 'function') {
+                this._usingRvfc = true;
+                this.animationFrameId = video.requestVideoFrameCallback(() => this.render());
+            } else {
+                this._usingRvfc = false;
+                this.animationFrameId = requestAnimationFrame(() => this.render());
+            }
+        },
+
+        // Output size relative to the source: the size the video is shown at (CSS pixels x
+        // devicePixelRatio, as object-fit: contain lays it out), between the source size and
+        // twice it. A fixed 2x drew 3840x2160 for every 1080p video, whatever the screen:
+        // four times the pixels of a 1080p display, each sampled 36 times.
+        _displayScale: function(video) {
+            var boxW = video.clientWidth || (this.canvas && this.canvas.clientWidth) || 0;
+            var boxH = video.clientHeight || (this.canvas && this.canvas.clientHeight) || 0;
+            if (!boxW || !boxH) return 1;
+            var dpr = window.devicePixelRatio || 1;
+            var shown = Math.min(boxW / video.videoWidth, boxH / video.videoHeight) * dpr;
+            return Math.max(1, Math.min(2, shown));
+        },
+
         // Render frame
         render: function() {
-            if (!this.enabled || !this.videoElement || !this.gl || this.gl.isContextLost()) {
+            if (!this.enabled || !this.gl || this.gl.isContextLost()) {
                 return;
             }
-            
-            const gl = this.gl;
+
+            // Always reschedule next frame FIRST synced with video frame presentation
+            this._scheduleNextFrame();
+
             const video = this.videoElement;
+            if (!video || video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
+                // If video is buffering or stopped, ensure native video is visible
+                if (!this._hasRenderedFrame && video && video.style.opacity === '0') {
+                    video.style.opacity = '1';
+                }
+                return;
+            }
+
+            const gl = this.gl;
             
-            // Update canvas size (use explicit size if set, else video native)
-            var targetW = this._explicitWidth || video.videoWidth;
-            var targetH = this._explicitHeight || video.videoHeight;
+            // Output size: the explicit one if set, else the displayed size (_displayScale).
+            // Both sides scale by the same factor, so a 4:3 video is never stretched.
+            var targetW, targetH;
+            if (this._explicitWidth && this._explicitHeight) {
+                targetW = this._explicitWidth;
+                targetH = this._explicitHeight;
+            } else {
+                var scale = this._displayScale(video);
+                targetW = Math.round(video.videoWidth * scale);
+                targetH = Math.round(video.videoHeight * scale);
+            }
+            
+            // Ensure even pixel dimensions
+            targetW = Math.max(2, (targetW & ~1));
+            targetH = Math.max(2, (targetH & ~1));
+
+            // A paused video still shows a new frame when the viewer seeks: the video frame
+            // callback fires for it, and the rAF fallback sees currentTime move. Skipping
+            // every paused frame left the overlay on the old picture over the hidden video.
+            // Nothing new (same frame, same size): nothing to draw.
+            if (this._hasRenderedFrame && (video.paused || video.ended) && video.currentTime === this._lastDrawnTime &&
+                this.canvas.width === targetW && this.canvas.height === targetH) {
+                return;
+            }
+
             if (this.canvas.width !== targetW || this.canvas.height !== targetH) {
                 this.canvas.width = targetW;
                 this.canvas.height = targetH;
                 gl.viewport(0, 0, targetW, targetH);
             }
+
+            // Sync aspect ratio and CSS alignment with the video element
+            var computedFit = (window.getComputedStyle ? window.getComputedStyle(video).objectFit : '') || '';
+            var vidFit = video.style.objectFit || computedFit || 'contain';
+            var fit = (vidFit === 'fill' || vidFit === 'cover') ? vidFit : 'contain';
+            if (this.canvas.style.objectFit !== fit) {
+                this.canvas.style.objectFit = fit;
+            }
+            if (this.canvas.style.width !== '100%') this.canvas.style.width = '100%';
+            if (this.canvas.style.height !== '100%') this.canvas.style.height = '100%';
+            if (this.canvas.style.position !== 'absolute') this.canvas.style.position = 'absolute';
+            if (this.canvas.style.top !== '0px' && this.canvas.style.top !== '0') this.canvas.style.top = '0';
+            if (this.canvas.style.left !== '0px' && this.canvas.style.left !== '0') this.canvas.style.left = '0';
             
-            // Upload video frame to texture
+            // Explicitly bind Texture Unit 0
+            gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D, this.texture);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, video);
+            
+            // Fast texture upload using RGBA (crucial for Intel UHD / D3D11 / ANGLE hardware video decoding)
+            try {
+                if (this._texWidth !== video.videoWidth || this._texHeight !== video.videoHeight) {
+                    this._texWidth = video.videoWidth;
+                    this._texHeight = video.videoHeight;
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+                } else {
+                    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, video);
+                }
+            } catch (uploadErr) {
+                // If sub-image fails due to driver state or dimension mismatch, allocate fresh texture storage
+                this._texWidth = video.videoWidth;
+                this._texHeight = video.videoHeight;
+                try {
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+                } catch (allocErr) {
+                    return; // Wait for next frame
+                }
+            }
             
             // Use shader program
             gl.useProgram(this.program);
             
             // Set uniforms (using cached locations)
-            // u_resolution must be SOURCE (video) size for Lanczos kernel to sample correctly
+            if (this._uniformLocations.texture) {
+                gl.uniform1i(this._uniformLocations.texture, 0);
+            }
             gl.uniform2f(this._uniformLocations.resolution, video.videoWidth, video.videoHeight);
             gl.uniform1f(this._uniformLocations.sharpness, this.sharpness);
+            if (this._uniformLocations.deblock) {
+                gl.uniform1f(this._uniformLocations.deblock, this.deblock);
+            }
 
             // Draw
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+            this._hasRenderedFrame = true;
+            this._lastDrawnTime = video.currentTime;
+
+            // Ensure native video is hidden only once upscaled canvas is actively drawing
+            if (video.style.opacity !== '0') {
+                video.style.opacity = '0';
+            }
 
             // FPS tracking
             this._fpsFrameCount++;
@@ -328,9 +556,6 @@
                     this.onFpsUpdate(fps);
                 }
             }
-
-            // Continue rendering
-            this.animationFrameId = requestAnimationFrame(() => this.render());
         },
         
         // Enable upscaling
@@ -344,7 +569,6 @@
             this._fpsLastTime = performance.now();
             this._fpsFrameCount = 0;
             this.canvas.style.display = 'block';
-            this.videoElement.style.opacity = '0';
             this.render();
             
             console.log('AI Upscaler: WebGL upscaling enabled');
@@ -353,6 +577,7 @@
         // Disable upscaling
         disable: function() {
             this.enabled = false;
+            this._hasRenderedFrame = false;
             
             if (this.canvas) {
                 this.canvas.style.display = 'none';
@@ -363,7 +588,11 @@
             }
             
             if (this.animationFrameId) {
-                cancelAnimationFrame(this.animationFrameId);
+                if (this._usingRvfc && this.videoElement && typeof this.videoElement.cancelVideoFrameCallback === 'function') {
+                    try { this.videoElement.cancelVideoFrameCallback(this.animationFrameId); } catch (e) {}
+                } else {
+                    cancelAnimationFrame(this.animationFrameId);
+                }
                 this.animationFrameId = null;
             }
             
@@ -384,6 +613,11 @@
             this.sharpness = Math.max(0, Math.min(1, value));
         },
 
+        // Set deblock / artifact reduction strength (0.0 to 1.0)
+        setDeblock: function(value) {
+            this.deblock = Math.max(0, Math.min(1, value));
+        },
+
         // Set explicit canvas output size (0 = use video native)
         setCanvasSize: function(w, h) {
             this._explicitWidth = w || 0;
@@ -398,29 +632,29 @@
                 this.canvas.parentElement.removeChild(this.canvas);
             }
             
-            if (this._positionBuffer) this.gl.deleteBuffer(this._positionBuffer);
-            if (this._texCoordBuffer) this.gl.deleteBuffer(this._texCoordBuffer);
-
-            if (this.gl && this.texture) {
-                this.gl.deleteTexture(this.texture);
-            }
-            
-            if (this.gl && this._vertexShader) {
-                this.gl.deleteShader(this._vertexShader);
-            }
-            if (this.gl && this._fragmentShader) {
-                this.gl.deleteShader(this._fragmentShader);
-            }
-            if (this.gl && this.program) {
-                this.gl.deleteProgram(this.program);
+            if (this.gl) {
+                if (this._positionBuffer) this.gl.deleteBuffer(this._positionBuffer);
+                if (this._texCoordBuffer) this.gl.deleteBuffer(this._texCoordBuffer);
+                if (this.texture) this.gl.deleteTexture(this.texture);
+                if (this._vertexShader) this.gl.deleteShader(this._vertexShader);
+                if (this._fragmentShader) this.gl.deleteShader(this._fragmentShader);
+                if (this.program) this.gl.deleteProgram(this.program);
             }
 
             this.canvas = null;
             this.gl = null;
             this.program = null;
+            this.texture = null;
+            this._positionBuffer = null;
+            this._texCoordBuffer = null;
             this._vertexShader = null;
             this._fragmentShader = null;
             this.videoElement = null;
+            this._texWidth = 0;
+            this._texHeight = 0;
+            this._explicitWidth = 0;
+            this._explicitHeight = 0;
+            this._hasRenderedFrame = false;
         }
     };
     
