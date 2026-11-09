@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-26",
+ "generated": "2026-11-09",
  "source": "OpenModelDB/open-model-database",
  "direct_onnx": [
   {
@@ -1483,6 +1483,30 @@
    "download_url": "https://1drv.ms/u/s!Aip-EMByJHY28w0Zkd9fdANYH3j6?e=9zwxII",
    "sha256": "0eb0513fb93ca401b516315f88a983e757ed6beeba2c7c825dcd1e37f1c154e8",
    "size_bytes": 66713677,
+   "import": "convert"
+  },
+  {
+   "id": "1x-AzuMPEG",
+   "name": "AzuMPEG",
+   "author": "ezogaming",
+   "scale": 1,
+   "architecture": "span",
+   "license": "CC0-1.0",
+   "tags": [
+    "anime",
+    "compression-removal",
+    "deblur",
+    "denoise",
+    "restoration",
+    "video-frame"
+   ],
+   "description": "A relatively simple model that tries to remove (muddied) dot crawl, color bleed, NTSC color encoding (as in color space), and MPEG-4 (DivX) artifacts from 384p sources. Trained for 30 epochs.\nOriginally trained to de-crustify Azumanga Web Daioh at 384p. Specifically trained for the hardsub, not the ultra-low-quality nicovideo rip.\nMovie was chosen for the dataset due to having a similar art style and color range to the web pilot (minus the high contrast from the ntsc source), compared to the more washed-out TV anime.\n\n**Dataset:** Azumanga Daioh Movie (2001) cropped to 4:3, played through composite via a DVD player, chroma blurred, and encoded to MPEG-4 (DIVX) at 512x384, bitrate ~1400kbps\nVHS sources will perform poorly (see examples)\n\nSlowpoke: slow.pics/s/qf7gnU9O",
+   "date": "2024-09-20",
+   "omdb_url": "https://openmodeldb.info/models/1x-AzuMPEG",
+   "source_platform": "pytorch",
+   "download_url": "https://drive.google.com/file/d/1ECmsVeo_mlS01jlpXyy2HHNCEmBKv_IT/view?usp=sharing",
+   "sha256": "e83ca07920197b2a9577c62a0c1052287116fc3e0a9cc835d7e9de4acdfd5bde",
+   "size_bytes": 8887788,
    "import": "convert"
   },
   {
