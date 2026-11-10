@@ -14,7 +14,7 @@
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Every release carries its full notes on the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
 
   <h2>v1.8.3.37 - Real-time upscaling for every user; three security fixes; Pre-upscaled tab</h2>
-  <p class="date">prepared, not published yet · target-server acceptance not run; GPU, live-player and HDR target-hardware behavior remain unverified</p>
+  <p class="date">2026-11-10 · plugin released, the matching Docker images are not published yet · target-server acceptance not run; GPU, live-player and HDR target-hardware behavior remain unverified</p>
   <ul>
     <li>Real-time upscaling never started for users who are not Jellyfin administrators: the player read its settings through Jellyfin's admin-only plugin configuration and got a 403. It now reads them from <code>GET /Upscaler/config</code>, which carries only what the player needs and never the AI service URL, its token or the webhooks. Changing settings from the player menu still needs an administrator, and other users are told so instead of seeing a false success.</li>
     <li>Security: a library file name could run script in the admin's dashboard. The page escaped <code>&amp; &lt; &gt;</code> but not quotes, so a file named like <code>Movie" onmouseover="...".mkv</code> broke out of an attribute in the queue table. Quotes are escaped now.</li>
@@ -23,6 +23,7 @@
     <li>New: a <strong>Pre-upscaled</strong> tab lists the library videos below the configured resolution and shows which already have an upscaled copy (from tumo07's PR #101). The WebGL engine keeps the video's aspect ratio, redraws when you seek while paused, and sizes its canvas to the screen instead of always 2x the source.</li>
     <li>AI service (Docker): the AMD image uses the GPU through ROCm (issue #98; ROCm 7.2.4 base, about 7.5 GB instead of about 20 GB); the NVIDIA and Intel images check at build time that their GPU provider really loads; Pillow, which had 39 advisories, is gone from every service image; and the Vulkan image's ncnn path upscales correctly (it fed BGR in the wrong value range and scrambled frames larger than 512 px). The three Vulkan catalog models still need their <code>.param</code>/<code>.bin</code> files placed by hand, and the service now says which ones.</li>
     <li>Build: ImageSharp 4.1.3 instead of 3.x, which had five advisories; one of them let a crafted BigTIFF in a media folder keep a worker thread of the image scan busy.</li>
+    <li>Model catalog: every entry now names the licence its upstream states (74 of 77; three have none that could be verified). SPAN x2, Remacri x4 and CodeFormer are non-commercial upstream and are marked <code>[non-commercial license]</code> like UltraSharp V2; APISR is GPL-3.0 and its authors release it for academic use only.</li>
   </ul>
 
   <h2>v1.8.3.36 - A busy AI service no longer fails a library job; unusable Intel GPU is explained</h2>
