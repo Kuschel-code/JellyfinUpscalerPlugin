@@ -71,6 +71,7 @@ for mid, info in catalog.items():
         'scale': [info.get('scale', 1)],
         'category': info.get('category', 'uncategorized'),
         'type': info.get('type', 'onnx'),
+        'license': info.get('license', ''),
         'available': bool(info.get('available', True)),
         'downloaded': False,
         'loaded': False,
@@ -92,6 +93,13 @@ $json = python -c $pythonScript
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Python parser failed with exit code $LASTEXITCODE"
     exit $LASTEXITCODE
+}
+# Exit code 0 with no output is still a failure. Windows PowerShell 5.1 strips the embedded
+# double quotes when it hands the script to python, python then prints nothing, and this
+# script used to write the empty result over the catalog. Run it with pwsh (7+).
+if (-not $json -or -not (($json -join "`n").Trim())) {
+    Write-Error "Python parser produced no output - refusing to overwrite $jsonOut. Run this script with pwsh (PowerShell 7+), not Windows PowerShell 5.1."
+    exit 1
 }
 
 # Ensure output directory exists
