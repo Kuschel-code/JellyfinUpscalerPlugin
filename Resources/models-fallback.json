@@ -515,7 +515,7 @@
     {
       "id": "ncnn-realesrgan-x4",
       "name": "Real-ESRGAN x4 (Vulkan GPU)",
-      "description": "Real-ESRGAN x4 via ncnn-Vulkan. Works on any Vulkan GPU (AMD RX 5700, Intel Arc, etc.). Bundled with realsr-ncnn-vulkan.",
+      "description": "Real-ESRGAN x4 via ncnn-Vulkan. Works on any Vulkan GPU (AMD RX 5700, Intel Arc, etc.).",
       "scale": [
         4
       ],

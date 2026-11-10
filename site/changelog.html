@@ -7,11 +7,23 @@
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.36</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a href="index.html" class="brand"><span class="brand-logo">AI</span><span>Jellyfin AI Upscaler</span><span class="brand-version">v1.8.3.37</span></a><nav class="nav" data-nav></nav><div class="nav-cta"><a class="nav-ext" href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin" target="_blank">GitHub →</a></div></div></header>
 
 <main class="container-narrow">
   <h1>Changelog</h1>
   <p class="lead" style="color: var(--text-dim);">Highlights of recent releases. Every release carries its full notes on the <a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin/releases">GitHub Releases</a> page.</p>
+
+  <h2>v1.8.3.37 - Real-time upscaling for every user; three security fixes; Pre-upscaled tab</h2>
+  <p class="date">prepared, not published yet · target-server acceptance not run; GPU, live-player and HDR target-hardware behavior remain unverified</p>
+  <ul>
+    <li>Real-time upscaling never started for users who are not Jellyfin administrators: the player read its settings through Jellyfin's admin-only plugin configuration and got a 403. It now reads them from <code>GET /Upscaler/config</code>, which carries only what the player needs and never the AI service URL, its token or the webhooks. Changing settings from the player menu still needs an administrator, and other users are told so instead of seeing a false success.</li>
+    <li>Security: a library file name could run script in the admin's dashboard. The page escaped <code>&amp; &lt; &gt;</code> but not quotes, so a file named like <code>Movie" onmouseover="...".mkv</code> broke out of an attribute in the queue table. Quotes are escaped now.</li>
+    <li>Security: the library list (with server folder paths) and the library-job queue were open to every signed-in user, who could also queue GPU-heavy jobs and cancel or reprioritise other people's jobs. They are admin-only now.</li>
+    <li>Security: the WebGPU AI mode sent the viewer's Jellyfin token to HuggingFace with every model download, and followed whatever the model owners uploaded next. Downloads now send no credentials, and every model is pinned to a commit and checked against its SHA-256. The mode had been off without a sign since its original model repository disappeared; it loads again, and its scale is measured instead of assumed.</li>
+    <li>New: a <strong>Pre-upscaled</strong> tab lists the library videos below the configured resolution and shows which already have an upscaled copy (from tumo07's PR #101). The WebGL engine keeps the video's aspect ratio, redraws when you seek while paused, and sizes its canvas to the screen instead of always 2x the source.</li>
+    <li>AI service (Docker): the AMD image uses the GPU through ROCm (issue #98; ROCm 7.2.4 base, about 7.5 GB instead of about 20 GB); the NVIDIA and Intel images check at build time that their GPU provider really loads; Pillow, which had 39 advisories, is gone from every service image; and the Vulkan image's ncnn path upscales correctly (it fed BGR in the wrong value range and scrambled frames larger than 512 px). The three Vulkan catalog models still need their <code>.param</code>/<code>.bin</code> files placed by hand, and the service now says which ones.</li>
+    <li>Build: ImageSharp 4.1.3 instead of 3.x, which had five advisories; one of them let a crafted BigTIFF in a media folder keep a worker thread of the image scan busy.</li>
+  </ul>
 
   <h2>v1.8.3.36 - A busy AI service no longer fails a library job; unusable Intel GPU is explained</h2>
   <p class="date">2026-10-07 · plugin released, the matching Docker images are not published yet · target-server acceptance not run; GPU, live-player and HDR target-hardware behavior remain unverified</p>
@@ -637,7 +649,7 @@
   </table>
 </main>
 
-<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.36</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div><strong>Jellyfin AI Upscaler Plugin</strong> · v1.8.3.37</div><div><a href="https://github.com/Kuschel-code/JellyfinUpscalerPlugin">GitHub</a></div></div></footer>
 <script src="assets/nav.js"></script>
 </body>
 </html>

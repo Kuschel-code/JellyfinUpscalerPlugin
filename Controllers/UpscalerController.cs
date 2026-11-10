@@ -377,6 +377,7 @@ namespace JellyfinUpscalerPlugin.Controllers
         /// a library picker for the scheduled-scan scope filter (issue #64).
         /// </summary>
         [HttpGet("libraries")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetLibraries()
         {
@@ -422,6 +423,22 @@ namespace JellyfinUpscalerPlugin.Controllers
                 isProcessing = false, // Placeholder for actual processing state
                 version = typeof(Plugin).Assembly.GetName().Version?.ToString(4) ?? "unknown"
             });
+        }
+
+        /// <summary>
+        /// The settings the player reads, for any signed-in user. The player used to read
+        /// Jellyfin's admin-only plugin configuration, so real-time upscaling never started
+        /// for anyone else. Changes still need an administrator (see UpscalerPlayerConfig).
+        /// The route is the one PR #101 proposed.
+        /// </summary>
+        [HttpGet("config")]
+        [Authorize]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> GetPlayerConfig()
+        {
+            var config = Plugin.Instance?.Configuration;
+            if (config == null) return BadRequest();
+            return Ok(UpscalerPlayerConfig.From(config));
         }
 
         [HttpPost("test")]
@@ -1636,12 +1653,153 @@ namespace JellyfinUpscalerPlugin.Controllers
             }
         }
 
+        /// <summary>
+        /// Paginated list of library videos for the dashboard's Pre-upscaled tab: which already
+        /// have an upscaled copy, which are below the minimum resolution, which are HD.
+        /// Admin only: the rows carry file system paths.
+        /// </summary>
+        [HttpGet("preupscaled")]
+        [Authorize(Policy = "RequiresElevation")]
+        [Produces(MediaTypeNames.Application.Json)]
+        public ActionResult<object> GetPreUpscaledVideos(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 50,
+            [FromQuery] string? search = null,
+            [FromQuery] string? filter = null,
+            [FromQuery] bool refresh = false)
+        {
+            try
+            {
+                var cfg = Plugin.Instance?.Configuration;
+                int minWidth = cfg?.MinResolutionWidth ?? 1920;
+                int minHeight = cfg?.MinResolutionHeight ?? 1080;
+
+                var rows = ScanPreUpscaled(minWidth, minHeight, refresh);
+
+                IEnumerable<PreUpscaledEntry> filtered = rows;
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    filtered = filtered.Where(v =>
+                        v.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                        Path.GetFileName(v.Path).Contains(search, StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (string.Equals(filter, "upscaled", StringComparison.OrdinalIgnoreCase))
+                {
+                    filtered = filtered.Where(v => v.Status == PreUpscaledScanner.UpscaledStatus);
+                }
+                else if (string.Equals(filter, "pending", StringComparison.OrdinalIgnoreCase))
+                {
+                    filtered = filtered.Where(v => v.Status == PreUpscaledScanner.PendingStatus);
+                }
+                else if (string.Equals(filter, "highres", StringComparison.OrdinalIgnoreCase))
+                {
+                    filtered = filtered.Where(v => v.Status == PreUpscaledScanner.NativeHdStatus);
+                }
+
+                var filteredList = filtered.ToList();
+                int filteredTotal = filteredList.Count;
+
+                // Paginate
+                page = Math.Max(1, page);
+                pageSize = Math.Clamp(pageSize, 10, 200);
+                var pagedItems = filteredList
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(v => new
+                    {
+                        id = v.Id.ToString(),
+                        name = v.Name,
+                        fileName = Path.GetFileName(v.Path),
+                        path = v.Path,
+                        width = v.Width,
+                        height = v.Height,
+                        resolution = v.Width > 0 && v.Height > 0 ? $"{v.Width}x{v.Height}" : "Unknown",
+                        isPreUpscaled = v.UpscaledPath != null,
+                        upscaledPath = v.UpscaledPath,
+                        upscaledFileName = v.UpscaledPath != null ? Path.GetFileName(v.UpscaledPath) : null,
+                        upscaledSize = v.UpscaledSize,
+                        upscaledDate = v.UpscaledDate,
+                        status = v.Status
+                    })
+                    .ToList();
+
+                return Ok(new
+                {
+                    success = true,
+                    total = rows.Count,
+                    filteredTotal = filteredTotal,
+                    upscaledCount = rows.Count(r => r.Status == PreUpscaledScanner.UpscaledStatus),
+                    pendingCount = rows.Count(r => r.Status == PreUpscaledScanner.PendingStatus),
+                    highResCount = rows.Count(r => r.Status == PreUpscaledScanner.NativeHdStatus),
+                    page = page,
+                    pageSize = pageSize,
+                    totalPages = (int)Math.Ceiling((double)filteredTotal / pageSize),
+                    items = pagedItems
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get pre-upscaled videos list");
+                return StatusCode(500, new { success = false, error = "Failed to list library videos" });
+            }
+        }
+
+        // The scan lists every library folder, so its result is kept for a minute: paging, the
+        // filter and each search keystroke reuse it. The tab's Refresh button asks for a new one.
+        private static readonly object PreUpscaledScanLock = new();
+        private static readonly TimeSpan PreUpscaledScanLifetime = TimeSpan.FromMinutes(1);
+        private static (DateTime At, int MinWidth, int MinHeight, List<PreUpscaledEntry> Rows)? _preUpscaledScan;
+
+        private List<PreUpscaledEntry> ScanPreUpscaled(int minWidth, int minHeight, bool refresh)
+        {
+            lock (PreUpscaledScanLock)
+            {
+                if (!refresh && _preUpscaledScan is { } scan && scan.MinWidth == minWidth && scan.MinHeight == minHeight &&
+                    DateTime.UtcNow - scan.At < PreUpscaledScanLifetime)
+                {
+                    return scan.Rows;
+                }
+            }
+
+            var query = new InternalItemsQuery
+            {
+                MediaTypes = new[] { Jellyfin.Data.Enums.MediaType.Video },
+                IsVirtualItem = false,
+                Recursive = true
+            };
+            var rows = PreUpscaledScanner.Scan(_libraryManager.GetItemList(query).OfType<Video>().Select(ToScanSource), minWidth, minHeight);
+
+            lock (PreUpscaledScanLock)
+            {
+                _preUpscaledScan = (DateTime.UtcNow, minWidth, minHeight, rows);
+            }
+            return rows;
+        }
+
+        private static PreUpscaledSource ToScanSource(Video video)
+        {
+            int width = video.Width;
+            int height = video.Height;
+            if (width <= 0 || height <= 0)
+            {
+                var stream = video.GetMediaStreams()?.FirstOrDefault(s => s.Type == MediaStreamType.Video);
+                if (stream != null && stream.Width.GetValueOrDefault() > 0 && stream.Height.GetValueOrDefault() > 0)
+                {
+                    width = stream.Width.GetValueOrDefault();
+                    height = stream.Height.GetValueOrDefault();
+                }
+            }
+            return new PreUpscaledSource(video.Id, video.Name ?? string.Empty, video.Path ?? string.Empty, width, height);
+        }
+
         // ============================================================
         // === Processing Queue API ===
         // ============================================================
 
         /// <summary>Get queue status — pending, active, completed jobs.</summary>
         [HttpGet("queue")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> GetQueueStatus()
         {
@@ -1650,6 +1808,7 @@ namespace JellyfinUpscalerPlugin.Controllers
 
         /// <summary>Enqueue a video for processing with optional priority.</summary>
         [HttpPost("queue/add")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> EnqueueJob(
             [FromQuery] string inputPath,
@@ -1722,6 +1881,7 @@ namespace JellyfinUpscalerPlugin.Controllers
 
         /// <summary>Cancel a pending queued job.</summary>
         [HttpPost("queue/{jobId}/cancel")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> CancelQueuedJob(string jobId)
         {
@@ -1731,6 +1891,7 @@ namespace JellyfinUpscalerPlugin.Controllers
 
         /// <summary>Change priority of a pending job (1=highest, 10=lowest).</summary>
         [HttpPost("queue/{jobId}/priority")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public ActionResult<object> SetJobPriority(string jobId, [FromQuery] int priority)
         {

@@ -21,12 +21,12 @@ function Assert-ReleaseFeedEntry {
 function Assert-PluginArchive {
     param([string]$Path, [string]$Tag, [string]$TargetAbi, [string]$Destination)
     $expected = @('CliWrap.dll', 'FFMpegCore.dll', 'Instances.dll',
-        'JellyfinUpscalerPlugin.dll', 'meta.json', 'SixLabors.ImageSharp.dll')
+        'JellyfinUpscalerPlugin.dll', 'meta.json', 'SixLabors.ImageSharp.dll', 'System.IO.Hashing.dll')
     $archive = [IO.Compression.ZipFile]::OpenRead($Path)
     try {
         # Check original entries before extraction: duplicates and paths must not
         # disappear through overwriting or normalization.
-        if ($archive.Entries.Count -ne $expected.Count) { throw 'ZIP must contain exactly six runtime files' }
+        if ($archive.Entries.Count -ne $expected.Count) { throw "ZIP must contain exactly $($expected.Count) runtime files" }
         foreach ($name in $expected) {
             $matches = @($archive.Entries | Where-Object { $_.FullName -ceq $name })
             if ($matches.Count -ne 1 -or $matches[0].Length -eq 0) {

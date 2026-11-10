@@ -78,12 +78,16 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --require-hashes -r requirements.lock
 
-# Install ncnn-vulkan — try pre-built wheel first, then build from source
-# Note: "ncnn-vulkan" is not a real PyPI package; the correct package is "ncnn"
+# Install ncnn with Vulkan: the PyPI wheel (a Vulkan build) first, a source build only
+# when no wheel fits this platform. pip's errors stay visible, and the last command
+# prints which ncnn the image ships, so the build log answers that without a shell.
+# Note: "ncnn-vulkan" is not a real PyPI package; the correct package is "ncnn".
+# This step used to try realsr-ncnn-vulkan-python>=2.0.0 first, with 2>/dev/null. That
+# version never existed (the package stopped at 1.0.6, source-only, in 2022), so the
+# attempt failed silently on every build. app/main.py drives raw ncnn by itself.
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install "realsr-ncnn-vulkan-python>=2.0.0,<3.0" 2>/dev/null || \
-    pip install "ncnn>=1.0.20250503,<2.0" 2>/dev/null || \
-    (echo "Building ncnn from source with Vulkan support..." && \
+    { pip install "ncnn>=1.0.20250503,<2.0" || \
+    (echo "No usable ncnn wheel for this platform - building ncnn from source with Vulkan support..." && \
      pip install pybind11 && \
      git clone --depth 1 --branch 20250503 --single-branch https://github.com/Tencent/ncnn.git /tmp/ncnn && \
      cd /tmp/ncnn && mkdir build && cd build && \
@@ -98,7 +102,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
      ninja -j$(nproc) && ninja install && \
      cd /tmp/ncnn/python && pip install . && \
      rm -rf /tmp/ncnn) || \
-    (echo "ERROR: ncnn-vulkan could not be installed — Vulkan models will be unavailable" && exit 1)
+    { echo "ERROR: ncnn-vulkan could not be installed — Vulkan models will be unavailable"; exit 1; }; } && \
+    python -c "import ncnn; print('ncnn', ncnn.__version__, '- Vulkan build:', hasattr(ncnn, 'get_gpu_count'), '-', ncnn.__file__)"
 
 # Copy application code
 COPY app/ ./app/
