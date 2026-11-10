@@ -9,7 +9,7 @@ import zipfile
 
 RUNTIME_FILES = (
     'JellyfinUpscalerPlugin.dll', 'FFMpegCore.dll', 'CliWrap.dll',
-    'Instances.dll', 'SixLabors.ImageSharp.dll', 'meta.json',
+    'Instances.dll', 'SixLabors.ImageSharp.dll', 'System.IO.Hashing.dll', 'meta.json',
 )
 
 
