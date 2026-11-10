@@ -998,7 +998,7 @@ namespace JellyfinUpscalerPlugin.Services
                 {
                     if (useAdvancedUpscaling && options.Model?.Contains("anime") == true)
                     {
-                        _logger.LogInformation("Using Anime4K-style shader upscaling");
+                        _logger.LogInformation("Using libplacebo EWA Lanczos scaling (EWA Lanczos downscaler)");
                         filters.Add($"libplacebo=w={options.ScaleFactor}*iw:h={options.ScaleFactor}*ih:upscaler=ewa_lanczos:downscaler=ewa_lanczos");
                     }
                     else if (useAdvancedUpscaling)
