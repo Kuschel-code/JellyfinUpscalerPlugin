@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-05",
+  "generated_at": "2026-11-10",
   "source": "docker-ai-service/app/main.py:AVAILABLE_MODELS",
   "generator": "Scripts/sync-fallback-models.ps1",
   "notice": "AUTO-GENERATED - DO NOT EDIT BY HAND. Regenerate via the script when main.py changes.",
@@ -14,6 +14,7 @@
       ],
       "category": "realesrgan",
       "type": "onnx",
+      "license": "BSD-3-Clause",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -27,6 +28,7 @@
       ],
       "category": "realesrgan",
       "type": "onnx",
+      "license": "BSD-3-Clause",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -40,6 +42,7 @@
       ],
       "category": "fast",
       "type": "pb",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -53,6 +56,7 @@
       ],
       "category": "fast",
       "type": "pb",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -66,6 +70,7 @@
       ],
       "category": "fast",
       "type": "pb",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -79,6 +84,7 @@
       ],
       "category": "fast",
       "type": "pb",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -92,6 +98,7 @@
       ],
       "category": "fast",
       "type": "pb",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -105,6 +112,7 @@
       ],
       "category": "fast",
       "type": "pb",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -118,6 +126,7 @@
       ],
       "category": "quality",
       "type": "pb",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -131,6 +140,7 @@
       ],
       "category": "quality",
       "type": "pb",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -144,6 +154,7 @@
       ],
       "category": "quality",
       "type": "pb",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -157,6 +168,7 @@
       ],
       "category": "quality",
       "type": "pb",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -170,6 +182,7 @@
       ],
       "category": "quality",
       "type": "pb",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -183,19 +196,21 @@
       ],
       "category": "quality",
       "type": "pb",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
     },
     {
       "id": "span-x2",
-      "name": "SPAN x2 (Fastest Quality)",
-      "description": "SPAN \u2014 fastest quality model, NTIRE 2023 winner. Best for real-time video.",
+      "name": "SPAN x2 (Fastest Quality) [non-commercial license]",
+      "description": "SPAN \u2014 fastest quality model, NTIRE 2023 winner. Best for real-time video. License CC-BY-NC-SA-4.0: personal/home use only, no commercial deployments.",
       "scale": [
         2
       ],
       "category": "nextgen",
       "type": "onnx",
+      "license": "CC-BY-NC-SA-4.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -209,6 +224,7 @@
       ],
       "category": "nextgen",
       "type": "onnx",
+      "license": "CC-BY-SA-4.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -222,6 +238,7 @@
       ],
       "category": "nextgen",
       "type": "onnx",
+      "license": "BSD-3-Clause",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -235,6 +252,7 @@
       ],
       "category": "nextgen",
       "type": "onnx",
+      "license": "BSD-3-Clause",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -248,6 +266,7 @@
       ],
       "category": "nextgen",
       "type": "onnx",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -261,6 +280,7 @@
       ],
       "category": "video-fast",
       "type": "onnx",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -274,6 +294,7 @@
       ],
       "category": "video-fast",
       "type": "onnx",
+      "license": "CC-BY-4.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -287,6 +308,7 @@
       ],
       "category": "video-fast",
       "type": "onnx",
+      "license": "CC-BY-4.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -300,6 +322,7 @@
       ],
       "category": "video-fast",
       "type": "onnx",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -313,6 +336,7 @@
       ],
       "category": "video-fast",
       "type": "onnx",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -326,6 +350,7 @@
       ],
       "category": "video-quality",
       "type": "onnx",
+      "license": "CC-BY-NC-SA-4.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -339,6 +364,7 @@
       ],
       "category": "video-quality",
       "type": "onnx",
+      "license": "CC-BY-4.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -352,6 +378,7 @@
       ],
       "category": "video-quality",
       "type": "onnx",
+      "license": "CC-BY-4.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -365,6 +392,7 @@
       ],
       "category": "film-restore",
       "type": "onnx",
+      "license": "GPL-3.0-only",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -378,6 +406,7 @@
       ],
       "category": "film-restore",
       "type": "onnx",
+      "license": "CC-BY-4.0",
       "available": false,
       "downloaded": false,
       "loaded": false
@@ -391,6 +420,7 @@
       ],
       "category": "anime",
       "type": "onnx",
+      "license": "",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -398,12 +428,13 @@
     {
       "id": "apisr-anime-x2",
       "name": "APISR x2 (Anime Production Quality)",
-      "description": "CVPR 2024 \u2014 trained on anime production pipeline. Best anime 2x quality. 18MB.",
+      "description": "CVPR 2024 \u2014 trained on anime production pipeline. Best anime 2x quality. 18MB. License GPL-3.0; the authors release it for academic use only.",
       "scale": [
         2
       ],
       "category": "anime",
       "type": "onnx",
+      "license": "GPL-3.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -411,12 +442,13 @@
     {
       "id": "apisr-x3",
       "name": "APISR x3 (General Quality) [self-host required]",
-      "description": "CVPR 2024 \u2014 general 3x for photos & video. Ideal for 720p to 1080p. ~25MB. [Upstream Xenova repo gated \u2014 see docs/MODEL-HOSTING.md to self-host.]",
+      "description": "CVPR 2024 \u2014 general 3x for photos & video. Ideal for 720p to 1080p. ~25MB. License GPL-3.0; the authors release it for academic use only. [Upstream Xenova repo gated \u2014 see docs/MODEL-HOSTING.md to sel",
       "scale": [
         3
       ],
       "category": "nextgen",
       "type": "onnx",
+      "license": "GPL-3.0",
       "available": false,
       "downloaded": false,
       "loaded": false
@@ -430,6 +462,7 @@
       ],
       "category": "object-detection",
       "type": "onnx",
+      "license": "MIT",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -443,6 +476,7 @@
       ],
       "category": "nextgen",
       "type": "onnx",
+      "license": "CC-BY-SA-4.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -456,6 +490,7 @@
       ],
       "category": "film-restore",
       "type": "onnx",
+      "license": "CC-BY-4.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -469,6 +504,7 @@
       ],
       "category": "anime",
       "type": "onnx",
+      "license": "CC-BY-4.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -482,6 +518,7 @@
       ],
       "category": "video-sr",
       "type": "onnx",
+      "license": "Apache-2.0",
       "available": false,
       "downloaded": false,
       "loaded": false
@@ -495,6 +532,7 @@
       ],
       "category": "video-sr",
       "type": "onnx",
+      "license": "Apache-2.0",
       "available": false,
       "downloaded": false,
       "loaded": false
@@ -508,6 +546,7 @@
       ],
       "category": "video-sr",
       "type": "onnx",
+      "license": "Apache-2.0",
       "available": false,
       "downloaded": false,
       "loaded": false
@@ -521,6 +560,7 @@
       ],
       "category": "vulkan",
       "type": "ncnn",
+      "license": "BSD-3-Clause",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -534,6 +574,7 @@
       ],
       "category": "vulkan",
       "type": "ncnn",
+      "license": "BSD-3-Clause",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -547,6 +588,7 @@
       ],
       "category": "vulkan",
       "type": "ncnn",
+      "license": "",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -560,6 +602,7 @@
       ],
       "category": "interpolation",
       "type": "onnx",
+      "license": "MIT",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -573,6 +616,7 @@
       ],
       "category": "interpolation",
       "type": "onnx",
+      "license": "MIT",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -586,6 +630,7 @@
       ],
       "category": "interpolation",
       "type": "onnx",
+      "license": "MIT",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -599,6 +644,7 @@
       ],
       "category": "interpolation",
       "type": "onnx",
+      "license": "MIT",
       "available": false,
       "downloaded": false,
       "loaded": false
@@ -612,6 +658,7 @@
       ],
       "category": "interpolation",
       "type": "onnx",
+      "license": "MIT",
       "available": false,
       "downloaded": false,
       "loaded": false
@@ -625,19 +672,21 @@
       ],
       "category": "face_restore",
       "type": "onnx",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
     },
     {
       "id": "codeformer",
-      "name": "CodeFormer (Face Restore)",
-      "description": "CodeFormer - Robust face restoration with transformer codebook. Good for severely degraded faces. 512x512. S-Lab License. Mirrored via facefusion/models-3.0.0. ~377MB.",
+      "name": "CodeFormer (Face Restore) [non-commercial license]",
+      "description": "CodeFormer - Robust face restoration with transformer codebook. Good for severely degraded faces. 512x512. S-Lab License 1.0: non-commercial use only. Mirrored via facefusion/models-3.0.0. ~377MB.",
       "scale": [
         1
       ],
       "category": "face_restore",
       "type": "onnx",
+      "license": "LicenseRef-S-Lab-1.0-NC",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -651,6 +700,7 @@
       ],
       "category": "anime",
       "type": "onnx",
+      "license": "MIT",
       "available": false,
       "downloaded": false,
       "loaded": false
@@ -664,6 +714,7 @@
       ],
       "category": "anime",
       "type": "onnx",
+      "license": "MIT",
       "available": false,
       "downloaded": false,
       "loaded": false
@@ -677,6 +728,7 @@
       ],
       "category": "video-quality",
       "type": "onnx",
+      "license": "CC-BY-4.0",
       "available": false,
       "downloaded": false,
       "loaded": false
@@ -690,6 +742,7 @@
       ],
       "category": "video-fast",
       "type": "onnx",
+      "license": "",
       "available": false,
       "downloaded": false,
       "loaded": false
@@ -703,6 +756,7 @@
       ],
       "category": "interpolation",
       "type": "onnx",
+      "license": "MIT",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -716,6 +770,7 @@
       ],
       "category": "nextgen",
       "type": "onnx",
+      "license": "CC-BY-4.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -729,6 +784,7 @@
       ],
       "category": "nextgen",
       "type": "onnx",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -742,6 +798,7 @@
       ],
       "category": "nextgen",
       "type": "onnx",
+      "license": "Apache-2.0",
       "available": false,
       "downloaded": false,
       "loaded": false
@@ -755,6 +812,7 @@
       ],
       "category": "nextgen",
       "type": "onnx",
+      "license": "Apache-2.0",
       "available": false,
       "downloaded": false,
       "loaded": false
@@ -768,6 +826,7 @@
       ],
       "category": "face_restore",
       "type": "onnx",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -781,6 +840,7 @@
       ],
       "category": "nextgen",
       "type": "onnx",
+      "license": "Apache-2.0",
       "available": false,
       "downloaded": false,
       "loaded": false
@@ -794,6 +854,7 @@
       ],
       "category": "nextgen",
       "type": "onnx",
+      "license": "Apache-2.0",
       "available": false,
       "downloaded": false,
       "loaded": false
@@ -807,6 +868,7 @@
       ],
       "category": "nextgen",
       "type": "onnx",
+      "license": "Apache-2.0",
       "available": false,
       "downloaded": false,
       "loaded": false
@@ -820,6 +882,7 @@
       ],
       "category": "nextgen",
       "type": "onnx",
+      "license": "Apache-2.0",
       "available": false,
       "downloaded": false,
       "loaded": false
@@ -833,6 +896,7 @@
       ],
       "category": "face_restore",
       "type": "onnx",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -846,6 +910,7 @@
       ],
       "category": "film-restore",
       "type": "onnx",
+      "license": "MIT",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -859,6 +924,7 @@
       ],
       "category": "video-fast",
       "type": "onnx",
+      "license": "BSD-3-Clause",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -872,6 +938,7 @@
       ],
       "category": "film-restore",
       "type": "onnx",
+      "license": "BSD-3-Clause",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -885,6 +952,7 @@
       ],
       "category": "video-quality",
       "type": "onnx",
+      "license": "CC-BY-4.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -898,6 +966,7 @@
       ],
       "category": "video-quality",
       "type": "onnx",
+      "license": "CC-BY-4.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -911,6 +980,7 @@
       ],
       "category": "film-restore",
       "type": "onnx",
+      "license": "CC-BY-4.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -924,19 +994,21 @@
       ],
       "category": "film-restore",
       "type": "onnx",
+      "license": "CC-BY-4.0",
       "available": true,
       "downloaded": false,
       "loaded": false
     },
     {
       "id": "foolhardy-remacri-x4",
-      "name": "Remacri x4 (Community Favorite)",
-      "description": "4x_foolhardy_Remacri - legendary general-purpose ESRGAN upscaler, sharp detail without over-smoothing. ~67MB.",
+      "name": "Remacri x4 (Community Favorite) [non-commercial license]",
+      "description": "4x_foolhardy_Remacri - legendary general-purpose ESRGAN upscaler, sharp detail without over-smoothing. ~67MB. License CC-BY-NC-SA-4.0: personal/home use only, no commercial deployments.",
       "scale": [
         4
       ],
       "category": "video-quality",
       "type": "onnx",
+      "license": "CC-BY-NC-SA-4.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -950,6 +1022,7 @@
       ],
       "category": "video-quality",
       "type": "onnx",
+      "license": "WTFPL",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -963,6 +1036,7 @@
       ],
       "category": "video-quality",
       "type": "onnx",
+      "license": "CC-BY-4.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -976,6 +1050,7 @@
       ],
       "category": "nextgen",
       "type": "onnx",
+      "license": "CC-BY-4.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -989,6 +1064,7 @@
       ],
       "category": "video-fast",
       "type": "onnx",
+      "license": "CC-BY-4.0",
       "available": true,
       "downloaded": false,
       "loaded": false
@@ -1002,6 +1078,7 @@
       ],
       "category": "video-fast",
       "type": "onnx",
+      "license": "Apache-2.0",
       "available": true,
       "downloaded": false,
       "loaded": false

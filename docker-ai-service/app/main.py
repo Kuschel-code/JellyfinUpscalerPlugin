@@ -473,6 +473,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "realesrgan",
         "model_type": "realesrgan",
+        "license": "BSD-3-Clause",
         "available": True
     },
     "realesrgan-x4-256": {
@@ -483,6 +484,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "realesrgan",
         "model_type": "realesrgan",
+        "license": "BSD-3-Clause",
         "available": True
     },
     
@@ -497,6 +499,7 @@ AVAILABLE_MODELS = {
         "type": "pb",
         "category": "fast",
         "model_type": "fsrcnn",
+        "license": "Apache-2.0",
         "available": True
     },
     "fsrcnn-x3": {
@@ -507,6 +510,7 @@ AVAILABLE_MODELS = {
         "type": "pb",
         "category": "fast",
         "model_type": "fsrcnn",
+        "license": "Apache-2.0",
         "available": True
     },
     "fsrcnn-x4": {
@@ -517,6 +521,7 @@ AVAILABLE_MODELS = {
         "type": "pb",
         "category": "fast",
         "model_type": "fsrcnn",
+        "license": "Apache-2.0",
         "available": True
     },
     "espcn-x2": {
@@ -527,6 +532,7 @@ AVAILABLE_MODELS = {
         "type": "pb",
         "category": "fast",
         "model_type": "espcn",
+        "license": "Apache-2.0",
         "available": True
     },
     "espcn-x3": {
@@ -537,6 +543,7 @@ AVAILABLE_MODELS = {
         "type": "pb",
         "category": "fast",
         "model_type": "espcn",
+        "license": "Apache-2.0",
         "available": True
     },
     "espcn-x4": {
@@ -547,6 +554,7 @@ AVAILABLE_MODELS = {
         "type": "pb",
         "category": "fast",
         "model_type": "espcn",
+        "license": "Apache-2.0",
         "available": True
     },
     
@@ -561,6 +569,7 @@ AVAILABLE_MODELS = {
         "type": "pb",
         "category": "quality",
         "model_type": "lapsrn",
+        "license": "Apache-2.0",
         "available": True
     },
     "lapsrn-x4": {
@@ -571,6 +580,7 @@ AVAILABLE_MODELS = {
         "type": "pb",
         "category": "quality",
         "model_type": "lapsrn",
+        "license": "Apache-2.0",
         "available": True
     },
     "lapsrn-x8": {
@@ -581,6 +591,7 @@ AVAILABLE_MODELS = {
         "type": "pb",
         "category": "quality",
         "model_type": "lapsrn",
+        "license": "Apache-2.0",
         "available": True
     },
     
@@ -595,6 +606,7 @@ AVAILABLE_MODELS = {
         "type": "pb",
         "category": "quality",
         "model_type": "edsr",
+        "license": "Apache-2.0",
         "available": True
     },
     "edsr-x3": {
@@ -605,6 +617,7 @@ AVAILABLE_MODELS = {
         "type": "pb",
         "category": "quality",
         "model_type": "edsr",
+        "license": "Apache-2.0",
         "available": True
     },
     "edsr-x4": {
@@ -615,6 +628,7 @@ AVAILABLE_MODELS = {
         "type": "pb",
         "category": "quality",
         "model_type": "edsr",
+        "license": "Apache-2.0",
         "available": True
     },
 
@@ -622,13 +636,14 @@ AVAILABLE_MODELS = {
     # === NEW v1.5.3.4 — Next-Gen Models (ONNX) ===
     # ============================================================
     "span-x2": {
-        "name": "SPAN x2 (Fastest Quality)",
+        "name": "SPAN x2 (Fastest Quality) [non-commercial license]",
         "url": "https://github.com/jcj83429/upscaling/raw/f73a3a02874360ec6ced18f8bdd8e43b5d7bba57/2xLiveActionV1_SPAN/2xLiveActionV1_SPAN_490000.onnx",
         "scale": 2,
-        "description": "SPAN — fastest quality model, NTIRE 2023 winner. Best for real-time video.",
+        "description": "SPAN — fastest quality model, NTIRE 2023 winner. Best for real-time video. License CC-BY-NC-SA-4.0: personal/home use only, no commercial deployments.",
         "type": "onnx",
         "category": "nextgen",
         "model_type": "span",
+        "license": "CC-BY-NC-SA-4.0",
         "available": True
     },
     "span-x4": {
@@ -639,6 +654,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "nextgen",
         "model_type": "span",
+        "license": "CC-BY-SA-4.0",
         "available": True
     },
     "realesrgan-x2-plus": {
@@ -649,6 +665,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "nextgen",
         "model_type": "realesrgan",
+        "license": "BSD-3-Clause",
         "available": True
     },
     "realesrgan-animevideo-x4": {
@@ -659,6 +676,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "nextgen",
         "model_type": "realesrgan",
+        "license": "BSD-3-Clause",
         "available": True
     },
     "swinir-x4": {
@@ -669,6 +687,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "nextgen",
         "model_type": "swinir",
+        "license": "Apache-2.0",
         "available": True
     },
 
@@ -698,6 +717,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "video-fast",
         "model_type": "compact",
+        "license": "CC-BY-4.0",
         "available": True
     },
     "lsdir-compact-x4": {
@@ -708,6 +728,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "video-fast",
         "model_type": "compact",
+        "license": "CC-BY-4.0",
         "available": True
     },
     "swinir-small-x2": {
@@ -718,6 +739,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "video-fast",
         "model_type": "swinir",
+        "license": "Apache-2.0",
         "available": True
     },
     "swinir-small-x4": {
@@ -728,6 +750,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "video-fast",
         "model_type": "swinir",
+        "license": "Apache-2.0",
         "available": True
     },
 
@@ -752,6 +775,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "video-quality",
         "model_type": "dat2",
+        "license": "CC-BY-4.0",
         "available": True
     },
     "nomos2-realplksr-x4": {
@@ -762,6 +786,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "video-quality",
         "model_type": "realplksr",
+        "license": "CC-BY-4.0",
         "available": True
     },
 
@@ -774,6 +799,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "film-restore",
         "model_type": "esrgan",
+        "license": "GPL-3.0-only",
         "available": True
     },
     "nomos8k-hat-x4": {
@@ -784,6 +810,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "film-restore",
         "model_type": "hat",
+        "license": "CC-BY-4.0",
         # HAT transformer uses ops (LayerNorm with dynamic shape) that fail on CPUExecutionProvider
         # in this ONNX Runtime build. Re-enable once CUDA/ROCm EP is available or model is re-exported.
         "available": False
@@ -804,20 +831,22 @@ AVAILABLE_MODELS = {
         "name": "APISR x2 (Anime Production Quality)",
         "url": "https://huggingface.co/Xenova/2x_APISR_RRDB_GAN_generator-onnx/resolve/main/onnx/model.onnx",
         "scale": 2,
-        "description": "CVPR 2024 — trained on anime production pipeline. Best anime 2x quality. 18MB.",
+        "description": "CVPR 2024 — trained on anime production pipeline. Best anime 2x quality. 18MB. License GPL-3.0; the authors release it for academic use only.",
         "type": "onnx",
         "category": "anime",
         "model_type": "rrdb",
+        "license": "GPL-3.0",
         "available": True
     },
     "apisr-x3": {
         "name": "APISR x3 (General Quality) [self-host required]",
         "url": "https://huggingface.co/Xenova/3x_APISR_RRDB_GAN_generator-onnx/resolve/main/onnx/model.onnx",
         "scale": 3,
-        "description": "CVPR 2024 — general 3x for photos & video. Ideal for 720p to 1080p. ~25MB. [Upstream Xenova repo gated — see docs/MODEL-HOSTING.md to self-host.]",
+        "description": "CVPR 2024 — general 3x for photos & video. Ideal for 720p to 1080p. ~25MB. License GPL-3.0; the authors release it for academic use only. [Upstream Xenova repo gated — see docs/MODEL-HOSTING.md to self-host.]",
         "type": "onnx",
         "category": "nextgen",
         "model_type": "rrdb",
+        "license": "GPL-3.0",
         # Xenova repo returns 401 anonymously — gated or removed upstream. See docs/MODEL-HOSTING.md for self-hosting instructions.
         "available": False
     },
@@ -907,6 +936,7 @@ AVAILABLE_MODELS = {
         "model_type": "edvr",
         "input_frames": 5,
         "self_host": True,
+        "license": "Apache-2.0",
         # Multi-frame VSR has no public ONNX mirror. User must export from official PyTorch weights — see docs/MODEL-HOSTING.md.
         "available": False
     },
@@ -920,6 +950,7 @@ AVAILABLE_MODELS = {
         "model_type": "realbasicvsr",
         "input_frames": 5,
         "self_host": True,
+        "license": "Apache-2.0",
         # Multi-frame VSR has no public ONNX mirror. User must export from official PyTorch weights — see docs/MODEL-HOSTING.md.
         "available": False
     },
@@ -933,6 +964,7 @@ AVAILABLE_MODELS = {
         "model_type": "animesr",
         "input_frames": 5,
         "self_host": True,
+        "license": "Apache-2.0",
         # Multi-frame VSR has no public ONNX mirror. User must export from official PyTorch weights — see docs/MODEL-HOSTING.md.
         "available": False
     },
@@ -949,6 +981,7 @@ AVAILABLE_MODELS = {
         "category": "vulkan",
         "model_type": "realesrgan",
         "ncnn_model": "realesrgan-x4plus",
+        "license": "BSD-3-Clause",
         "available": NCNN_AVAILABLE
     },
     "ncnn-realesrgan-anime-x4": {
@@ -960,6 +993,7 @@ AVAILABLE_MODELS = {
         "category": "vulkan",
         "model_type": "realesrgan",
         "ncnn_model": "realesrgan-x4plus-anime",
+        "license": "BSD-3-Clause",
         "available": NCNN_AVAILABLE
     },
     "ncnn-realsr-x4": {
@@ -988,6 +1022,7 @@ AVAILABLE_MODELS = {
         "category": "interpolation",
         "model_type": "rife",
         "input_frames": 2,
+        "license": "MIT",
         "available": True
     },
     "rife-v4.8": {
@@ -999,6 +1034,7 @@ AVAILABLE_MODELS = {
         "category": "interpolation",
         "model_type": "rife",
         "input_frames": 2,
+        "license": "MIT",
         "available": True
     },
     "rife-v4.9": {
@@ -1011,6 +1047,7 @@ AVAILABLE_MODELS = {
         "model_type": "rife",
         "arch": "rife",
         "input_frames": 2,
+        "license": "MIT",
         "available": True
     },
 
@@ -1035,6 +1072,7 @@ AVAILABLE_MODELS = {
         "input_frames": 2,
         "experimental": True,
         "self_host": True,
+        "license": "MIT",
         "available": False
     },
     "cain": {
@@ -1049,6 +1087,7 @@ AVAILABLE_MODELS = {
         "input_frames": 2,
         "experimental": True,
         "self_host": True,
+        "license": "MIT",
         "available": False
     },
 
@@ -1067,17 +1106,19 @@ AVAILABLE_MODELS = {
         "category": "face_restore",
         "model_type": "face_restore",
         "input_size": 512,
+        "license": "Apache-2.0",
         "available": True
     },
     "codeformer": {
-        "name": "CodeFormer (Face Restore)",
+        "name": "CodeFormer (Face Restore) [non-commercial license]",
         "url": "https://huggingface.co/facefusion/models-3.0.0/resolve/main/codeformer.onnx",
         "scale": 1,
-        "description": "CodeFormer - Robust face restoration with transformer codebook. Good for severely degraded faces. 512x512. S-Lab License. Mirrored via facefusion/models-3.0.0. ~377MB.",
+        "description": "CodeFormer - Robust face restoration with transformer codebook. Good for severely degraded faces. 512x512. S-Lab License 1.0: non-commercial use only. Mirrored via facefusion/models-3.0.0. ~377MB.",
         "type": "onnx",
         "category": "face_restore",
         "model_type": "face_restore",
         "input_size": 512,
+        "license": "LicenseRef-S-Lab-1.0-NC",
         "available": True
     },
 
@@ -1207,6 +1248,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "nextgen",
         "model_type": "dat",
+        "license": "Apache-2.0",
         # 2026-07 URL sweep: HF repo gone (401), no ONNX mirror found.
         "available": False
     },
@@ -1218,6 +1260,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "nextgen",
         "model_type": "dat",
+        "license": "Apache-2.0",
         # 2026-07 URL sweep: HF repo gone (401), no ONNX mirror found.
         "available": False
     },
@@ -1250,6 +1293,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "nextgen",
         "model_type": "man",
+        "license": "Apache-2.0",
         # 2026-07 URL sweep: HF repo gone (401), no ONNX mirror found.
         "available": False
     },
@@ -1261,6 +1305,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "nextgen",
         "model_type": "man",
+        "license": "Apache-2.0",
         # 2026-07 URL sweep: HF repo gone (401), no ONNX mirror found.
         "available": False
     },
@@ -1272,6 +1317,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "nextgen",
         "model_type": "craft",
+        "license": "Apache-2.0",
         # 2026-07 URL sweep: HF repo gone (401), no ONNX mirror found anywhere.
         "available": False
     },
@@ -1283,6 +1329,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "nextgen",
         "model_type": "craft",
+        "license": "Apache-2.0",
         # 2026-07 URL sweep: HF repo gone (401), no ONNX mirror found anywhere.
         "available": False
     },
@@ -1334,6 +1381,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "video-fast",
         "model_type": "realesr-general",
+        "license": "BSD-3-Clause",
         "available": True
     },
     "realesr-general-wdn-x4v3": {
@@ -1344,6 +1392,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "film-restore",
         "model_type": "realesr-general",
+        "license": "BSD-3-Clause",
         "available": True
     },
 
@@ -1357,6 +1406,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "video-quality",
         "model_type": "dat2",
+        "license": "CC-BY-4.0",
         "available": True
     },
     "nomoswebphoto-realplksr-x4": {
@@ -1367,6 +1417,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "video-quality",
         "model_type": "realplksr",
+        "license": "CC-BY-4.0",
         "available": True
     },
 
@@ -1380,6 +1431,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "film-restore",
         "model_type": "realplksr",
+        "license": "CC-BY-4.0",
         "available": True
     },
     "denoise-realplksr-1x": {
@@ -1390,18 +1442,20 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "film-restore",
         "model_type": "realplksr",
+        "license": "CC-BY-4.0",
         "available": True
     },
 
     # Community-favorite ESRGAN classics + new RGT-S architecture.
     "foolhardy-remacri-x4": {
-        "name": "Remacri x4 (Community Favorite)",
+        "name": "Remacri x4 (Community Favorite) [non-commercial license]",
         "url": "https://huggingface.co/notaneimu/onnx-image-models/resolve/main/4x_foolhardy_Remacri.onnx",
         "scale": 4,
-        "description": "4x_foolhardy_Remacri - legendary general-purpose ESRGAN upscaler, sharp detail without over-smoothing. ~67MB.",
+        "description": "4x_foolhardy_Remacri - legendary general-purpose ESRGAN upscaler, sharp detail without over-smoothing. ~67MB. License CC-BY-NC-SA-4.0: personal/home use only, no commercial deployments.",
         "type": "onnx",
         "category": "video-quality",
         "model_type": "esrgan",
+        "license": "CC-BY-NC-SA-4.0",
         "available": True
     },
     "nmkd-siax-x4": {
@@ -1412,6 +1466,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "video-quality",
         "model_type": "esrgan",
+        "license": "WTFPL",
         "available": True
     },
     "nomos8k-hat-l-x4": {
@@ -1422,6 +1477,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "video-quality",
         "model_type": "hat",
+        "license": "CC-BY-4.0",
         "available": True
     },
     "textures-rgt-s-x4": {
@@ -1432,6 +1488,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "nextgen",
         "model_type": "rgt",
+        "license": "CC-BY-4.0",
         "available": True
     },
 
@@ -1445,6 +1502,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "video-fast",
         "model_type": "compact",
+        "license": "CC-BY-4.0",
         "available": True
     },
     "spanx2-ch48": {
@@ -1455,6 +1513,7 @@ AVAILABLE_MODELS = {
         "type": "onnx",
         "category": "video-fast",
         "model_type": "span",
+        "license": "Apache-2.0",
         "available": True
     },
 
