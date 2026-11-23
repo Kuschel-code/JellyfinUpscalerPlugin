@@ -1,6 +1,6 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
 
-annotated-doc==0.0.6
+annotated-doc==0.0.7
     # via fastapi
 annotated-types==0.8.0
     # via pydantic
@@ -10,7 +10,7 @@ anyio==4.16.0
     #   httpx
     #   starlette
     #   watchfiles
-certifi==2026.10.23
+certifi==2026.11.20
     # via
     #   httpcore
     #   httpx
@@ -18,9 +18,9 @@ click==8.5.1
     # via uvicorn
 einops==0.8.2
     # via spandrel
-fastapi==0.163.1
+fastapi==0.165.0
     # via -r /w/requirements-cpu.txt
-filelock==4.2.10
+filelock==4.3.0
     # via torch
 flatbuffers==25.12.19
     # via onnxruntime
@@ -44,7 +44,7 @@ jinja2==3.1.6
     # via torch
 markupsafe==3.0.4
     # via jinja2
-ml-dtypes==0.6.0
+ml-dtypes==0.7.0
     # via
     #   onnx
     #   onnx-ir
@@ -90,15 +90,15 @@ protobuf==7.36.2
     # via
     #   onnx
     #   onnxruntime
-pydantic==2.14.3
+pydantic==2.14.4
     # via fastapi
-pydantic-core==2.50.4
+pydantic-core==2.50.5
     # via pydantic
 python-dotenv==1.2.4
     # via uvicorn
 python-multipart==0.0.34
     # via -r /w/requirements-cpu.txt
-pyyaml==6.0.3
+pyyaml==6.0.4
     # via uvicorn
 safetensors==0.8.0
     # via spandrel
